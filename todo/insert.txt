@@ -1,0 +1,15 @@
+private const string MS_INCOMING_QUEUE_INSERT_SCRIPT_TEMPLATE =
+            "INSERT {TABLE_NAME} " +
+            "({МоментВремени}, {Идентификатор}, {Заголовки}, {Отправитель}, {ТипСообщения}, {ТелоСообщения}, " +
+            "{ДатаВремя}, {ОписаниеОшибки}, {КоличествоОшибок}, {ТипОперации}) " +
+            "SELECT NEXT VALUE FOR DaJetIncomingQueueSequence, " +
+            "@Идентификатор, @Заголовки, @Отправитель, @ТипСообщения, @ТелоСообщения, " +
+            "@ДатаВремя, @ОписаниеОшибки, @КоличествоОшибок, @ТипОперации;";
+
+        private const string PG_INCOMING_QUEUE_INSERT_SCRIPT_TEMPLATE =
+            "INSERT INTO {TABLE_NAME} " +
+            "({МоментВремени}, {Идентификатор}, {Заголовки}, {Отправитель}, {ТипСообщения}, {ТелоСообщения}, " +
+            "{ДатаВремя}, {ОписаниеОшибки}, {КоличествоОшибок}, {ТипОперации}) " +
+            "SELECT CAST(nextval('DaJetIncomingQueueSequence') AS numeric(19,0)), " +
+            "@Идентификатор, CAST(@Заголовки AS mvarchar), CAST(@Отправитель AS mvarchar), CAST(@ТипСообщения AS mvarchar), " +
+            "CAST(@ТелоСообщения AS mvarchar), @ДатаВремя, CAST(@ОписаниеОшибки AS mvarchar), @КоличествоОшибок, CAST(@ТипОперации AS mvarchar);";

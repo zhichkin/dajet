@@ -6,6 +6,7 @@ namespace DaJet.Scripting
     {
         private static Dictionary<string, TokenType> _keywords_en = new()
         {
+            { "WITH", TokenType.WITH },
             { "SELECT", TokenType.SELECT },
             { "FROM", TokenType.FROM },
             { "WHERE", TokenType.WHERE },

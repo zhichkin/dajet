@@ -45,6 +45,10 @@ namespace DaJet.Scripting
             {
                 OpenScope(ScopeType.Node, node);
             }
+            else if (node is CommonTableExpression)
+            {
+                OpenScope(ScopeType.Node, node);
+            }
             else if (node is SubqueryExpression)
             {
                 JoinScope(node);
@@ -74,6 +78,10 @@ namespace DaJet.Scripting
                 CloseScope(node);
             }
             else if (node is TableJoinOperator)
+            {
+                CloseScope(node);
+            }
+            else if (node is CommonTableExpression)
             {
                 CloseScope(node);
             }

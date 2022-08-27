@@ -6,7 +6,7 @@
 
         SELECT, FROM, WHERE, AND, OR, AS, NOT,
         JOIN, LEFT, RIGHT, INNER, FULL, CROSS, ON,
-        DECLARE,
+        DECLARE, WITH, CTE,
 
         Identifier, Table, Column, Variable, TemporaryTable, Star,
 

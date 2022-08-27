@@ -7,27 +7,38 @@ namespace DaJet.Scripting.Test
     {
         [TestMethod] public void Tokenize()
         {
-            ScriptTokenizer scanner = new();
-
             foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test"))
             {
-                Console.WriteLine("***");
-                Console.WriteLine(filePath);
+                TokenizeFile(in filePath);
+            }
+        }
+        [TestMethod] public void Tokenize_With_Cte()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\cte"))
+            {
+                TokenizeFile(in filePath);
+            }
+        }
+        private void TokenizeFile(in string filePath)
+        {
+            ScriptTokenizer scanner = new();
 
-                using (StreamReader reader = new(filePath, Encoding.UTF8))
+            Console.WriteLine("***");
+            Console.WriteLine(filePath);
+
+            using (StreamReader reader = new(filePath, Encoding.UTF8))
+            {
+                string script = reader.ReadToEnd();
+
+                if (!scanner.TryTokenize(in script, out List<ScriptToken> tokens, out string error))
                 {
-                    string script = reader.ReadToEnd();
+                    Console.WriteLine(error);
+                    return;
+                }
 
-                    if (!scanner.TryTokenize(in script, out List<ScriptToken> tokens, out string error))
-                    {
-                        Console.WriteLine(error);
-                        continue;
-                    }
-
-                    foreach (ScriptToken token in tokens)
-                    {
-                        Console.WriteLine(token);
-                    }
+                foreach (ScriptToken token in tokens)
+                {
+                    Console.WriteLine(token);
                 }
             }
         }

@@ -1,0 +1,11 @@
+WITH cte AS
+(SELECT _IDRRef FROM _Reference229 ORDER BY _IDRRef ASC
+OFFSET @PageSize * (@PageNumber - 1) ROWS FETCH NEXT @PageSize ROWS ONLY)
+
+SELECT t._IDRRef AS [Ссылка], t._Marked AS [ПометкаУдаления],
+t._Code AS [Код], t._Description AS [Наименование],
+t._PredefinedID AS [Предопределённый], t._Fld6964 AS [Комментарий],
+t._Fld6969RRef AS [Контрагент], t._Fld826 AS [ID_77]
+FROM _Reference229 AS t
+
+INNER JOIN cte ON t._IDRRef = cte._IDRRef;

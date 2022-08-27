@@ -104,6 +104,20 @@ namespace DaJet.Scripting
                 _ignore.Add(Previous());
             }
         }
+        private void Skip(params TokenType[] types)
+        {
+            while (!EndOfStream())
+            {
+                if (Match(types))
+                {
+                    continue;
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
 
         #endregion
 
@@ -115,11 +129,22 @@ namespace DaJet.Scripting
             }
             else if (Match(TokenType.DECLARE))
             {
-                return declare();
+                if (Check(TokenType.Variable))
+                {
+                    return declare();
+                }
+                else if (Check(TokenType.Identifier))
+                {
+                    return statement_with_cte();
+                }
             }
             else if (Match(TokenType.SELECT))
             {
                 return select_statement();
+            }
+            else if (Match(TokenType.WITH))
+            {
+                return statement_with_cte();
             }
 
             Ignore();
@@ -183,10 +208,104 @@ namespace DaJet.Scripting
 
             return declare;
         }
+        private SyntaxNode statement_with_cte()
+        {
+            CommonTableExpression root = cte();
+
+            while (Match(TokenType.Comma))
+            {
+                CommonTableExpression node = cte();
+
+                node.Next = root;
+
+                root = node;
+            }
+
+            if (Match(TokenType.SELECT))
+            {
+                SelectStatement select = select_statement();
+
+                select.CTE = root;
+
+                return select;
+            }
+
+            throw new FormatException("SELECT statement expected.");
+        }
+        private CommonTableExpression cte()
+        {
+            if (!Match(TokenType.Identifier))
+            {
+                throw new FormatException("Identifier expected.");
+            }
+
+            CommonTableExpression cte = new()
+            {
+                Name = Previous().Lexeme
+            };
+
+            Skip(TokenType.Comment);
+
+            if (Match(TokenType.OpenRoundBracket))
+            {
+                // TODO: parse column identifiers
+            }
+
+            if (!Match(TokenType.AS))
+            {
+                throw new FormatException("AS keyword expected.");
+            }
+
+            Skip(TokenType.Comment);
+
+            if (!Match(TokenType.OpenRoundBracket))
+            {
+                throw new FormatException("Open round bracket expected.");
+            }
+
+            cte.Expression = select_definition(TokenType.SELECT); // ? TokenType.CTE
+
+            Skip(TokenType.Comment);
+
+            if (!Match(TokenType.CloseRoundBracket))
+            {
+                throw new FormatException("Close round bracket expected.");
+            }
+
+            Skip(TokenType.Comment);
+
+            return cte;
+        }
+        private SelectStatement select_definition(TokenType type)
+        {
+            SelectStatement select = new()
+            {
+                Token = type
+            };
+
+            if (!Match(TokenType.SELECT))
+            {
+                throw new FormatException("SELECT keyword expected.");
+            }
+            select_clause(in select);
+
+            if (!Match(TokenType.FROM))
+            {
+                throw new FormatException("FROM keyword expected.");
+            }
+            select.FROM = new FromClause() { Expression = from_clause() };
+
+            if (Match(TokenType.WHERE))
+            {
+                select.WHERE = new WhereClause() { Expression = where_clause() };
+            }
+
+            return select;
+        }
 
         #region "SELECT STATEMENT"
 
-        private SyntaxNode select_statement()
+        private SelectStatement select_statement()
         {
             SelectStatement select = new() { Token = TokenType.SELECT };
 

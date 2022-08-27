@@ -62,7 +62,23 @@ namespace DaJet.Scripting
         }
         private void BindTable(in ScriptScope scope, in Identifier identifier, in MetadataCache metadata)
         {
-            MetadataObject table = metadata.GetMetadataObject(identifier.Value);
+            BindCte(in scope, in identifier);
+
+            if (identifier.Tag != null)
+            {
+                return; // successful binding
+            }
+
+            MetadataObject table = null!;
+
+            try
+            {
+                table = metadata.GetMetadataObject(identifier.Value);
+            }
+            catch
+            {
+                ThrowBindingException(identifier);
+            }
 
             if (table is ApplicationObject entity)
             {
@@ -71,6 +87,29 @@ namespace DaJet.Scripting
             else
             {
                 ThrowBindingException(identifier);
+            }
+        }
+        private void BindCte(in ScriptScope scope, in Identifier identifier)
+        {
+            if (scope.Owner is CommonTableExpression owner && owner.Name == identifier.Value)
+            {
+                identifier.Tag = owner; // CTE self reference
+                return; // successful binding
+            }
+
+            foreach (ScriptScope child in scope.Children)
+            {
+                if (child.Type == ScopeType.Root)
+                {
+                    continue;
+                }
+
+                BindCte(in child, in identifier);
+
+                if (identifier.Tag != null)
+                {
+                    return; // successful binding
+                }
             }
         }
 
@@ -158,7 +197,16 @@ namespace DaJet.Scripting
                             }
                         }
                     }
+                    else if (table.Tag is CommonTableExpression cte && cte.Expression is SelectStatement select)
+                    {
+                        BindColumnToSelect(in select, in identifier);
+                    }
                 }
+            }
+
+            if (identifier.Tag != null)
+            {
+                return; // successful binding
             }
 
             foreach (ScriptScope child in scope.Children)
@@ -173,6 +221,38 @@ namespace DaJet.Scripting
                 if (identifier.Tag != null)
                 {
                     return; // successful binding
+                }
+            }
+        }
+        private void BindColumnToSelect(in SelectStatement select, in Identifier identifier)
+        {
+            ScriptHelper.GetColumnNames(identifier.Value, out string _, out string columnName);
+
+            foreach (SyntaxNode item in select.SELECT)
+            {
+                if (item is Identifier column && column.Token == TokenType.Column)
+                {
+                    if (string.IsNullOrWhiteSpace(column.Alias)) // Привязка по имени колонки
+                    {
+                        if (ScriptHelper.GetColumnName(column.Value) == columnName)
+                        {
+                            if (column.Tag != null)
+                            {
+                                identifier.Tag = column.Tag;
+                            }
+
+                            return; // Используем уже существующую привязку
+                        }
+                    }
+                    else if (column.Alias == columnName) // Привязка по синониму колонки
+                    {
+                        //identifier.Tag = column.Tag;     // Проброс свойства теряет информацию о синониме колонки
+                        //identifier.Alias = column.Alias; // Важно пробросить наверх синоним колонки
+
+                        identifier.Tag = column; // bubble up identifier, entity property is in the Tag
+                        
+                        return; // successful binding
+                    }
                 }
             }
         }

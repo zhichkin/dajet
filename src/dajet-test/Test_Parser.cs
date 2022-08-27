@@ -35,6 +35,33 @@ namespace DaJet.Scripting.Test
                 }
             }
         }
+        [TestMethod] public void Parse_Cte()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\cte"))
+            {
+                Console.WriteLine("***");
+                Console.WriteLine(filePath);
+
+                using (StreamReader reader = new(filePath, Encoding.UTF8))
+                {
+                    string script = reader.ReadToEnd();
+
+                    using (ScriptParser parser = new())
+                    {
+                        if (!parser.TryParse(in script, out ScriptModel tree, out string error))
+                        {
+                            Console.WriteLine(error);
+                            return;
+                        }
+
+                        foreach (SyntaxNode node in tree.Statements)
+                        {
+                            ShowSyntaxNode(node, 0);
+                        }
+                    }
+                }
+            }
+        }
         private void ShowSyntaxNode(SyntaxNode node, int level)
         {
             if (node == null)
@@ -94,10 +121,46 @@ namespace DaJet.Scripting.Test
             //}
         }
         
-        [TestMethod] public void Test_Walker()
+        [TestMethod] public void Walker()
         {
-            string filePath = "C:\\temp\\scripting-test\\script01.txt";
+            string filePath = "C:\\temp\\scripting-test\\script04.txt";
 
+            using (StreamReader reader = new(filePath, Encoding.UTF8))
+            {
+                string script = reader.ReadToEnd();
+
+                using (ScriptParser parser = new())
+                {
+                    if (!parser.TryParse(in script, out ScriptModel tree, out string error))
+                    {
+                        Console.WriteLine(error);
+                        return;
+                    }
+
+                    ScopeBuilder builder = new();
+
+                    if (!builder.TryBuild(in tree, out ScriptScope scope, out error))
+                    {
+                        Console.WriteLine(error);
+                        return;
+                    }
+
+                    ShowScriptScope(scope, 0);
+                }
+            }
+        }
+        [TestMethod] public void Walker_Cte()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\cte"))
+            {
+                Console.WriteLine("***");
+                Console.WriteLine(filePath);
+
+                WalkScriptFile(in filePath);
+            }
+        }
+        private void WalkScriptFile(in string filePath)
+        {
             using (StreamReader reader = new(filePath, Encoding.UTF8))
             {
                 string script = reader.ReadToEnd();
