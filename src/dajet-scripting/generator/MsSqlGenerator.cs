@@ -38,12 +38,45 @@ namespace DaJet.Scripting
             return result.Success;
         }
 
-        #region "SELECT STATEMENT"
+        private void VisitCommonTables(CommonTableExpression cte, StringBuilder script)
+        {
+            if (cte == null)
+            {
+                return;
+            }
 
-        #region "SELECT AND FROM CLAUSE"
+            script.Append("WITH ");
+
+            VisitCommonTable(cte, script);
+        }
+        private void VisitCommonTable(CommonTableExpression cte, StringBuilder script)
+        {
+            if (cte.Next != null)
+            {
+                VisitCommonTable(cte.Next, script);
+            }
+
+            if (cte.Next != null)
+            {
+                script.Append(", ");
+            }
+
+            script.AppendLine($"{cte.Name} AS").Append("(");
+
+            if (cte.Expression is SelectStatement select)
+            {
+                VisitSelectStatement(select, script, null!);
+            }
+
+            script.AppendLine(")");
+        }
+
+        #region "SELECT STATEMENT"
 
         private void VisitSelectStatement(SelectStatement select, StringBuilder script, EntityMap mapper)
         {
+            VisitCommonTables(select.CTE, script);
+
             VisitSelectClause(select, script, mapper);
 
             VisitFromClause(select.FROM, script);
@@ -53,6 +86,9 @@ namespace DaJet.Scripting
                 VisitWhereClause(select.WHERE, script);
             }
         }
+
+        #region "SELECT AND FROM CLAUSE"
+
         private void VisitSelectClause(SelectStatement select, StringBuilder script, EntityMap mapper)
         {
             script.AppendLine("SELECT");
@@ -164,12 +200,23 @@ namespace DaJet.Scripting
 
         private void VisitTableIdentifier(Identifier table, StringBuilder script)
         {
-            if (table.Tag is not ApplicationObject entity)
+            string tableName = string.Empty;
+
+            if (table.Tag is ApplicationObject entity)
+            {
+                tableName = entity.TableName;
+            }
+            else if (table.Tag is CommonTableExpression cte)
+            {
+                tableName = cte.Name;
+            }
+
+            if (string.IsNullOrWhiteSpace(tableName))
             {
                 return;
             }
 
-            script.Append(entity.TableName);
+            script.Append(tableName);
 
             if (!string.IsNullOrWhiteSpace(table.Alias))
             {

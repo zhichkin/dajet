@@ -263,7 +263,7 @@ namespace DaJet.Scripting
                 throw new FormatException("Open round bracket expected.");
             }
 
-            cte.Expression = select_definition(TokenType.SELECT); // ? TokenType.CTE
+            cte.Expression = select_definition(TokenType.SELECT); // !? TokenType.CTE
 
             Skip(TokenType.Comment);
 

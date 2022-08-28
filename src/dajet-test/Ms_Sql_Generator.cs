@@ -297,6 +297,57 @@ namespace DaJet.Scripting.Test
                 Console.WriteLine(ExceptionHelper.GetErrorMessage(exception));
             }
         }
+
+        [TestMethod] public void Generate_Script_Cte()
+        {
+            filePath = "C:\\temp\\scripting-test\\cte\\04-script.txt";
+
+            CreateScriptModel();
+
+            if (_model == null)
+            {
+                return;
+            }
+
+            ScopeBuilder builder = new();
+
+            if (!builder.TryBuild(in _model, out ScriptScope scope, out string error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            MetadataBinder binder = new();
+
+            if (!binder.TryBind(in scope, in _cache, out error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            ScriptTransformer transformer = new();
+
+            if (!transformer.TryTransform(_model, out error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            MsSqlGenerator generator = new();
+
+            if (!generator.TryGenerate(_model, out GeneratorResult result))
+            {
+                Console.WriteLine(result.Error);
+                return;
+            }
+
+            Console.WriteLine();
+            Console.WriteLine(filePath);
+            Console.WriteLine();
+            Console.WriteLine(result.Script);
+
+            ShowEntityMap(result.Mapper);
+        }
     }
     public class ProductInfo
     {

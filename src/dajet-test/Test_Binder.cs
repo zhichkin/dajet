@@ -144,7 +144,7 @@ namespace DaJet.Scripting.Test
         }
         [TestMethod] public void Bind_Metadata_Cte()
         {
-            filePath = "C:\\temp\\scripting-test\\cte\\01-script.txt";
+            filePath = "C:\\temp\\scripting-test\\cte\\04-script.txt";
 
             CreateSyntaxTree();
 

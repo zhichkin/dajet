@@ -13,7 +13,9 @@ namespace DaJet.Scripting
 
             try
             {
-                Bind(in scope, in metadata);
+                BindCommonTables(in scope, in metadata);
+
+                BindSchemaTables(in scope, in metadata);
             }
             catch (Exception exception)
             {
@@ -22,11 +24,49 @@ namespace DaJet.Scripting
 
             return string.IsNullOrWhiteSpace(error);
         }
-        private void Bind(in ScriptScope scope, in MetadataCache metadata)
+        private void ThrowBindingException(Identifier identifier)
+        {
+            string message = "Failed to bind " + "[" + identifier.Token + ": " + identifier.Value + "]";
+
+            throw new InvalidOperationException(message);
+        }
+
+        private void BindCommonTables(in ScriptScope scope, in MetadataCache metadata)
         {
             foreach (ScriptScope child in scope.Children)
             {
-                Bind(in child, in metadata);
+                BindCommonTables(in child, in metadata);
+            }
+
+            if (scope.Owner is not CommonTableExpression)
+            {
+                return;
+            }
+
+            foreach (ScriptScope child in scope.Children)
+            {
+                if (child.Owner is CommonTableExpression)
+                {
+                    continue;
+                }
+
+                BindTables(in child, in metadata);
+
+                BindColumns(in child, in metadata);
+
+                BindVariables(in child, in metadata);
+            }
+        }
+        private void BindSchemaTables(in ScriptScope scope, in MetadataCache metadata)
+        {
+            foreach (ScriptScope child in scope.Children)
+            {
+                BindSchemaTables(in child, in metadata);
+            }
+
+            if (scope.Owner is CommonTableExpression)
+            {
+                return;
             }
 
             BindTables(in scope, in metadata);
@@ -34,13 +74,6 @@ namespace DaJet.Scripting
             BindColumns(in scope, in metadata);
 
             BindVariables(in scope, in metadata);
-        }
-
-        private void ThrowBindingException(Identifier identifier)
-        {
-            string message = "Failed to bind " + "[" + identifier.Token + ": " + identifier.Value + "]";
-            
-            throw new InvalidOperationException(message);
         }
 
         private void BindTables(in ScriptScope scope, in MetadataCache metadata)
@@ -91,20 +124,40 @@ namespace DaJet.Scripting
         }
         private void BindCte(in ScriptScope scope, in Identifier identifier)
         {
+            ScriptScope context = scope.Ancestor<CommonTableExpression>();
+
+            if (context != null)
+            {
+                // Контекст общего табличного выражения
+
+                BindCteScoped(in context, in identifier);
+            }
+            else
+            {
+                // Корневой контекст всего выражения
+
+                ScriptScope root = scope.Ancestor<SelectStatement>();
+
+                BindCteScoped(in root, in identifier);
+            }
+        }
+        private void BindCteScoped(in ScriptScope scope, in Identifier identifier)
+        {
+            if (scope == null)
+            {
+                return;
+            }
+
             if (scope.Owner is CommonTableExpression owner && owner.Name == identifier.Value)
             {
-                identifier.Tag = owner; // CTE self reference
+                identifier.Tag = owner; // bind CTE reference
+
                 return; // successful binding
             }
 
             foreach (ScriptScope child in scope.Children)
             {
-                if (child.Type == ScopeType.Root)
-                {
-                    continue;
-                }
-
-                BindCte(in child, in identifier);
+                BindCteScoped(in child, in identifier);
 
                 if (identifier.Tag != null)
                 {
@@ -112,7 +165,7 @@ namespace DaJet.Scripting
                 }
             }
         }
-
+        
         private void BindColumns(in ScriptScope scope, in MetadataCache metadata)
         {
             foreach (SyntaxNode node in scope.Identifiers)
@@ -173,33 +226,42 @@ namespace DaJet.Scripting
                         }
                     }
                 }
-                else if (node is Identifier table && table.Token == TokenType.Table          // Привязка колонки по имени таблицы (синониму),
-                    && (table.Alias == tableAlias || string.IsNullOrWhiteSpace(tableAlias))) // находящейся в текущей области видимости
-                {
-                    string alias = string.IsNullOrWhiteSpace(table.Alias) ? table.Value : table.Alias;
-
-                    if (table.Tag is ApplicationObject entity)
+                else if (node is Identifier table && table.Token == TokenType.Table) // Привязка колонки по имени таблицы (синониму),
+                {                                                                    // находящейся в текущей области видимости
+                    if (table.Alias == tableAlias || string.IsNullOrWhiteSpace(tableAlias))
                     {
-                        foreach (MetadataProperty property in entity.Properties)
+                        string alias = string.IsNullOrWhiteSpace(table.Alias) ? table.Value : table.Alias;
+
+                        if (table.Tag is ApplicationObject entity)
                         {
-                            if (property.Name == columnName)
+                            foreach (MetadataProperty property in entity.Properties)
                             {
-                                List<string> fields = new();
-
-                                foreach (MetadataColumn field in property.Columns)
+                                if (property.Name == columnName)
                                 {
-                                    fields.Add(field.Name);
+                                    List<string> fields = new();
+
+                                    foreach (MetadataColumn field in property.Columns)
+                                    {
+                                        fields.Add(field.Name);
+                                    }
+
+                                    identifier.Tag = property;
+
+                                    return; // successful binding
                                 }
-
-                                identifier.Tag = property;
-
-                                return; // successful binding
                             }
                         }
+                        else if (table.Tag is CommonTableExpression cte && cte.Expression is SelectStatement select)
+                        {
+                            BindColumnToSelect(in select, in identifier);
+                        }
                     }
-                    else if (table.Tag is CommonTableExpression cte && cte.Expression is SelectStatement select)
+                    else if (string.IsNullOrWhiteSpace(table.Alias) && table.Value == tableAlias)
                     {
-                        BindColumnToSelect(in select, in identifier);
+                        if (table.Tag is CommonTableExpression cte && cte.Expression is SelectStatement select)
+                        {
+                            BindColumnToSelect(in select, in identifier);
+                        }
                     }
                 }
             }

@@ -30,6 +30,30 @@ namespace DaJet.Scripting
                 return root;
             }
         }
+        public ScriptScope Ancestor<TOwner>() where TOwner : SyntaxNode
+        {
+            Type type = typeof(TOwner);
+
+            ScriptScope scope = this;
+            SyntaxNode owner = Owner;
+
+            while (scope != null)
+            {
+                if (owner != null && owner.GetType() == type)
+                {
+                    return scope;
+                }
+
+                scope = scope.Parent;
+                owner = scope?.Owner;
+            }
+
+            return null!;
+        }
+        public ScriptScope Descendant<TOwner>() where TOwner : SyntaxNode
+        {
+            return null!; // TODO
+        }
         public override string ToString()
         {
             return $"{Type}: {Owner}";
