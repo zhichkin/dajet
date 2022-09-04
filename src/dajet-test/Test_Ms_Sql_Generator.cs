@@ -10,7 +10,7 @@ using System.Text;
 
 namespace DaJet.Scripting.Test
 {
-    [TestClass] public class Ms_Sql_Generator
+    [TestClass] public class Test_Ms_Sql_Generator
     {
         private const string IB_KEY = "dajet-metadata-ms";
         private readonly InfoBase _infoBase;
@@ -19,7 +19,7 @@ namespace DaJet.Scripting.Test
         private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
         private ScriptModel _model;
         private string filePath = "C:\\temp\\scripting-test\\script08.txt";
-        public Ms_Sql_Generator()
+        public Test_Ms_Sql_Generator()
         {
             _service.Add(new InfoBaseOptions()
             {
@@ -55,6 +55,8 @@ namespace DaJet.Scripting.Test
         }
         [TestMethod] public void Generate_Script()
         {
+            filePath = "C:\\temp\\scripting-test\\destructive-read\\00-script.txt";
+
             CreateScriptModel();
 
             if (_model == null)
@@ -189,6 +191,16 @@ namespace DaJet.Scripting.Test
                 Console.WriteLine($"{property.Key} = {property.Value}");
             }
             Console.WriteLine();
+        }
+        private void ShowPropertyValues(object entity)
+        {
+            Type type = entity.GetType();
+
+            foreach (PropertyInfo property in type.GetProperties())
+            {
+                object? value = property.GetValue(entity, null);
+                Console.WriteLine($"{property.Name} = {value}");
+            }
         }
         [TestMethod] public void Execute_Script_Reader()
         {
@@ -348,6 +360,37 @@ namespace DaJet.Scripting.Test
 
             ShowEntityMap(result.Mapper);
         }
+
+        [TestMethod] public void Execute_Destructive_Read()
+        {
+            string script;
+            filePath = "C:\\temp\\scripting-test\\destructive-read\\00-script.txt";
+
+            Console.WriteLine();
+            Console.WriteLine(filePath);
+            Console.WriteLine();
+
+            using (StreamReader reader = new(filePath, Encoding.UTF8))
+            {
+                script = reader.ReadToEnd();
+            }
+
+            ScriptExecutor executor = new(_cache);
+            executor.Parameters.Add("MessageCount", 10);
+
+            try
+            {
+                foreach (var entity in executor.ExecuteReader<OutgoingMessage>(script))
+                {
+                    Console.WriteLine("*****");
+                    ShowPropertyValues(entity);
+                }
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(ExceptionHelper.GetErrorMessage(exception));
+            }
+        }
     }
     public class ProductInfo
     {
@@ -366,5 +409,16 @@ namespace DaJet.Scripting.Test
         {
             return $"[{NodeCode}] {{ \"Kafka\": {UseKafka.ToString().ToLowerInvariant()}, \"RabbitMQ\": {UseRabbitMQ.ToString().ToLowerInvariant()} }} {NodeRef}";
         }
+    }
+    public sealed class OutgoingMessage
+    {
+        public decimal МоментВремени { get; set; } = 0L;
+        public Guid Идентификатор { get; set; } = Guid.Empty;
+        public string Заголовки { get; set; } = string.Empty;
+        public string Отправитель { get; set; } = string.Empty;
+        public string Получатели { get; set; } = string.Empty;
+        public string ТипСообщения { get; set; } = string.Empty;
+        public string ТелоСообщения { get; set; } = string.Empty;
+        public DateTime ВремяСоздания { get; set; } = DateTime.MinValue;
     }
 }

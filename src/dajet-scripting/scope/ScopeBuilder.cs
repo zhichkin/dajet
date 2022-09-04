@@ -41,6 +41,10 @@ namespace DaJet.Scripting
             {
                 OpenScope(ScopeType.Root, node);
             }
+            else if (node is DeleteStatement)
+            {
+                OpenScope(ScopeType.Root, node);
+            }
             else if (node is TableJoinOperator)
             {
                 OpenScope(ScopeType.Node, node);
@@ -74,6 +78,10 @@ namespace DaJet.Scripting
                 CloseScope(node);
             }
             else if (node is SelectStatement)
+            {
+                CloseScope(node);
+            }
+            else if (node is DeleteStatement)
             {
                 CloseScope(node);
             }

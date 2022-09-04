@@ -146,6 +146,14 @@ namespace DaJet.Scripting
             {
                 return statement_with_cte();
             }
+            else if (Check(TokenType.DELETE))
+            {
+                return delete_statement();
+            }
+            else if (Match(TokenType.EndOfStatement))
+            {
+                return null!;
+            }
 
             Ignore();
 
@@ -230,7 +238,16 @@ namespace DaJet.Scripting
                 return select;
             }
 
-            throw new FormatException("SELECT statement expected.");
+            if (Check(TokenType.DELETE))
+            {
+                DeleteStatement delete = delete_statement();
+
+                delete.CTE = root;
+
+                return delete;
+            }
+
+            throw new FormatException("SELECT or DELETE statement expected.");
         }
         private CommonTableExpression cte()
         {
@@ -287,6 +304,7 @@ namespace DaJet.Scripting
             {
                 throw new FormatException("SELECT keyword expected.");
             }
+
             select_clause(in select);
 
             if (!Match(TokenType.FROM))
@@ -300,9 +318,14 @@ namespace DaJet.Scripting
                 select.WHERE = new WhereClause() { Expression = where_clause() };
             }
 
+            if (Match(TokenType.ORDER))
+            {
+                select.ORDER = order_clause();
+            }
+
             return select;
         }
-
+        
         #region "SELECT STATEMENT"
 
         private SelectStatement select_statement()
@@ -320,6 +343,10 @@ namespace DaJet.Scripting
                 else if (Match(TokenType.WHERE))
                 {
                     select.WHERE = new WhereClause() { Expression = where_clause() };
+                }
+                else if (Match(TokenType.ORDER))
+                {
+                    select.ORDER = order_clause();
                 }
                 else
                 {
@@ -372,18 +399,51 @@ namespace DaJet.Scripting
 
             return left;
         }
-        private SyntaxNode table_source()
+        private TableSource table_source()
         {
+            SyntaxNode expression = null!;
+
             if (Match(TokenType.Identifier))
             {
-                return identifier(TokenType.Table);
+                expression = identifier(TokenType.Table);
             }
             else if (Match(TokenType.OpenRoundBracket))
             {
-                return subquery();
+                expression = subquery();
             }
 
-            throw new FormatException("Identifier or subquery expected.");
+            if (expression == null)
+            {
+                throw new FormatException("Identifier or subquery expected.");
+            }
+
+            TableSource table = new() { Expression = expression };
+
+            if (!Match(TokenType.WITH))
+            {
+                return table;
+            }
+
+            if (!Match(TokenType.OpenRoundBracket))
+            {
+                throw new FormatException($"Open round bracket expected.");
+            }
+
+            while (Match(TokenType.Comma, TokenType.NOLOCK, TokenType.ROWLOCK, TokenType.READPAST,
+                TokenType.READCOMMITTEDLOCK, TokenType.SERIALIZABLE, TokenType.UPDLOCK))
+            {
+                if (Previous().Type != TokenType.Comma)
+                {
+                    table.Hints.Add(Previous().Type);
+                }
+            }
+
+            if (!Match(TokenType.CloseRoundBracket))
+            {
+                throw new FormatException($"Close round bracket expected.");
+            }
+
+            return table;
         }
         private SyntaxNode subquery()
         {
@@ -405,6 +465,10 @@ namespace DaJet.Scripting
                 else if (Match(TokenType.WHERE))
                 {
                     select.WHERE = new WhereClause() { Expression = where_clause() };
+                }
+                else if (Match(TokenType.ORDER))
+                {
+                    select.ORDER = order_clause();
                 }
                 else
                 {
@@ -559,11 +623,50 @@ namespace DaJet.Scripting
             throw new FormatException($"Unknown primary expression: {Previous()}");
         }
         #endregion
-        
+
+        #region "ORDER BY CLAUSE"
+        private OrderClause order_clause()
+        {
+            if (!Match(TokenType.BY))
+            {
+                throw new FormatException("BY keyword expected.");
+            }
+
+            OrderClause order = new();
+
+            while (Match(TokenType.Identifier, TokenType.Comma, TokenType.Comment))
+            {
+                ScriptToken token = Previous();
+
+                if (token.Type == TokenType.Identifier)
+                {
+                    Identifier column = identifier(TokenType.Column);
+
+                    TokenType sort_order = TokenType.ASC;
+
+                    if (Match(TokenType.ASC, TokenType.DESC))
+                    {
+                        sort_order = Previous().Type;
+                    }
+
+                    order.Expressions.Add(new OrderExpression()
+                    {
+                        Token = sort_order,
+                        Expression = column
+                    });
+                }
+            }
+
+            return order;
+        }
+        #endregion
+
         #region "SELECT CLAUSE"
 
         private void select_clause(in SelectStatement select)
         {
+            top(in select);
+
             while (!EndOfStream() && Match(TokenType.Star, TokenType.Identifier, TokenType.Comma, TokenType.Comment))
             {
                 ScriptToken token = Previous();
@@ -578,11 +681,43 @@ namespace DaJet.Scripting
                 }
             }
         }
+        private void top(in SelectStatement select)
+        {
+            if (!Match(TokenType.TOP))
+            {
+                return;
+            }
+
+            if (Match(TokenType.Number))
+            {
+                select.TOP = new ScalarExpression()
+                {
+                    Token = TokenType.Number,
+                    Literal = Previous().Lexeme
+                };
+                return;
+            }
+
+            if (!Match(TokenType.OpenRoundBracket))
+            {
+                throw new FormatException($"Open round bracket expected.");
+            }
+
+            if (Match(TokenType.Variable))
+            {
+                select.TOP = identifier(TokenType.Variable);
+            }
+
+            if (!Match(TokenType.CloseRoundBracket))
+            {
+                throw new FormatException($"Close round bracket expected.");
+            }
+        }
         private SyntaxNode star()
         {
             return new StarExpression();
         }
-        private SyntaxNode identifier(TokenType context)
+        private Identifier identifier(TokenType context)
         {
             Identifier identifier = new()
             {
@@ -622,6 +757,60 @@ namespace DaJet.Scripting
         }
 
         #endregion
+
+        #endregion
+
+        #region "DELETE STATEMENT"
+
+        private DeleteStatement delete_statement()
+        {
+            DeleteStatement delete = new();
+
+            if (!Match(TokenType.DELETE))
+            {
+                throw new FormatException("DELETE keyword expected.");
+            }
+
+            if (Match(TokenType.FROM))
+            {
+                // do nothing
+            }
+
+            delete.FROM = new FromClause() { Expression = from_clause() };
+
+            if (Match(TokenType.OUTPUT))
+            {
+                delete.OUTPUT = output_clause();
+            }
+
+            if (Match(TokenType.WHERE))
+            {
+                delete.WHERE = new WhereClause() { Expression = where_clause() };
+            }
+
+            return delete;
+        }
+        private OutputClause output_clause()
+        {
+            OutputClause output = new();
+
+            while (Match(TokenType.Comma, TokenType.Comment,
+                TokenType.Star, TokenType.Identifier))
+            {
+                ScriptToken token = Previous();
+
+                if (token.Type == TokenType.Star)
+                {
+                    output.Expressions.Add(star());
+                }
+                else if (token.Type == TokenType.Identifier)
+                {
+                    output.Expressions.Add(identifier(TokenType.Column));
+                }
+            }
+
+            return output;
+        }
 
         #endregion
     }

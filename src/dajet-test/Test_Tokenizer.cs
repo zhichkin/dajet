@@ -19,6 +19,13 @@ namespace DaJet.Scripting.Test
                 TokenizeFile(in filePath);
             }
         }
+        [TestMethod] public void Tokenize_Destructive_Read()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\destructive-read"))
+            {
+                TokenizeFile(in filePath);
+            }
+        }
         private void TokenizeFile(in string filePath)
         {
             ScriptTokenizer scanner = new();

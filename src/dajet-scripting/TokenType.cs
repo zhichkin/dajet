@@ -4,9 +4,11 @@
     {
         Script, Ignore, Comment, Comma, EndOfStatement,
 
-        SELECT, FROM, WHERE, AND, OR, AS, NOT,
+        SELECT, TOP, FROM, WHERE, ORDER, BY, ASC, DESC,
+        AND, OR, AS, NOT,
         JOIN, LEFT, RIGHT, INNER, FULL, CROSS, ON,
-        DECLARE, WITH, CTE,
+        DECLARE, WITH, CTE, INSERT, UPDATE, DELETE, OUTPUT, SET,
+        NOLOCK, ROWLOCK, READPAST, READCOMMITTEDLOCK, SERIALIZABLE, UPDLOCK,
 
         Identifier, Table, Column, Variable, TemporaryTable, Star,
 

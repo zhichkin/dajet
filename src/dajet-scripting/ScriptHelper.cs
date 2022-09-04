@@ -1,4 +1,5 @@
 ﻿using DaJet.Data;
+using System.Runtime.Serialization;
 
 namespace DaJet.Scripting
 {
@@ -8,8 +9,13 @@ namespace DaJet.Scripting
         {
             { "WITH", TokenType.WITH },
             { "SELECT", TokenType.SELECT },
+            { "TOP", TokenType.TOP },
             { "FROM", TokenType.FROM },
             { "WHERE", TokenType.WHERE },
+            { "ORDER", TokenType.ORDER },
+            { "BY", TokenType.BY },
+            { "ASC", TokenType.ASC },
+            { "DESC", TokenType.DESC },
             { "AND", TokenType.AND },
             { "OR", TokenType.OR },
             { "AS", TokenType.AS },
@@ -21,13 +27,28 @@ namespace DaJet.Scripting
             { "INNER", TokenType.INNER },
             { "CROSS", TokenType.CROSS },
             { "ON", TokenType.ON },
-            { "DECLARE", TokenType.DECLARE }
+            { "DECLARE", TokenType.DECLARE },
+            { "NOLOCK", TokenType.NOLOCK },
+            { "ROWLOCK", TokenType.ROWLOCK },
+            { "READPAST", TokenType.READPAST },
+            { "UPDLOCK", TokenType.UPDLOCK },
+            { "SERIALIZABLE", TokenType.SERIALIZABLE },
+            { "READCOMMITTEDLOCK", TokenType.READCOMMITTEDLOCK },
+            { "INSERT", TokenType.INSERT },
+            { "UPDATE", TokenType.UPDATE },
+            { "DELETE", TokenType.DELETE },
+            { "OUTPUT", TokenType.OUTPUT },
+            { "SET", TokenType.SET }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {
             { "ВЫБРАТЬ", TokenType.SELECT },
+            { "ПЕРВЫЕ", TokenType.TOP },
             { "ИЗ", TokenType.FROM },
             { "ГДЕ", TokenType.WHERE },
+            { "УПОРЯДОЧИТЬ", TokenType.ORDER },
+            { "ВОЗР", TokenType.ASC },
+            { "УБЫВ", TokenType.DESC },
             { "И", TokenType.AND },
             { "ИЛИ", TokenType.OR },
             { "КАК", TokenType.AS },
@@ -39,7 +60,11 @@ namespace DaJet.Scripting
             { "ВНУТРЕННЕЕ", TokenType.INNER },
             { "ПЕРЕКРЕСТНОЕ", TokenType.CROSS },
             { "ПО", TokenType.ON },
-            { "ОБЪЯВИТЬ", TokenType.DECLARE }
+            { "ОБЪЯВИТЬ", TokenType.DECLARE },
+            { "УДАЛИТЬ", TokenType.DELETE },
+            { "ДОБАВИТЬ", TokenType.INSERT },
+            { "ОБНОВИТЬ", TokenType.UPDATE },
+            { "ВЫВЕСТИ", TokenType.OUTPUT }
         };
         private static Dictionary<string, Type> _datatype_en = new()
         {
@@ -65,6 +90,7 @@ namespace DaJet.Scripting
         {
             { typeof(Guid), TokenType.Uuid },
             { typeof(bool), TokenType.Boolean },
+            { typeof(int), TokenType.Number },
             { typeof(decimal), TokenType.Number },
             { typeof(DateTime), TokenType.DateTime },
             { typeof(string), TokenType.String },
@@ -75,6 +101,7 @@ namespace DaJet.Scripting
         {
             { typeof(Guid), "uuid" },
             { typeof(bool), "boolean" },
+            { typeof(int), "number" },
             { typeof(decimal), "number" },
             { typeof(DateTime), "datetime" },
             { typeof(string), "string" },

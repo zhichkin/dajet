@@ -1,12 +1,11 @@
 ﻿namespace DaJet.Scripting.Model
 {
-    public sealed class SelectStatement : SyntaxNode
+    public sealed class DeleteStatement : SyntaxNode
     {
+        public DeleteStatement() { Token = TokenType.DELETE; }
         public CommonTableExpression CTE { get; set; } = null!;
-        public List<SyntaxNode> SELECT { get; set; } = new();
-        public SyntaxNode TOP { get; set; } = null!;
         public FromClause FROM { get; set; } = null!;
+        public OutputClause OUTPUT { get; set; } = null!;
         public WhereClause WHERE { get; set; } = null!;
-        public OrderClause ORDER { get; set; } = null!;
     }
 }

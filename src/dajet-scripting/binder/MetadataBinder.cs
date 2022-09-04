@@ -138,6 +138,11 @@ namespace DaJet.Scripting
 
                 ScriptScope root = scope.Ancestor<SelectStatement>();
 
+                if (root == null)
+                {
+                    root = scope.Ancestor<DeleteStatement>();
+                }
+
                 BindCteScoped(in root, in identifier);
             }
         }
@@ -228,7 +233,12 @@ namespace DaJet.Scripting
                 }
                 else if (node is Identifier table && table.Token == TokenType.Table) // Привязка колонки по имени таблицы (синониму),
                 {                                                                    // находящейся в текущей области видимости
-                    if (table.Alias == tableAlias || string.IsNullOrWhiteSpace(tableAlias))
+                    if (!string.IsNullOrWhiteSpace(tableAlias) &&
+                        (tableAlias.ToLowerInvariant() == "deleted" || tableAlias.ToLowerInvariant() == "inserted"))
+                    {
+                        BindColumnToOutput(in scope, in identifier, in metadata);
+                    }
+                    else if (table.Alias == tableAlias || string.IsNullOrWhiteSpace(tableAlias))
                     {
                         string alias = string.IsNullOrWhiteSpace(table.Alias) ? table.Value : table.Alias;
 
@@ -314,6 +324,36 @@ namespace DaJet.Scripting
                         identifier.Tag = column; // bubble up identifier, entity property is in the Tag
                         
                         return; // successful binding
+                    }
+                }
+            }
+        }
+        private void BindColumnToOutput(in ScriptScope scope, in Identifier identifier, in MetadataCache metadata)
+        {
+            ScriptHelper.GetColumnNames(identifier.Value, out string tableAlias, out string columnName);
+
+            if (tableAlias.ToLowerInvariant() == "deleted")
+            {
+                ScriptScope ancestor = scope.Ancestor<DeleteStatement>();
+
+                if (ancestor.Owner is DeleteStatement delete)
+                {
+                    if (delete.FROM.Expression is TableSource expression)
+                    {
+                        if (expression.Expression is Identifier table)
+                        {
+                            if (table.Tag is CommonTableExpression cte)
+                            {
+                                if (cte.Expression is SelectStatement select)
+                                {
+                                    BindColumnToSelect(in select, in identifier);
+                                }
+                            }
+                            else if (table.Tag is ApplicationObject entity)
+                            {
+                                // TODO
+                            }
+                        }
                     }
                 }
             }

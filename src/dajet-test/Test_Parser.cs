@@ -62,6 +62,33 @@ namespace DaJet.Scripting.Test
                 }
             }
         }
+        [TestMethod] public void Parse_Destructive_Read()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\destructive-read"))
+            {
+                Console.WriteLine("***");
+                Console.WriteLine(filePath);
+
+                using (StreamReader reader = new(filePath, Encoding.UTF8))
+                {
+                    string script = reader.ReadToEnd();
+
+                    using (ScriptParser parser = new())
+                    {
+                        if (!parser.TryParse(in script, out ScriptModel tree, out string error))
+                        {
+                            Console.WriteLine(error);
+                            return;
+                        }
+
+                        foreach (SyntaxNode node in tree.Statements)
+                        {
+                            ShowSyntaxNode(node, 0);
+                        }
+                    }
+                }
+            }
+        }
         private void ShowSyntaxNode(SyntaxNode node, int level)
         {
             if (node == null)
@@ -152,6 +179,16 @@ namespace DaJet.Scripting.Test
         [TestMethod] public void Walker_Cte()
         {
             foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\cte"))
+            {
+                Console.WriteLine("***");
+                Console.WriteLine(filePath);
+
+                WalkScriptFile(in filePath);
+            }
+        }
+        [TestMethod] public void Walker_Destructive_Read()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\destructive-read"))
             {
                 Console.WriteLine("***");
                 Console.WriteLine(filePath);

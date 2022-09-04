@@ -171,6 +171,35 @@ namespace DaJet.Scripting.Test
 
             ShowSyntaxNode(_syntaxTree, 0);
         }
+        [TestMethod] public void Bind_Metadata_Destructive_Read()
+        {
+            filePath = "C:\\temp\\scripting-test\\destructive-read\\00-script.txt";
+
+            CreateSyntaxTree();
+
+            if (_syntaxTree == null)
+            {
+                return;
+            }
+
+            ScopeBuilder builder = new();
+
+            if (!builder.TryBuild(in _syntaxTree, out ScriptScope scope, out string error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            MetadataBinder binder = new();
+
+            if (!binder.TryBind(in scope, in _cache, out error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            ShowSyntaxNode(_syntaxTree, 0);
+        }
         [TestMethod] public void Transform_Script()
         {
             filePath = "C:\\temp\\scripting-test\\script05.txt";

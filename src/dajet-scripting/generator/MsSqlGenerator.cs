@@ -24,6 +24,12 @@ namespace DaJet.Scripting
 
                         script.AppendLine(";");
                     }
+                    else if (node is DeleteStatement delete)
+                    {
+                        VisitDeleteStatement(delete, script, result.Mapper);
+
+                        script.AppendLine(";");
+                    }
                 }
 
                 result.Script = script.ToString();
@@ -71,6 +77,96 @@ namespace DaJet.Scripting
             script.AppendLine(")");
         }
 
+        private void VisitProjectionClause(List<SyntaxNode> projection, StringBuilder script, EntityMap mapper)
+        {
+            List<string> columns = new();
+
+            foreach (SyntaxNode node in projection)
+            {
+                if (node is not Identifier identifier)
+                {
+                    continue;
+                }
+
+                VisitProjectionColumn(in columns, in identifier, in mapper);
+            }
+
+            script.AppendJoin("," + Environment.NewLine, columns).AppendLine();
+        }
+        private void VisitProjectionColumn(in List<string> columns, in Identifier identifier, in EntityMap mapper)
+        {
+            ScriptHelper.GetColumnNames(identifier.Value, out string tableAlias, out string columnName);
+
+            string propertyAlias = string.IsNullOrWhiteSpace(identifier.Alias) ? columnName : identifier.Alias;
+
+            if (identifier.Tag is MetadataProperty property)
+            {
+                PropertyMap propertyMap = null!;
+                if (mapper != null)
+                {
+                    propertyMap = DataMapper.CreatePropertyMap(in property, propertyAlias);
+                    _ = mapper.MapProperty(propertyMap);
+                }
+
+                foreach (MetadataColumn field in property.Columns)
+                {
+                    string name = "\t" + (string.IsNullOrWhiteSpace(tableAlias) ? string.Empty : tableAlias + ".");
+
+                    name += field.Name;
+
+                    if (propertyMap == null) // subquery select statement
+                    {
+
+                        if (!string.IsNullOrWhiteSpace(identifier.Alias))
+                        {
+                            name += " AS " + identifier.Alias;
+
+                            if (property.Columns.Count > 1)
+                            {
+                                name += ScriptHelper.GetColumnPurposePostfix(field.Purpose);
+                            }
+                        }
+                    }
+                    else // root select statement
+                    {
+                        string alias = propertyAlias;
+
+                        if (property.Columns.Count > 1)
+                        {
+                            alias += ScriptHelper.GetColumnPurposePostfix(field.Purpose);
+                        }
+
+                        name += " AS " + alias;
+
+                        ColumnMap columnMap = DataMapper.CreateColumnMap(in field, alias);
+                        propertyMap.ToColumn(columnMap);
+                    }
+
+                    columns.Add(name);
+                }
+            }
+            else if (identifier.Tag is Identifier column) /// bubbled up from subquery <see cref="MetadataBinder.BindColumn"/>
+            {
+                string name = "\t" + (string.IsNullOrWhiteSpace(tableAlias) ? string.Empty : tableAlias + ".");
+
+                if (string.IsNullOrWhiteSpace(column.Alias))
+                {
+                    name += identifier.Value;
+                }
+                else
+                {
+                    name += column.Alias;
+                }
+
+                if (!string.IsNullOrWhiteSpace(identifier.Alias))
+                {
+                    name += " AS " + identifier.Alias;
+                }
+
+                columns.Add(name);
+            }
+        }
+
         #region "SELECT STATEMENT"
 
         private void VisitSelectStatement(SelectStatement select, StringBuilder script, EntityMap mapper)
@@ -85,96 +181,44 @@ namespace DaJet.Scripting
             {
                 VisitWhereClause(select.WHERE, script);
             }
+
+            if (select.ORDER != null) // optional
+            {
+                VisitOrderClause(select.ORDER, script);
+            }
         }
 
         #region "SELECT AND FROM CLAUSE"
 
         private void VisitSelectClause(SelectStatement select, StringBuilder script, EntityMap mapper)
         {
-            script.AppendLine("SELECT");
+            script.Append("SELECT");
 
-            List<string> columns = new();
+            VisitTopExpression(select.TOP, script);
 
-            foreach (SyntaxNode node in select.SELECT)
+            script.AppendLine();
+
+            VisitProjectionClause(select.SELECT, script, mapper);
+        }
+        private void VisitTopExpression(SyntaxNode top, StringBuilder script)
+        {
+            if (top == null) // optional
             {
-                if (node is not Identifier identifier)
-                {
-                    continue;
-                }
-
-                ScriptHelper.GetColumnNames(identifier.Value, out string tableAlias, out string columnName);
-
-                string propertyAlias = string.IsNullOrWhiteSpace(identifier.Alias) ? columnName : identifier.Alias;
-
-                if (identifier.Tag is MetadataProperty property)
-                {
-                    PropertyMap propertyMap = null!;
-                    if (mapper != null)
-                    {
-                        propertyMap = DataMapper.CreatePropertyMap(in property, propertyAlias);
-                        _ = mapper.MapProperty(propertyMap);
-                    }
-
-                    foreach (MetadataColumn field in property.Columns)
-                    {
-                        string name = "\t" + (string.IsNullOrWhiteSpace(tableAlias) ? string.Empty : tableAlias + ".");
-                        
-                        name += field.Name;
-
-                        if (propertyMap == null) // subquery select statement
-                        {
-
-                            if (!string.IsNullOrWhiteSpace(identifier.Alias))
-                            {
-                                name += " AS " + identifier.Alias;
-
-                                if (property.Columns.Count > 1)
-                                {
-                                    name += ScriptHelper.GetColumnPurposePostfix(field.Purpose);
-                                }
-                            }
-                        }
-                        else // root select statement
-                        {
-                            string alias = propertyAlias;
-
-                            if (property.Columns.Count > 1)
-                            {
-                                alias += ScriptHelper.GetColumnPurposePostfix(field.Purpose);
-                            }
-
-                            name += " AS " + alias;
-
-                            ColumnMap columnMap = DataMapper.CreateColumnMap(in field, alias);
-                            propertyMap.ToColumn(columnMap);
-                        }
-
-                        columns.Add(name);
-                    }
-                }
-                else if (identifier.Tag is Identifier column) /// bubbled up from subquery <see cref="MetadataBinder.BindColumn"/>
-                {
-                    string name = "\t" + (string.IsNullOrWhiteSpace(tableAlias) ? string.Empty : tableAlias + ".");
-                    
-                    if (string.IsNullOrWhiteSpace(column.Alias))
-                    {
-                        name += identifier.Value;
-                    }
-                    else
-                    {
-                        name += column.Alias;
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(identifier.Alias))
-                    {
-                        name += " AS " + identifier.Alias;
-                    }
-
-                    columns.Add(name);
-                }
+                return;
             }
 
-            script.AppendJoin("," + Environment.NewLine, columns).AppendLine();
+            script.Append(" TOP ");
+
+            if (top is ScalarExpression scalar && scalar.Token == TokenType.Number)
+            {
+                VisitScalarExpression(scalar, script);
+            }
+            else if (top is Identifier variable && variable.Token == TokenType.Variable)
+            {
+                script.Append("(");
+                VisitIdentifier(variable, script);
+                script.Append(")");
+            }
         }
         private void VisitFromClause(FromClause from, StringBuilder script)
         {
@@ -188,25 +232,61 @@ namespace DaJet.Scripting
             {
                 VisitJoinOperator(join, script);
             }
-            else if (node is SubqueryExpression subquery)
+            else if (node is TableSource table)
             {
-                VisitSubqueryExpression(subquery, script);
-            }
-            else if (node is Identifier table && table.Token == TokenType.Table)
-            {
-                VisitTableIdentifier(table, script);
+                if (table.Expression is Identifier identifier && identifier.Token == TokenType.Table)
+                {
+                    VisitTableIdentifier(table, identifier, script);
+                }
+                else if (table.Expression is SubqueryExpression subquery)
+                {
+                    VisitSubqueryExpression(subquery, script);
+                }
             }
         }
+        private void VisitOrderClause(OrderClause order, StringBuilder script)
+        {
+            script.AppendLine().AppendLine("ORDER BY");
 
-        private void VisitTableIdentifier(Identifier table, StringBuilder script)
+            List<string> result = new();
+            List<string> columns = new();
+
+            foreach (OrderExpression expression in order.Expressions)
+            {
+                if (expression.Expression is not Identifier identifier)
+                {
+                    continue;
+                }
+
+                columns.Clear();
+
+                VisitProjectionColumn(in columns, in identifier, null!);
+
+                for (int i = 0; i < columns.Count; i++)
+                {
+                    if (expression.Token == TokenType.DESC)
+                    {
+                        result.Add(columns[i] + " DESC");
+                    }
+                    else
+                    {
+                        result.Add(columns[i] + " ASC");
+                    }
+                }
+            }
+
+            script.AppendJoin("," + Environment.NewLine, result).AppendLine();
+        }
+
+        private void VisitTableIdentifier(TableSource table, Identifier identifier, StringBuilder script)
         {
             string tableName = string.Empty;
 
-            if (table.Tag is ApplicationObject entity)
+            if (identifier.Tag is ApplicationObject entity)
             {
                 tableName = entity.TableName;
             }
-            else if (table.Tag is CommonTableExpression cte)
+            else if (identifier.Tag is CommonTableExpression cte)
             {
                 tableName = cte.Name;
             }
@@ -218,9 +298,27 @@ namespace DaJet.Scripting
 
             script.Append(tableName);
 
-            if (!string.IsNullOrWhiteSpace(table.Alias))
+            if (!string.IsNullOrWhiteSpace(identifier.Alias))
             {
-                script.Append(" AS ").Append(table.Alias);
+                script.Append(" AS ").Append(identifier.Alias);
+            }
+
+            if (table.Hints.Count > 0)
+            {
+                script.Append(" WITH (");
+
+                StringBuilder hints = new();
+
+                foreach (TokenType hint in table.Hints)
+                {
+                    if (hints.Length > 0)
+                    {
+                        hints.Append(", ");
+                    }
+                    hints.Append(hint.ToString());
+                }
+
+                script.Append(hints.ToString()).Append(")");
             }
         }
         private void VisitJoinOperator(TableJoinOperator join, StringBuilder script)
@@ -388,6 +486,35 @@ namespace DaJet.Scripting
         }
 
         #endregion
+
+        #endregion
+
+        #region "DELETE STATEMENT"
+
+        private void VisitDeleteStatement(DeleteStatement delete, StringBuilder script, EntityMap mapper)
+        {
+            VisitCommonTables(delete.CTE, script);
+
+            script.Append("DELETE ");
+
+            VisitTableSource(delete.FROM.Expression, script);
+
+            if (delete.OUTPUT != null) // optional
+            {
+                VisitOutputClause(delete.OUTPUT, script, mapper);
+            }
+
+            if (delete.WHERE != null) // optional
+            {
+                VisitWhereClause(delete.WHERE, script);
+            }
+        }
+        private void VisitOutputClause(OutputClause output, StringBuilder script, EntityMap mapper)
+        {
+            script.AppendLine().AppendLine("OUTPUT");
+
+            VisitProjectionClause(output.Expressions, script, mapper);
+        }
 
         #endregion
     }
