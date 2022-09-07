@@ -26,6 +26,13 @@ namespace DaJet.Scripting.Test
                 TokenizeFile(in filePath);
             }
         }
+        [TestMethod] public void Tokenize_Expression()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\expression"))
+            {
+                TokenizeFile(in filePath);
+            }
+        }
         private void TokenizeFile(in string filePath)
         {
             ScriptTokenizer scanner = new();

@@ -1,6 +1,7 @@
 WITH cte AS
 (SELECT _IDRRef FROM _Reference229 ORDER BY _IDRRef ASC
-OFFSET @PageSize * (@PageNumber - 1) ROWS FETCH NEXT @PageSize ROWS ONLY)
+OFFSET @PageSize * (@PageNumber - 1) ROWS
+FETCH NEXT @PageSize ROWS ONLY)
 
 SELECT t._IDRRef AS [Ссылка], t._Marked AS [ПометкаУдаления],
 t._Code AS [Код], t._Description AS [Наименование],

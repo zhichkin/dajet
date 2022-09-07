@@ -12,79 +12,50 @@ namespace DaJet.Scripting.Test
         {
             foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test"))
             {
-                Console.WriteLine("***");
-                Console.WriteLine(filePath);
-
-                using (StreamReader reader = new(filePath, Encoding.UTF8))
-                {
-                    string script = reader.ReadToEnd();
-                    
-                    using (ScriptParser parser = new())
-                    {
-                        if (!parser.TryParse(in script, out ScriptModel tree, out string error))
-                        {
-                            Console.WriteLine(error);
-                            return;
-                        }
-
-                        foreach (SyntaxNode node in tree.Statements)
-                        {
-                            ShowSyntaxNode(node, 0);
-                        }
-                    }
-                }
+                ParseScriptFile(in filePath);
             }
         }
         [TestMethod] public void Parse_Cte()
         {
             foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\cte"))
             {
-                Console.WriteLine("***");
-                Console.WriteLine(filePath);
-
-                using (StreamReader reader = new(filePath, Encoding.UTF8))
-                {
-                    string script = reader.ReadToEnd();
-
-                    using (ScriptParser parser = new())
-                    {
-                        if (!parser.TryParse(in script, out ScriptModel tree, out string error))
-                        {
-                            Console.WriteLine(error);
-                            return;
-                        }
-
-                        foreach (SyntaxNode node in tree.Statements)
-                        {
-                            ShowSyntaxNode(node, 0);
-                        }
-                    }
-                }
+                ParseScriptFile(in filePath);
             }
         }
         [TestMethod] public void Parse_Destructive_Read()
         {
             foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\destructive-read"))
             {
-                Console.WriteLine("***");
-                Console.WriteLine(filePath);
+                ParseScriptFile(in filePath);
+            }
+        }
+        [TestMethod] public void Parse_Expression()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\expression"))
+            {
+                ParseScriptFile(in filePath);
+            }
+        }
+        private void ParseScriptFile(in string filePath)
+        {
+            Console.WriteLine("***");
+            Console.WriteLine(filePath);
 
-                using (StreamReader reader = new(filePath, Encoding.UTF8))
+            using (StreamReader reader = new(filePath, Encoding.UTF8))
+            {
+                string script = reader.ReadToEnd();
+
+                using (ScriptParser parser = new())
                 {
-                    string script = reader.ReadToEnd();
-
-                    using (ScriptParser parser = new())
+                    if (!parser.TryParse(in script, out ScriptModel tree, out string error))
                     {
-                        if (!parser.TryParse(in script, out ScriptModel tree, out string error))
-                        {
-                            Console.WriteLine(error);
-                            return;
-                        }
+                        Console.WriteLine(error);
+                        return;
+                    }
 
-                        foreach (SyntaxNode node in tree.Statements)
-                        {
-                            ShowSyntaxNode(node, 0);
-                        }
+                    foreach (SyntaxNode node in tree.Statements)
+                    {
+                        ShowSyntaxNode(node, 0);
                     }
                 }
             }
@@ -189,6 +160,16 @@ namespace DaJet.Scripting.Test
         [TestMethod] public void Walker_Destructive_Read()
         {
             foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\destructive-read"))
+            {
+                Console.WriteLine("***");
+                Console.WriteLine(filePath);
+
+                WalkScriptFile(in filePath);
+            }
+        }
+        [TestMethod] public void Walker_Expression()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\expression"))
             {
                 Console.WriteLine("***");
                 Console.WriteLine(filePath);

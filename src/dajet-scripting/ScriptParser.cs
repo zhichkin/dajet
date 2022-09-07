@@ -325,7 +325,154 @@ namespace DaJet.Scripting
 
             return select;
         }
-        
+
+        #region "EXPRESSION"
+
+        private SyntaxNode expression()
+        {
+            return comparison(); // TODO: predicate() ?
+        }
+        private SyntaxNode comparison()
+        {
+            SyntaxNode left = addition();
+
+            while (Match(TokenType.Comment,
+                TokenType.Equals, TokenType.NotEquals,
+                TokenType.Greater, TokenType.GreaterOrEquals,
+                TokenType.Less, TokenType.LessOrEquals))
+            {
+                if (Previous().Type == TokenType.Comment)
+                {
+                    continue; // ignore
+                }
+
+                TokenType _operator = Previous().Type;
+
+                SyntaxNode right = addition();
+
+                left = new ComparisonOperator()
+                {
+                    Token = _operator,
+                    Expression1 = left,
+                    Expression2 = right
+                };
+            }
+
+            return left;
+        }
+        private SyntaxNode addition()
+        {
+            SyntaxNode left = multiply();
+
+            while (Match(TokenType.Comment, TokenType.Plus, TokenType.Minus))
+            {
+                if (Previous().Type == TokenType.Comment)
+                {
+                    continue; // ignore
+                }
+
+                TokenType _operator = Previous().Type;
+
+                SyntaxNode right = multiply();
+
+                left = new AdditionOperator()
+                {
+                    Token = _operator,
+                    Expression1 = left,
+                    Expression2 = right
+                };
+            }
+
+            return left;
+        }
+        private SyntaxNode multiply()
+        {
+            SyntaxNode left = unary();
+
+            while (Match(TokenType.Comment, TokenType.Star, TokenType.Divide, TokenType.Modulo))
+            {
+                if (Previous().Type == TokenType.Comment)
+                {
+                    continue; // ignore
+                }
+
+                TokenType _operator = Previous().Type;
+
+                SyntaxNode right = unary();
+
+                left = new MultiplyOperator()
+                {
+                    Token = _operator,
+                    Expression1 = left,
+                    Expression2 = right
+                };
+            }
+
+            return left;
+        }
+        private SyntaxNode unary()
+        {
+            if (Match(TokenType.Minus))
+            {
+                TokenType _operator = Previous().Type;
+
+                SyntaxNode expression = unary();
+
+                return new UnaryOperator()
+                {
+                    Token = _operator,
+                    Expression = expression
+                };
+            }
+
+            return primary();
+        }
+        private SyntaxNode primary()
+        {
+            while (Match(TokenType.Comment))
+            {
+                // ignore
+            }
+
+            if (Match(TokenType.Identifier))
+            {
+                return identifier(TokenType.Column);
+            }
+            else if (Match(TokenType.Variable))
+            {
+                return identifier(TokenType.Variable);
+            }
+            else if (Match(TokenType.Boolean, TokenType.Number, TokenType.DateTime, TokenType.String, TokenType.Binary, TokenType.NULL))
+            {
+                return new ScalarExpression()
+                {
+                    Token = Previous().Type,
+                    Literal = Previous().Lexeme
+                };
+            }
+            else if (Match(TokenType.OpenRoundBracket))
+            {
+                SyntaxNode grouping = predicate(); // TODO: expression() ?
+
+                if (!Match(TokenType.CloseRoundBracket))
+                {
+                    throw new FormatException("Close round bracket token expected.");
+                }
+
+                return new BooleanGroupExpression()
+                {
+                    Token = TokenType.OpenRoundBracket,
+                    Expression = grouping
+                };
+            }
+
+            Ignore();
+
+            throw new FormatException($"Unknown primary expression: {Previous()}");
+        }
+
+        #endregion
+
         #region "SELECT STATEMENT"
 
         private SelectStatement select_statement()
@@ -549,78 +696,7 @@ namespace DaJet.Scripting
                 };
             }
 
-            return comparison();
-        }
-        private SyntaxNode comparison()
-        {
-            SyntaxNode left = primary();
-
-            while (Match(TokenType.Comment,
-                TokenType.Equals, TokenType.NotEquals,
-                TokenType.Greater, TokenType.GreaterOrEquals,
-                TokenType.Less, TokenType.LessOrEquals))
-            {
-                if (Previous().Type == TokenType.Comment)
-                {
-                    continue; // ignore
-                }
-
-                TokenType _operator = Previous().Type;
-
-                SyntaxNode right = primary();
-
-                left = new ComparisonOperator()
-                {
-                    Token = _operator,
-                    Expression1 = left,
-                    Expression2 = right
-                };
-            }
-
-            return left;
-        }
-        private SyntaxNode primary()
-        {
-            while (Match(TokenType.Comment))
-            {
-                // ignore
-            }
-
-            if (Match(TokenType.Identifier))
-            {
-                return identifier(TokenType.Column);
-            }
-            else if (Match(TokenType.Variable))
-            {
-                return identifier(TokenType.Variable);
-            }
-            else if (Match(TokenType.Boolean, TokenType.Number, TokenType.DateTime, TokenType.String, TokenType.Binary, TokenType.NULL))
-            {
-                return new ScalarExpression()
-                {
-                    Token = Previous().Type,
-                    Literal = Previous().Lexeme
-                };
-            }
-            else if (Match(TokenType.OpenRoundBracket))
-            {
-                SyntaxNode grouping = predicate();
-
-                if (!Match(TokenType.CloseRoundBracket))
-                {
-                    throw new FormatException("Close round bracket token expected.");
-                }
-
-                return new BooleanGroupExpression()
-                {
-                    Token = TokenType.OpenRoundBracket,
-                    Expression = grouping
-                };
-            }
-
-            Ignore();
-
-            throw new FormatException($"Unknown primary expression: {Previous()}");
+            return expression();
         }
         #endregion
 
@@ -667,8 +743,12 @@ namespace DaJet.Scripting
         {
             top(in select);
 
-            while (!EndOfStream() && Match(TokenType.Star, TokenType.Identifier, TokenType.Comma, TokenType.Comment))
+            while (!EndOfStream() && Match(
+                TokenType.Comma, TokenType.Comment,
+                TokenType.Star, TokenType.Identifier))
             {
+                // TODO: select.SELECT.Add(expression());
+
                 ScriptToken token = Previous();
 
                 if (token.Type == TokenType.Star)
