@@ -10,22 +10,22 @@ using System.Text;
 
 namespace DaJet.Scripting.Test
 {
-    [TestClass] public class Test_Ms_Sql_Generator
+    [TestClass] public class Test_Pg_Sql_Generator
     {
-        private const string IB_KEY = "dajet-metadata-ms";
+        private const string IB_KEY = "dajet-metadata-pg";
         private readonly InfoBase _infoBase;
         private readonly MetadataCache _cache;
         private readonly MetadataService _service = new();
-        private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
+        private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;";
         private ScriptModel _model;
         private string filePath = "C:\\temp\\scripting-test\\script08.txt";
-        public Test_Ms_Sql_Generator()
+        public Test_Pg_Sql_Generator()
         {
             _service.Add(new InfoBaseOptions()
             {
                 Key = IB_KEY,
-                ConnectionString = MS_CONNECTION_STRING,
-                DatabaseProvider = DatabaseProvider.SqlServer
+                ConnectionString = PG_CONNECTION_STRING,
+                DatabaseProvider = DatabaseProvider.PostgreSql
             });
 
             if (!_service.TryGetInfoBase(IB_KEY, out _infoBase, out string error))
@@ -266,14 +266,14 @@ namespace DaJet.Scripting.Test
         [TestMethod] public void Simple_Script()
         {
             // Строка подключения к базе данных 1С
-            string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
+            string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;";
 
             // Регистрируем настройки подключения к базе данных 1С по строковому ключу
             InfoBaseOptions options = new()
             {
                 Key = "my_1c_infobase",
-                ConnectionString = MS_CONNECTION_STRING,
-                DatabaseProvider = DatabaseProvider.SqlServer
+                ConnectionString = PG_CONNECTION_STRING,
+                DatabaseProvider = DatabaseProvider.PostgreSql
             };
 
             MetadataService metadata = new();
@@ -364,7 +364,7 @@ namespace DaJet.Scripting.Test
         }
         [TestMethod] public void Generate_Offset_Fetch()
         {
-            filePath = "C:\\temp\\scripting-test\\paging\\02-script.txt";
+            filePath = "C:\\temp\\scripting-test\\paging\\00-script.txt";
 
             CreateScriptModel();
 
@@ -640,34 +640,5 @@ namespace DaJet.Scripting.Test
                 }
             }
         }
-    }
-    public class ProductInfo
-    {
-        public string Code { get; set; }
-        public string Name { get; set; }
-        public EntityRef Reference { get; set; }
-        public bool IsMarkedForDeletion { get; set; }
-    }
-    public sealed class NodeInfo
-    {
-        public string NodeCode { get; set; } = string.Empty;
-        public EntityRef NodeRef { get; set; } = EntityRef.Empty;
-        public bool UseKafka { get; set; } = false;
-        public bool UseRabbitMQ { get; set; } = false;
-        public override string ToString()
-        {
-            return $"[{NodeCode}] {{ \"Kafka\": {UseKafka.ToString().ToLowerInvariant()}, \"RabbitMQ\": {UseRabbitMQ.ToString().ToLowerInvariant()} }} {NodeRef}";
-        }
-    }
-    public sealed class OutgoingMessage
-    {
-        public decimal МоментВремени { get; set; } = 0L;
-        public Guid Идентификатор { get; set; } = Guid.Empty;
-        public string Заголовки { get; set; } = string.Empty;
-        public string Отправитель { get; set; } = string.Empty;
-        public string Получатели { get; set; } = string.Empty;
-        public string ТипСообщения { get; set; } = string.Empty;
-        public string ТелоСообщения { get; set; } = string.Empty;
-        public DateTime ВремяСоздания { get; set; } = DateTime.MinValue;
     }
 }

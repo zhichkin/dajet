@@ -57,7 +57,6 @@ namespace DaJet.Scripting
         }
 
         #region "UTILITY FUNCTIONS"
-
         private bool EndOfStream()
         {
             return (_tokens == null || _current >= _tokens.Count);
@@ -118,8 +117,14 @@ namespace DaJet.Scripting
                 }
             }
         }
-
         #endregion
+
+        // TODO: UNION statement
+        //
+        // { <query_specification> | ( <query_expression> ) }
+        // { UNION [ ALL ]
+        // { <query_specification> | ( <query_expression> ) }
+        // [ ...n ] }
 
         private SyntaxNode statement()
         {
@@ -337,7 +342,6 @@ namespace DaJet.Scripting
         }
 
         #region "EXPRESSION"
-
         private SyntaxNode expression()
         {
             return comparison(); // TODO: predicate() ?
@@ -480,9 +484,9 @@ namespace DaJet.Scripting
 
             throw new FormatException($"Unknown primary expression: {Previous()}");
         }
-
         #endregion
 
+        #region "FUNCTION"
         private SyntaxNode function(TokenType token, string identifier)
         {
             if (!Match(TokenType.OpenRoundBracket))
@@ -508,10 +512,122 @@ namespace DaJet.Scripting
                 throw new FormatException("Close round bracket expected.");
             }
 
+            if (Match(TokenType.OVER))
+            {
+                function.OVER = over_clause();
+            }
+
             function.Alias = alias();
 
             return function;
         }
+        private OverClause over_clause()
+        {
+            OverClause over = new();
+
+            if (!Match(TokenType.OpenRoundBracket))
+            {
+                throw new FormatException("Open round bracket expected.");
+            }
+
+            if (Match(TokenType.PARTITION)) // optional
+            {
+                over.Partition = partition();
+            }
+
+            if (Match(TokenType.ORDER)) // optional
+            {
+                over.Order = order_clause();
+            }
+
+            if (Match(TokenType.ROWS, TokenType.RANGE))
+            {
+                over.FrameType = Previous().Type;
+
+                if (Match(TokenType.BETWEEN)) // optional
+                {
+                    over.Preceding = window_frame(TokenType.PRECEDING);
+
+                    if (!Match(TokenType.AND))
+                    {
+                        throw new FormatException("AND keyword expected.");
+                    }
+
+                    over.Following = window_frame(TokenType.FOLLOWING);
+                }
+                else
+                {
+                    over.Preceding = window_frame(TokenType.PRECEDING);
+                }
+            }
+            
+            if (!Match(TokenType.CloseRoundBracket))
+            {
+                throw new FormatException("Close round bracket expected.");
+            }
+
+            return over;
+        }
+        private List<SyntaxNode> partition()
+        {
+            if (!Match(TokenType.BY))
+            {
+                throw new FormatException("BY keyword expected.");
+            }
+
+            List<SyntaxNode> expressions = new();
+
+            while (Match(TokenType.Identifier, TokenType.Comma, TokenType.Comment))
+            {
+                ScriptToken token = Previous();
+
+                if (token.Type == TokenType.Identifier)
+                {
+                    expressions.Add(identifier(TokenType.Column));
+                }
+            }
+
+            return expressions;
+        }
+        private WindowFrame window_frame(TokenType token)
+        {
+            WindowFrame frame = new() { Token = token };
+
+            if (Match(TokenType.UNBOUNDED))
+            {
+                frame.Extent = -1;
+
+                if (!Match(token))
+                {
+                    throw new FormatException($"{token} keyword expected.");
+                }
+            }
+            else if (Match(TokenType.CURRENT))
+            {
+                frame.Extent = 0;
+
+                if (!Match(TokenType.ROW))
+                {
+                    throw new FormatException("ROW keyword expected.");
+                }
+            }
+            else if (Match(TokenType.Number))
+            {
+                frame.Extent = int.Parse(Previous().Lexeme);
+
+                if (!Match(token))
+                {
+                    throw new FormatException($"{token} keyword expected.");
+                }
+            }
+            else
+            {
+                return null!;
+            }
+
+            return frame;
+        }
+        #endregion
 
         #region "SELECT STATEMENT"
 

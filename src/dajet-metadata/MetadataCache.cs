@@ -276,8 +276,8 @@ namespace DaJet.Metadata
             _parsers = new MetadataObjectParserFactory(this);
         }
         public InfoBase InfoBase { get { return _infoBase; } }
-        internal string ConnectionString { get { return _connectionString; } }
-        internal DatabaseProvider DatabaseProvider { get { return _provider; } }
+        public string ConnectionString { get { return _connectionString; } }
+        public DatabaseProvider DatabaseProvider { get { return _provider; } }
         public IQueryExecutor CreateQueryExecutor()
         {
             if (_provider == DatabaseProvider.SqlServer)

@@ -47,7 +47,15 @@ namespace DaJet.Scripting
             { "FIRST", TokenType.FIRST },
             { "NEXT", TokenType.NEXT },
             { "GROUP", TokenType.GROUP },
-            { "HAVING", TokenType.HAVING }
+            { "HAVING", TokenType.HAVING },
+            { "OVER", TokenType.OVER },
+            { "PARTITION", TokenType.PARTITION },
+            { "RANGE", TokenType.RANGE },
+            { "BETWEEN", TokenType.BETWEEN },
+            { "UNBOUNDED", TokenType.UNBOUNDED },
+            { "PRECEDING", TokenType.PRECEDING },
+            { "CURRENT", TokenType.CURRENT },
+            { "FOLLOWING", TokenType.FOLLOWING }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {

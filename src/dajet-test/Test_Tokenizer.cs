@@ -47,6 +47,13 @@ namespace DaJet.Scripting.Test
                 TokenizeFile(in filePath);
             }
         }
+        [TestMethod] public void Tokenize_Window_Function()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\over-window"))
+            {
+                TokenizeFile(in filePath);
+            }
+        }
         private void TokenizeFile(in string filePath)
         {
             ScriptTokenizer scanner = new();

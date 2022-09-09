@@ -52,8 +52,21 @@ namespace DaJet.Scripting
                 throw new Exception(error);
             }
 
-            MsSqlGenerator generator = new();
+            ISqlGenerator generator;
 
+            if (_cache.DatabaseProvider == DatabaseProvider.SqlServer)
+            {
+                generator = new MsSqlGenerator();
+            }
+            else if (_cache.DatabaseProvider == DatabaseProvider.PostgreSql)
+            {
+                generator = new PgSqlGenerator();
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unsupported database provider: {_cache.DatabaseProvider}");
+            }
+            
             if (!generator.TryGenerate(in model, out GeneratorResult result))
             {
                 throw new Exception(result.Error);

@@ -1,4 +1,5 @@
-﻿using System.Data;
+﻿using System;
+using System.Data;
 
 namespace DaJet.Data.Mapping
 {
@@ -125,10 +126,18 @@ namespace DaJet.Data.Mapping
                 return null;
             }
 
-            // TODO: return reader.GetBoolean(_boolean); // PostgreSql
-            bool value = (((byte[])reader.GetValue(ordinal))[0] == 1);
+            bool value;
 
-            if (column.Name == "_Folder")
+            if (reader.GetFieldType(ordinal) == typeof(bool))
+            {
+                value = reader.GetBoolean(ordinal); // PostgreSql
+            }
+            else
+            {
+                value = (((byte[])reader.GetValue(ordinal))[0] == 1); // SqlServer
+            }
+
+            if (column.Name == "_Folder" || column.Name == "_folder")
             {
                 return !value; // invert - exceptional 1C case
             }

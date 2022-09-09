@@ -6,7 +6,7 @@ using System.Text;
 
 namespace DaJet.Scripting
 {
-    public sealed class MsSqlGenerator
+    public sealed class MsSqlGenerator : ISqlGenerator
     {
         public bool TryGenerate(in ScriptModel model, out GeneratorResult result)
         {
@@ -174,7 +174,7 @@ namespace DaJet.Scripting
                 .MapProperty(new PropertyMap()
                 {
                     Name = function.Alias,
-                    Type = typeof(decimal)
+                    Type = typeof(decimal) // TODO: infer type from parameters
                 })
                 .ToColumn(new ColumnMap()
                 {
@@ -533,6 +533,7 @@ namespace DaJet.Scripting
 
             VisitExpression(multiply.Expression2, script);
         }
+        
         private void VisitFunctionExpression(FunctionExpression function, StringBuilder script)
         {
             script.Append(function.Name);
@@ -552,6 +553,73 @@ namespace DaJet.Scripting
             }
 
             script.Append(")");
+
+            if (function.OVER != null)
+            {
+                script.Append(" ");
+                VisitOverClause(function, script);
+            }
+        }
+        private void VisitOverClause(FunctionExpression function, StringBuilder script)
+        {
+            script.Append("OVER");
+            script.Append("(");
+
+            if (function.OVER.Partition.Count > 0)
+            {
+                VisitPartitionClause(function, script);
+            }
+
+            if (function.OVER.Order != null)
+            {
+                VisitOrderClause(function.OVER.Order, script);
+            }
+
+            if (function.OVER.Preceding != null || function.OVER.Following != null)
+            {
+                script.Append(function.OVER.FrameType.ToString()).Append(" ");
+
+                if (function.OVER.Preceding != null && function.OVER.Following != null)
+                {
+                    script.Append("BETWEEN").Append(" ");
+
+                    VisitWindowFrame(function.OVER.Preceding, script);
+
+                    script.Append(" AND ");
+
+                    VisitWindowFrame(function.OVER.Following, script);
+                }
+                else if (function.OVER.Preceding != null)
+                {
+                    VisitWindowFrame(function.OVER.Preceding, script);
+                }
+            }
+            
+            script.Append(")");
+        }
+        private void VisitPartitionClause(FunctionExpression function, StringBuilder script)
+        {
+            script.AppendLine().AppendLine("PARTITION BY");
+
+            VisitProjectionClause(function.OVER.Partition, script, null!);
+        }
+        private void VisitWindowFrame(WindowFrame frame, StringBuilder script)
+        {
+            if (frame.Extent == -1)
+            {
+                script.Append("UNBOUNDED ").Append(frame.Token.ToString());
+            }
+            else if (frame.Extent == 0)
+            {
+                script.Append("CURRENT ROW");
+            }
+            else if (frame.Extent > 0)
+            {
+                script
+                    .Append(frame.Extent.ToString())
+                    .Append(" ")
+                    .Append(frame.Token.ToString());
+            }
         }
 
         private void VisitIdentifier(Identifier identifier, StringBuilder script)
