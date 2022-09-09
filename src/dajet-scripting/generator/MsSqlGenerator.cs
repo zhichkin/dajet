@@ -83,12 +83,14 @@ namespace DaJet.Scripting
 
             foreach (SyntaxNode node in projection)
             {
-                if (node is not Identifier identifier)
+                if (node is Identifier identifier)
                 {
-                    continue;
+                    VisitProjectionColumn(in columns, in identifier, in mapper);
                 }
-
-                VisitProjectionColumn(in columns, in identifier, in mapper);
+                else if (node is FunctionExpression function)
+                {
+                    VisitProjectionFunction(in columns, in function, in mapper);
+                }
             }
 
             script.AppendJoin("," + Environment.NewLine, columns).AppendLine();
@@ -166,6 +168,30 @@ namespace DaJet.Scripting
                 columns.Add(name);
             }
         }
+        private void VisitProjectionFunction(in List<string> columns, in FunctionExpression function, in EntityMap mapper)
+        {
+            mapper
+                .MapProperty(new PropertyMap()
+                {
+                    Name = function.Alias,
+                    Type = typeof(decimal)
+                })
+                .ToColumn(new ColumnMap()
+                {
+                    Name = function.Alias
+                });
+
+            StringBuilder script = new("\t");
+
+            VisitFunctionExpression(function, script);
+
+            if (!string.IsNullOrWhiteSpace(function.Alias))
+            {
+                script.Append(" AS ").Append(function.Alias);
+            }
+
+            columns.Add(script.ToString());
+        }
 
         #region "SELECT STATEMENT"
 
@@ -180,6 +206,16 @@ namespace DaJet.Scripting
             if (select.WHERE != null) // optional
             {
                 VisitWhereClause(select.WHERE, script);
+            }
+
+            if (select.GROUP != null) // optional
+            {
+                VisitGroupClause(select.GROUP, script);
+            }
+
+            if (select.HAVING != null) // optional
+            {
+                VisitHavingClause(select.HAVING, script);
             }
 
             if (select.ORDER != null) // optional
@@ -276,6 +312,20 @@ namespace DaJet.Scripting
             }
 
             script.AppendJoin("," + Environment.NewLine, result).AppendLine();
+
+            if (order.Offset != null) // optional
+            {
+                script.Append("OFFSET ");
+                VisitExpression(order.Offset, script);
+                script.AppendLine(" ROWS");
+
+                if (order.Fetch != null)
+                {
+                    script.Append("FETCH NEXT ");
+                    VisitExpression(order.Fetch, script);
+                    script.AppendLine(" ROWS ONLY");
+                }
+            }
         }
 
         private void VisitTableIdentifier(TableSource table, Identifier identifier, StringBuilder script)
@@ -356,6 +406,19 @@ namespace DaJet.Scripting
 
             VisitBooleanExpression(node.Expression, script);
         }
+        private void VisitGroupClause(GroupClause node, StringBuilder script)
+        {
+            script.AppendLine().AppendLine("GROUP BY");
+
+            VisitProjectionClause(node.Expressions, script, null!);
+        }
+        private void VisitHavingClause(HavingClause node, StringBuilder script)
+        {
+            script.Append("HAVING ");
+
+            VisitBooleanExpression(node.Expression, script);
+        }
+
         private void VisitBooleanExpression(SyntaxNode node, StringBuilder script)
         {
             if (node is ComparisonOperator comparison)
@@ -373,11 +436,10 @@ namespace DaJet.Scripting
             else if (node is BooleanGroupExpression group)
             {
                 script.Append("(");
-                VisitBooleanExpression(group.Expression, script);
+                VisitExpression(group.Expression, script); // VisitBooleanExpression(group.Expression, script);
                 script.Append(")");
             }
         }
-
         private void VisitBooleanUnaryOperator(BooleanUnaryOperator node, StringBuilder script)
         {
             script.Append("NOT ");
@@ -394,34 +456,104 @@ namespace DaJet.Scripting
         }
         private void VisitComparisonOperator(ComparisonOperator node, StringBuilder script)
         {
-            if (node.Expression1 is Identifier identifier1)
-            {
-                VisitIdentifier(identifier1, script);
-            }
-            else if (node.Expression1 is ScalarExpression scalar1)
-            {
-                VisitScalarExpression(scalar1, script);
-            }
-            else
-            {
-                VisitBooleanExpression(node.Expression1, script);
-            }
+            VisitExpression(node.Expression1, script);
 
             script.Append(" ").Append(ScriptHelper.GetComparisonLiteral(node.Token)).Append(" ");
 
-            if (node.Expression2 is Identifier identifier2)
+            VisitExpression(node.Expression2, script);
+        }
+        
+        private void VisitExpression(SyntaxNode expression, StringBuilder script)
+        {
+            if (expression is Identifier identifier)
             {
-                VisitIdentifier(identifier2, script);
+                VisitIdentifier(identifier, script);
             }
-            else if (node.Expression2 is ScalarExpression scalar2)
+            else if (expression is ScalarExpression scalar1)
             {
-                VisitScalarExpression(scalar2, script);
+                VisitScalarExpression(scalar1, script);
+            }
+            else if (expression is UnaryOperator unary)
+            {
+                VisitUnaryOperator(unary, script);
+            }
+            else if (expression is AdditionOperator addition)
+            {
+                VisitAdditionOperator(addition, script);
+            }
+            else if (expression is MultiplyOperator multiply)
+            {
+                VisitMultiplyOperator(multiply, script);
+            }
+            else if (expression is FunctionExpression function)
+            {
+                VisitFunctionExpression(function, script);
             }
             else
             {
-                VisitBooleanExpression(node.Expression2, script);
+                VisitBooleanExpression(expression, script);
             }
         }
+        private void VisitUnaryOperator(UnaryOperator unary, StringBuilder script)
+        {
+            script.Append("-");
+            VisitExpression(unary.Expression, script);
+        }
+        private void VisitAdditionOperator(AdditionOperator addition, StringBuilder script)
+        {
+            VisitExpression(addition.Expression1, script);
+
+            if(addition.Token == TokenType.Plus)
+            {
+                script.Append(" + ");
+            }
+            else if(addition.Token == TokenType.Minus)
+            {
+                script.Append(" - ");
+            }
+
+            VisitExpression(addition.Expression2, script);
+        }
+        private void VisitMultiplyOperator(MultiplyOperator multiply, StringBuilder script)
+        {
+            VisitExpression(multiply.Expression1, script);
+
+            if (multiply.Token == TokenType.Star)
+            {
+                script.Append(" * ");
+            }
+            else if (multiply.Token == TokenType.Divide)
+            {
+                script.Append(" / ");
+            }
+            else if (multiply.Token == TokenType.Modulo)
+            {
+                script.Append(" % ");
+            }
+
+            VisitExpression(multiply.Expression2, script);
+        }
+        private void VisitFunctionExpression(FunctionExpression function, StringBuilder script)
+        {
+            script.Append(function.Name);
+
+            script.Append("(");
+
+            for (int i = 0; i < function.Parameters.Count; i++)
+            {
+                SyntaxNode expression = function.Parameters[i];
+
+                if (i > 0)
+                {
+                    script.Append(", ");
+                }
+
+                VisitExpression(expression, script);
+            }
+
+            script.Append(")");
+        }
+
         private void VisitIdentifier(Identifier identifier, StringBuilder script)
         {
             if (identifier.Token == TokenType.Column)

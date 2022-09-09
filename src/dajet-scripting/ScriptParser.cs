@@ -318,6 +318,16 @@ namespace DaJet.Scripting
                 select.WHERE = new WhereClause() { Expression = where_clause() };
             }
 
+            if (Match(TokenType.GROUP))
+            {
+                select.GROUP = group_clause();
+            }
+
+            if (Match(TokenType.HAVING))
+            {
+                select.HAVING = having_clause();
+            }
+
             if (Match(TokenType.ORDER))
             {
                 select.ORDER = order_clause();
@@ -473,6 +483,36 @@ namespace DaJet.Scripting
 
         #endregion
 
+        private SyntaxNode function(TokenType token, string identifier)
+        {
+            if (!Match(TokenType.OpenRoundBracket))
+            {
+                throw new FormatException("Open round bracket expected.");
+            }
+
+            FunctionExpression function = new()
+            {
+                Token = token,
+                Name = identifier
+            };
+
+            function.Parameters.Add(expression());
+
+            while (Match(TokenType.Comma))
+            {
+                function.Parameters.Add(expression());
+            }
+
+            if (!Match(TokenType.CloseRoundBracket))
+            {
+                throw new FormatException("Close round bracket expected.");
+            }
+
+            function.Alias = alias();
+
+            return function;
+        }
+
         #region "SELECT STATEMENT"
 
         private SelectStatement select_statement()
@@ -490,6 +530,14 @@ namespace DaJet.Scripting
                 else if (Match(TokenType.WHERE))
                 {
                     select.WHERE = new WhereClause() { Expression = where_clause() };
+                }
+                else if (Match(TokenType.GROUP))
+                {
+                    select.GROUP = group_clause();
+                }
+                else if (Match(TokenType.HAVING))
+                {
+                    select.HAVING = having_clause();
                 }
                 else if (Match(TokenType.ORDER))
                 {
@@ -613,6 +661,14 @@ namespace DaJet.Scripting
                 {
                     select.WHERE = new WhereClause() { Expression = where_clause() };
                 }
+                else if (Match(TokenType.GROUP))
+                {
+                    select.GROUP = group_clause();
+                }
+                else if (Match(TokenType.HAVING))
+                {
+                    select.HAVING = having_clause();
+                }
                 else if (Match(TokenType.ORDER))
                 {
                     select.ORDER = order_clause();
@@ -700,7 +756,38 @@ namespace DaJet.Scripting
         }
         #endregion
 
-        #region "ORDER BY CLAUSE"
+        #region "GROUP BY ... HAVING CLAUSE"
+        private GroupClause group_clause()
+        {
+            if (!Match(TokenType.BY))
+            {
+                throw new FormatException("BY keyword expected.");
+            }
+
+            GroupClause group = new();
+
+            while (Match(TokenType.Identifier, TokenType.Comma, TokenType.Comment))
+            {
+                ScriptToken token = Previous();
+
+                if (token.Type == TokenType.Identifier)
+                {
+                    group.Expressions.Add(identifier(TokenType.Column));
+                }
+            }
+
+            return group;
+        }
+        private HavingClause having_clause()
+        {
+            return new HavingClause()
+            {
+                Expression = predicate() // see WHERE clause
+            };
+        }
+        #endregion
+
+        #region "ORDER BY ... OFFSET ... FETCH CLAUSE"
         private OrderClause order_clause()
         {
             if (!Match(TokenType.BY))
@@ -716,7 +803,7 @@ namespace DaJet.Scripting
 
                 if (token.Type == TokenType.Identifier)
                 {
-                    Identifier column = identifier(TokenType.Column);
+                    SyntaxNode column = identifier(TokenType.Column);
 
                     TokenType sort_order = TokenType.ASC;
 
@@ -730,6 +817,36 @@ namespace DaJet.Scripting
                         Token = sort_order,
                         Expression = column
                     });
+                }
+            }
+
+            if (Match(TokenType.OFFSET))
+            {
+                order.Offset = expression();
+
+                if (!Match(TokenType.ROW, TokenType.ROWS))
+                {
+                    throw new FormatException("ROW or ROWS keyword expected.");
+                }
+            }
+            
+            if (Match(TokenType.FETCH))
+            {
+                if (!Match(TokenType.FIRST, TokenType.NEXT))
+                {
+                    throw new FormatException("FIRST or NEXT keyword expected.");
+                }
+
+                order.Fetch = expression();
+
+                if (!Match(TokenType.ROW, TokenType.ROWS))
+                {
+                    throw new FormatException("ROW or ROWS keyword expected.");
+                }
+
+                if (!Match(TokenType.ONLY))
+                {
+                    throw new FormatException("ROW or ROWS keyword expected.");
                 }
             }
 
@@ -797,12 +914,22 @@ namespace DaJet.Scripting
         {
             return new StarExpression();
         }
-        private Identifier identifier(TokenType context)
+        private SyntaxNode identifier(TokenType context)
         {
+            string value = Previous().Lexeme;
+
+            if (context == TokenType.Table || context == TokenType.Column)
+            {
+                if (ScriptHelper.IsFunction(value, out TokenType token))
+                {
+                    return function(token, value);
+                }
+            }
+
             Identifier identifier = new()
             {
                 Token = Previous().Type,
-                Value = Previous().Lexeme,
+                Value = value,
                 Alias = alias()
             };
 

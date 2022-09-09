@@ -1,5 +1,4 @@
 ﻿using DaJet.Data;
-using System.Runtime.Serialization;
 
 namespace DaJet.Scripting
 {
@@ -9,6 +8,7 @@ namespace DaJet.Scripting
         {
             { "WITH", TokenType.WITH },
             { "SELECT", TokenType.SELECT },
+            { "DISTINCT", TokenType.DISTINCT },
             { "TOP", TokenType.TOP },
             { "FROM", TokenType.FROM },
             { "WHERE", TokenType.WHERE },
@@ -38,11 +38,21 @@ namespace DaJet.Scripting
             { "UPDATE", TokenType.UPDATE },
             { "DELETE", TokenType.DELETE },
             { "OUTPUT", TokenType.OUTPUT },
-            { "SET", TokenType.SET }
+            { "SET", TokenType.SET },
+            { "ROW", TokenType.ROW },
+            { "ROWS", TokenType.ROWS },
+            { "ONLY", TokenType.ONLY },
+            { "OFFSET", TokenType.OFFSET },
+            { "FETCH", TokenType.FETCH },
+            { "FIRST", TokenType.FIRST },
+            { "NEXT", TokenType.NEXT },
+            { "GROUP", TokenType.GROUP },
+            { "HAVING", TokenType.HAVING }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {
             { "ВЫБРАТЬ", TokenType.SELECT },
+            { "РАЗЛИЧНЫЕ", TokenType.DISTINCT },
             { "ПЕРВЫЕ", TokenType.TOP },
             { "ИЗ", TokenType.FROM },
             { "ГДЕ", TokenType.WHERE },
@@ -64,7 +74,9 @@ namespace DaJet.Scripting
             { "УДАЛИТЬ", TokenType.DELETE },
             { "ДОБАВИТЬ", TokenType.INSERT },
             { "ОБНОВИТЬ", TokenType.UPDATE },
-            { "ВЫВЕСТИ", TokenType.OUTPUT }
+            { "ВЫВЕСТИ", TokenType.OUTPUT },
+            { "СГРУППИРОВАТЬ", TokenType.GROUP },
+            { "ИМЕЮЩИЕ", TokenType.HAVING }
         };
         private static Dictionary<string, Type> _datatype_en = new()
         {
@@ -107,6 +119,22 @@ namespace DaJet.Scripting
             { typeof(string), "string" },
             { typeof(byte[]), "binary" },
             { typeof(EntityRef), "entity" }
+        };
+        private static Dictionary<string, TokenType> _function_en = new()
+        {
+            { "SUM", TokenType.SUM },
+            { "MAX", TokenType.MAX },
+            { "MIN", TokenType.MIN },
+            { "AVG", TokenType.AVG },
+            { "COUNT", TokenType.COUNT }
+        };
+        private static Dictionary<string, TokenType> _function_ru = new()
+        {
+            { "СУММА", TokenType.SUM },
+            { "МАКСИМУМ", TokenType.MAX },
+            { "МИНИМУМ", TokenType.MIN },
+            { "СРЕДНЕЕ", TokenType.AVG },
+            { "КОЛИЧЕСТВО", TokenType.COUNT }
         };
         internal static bool IsKeyword(string identifier, out TokenType token)
         {
@@ -178,6 +206,15 @@ namespace DaJet.Scripting
         internal static bool IsAlphaNumeric(char character)
         {
             return IsAlpha(character) || IsNumeric(character);
+        }
+
+        internal static bool IsFunction(string identifier, out TokenType token)
+        {
+            if (_function_ru.TryGetValue(identifier.ToUpperInvariant(), out token))
+            {
+                return true;
+            }
+            return _function_en.TryGetValue(identifier.ToUpperInvariant(), out token);
         }
 
         internal static void GetColumnNames(string identifier, out string tableAlias, out string columnName)

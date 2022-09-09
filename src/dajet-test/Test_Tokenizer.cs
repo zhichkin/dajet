@@ -33,6 +33,20 @@ namespace DaJet.Scripting.Test
                 TokenizeFile(in filePath);
             }
         }
+        [TestMethod] public void Tokenize_OrderBy_Offset_Fetch()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\paging"))
+            {
+                TokenizeFile(in filePath);
+            }
+        }
+        [TestMethod] public void Tokenize_GroupBy_Having()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\group-having"))
+            {
+                TokenizeFile(in filePath);
+            }
+        }
         private void TokenizeFile(in string filePath)
         {
             ScriptTokenizer scanner = new();

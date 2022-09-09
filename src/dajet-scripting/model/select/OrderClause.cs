@@ -7,6 +7,8 @@
             Token = TokenType.ORDER;
         }
         public List<OrderExpression> Expressions { get; set; } = new();
+        public SyntaxNode Offset { get; set; } = null!; // optional
+        public SyntaxNode Fetch { get; set; } = null!; // optional
     }
     public sealed class OrderExpression : SyntaxNode
     {

@@ -287,7 +287,8 @@ namespace DaJet.Scripting.Test
             }
 
             ScriptExecutor executor = new(_cache);
-            executor.Parameters.Add("КодТовара", "А-1234");
+            executor.Parameters.Add("КодТовара", "PRD 01");
+            executor.Parameters.Add("ПометкаУдаления", false);
 
             string script = "ВЫБРАТЬ "
                 + "Код             КАК Code, "
@@ -295,7 +296,8 @@ namespace DaJet.Scripting.Test
                 + "Ссылка          КАК Reference, "
                 + "ПометкаУдаления КАК IsMarkedForDeletion "
                 + "ИЗ Справочник.Номенклатура "
-                + "WHERE Код = @КодТовара;";
+                + "WHERE Код = @КодТовара "
+                + "AND ПометкаУдаления = @ПометкаУдаления;";
 
             try
             {
@@ -313,6 +315,106 @@ namespace DaJet.Scripting.Test
         [TestMethod] public void Generate_Script_Cte()
         {
             filePath = "C:\\temp\\scripting-test\\cte\\04-script.txt";
+
+            CreateScriptModel();
+
+            if (_model == null)
+            {
+                return;
+            }
+
+            ScopeBuilder builder = new();
+
+            if (!builder.TryBuild(in _model, out ScriptScope scope, out string error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            MetadataBinder binder = new();
+
+            if (!binder.TryBind(in scope, in _cache, out error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            ScriptTransformer transformer = new();
+
+            if (!transformer.TryTransform(_model, out error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            MsSqlGenerator generator = new();
+
+            if (!generator.TryGenerate(_model, out GeneratorResult result))
+            {
+                Console.WriteLine(result.Error);
+                return;
+            }
+
+            Console.WriteLine();
+            Console.WriteLine(filePath);
+            Console.WriteLine();
+            Console.WriteLine(result.Script);
+
+            ShowEntityMap(result.Mapper);
+        }
+        [TestMethod] public void Generate_Offset_Fetch()
+        {
+            filePath = "C:\\temp\\scripting-test\\paging\\02-script.txt";
+
+            CreateScriptModel();
+
+            if (_model == null)
+            {
+                return;
+            }
+
+            ScopeBuilder builder = new();
+
+            if (!builder.TryBuild(in _model, out ScriptScope scope, out string error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            MetadataBinder binder = new();
+
+            if (!binder.TryBind(in scope, in _cache, out error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            ScriptTransformer transformer = new();
+
+            if (!transformer.TryTransform(_model, out error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            MsSqlGenerator generator = new();
+
+            if (!generator.TryGenerate(_model, out GeneratorResult result))
+            {
+                Console.WriteLine(result.Error);
+                return;
+            }
+
+            Console.WriteLine();
+            Console.WriteLine(filePath);
+            Console.WriteLine();
+            Console.WriteLine(result.Script);
+
+            ShowEntityMap(result.Mapper);
+        }
+        [TestMethod] public void Generate_Group_Having()
+        {
+            filePath = "C:\\temp\\scripting-test\\group-having\\01-script.txt";
 
             CreateScriptModel();
 
@@ -389,6 +491,71 @@ namespace DaJet.Scripting.Test
             catch (Exception exception)
             {
                 Console.WriteLine(ExceptionHelper.GetErrorMessage(exception));
+            }
+        }
+        [TestMethod] public void Execute_Offset_Fetch()
+        {
+            string script;
+
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\paging"))
+            {
+                Console.WriteLine();
+                Console.WriteLine(filePath);
+                Console.WriteLine();
+
+                using (StreamReader reader = new(filePath, Encoding.UTF8))
+                {
+                    script = reader.ReadToEnd();
+                }
+
+                ScriptExecutor executor = new(_cache);
+                executor.Parameters.Add("PageSize", 5);
+                executor.Parameters.Add("PageNumber", 2);
+
+                try
+                {
+                    foreach (var entity in executor.ExecuteReader<ProductInfo>(script))
+                    {
+                        Console.WriteLine("*****");
+                        ShowPropertyValues(entity);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Console.WriteLine(ExceptionHelper.GetErrorMessage(exception));
+                }
+            }
+        }
+        [TestMethod] public void Execute_Group_Having()
+        {
+            string script;
+
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\group-having"))
+            {
+                Console.WriteLine();
+                Console.WriteLine(filePath);
+                Console.WriteLine();
+
+                using (StreamReader reader = new(filePath, Encoding.UTF8))
+                {
+                    script = reader.ReadToEnd();
+                }
+
+                ScriptExecutor executor = new(_cache);
+                executor.Parameters.Add("Amount", 7);
+
+                try
+                {
+                    foreach (var entity in executor.ExecuteReader(script))
+                    {
+                        Console.WriteLine("*****");
+                        ShowEntity(entity);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Console.WriteLine(ExceptionHelper.GetErrorMessage(exception));
+                }
             }
         }
     }

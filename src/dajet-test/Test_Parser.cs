@@ -36,6 +36,20 @@ namespace DaJet.Scripting.Test
                 ParseScriptFile(in filePath);
             }
         }
+        [TestMethod] public void Parse_OrderBy_Offset_Fetch()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\paging"))
+            {
+                ParseScriptFile(in filePath);
+            }
+        }
+        [TestMethod] public void Parse_GroupBy_Having()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\group-having"))
+            {
+                ParseScriptFile(in filePath);
+            }
+        }
         private void ParseScriptFile(in string filePath)
         {
             Console.WriteLine("***");
@@ -170,6 +184,26 @@ namespace DaJet.Scripting.Test
         [TestMethod] public void Walker_Expression()
         {
             foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\expression"))
+            {
+                Console.WriteLine("***");
+                Console.WriteLine(filePath);
+
+                WalkScriptFile(in filePath);
+            }
+        }
+        [TestMethod] public void Walker_OrderBy_Offset_Fetch()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\paging"))
+            {
+                Console.WriteLine("***");
+                Console.WriteLine(filePath);
+
+                WalkScriptFile(in filePath);
+            }
+        }
+        [TestMethod] public void Walker_GroupBy_Having()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\group-having"))
             {
                 Console.WriteLine("***");
                 Console.WriteLine(filePath);

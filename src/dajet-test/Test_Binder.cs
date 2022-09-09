@@ -115,6 +115,80 @@ namespace DaJet.Scripting.Test
                 }
             }
         }
+        [TestMethod] public void Transform_Script()
+        {
+            filePath = "C:\\temp\\scripting-test\\script05.txt";
+
+            CreateSyntaxTree();
+
+            if (_syntaxTree == null)
+            {
+                return;
+            }
+
+            ScopeBuilder builder = new();
+
+            if (!builder.TryBuild(in _syntaxTree, out ScriptScope scope, out string error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            MetadataBinder binder = new();
+
+            if (!binder.TryBind(in scope, in _cache, out error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            ScriptTransformer transformer = new();
+
+            if (!transformer.TryTransform(_syntaxTree, out error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            ShowSyntaxNode(_syntaxTree, 0);
+        }
+        [TestMethod] public void Transform_Script_Variables()
+        {
+            filePath = "C:\\temp\\scripting-test\\script06.txt";
+
+            CreateSyntaxTree(); // parser
+
+            if (_syntaxTree == null)
+            {
+                return;
+            }
+
+            ScopeBuilder builder = new();
+
+            if (!builder.TryBuild(in _syntaxTree, out ScriptScope scope, out string error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            MetadataBinder binder = new();
+
+            if (!binder.TryBind(in scope, in _cache, out error)) // builder.Scope
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            ScriptTransformer transformer = new();
+
+            if (!transformer.TryTransform(_syntaxTree, out error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            ShowSyntaxNode(_syntaxTree, 0);
+        }
         [TestMethod] public void Bind_Metadata()
         {
             CreateSyntaxTree();
@@ -229,9 +303,9 @@ namespace DaJet.Scripting.Test
 
             ShowSyntaxNode(_syntaxTree, 0);
         }
-        [TestMethod] public void Transform_Script()
+        [TestMethod] public void Bind_Metadata_OrderBy_Offset_Fetch()
         {
-            filePath = "C:\\temp\\scripting-test\\script05.txt";
+            filePath = "C:\\temp\\scripting-test\\paging\\02-script.txt";
 
             CreateSyntaxTree();
 
@@ -256,21 +330,13 @@ namespace DaJet.Scripting.Test
                 return;
             }
 
-            ScriptTransformer transformer = new();
-
-            if (!transformer.TryTransform(_syntaxTree, out error))
-            {
-                Console.WriteLine(error);
-                return;
-            }
-
             ShowSyntaxNode(_syntaxTree, 0);
         }
-        [TestMethod] public void Transform_Script_Variables()
+        [TestMethod] public void Bind_Metadata_GroupBy_Having()
         {
-            filePath = "C:\\temp\\scripting-test\\script06.txt";
+            filePath = "C:\\temp\\scripting-test\\group-having\\01-script.txt";
 
-            CreateSyntaxTree(); // parser
+            CreateSyntaxTree();
 
             if (_syntaxTree == null)
             {
@@ -286,16 +352,8 @@ namespace DaJet.Scripting.Test
             }
 
             MetadataBinder binder = new();
-            
-            if (!binder.TryBind(in scope, in _cache, out error)) // builder.Scope
-            {
-                Console.WriteLine(error);
-                return;
-            }
 
-            ScriptTransformer transformer = new();
-
-            if (!transformer.TryTransform(_syntaxTree, out error))
+            if (!binder.TryBind(in scope, in _cache, out error))
             {
                 Console.WriteLine(error);
                 return;

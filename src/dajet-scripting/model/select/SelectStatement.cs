@@ -7,6 +7,8 @@
         public SyntaxNode TOP { get; set; } = null!;
         public FromClause FROM { get; set; } = null!;
         public WhereClause WHERE { get; set; } = null!;
+        public GroupClause GROUP { get; set; } = null!;
+        public HavingClause HAVING { get; set; } = null!;
         public OrderClause ORDER { get; set; } = null!;
     }
 }
