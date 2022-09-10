@@ -37,9 +37,9 @@ namespace DaJet.Metadata.Core
             {
                 ConfigureAccumulationRegister(in cache, in register2);
             }
-            else if (metadata is EntityChangeTable changeTable)
+            else if (metadata is ChangeTrackingTable changeTable)
             {
-                ConfigureEntityChangeTable(in cache, in changeTable);
+                ConfigureChangeTrackingTable(in cache, in changeTable);
             }
         }
         internal static void ConfigureSharedProperties(in MetadataCache cache, in MetadataObject metadata)
@@ -1476,101 +1476,6 @@ namespace DaJet.Metadata.Core
 
         #endregion
 
-        #region "ENTITY CHANGE TABLE"
-
-        private static void ConfigureEntityChangeTable(in MetadataCache cache, in EntityChangeTable table)
-        {
-            if (!cache.TryGetChngR(table.Entity.Uuid, out DbName changeTable))
-            {
-                return;
-            }
-
-            //if (!cache.TryGetDbName(table.Entity.Uuid, out DbName entityTable))
-            //{
-            //    return;
-            //}
-
-            //table.TypeCode = entityTable.Code;
-
-            table.Uuid = table.Entity.Uuid;
-            table.Name = table.Entity.Name + ".Изменения";
-            table.Alias = "Таблица регистрации изменений";
-            table.TableName = $"_{changeTable.Name}{changeTable.Code}";
-
-            // TODO: Поддерживаются только ссылочные типы данных
-            // TODO: Добавить поддержку для регистров (составные ключи)
-            ConfigurePropertyСсылка(table);
-            ConfigurePropertyУзелПланаОбмена(in table);
-            ConfigurePropertyНомерСообщения(in table);
-        }
-        private static void ConfigurePropertyУзелПланаОбмена(in EntityChangeTable table)
-        {
-            // This property always has the multiple refrence type,
-            // even if there is only one exchange plan configured.
-
-            MetadataProperty property = new()
-            {
-                Uuid = Guid.Empty,
-                Name = "УзелПланаОбмена",
-                Purpose = PropertyPurpose.System,
-                DbName = "_Node"
-            };
-
-            property.PropertyType.CanBeReference = true;
-            property.PropertyType.Reference = Guid.Empty;
-            property.PropertyType.References.Add(new MetadataItem(ReferenceTypes.Publication, Guid.Empty, "ПланОбменаСсылка"));
-
-            property.Columns.Add(new MetadataColumn()
-            {
-                Name = "_NodeTRef",
-                Length = 4,
-                TypeName = "binary",
-                KeyOrdinal = 2,
-                IsPrimaryKey = true,
-                Purpose = ColumnPurpose.TypeCode
-            });
-
-            property.Columns.Add(new MetadataColumn()
-            {
-                Name = "_NodeRRef",
-                Length = 16,
-                TypeName = "binary",
-                KeyOrdinal = 3,
-                IsPrimaryKey = true,
-                Purpose = ColumnPurpose.Identity
-            });
-
-            table.Properties.Add(property);
-        }
-        private static void ConfigurePropertyНомерСообщения(in EntityChangeTable table)
-        {
-            MetadataProperty property = new()
-            {
-                Name = "НомерСообщения",
-                Uuid = Guid.Empty,
-                Purpose = PropertyPurpose.System,
-                DbName = "_MessageNo"
-            };
-
-            property.PropertyType.CanBeNumeric = true;
-            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
-            property.PropertyType.NumericScale = 0;
-            property.PropertyType.NumericPrecision = 10;
-
-            property.Columns.Add(new MetadataColumn()
-            {
-                Name = property.DbName,
-                Length = 9,
-                Scale = 0,
-                Precision = 10,
-                TypeName = "numeric"
-            });
-
-            table.Properties.Add(property);
-        }
-
-        #endregion
-
         #region "CONFIGURE DATABASE NAMES"
 
         private static string CreateDbName(string token, int code)
@@ -1793,6 +1698,106 @@ namespace DaJet.Metadata.Core
                     Purpose = ColumnPurpose.Identity
                 });
             }
+        }
+
+        #endregion
+
+        #region "CHANGE TRACKING TABLE"
+
+        private static void ConfigureChangeTrackingTable(in MetadataCache cache, in ChangeTrackingTable table)
+        {
+            if (!cache.TryGetChngR(table.Entity.Uuid, out DbName changeTable))
+            {
+                return;
+            }
+
+            //if (!cache.TryGetDbName(table.Entity.Uuid, out DbName entityTable))
+            //{
+            //    return;
+            //}
+
+            //table.TypeCode = entityTable.Code;
+
+            table.Uuid = table.Entity.Uuid;
+            table.Name = table.Entity.Name + ".Изменения";
+            table.Alias = "Таблица регистрации изменений";
+            table.TableName = $"_{changeTable.Name}{changeTable.Code}";
+
+            // FIXME: Поддерживаются только ссылочные типы данных
+            // TODO: Добавить поддержку для регистров:
+            // 1. Регистры, подчинённые регистратору, имеют только свойство "Регистратор"
+            //    в таблице регистрации измерений, с учётом значения его множественности
+            // 2. Регистры сведений, неподчинённые регистратору, имеют составные ключи
+            //    только для тех своих измерений, которые помечены как "Основной отбор"
+
+            ConfigurePropertyСсылка(table);
+            ConfigurePropertyУзелПланаОбмена(in table);
+            ConfigurePropertyНомерСообщения(in table);
+        }
+        private static void ConfigurePropertyУзелПланаОбмена(in ChangeTrackingTable table)
+        {
+            // This property always has the multiple refrence type,
+            // even if there is only one exchange plan configured.
+
+            MetadataProperty property = new()
+            {
+                Uuid = Guid.Empty,
+                Name = "УзелОбмена",
+                Purpose = PropertyPurpose.System,
+                DbName = "_Node"
+            };
+
+            property.PropertyType.CanBeReference = true;
+            property.PropertyType.Reference = Guid.Empty;
+            property.PropertyType.References.Add(new MetadataItem(ReferenceTypes.Publication, Guid.Empty, "ПланОбменаСсылка"));
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = "_NodeTRef",
+                Length = 4,
+                TypeName = "binary",
+                KeyOrdinal = 2,
+                IsPrimaryKey = true,
+                Purpose = ColumnPurpose.TypeCode
+            });
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = "_NodeRRef",
+                Length = 16,
+                TypeName = "binary",
+                KeyOrdinal = 3,
+                IsPrimaryKey = true,
+                Purpose = ColumnPurpose.Identity
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void ConfigurePropertyНомерСообщения(in ChangeTrackingTable table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "НомерСообщения",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_MessageNo"
+            };
+
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericScale = 0;
+            property.PropertyType.NumericPrecision = 10;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 9,
+                Scale = 0,
+                Precision = 10,
+                TypeName = "numeric"
+            });
+
+            table.Properties.Add(property);
         }
 
         #endregion

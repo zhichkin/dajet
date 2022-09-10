@@ -875,7 +875,7 @@ namespace DaJet.Scripting
         #region "GROUP BY ... HAVING CLAUSE"
         private GroupClause group_clause()
         {
-            if (!Match(TokenType.BY))
+            if (!Match(TokenType.BY, TokenType.ON))
             {
                 throw new FormatException("BY keyword expected.");
             }
@@ -906,7 +906,7 @@ namespace DaJet.Scripting
         #region "ORDER BY ... OFFSET ... FETCH CLAUSE"
         private OrderClause order_clause()
         {
-            if (!Match(TokenType.BY))
+            if (!Match(TokenType.BY, TokenType.ON))
             {
                 throw new FormatException("BY keyword expected.");
             }

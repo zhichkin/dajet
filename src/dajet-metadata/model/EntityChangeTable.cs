@@ -2,9 +2,9 @@
 
 namespace DaJet.Metadata.Model
 {
-    public sealed class EntityChangeTable : ApplicationObject
+    public sealed class ChangeTrackingTable : ApplicationObject
     {
-        internal EntityChangeTable(ApplicationObject entity)
+        internal ChangeTrackingTable(ApplicationObject entity)
         {
             Entity = entity;
         }

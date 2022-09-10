@@ -12,11 +12,11 @@ namespace DaJet.Metadata.Test
     [TestClass] public class Compare_Metadata_To_Database
     {
         //private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=trade_11_2_3_159_demo;Integrated Security=True;Encrypt=False;";
-        private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=accounting_3_0_72_72_demo;Integrated Security=True;Encrypt=False;";
+        //private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=accounting_3_0_72_72_demo;Integrated Security=True;Encrypt=False;";
         //private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=test_node_1;Integrated Security=True;Encrypt=False;";
-        private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=test_node_2;Username=postgres;Password=postgres;";
-        //private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
-        //private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;";
+        //private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=test_node_2;Username=postgres;Password=postgres;";
+        private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
+        private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;";
         private InfoBase _infoBase;
         private readonly MetadataService _service = new();
         ISqlMetadataReader _database = new SqlMetadataReader();
@@ -259,6 +259,56 @@ namespace DaJet.Metadata.Test
                         // Имя колонки таблицы СУБД
                         Console.WriteLine(column.Name);
                     }
+                }
+            }
+        }
+
+        [TestMethod] public void Show_MetadataObject()
+        {
+            // Строка подключения к базе данных 1С
+            string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
+
+            // Регистрируем настройки подключения к базе данных 1С по строковому ключу
+            InfoBaseOptions options = new()
+            {
+                Key = "my_1c_infobase",
+                ConnectionString = MS_CONNECTION_STRING,
+                DatabaseProvider = DatabaseProvider.SqlServer
+            };
+
+            MetadataService metadata = new();
+            metadata.Add(options);
+
+            // Подключаемся к информационной базе 1С
+            if (!metadata.TryGetMetadataCache(options.Key, out MetadataCache cache, out string error))
+            {
+                Console.WriteLine($"Ошибка открытия информационной базы: {error}");
+                return;
+            }
+
+            // Получаем объект метаданных по его полному имени
+            InformationRegister entity = cache.GetMetadataObject<InformationRegister>("РегистрСведений.ТестовыйРегистр");
+
+            if (entity == null)
+            {
+                Console.WriteLine("Объект метаданных не найден.");
+                return;
+            }
+
+            // Имя справочника и его таблицы СУБД
+            Console.WriteLine($"{entity.Name} [{entity.TableName}]");
+
+            // Читаем метаданные свойств справочников
+            foreach (MetadataProperty property in entity.Properties)
+            {
+                // Имя свойства справочника
+                Console.WriteLine(property.Name);
+
+                // Читаем метаданные колонок таблицы СУБД
+                foreach (MetadataColumn column in property.Columns)
+                {
+                    // Имя колонки таблицы СУБД
+                    Console.WriteLine(column.Name);
                 }
             }
         }

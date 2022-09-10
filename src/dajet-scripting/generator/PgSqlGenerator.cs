@@ -112,15 +112,15 @@ namespace DaJet.Scripting
 
                 foreach (MetadataColumn field in property.Columns)
                 {
-                    string name = "\t" + (string.IsNullOrWhiteSpace(tableAlias) ? string.Empty : tableAlias + ".");
+                    string name = (string.IsNullOrWhiteSpace(tableAlias) ? string.Empty : tableAlias + ".");
 
                     name += field.Name;
 
-                    if (mapper != null &&
+                    if (mapper != null && // resulting SELECT clause only !
                         field.TypeName == "nvarchar" || field.TypeName == "varchar" ||
                         field.TypeName == "nchar" || field.TypeName == "char")
                     {
-                        name = "CAST(" + name + " AS text)";
+                        name = "CAST(" + name + " AS varchar)"; // text
                     }
 
                     if (propertyMap == null) // subquery select statement
@@ -151,7 +151,7 @@ namespace DaJet.Scripting
                         propertyMap.ToColumn(columnMap);
                     }
 
-                    columns.Add(name);
+                    columns.Add("\t" + name);
                 }
             }
             else if (identifier.Tag is Identifier column) /// bubbled up from subquery <see cref="MetadataBinder.BindColumn"/>
@@ -229,17 +229,15 @@ namespace DaJet.Scripting
             {
                 VisitOrderClause(select.ORDER, script);
             }
+
+            VisitTopExpression(select.TOP, script);
         }
 
         #region "SELECT AND FROM CLAUSE"
 
         private void VisitSelectClause(SelectStatement select, StringBuilder script, EntityMap mapper)
         {
-            script.Append("SELECT");
-
-            VisitTopExpression(select.TOP, script);
-
-            script.AppendLine();
+            script.Append("SELECT").AppendLine();
 
             VisitProjectionClause(select.SELECT, script, mapper);
         }
@@ -250,7 +248,7 @@ namespace DaJet.Scripting
                 return;
             }
 
-            script.Append(" TOP ");
+            script.AppendLine().Append("LIMIT ");
 
             if (top is ScalarExpression scalar && scalar.Token == TokenType.Number)
             {
@@ -689,7 +687,14 @@ namespace DaJet.Scripting
         }
         private void VisitScalarExpression(ScalarExpression scalar, StringBuilder script)
         {
-            script.Append(scalar.Literal);
+            if (scalar.Literal.StartsWith("0x")) // binary literal
+            {
+                script.Append("'\\\\x" + scalar.Literal[2..] + "'");
+            }
+            else
+            {
+                script.Append(scalar.Literal);
+            }
         }
 
         #endregion

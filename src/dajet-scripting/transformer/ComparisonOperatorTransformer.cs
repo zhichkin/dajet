@@ -264,8 +264,7 @@ namespace DaJet.Scripting
             return union;
         }
 
-        private ComparisonOperator CreateComparisonOperator(
-            TokenType type, Identifier column1, Identifier column2, int tag, object[] union1, object[] union2)
+        private ComparisonOperator CreateComparisonOperator(TokenType type, Identifier column1, Identifier column2, int tag, object[] union1, object[] union2)
         {
             ComparisonOperator comparison = new()
             {

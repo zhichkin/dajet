@@ -33,14 +33,17 @@ namespace DaJet.Metadata.Test
         }
         [TestMethod] public void WriteConfigObjectToFile()
         {
+            //{ [{ cd6235da-2df9-4ec4-a39b-b40f2ca21009}, ТестовыйРегистр]}
+            string fileName = "cd6235da-2df9-4ec4-a39b-b40f2ca21009"; // dajet-metadata-ms
+
             // Предопределённые значения "Справочник.СправочникПредопределённые"
-            string fileName = "29f879f3-b889-4745-8dec-c3e18da8f84c.1c"; // dajet-metadata-ms
+            //string fileName = "29f879f3-b889-4745-8dec-c3e18da8f84c.1c"; // dajet-metadata-ms
 
             using (ConfigFileReader reader = new(DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.Config, fileName))
             {
                 ConfigObject configObject = new ConfigFileParser().Parse(reader);
 
-                new ConfigFileWriter().Write(configObject, "C:\\temp\\Справочник.СправочникПредопределённые.txt");
+                new ConfigFileWriter().Write(configObject, "C:\\temp\\РегистрСведений.ТестовыйРегистр.txt");
             }
         }
     }

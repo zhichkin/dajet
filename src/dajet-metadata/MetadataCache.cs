@@ -571,6 +571,14 @@ namespace DaJet.Metadata
 
             MetadataObject metadata = GetMetadataObjectCached(type, uuid);
 
+            if (tableName == "Изменения")
+            {
+                if (metadata is ApplicationObject entity)
+                {
+                    return GetChangeTrackingTable(entity);
+                }
+            }    
+
             if (metadata is not ITablePartOwner owner)
             {
                 return null;
@@ -774,7 +782,7 @@ namespace DaJet.Metadata
 
         #endregion
 
-        #region "GETTING METADATA OBJECT/S INTERFACE IMPLEMENTATION"
+        #region "GETTING METADATA OBJECTS INTERFACE IMPLEMENTATION"
 
         private string[] GetIdentifiers(string metadataName)
         {
@@ -789,15 +797,6 @@ namespace DaJet.Metadata
             {
                 throw new FormatException(nameof(metadataName));
             }
-
-            //string typeName = identifiers[0];
-            //string objectName = identifiers[1];
-            //
-            //string tablePartName = null;
-            //if (names.Length == 3)
-            //{
-            //    tablePartName = names[2];
-            //}
 
             return identifiers;
         }
@@ -1010,17 +1009,14 @@ namespace DaJet.Metadata
 
             return publication;
         }
-        public EntityChangeTable GetEntityChangeTable(ApplicationObject entity)
+        public ChangeTrackingTable GetChangeTrackingTable(ApplicationObject entity)
         {
-            // TODO: Поддерживаются только ссылочные типы данных
-            // TODO: Добавить поддержку для регистров (составные ключи)
-
             if (!TryGetChngR(entity.Uuid, out _))
             {
                 return null;
             }
 
-            EntityChangeTable table = new(entity);
+            ChangeTrackingTable table = new(entity);
 
             Configurator.ConfigureSystemProperties(this, table);
 

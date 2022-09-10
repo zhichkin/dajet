@@ -50,11 +50,11 @@ namespace DaJet.Data
             {
                 if (BitConverter.IsLittleEndian)
                 {
-                    return "0x" + DbUtilities.ByteArrayToString(new byte[] { bytes[0] });
+                    return "0x" + ByteArrayToString(new byte[] { bytes[0] });
                 }
                 else
                 {
-                    return "0x" + DbUtilities.ByteArrayToString(new byte[] { bytes[3] });
+                    return "0x" + ByteArrayToString(new byte[] { bytes[3] });
                 }
             }
             else
@@ -63,7 +63,7 @@ namespace DaJet.Data
                 {
                     Array.Reverse(bytes);
                 }
-                return "0x" + DbUtilities.ByteArrayToString(bytes);
+                return "0x" + ByteArrayToString(bytes); // '\\x00000024'
             }
         }
 

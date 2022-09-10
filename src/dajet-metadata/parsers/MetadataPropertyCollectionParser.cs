@@ -135,9 +135,20 @@ namespace DaJet.Metadata.Parsers
                 _converter[0][1][1][1][3][2] += PropertyAlias;
                 _converter[0][1][1][2] += PropertyType;
 
-                if (_owner is not null && (_owner is Catalog || _owner is Characteristic))
+                if (_owner is not null)
                 {
-                    _converter[0][3] += PropertyUsage;
+                    if (_owner is Catalog || _owner is Characteristic)
+                    {
+                        _converter[0][3] += PropertyUsage;
+                    }
+                    else if (_owner is InformationRegister)
+                    {
+                        if (_purpose == PropertyPurpose.Dimension)
+                        {
+                            _converter[0][2] += CascadeDelete;
+                            _converter[0][5] += DimensionUsage;
+                        }
+                    }
                 }
             }
 
@@ -173,6 +184,14 @@ namespace DaJet.Metadata.Parsers
         private void PropertyUsage(in ConfigFileReader source, in CancelEventArgs args)
         {
             _property.PropertyUsage = (PropertyUsage)source.GetInt32();
+        }
+        private void CascadeDelete(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _property.CascadeDelete = (source.GetInt32() == 1);
+        }
+        private void DimensionUsage(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _property.DimensionUsage = (source.GetInt32() == 1);
         }
     }
 }
