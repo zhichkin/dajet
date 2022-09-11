@@ -1,0 +1,148 @@
+﻿<html>
+<head>
+    <meta charset="utf-8" />
+    <title>DaJet HTTP server 1.0.0</title>
+
+    <script>
+        function test() {
+            let text = document.getElementById("infoBaseName");
+            alert(text.value);
+            text = document.getElementById("infoBaseDescription");
+            alert(text.value);
+            text = document.getElementById("databaseProvider");
+            alert(text.value);
+            text = document.getElementById("connectionString");
+            alert(text.value);
+        }
+
+        async function insertInfoBase() {
+            let infoBaseName = document.getElementById("infoBaseName");
+            let description = document.getElementById("infoBaseDescription");
+            let databaseProvider = document.getElementById("databaseProvider");
+            let connectionString = document.getElementById("connectionString");
+
+            const response = await fetch('/md',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        'Name': infoBaseName.value,
+                        'Description': description.value,
+                        'DatabaseProvider': databaseProvider.value,
+                        'ConnectionString': connectionString.value
+                    })
+                })
+                .catch((error) => { console.error('Error:', error) });
+
+            if (!response.ok) {
+                alert(response.status + "\nError: " + response.statusText);
+            }
+            else {
+                getInfoBaseList();
+            }
+        }
+        async function deleteInfoBase(name) {
+            const response = await fetch('/md',
+                {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 'Name': name })
+                })
+                .catch((error) => { console.error('Error:', error) });
+
+            if (response.ok) {
+                alert(response.status);
+            }
+
+            getInfoBaseList();
+        }
+
+        async function getInfoBaseList() {
+            const response = await fetch('/md', { method: 'GET' });
+
+            if (!response.ok) {
+
+            }
+
+            const data = await response.json();
+
+            let table = document.createElement('table');
+            table.style.border = '1px solid black';
+
+            if (data.length == 0) {
+                alert('Список ИБ пустой.');
+            }
+
+            for (const item of data) {
+                let tr = table.insertRow();
+
+                let td = tr.insertCell();
+                td.style.padding = '10px';
+                td.style.border = '1px solid black';
+                let value = document.createElement('a');
+                value.setAttribute("href", "/1ql/" + item.Name);
+                value.appendChild(document.createTextNode(item.Name));
+                td.appendChild(value);
+                tr.appendChild(td);
+
+                td = tr.insertCell();
+                td.style.padding = '10px';
+                td.style.border = '1px solid black';
+                value = document.createTextNode(item.Description);
+                td.appendChild(value);
+                tr.appendChild(td);
+
+                td = tr.insertCell();
+                td.style.padding = '10px';
+                td.style.border = '1px solid black';
+                value = document.createTextNode(item.DatabaseProvider);
+                td.appendChild(value);
+                tr.appendChild(td);
+
+                td = tr.insertCell();
+                td.style.padding = '10px';
+                td.style.border = '1px solid black';
+                value = document.createTextNode(item.ConnectionString);
+                td.appendChild(value);
+                tr.appendChild(td);
+
+                td = tr.insertCell();
+                td.style.padding = '10px';
+                td.style.border = '1px solid black';
+                let button = document.createElement('input');
+                button.type = "button";
+                button.value = "Удалить";
+                button.setAttribute("onclick", "deleteInfoBase('" + item.Name + "')");
+                td.appendChild(button);
+                tr.appendChild(td);
+            }
+
+            let content = document.getElementById("content");
+            content.replaceChildren(table);
+        }
+
+        window.onload = getInfoBaseList;
+    </script>
+
+</head>
+
+<body>
+
+    <table>
+        <tr><td><input type="button" value="Тест" onclick="test()"></td></tr>
+        <tr><td>Имя базы:&nbsp;<input id="infoBaseName" type="text" size="20"></td></tr>
+        <tr><td>Описание:&nbsp;<input id="infoBaseDescription" type="text" size="40"></td></tr>
+        <tr><td>Тип СУБД:&nbsp;<input id="databaseProvider" type="text" size="10"></td></tr>
+        <tr><td>Строка подключения:&nbsp;<input id="connectionString" type="text" size="100"></td></tr>
+        <tr><td><input type="button" value="Добавить" onclick="insertInfoBase()"></td></tr>
+        <tr><td><input type="button" value="Показать список" onclick="getInfoBaseList()"></td></tr>
+    </table>
+
+    <div id="content"></div>
+
+</body>
+</html>

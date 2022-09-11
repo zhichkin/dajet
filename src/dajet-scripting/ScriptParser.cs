@@ -817,7 +817,7 @@ namespace DaJet.Scripting
         }
         private SyntaxNode predicate()
         {
-            return or();
+            return or(); // TODO: IN
         }
         private SyntaxNode or()
         {

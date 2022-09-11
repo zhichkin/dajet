@@ -1,0 +1,48 @@
+﻿<html>
+<head>
+    <meta charset="utf-8" />
+    <title>DaJet HTTP server 1.0.0</title>
+    <script>
+
+        var infoBaseName = "{InfoBaseName}";
+
+        async function executeQuery() {
+
+            let queryScript = document.getElementById("queryScript");
+
+            const response = await fetch('/1ql',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        'Name': infoBaseName,
+                        'Description': queryScript.value
+                    })
+                })
+                .catch((error) => { console.error('Error:', error) });
+
+            //const data = await response.json();
+
+            const data = await response.text();
+
+            let content = document.getElementById("content");
+            content.replaceChildren(document.createTextNode(data));
+        }
+
+    </script>
+</head>
+
+<body>
+
+    <h3>{InfoBaseName}</h3>
+
+    <table>
+        <tr><td><input type="button" value="Выполнить" onclick="executeQuery()"></td></tr>
+        <tr><td><textarea id="queryScript" cols="100" rows="30">Введите скрипт запроса ...</textarea></td></tr>
+        <tr><td><div id="content"></div></td></tr>
+    </table>
+
+</body>
+</html>
