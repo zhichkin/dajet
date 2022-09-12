@@ -1,4 +1,5 @@
 ﻿using DaJet.Data.Mapping;
+using System.Text.Json.Serialization;
 
 namespace DaJet.Scripting
 {
@@ -7,6 +8,6 @@ namespace DaJet.Scripting
         public bool Success { get; set; } = true;
         public string Error { get; set; } = string.Empty;
         public string Script { get; set; } = string.Empty;
-        public EntityMap Mapper { get; set; } = new();
+        [JsonIgnore] public EntityMap Mapper { get; set; } = new();
     }
 }

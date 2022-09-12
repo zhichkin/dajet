@@ -1,34 +1,143 @@
 ﻿<html>
 <head>
     <meta charset="utf-8" />
-    <title>DaJet HTTP server 1.0.0</title>
+    <title>DaJet © HTTP server 1.0.0</title>
     <script>
 
         var infoBaseName = "{InfoBaseName}";
 
-        async function executeQuery() {
+        async function generateSql() {
+
+            let div = document.getElementById("errorText");
+            div.replaceChildren();
+
+            let content = document.getElementById("content");
+            content.replaceChildren();
 
             let queryScript = document.getElementById("queryScript");
 
-            const response = await fetch('/1ql',
+            let response = await fetch('/1ql/prepare',
                 {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        'Name': infoBaseName,
-                        'Description': queryScript.value
+                        'DbName': infoBaseName,
+                        'Script': queryScript.value
                     })
-                })
-                .catch((error) => { console.error('Error:', error) });
+                });
 
-            //const data = await response.json();
+            if (!response.ok) {
 
-            const data = await response.text();
+                let message = await response.text();
+                let text = document.createTextNode(message);
+                div.replaceChildren(text);
+            }
+            else {
+
+                let data = await response.json();
+
+                if (data.Success) {
+
+                    let sql = document.createTextNode(data.Script);
+                    content.replaceChildren(sql);
+                }
+                else {
+
+                    let error = document.createTextNode(data.Error);
+                    content.replaceChildren(error);
+                }
+            }
+        }
+        async function executeQuery() {
+
+            let div = document.getElementById("errorText");
+            div.replaceChildren();
 
             let content = document.getElementById("content");
-            content.replaceChildren(document.createTextNode(data));
+            content.replaceChildren();
+
+            let queryScript = document.getElementById("queryScript");
+
+            let response = await fetch('/1ql/execute',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        'DbName': infoBaseName,
+                        'Script': queryScript.value
+                    })
+                });
+
+            if (!response.ok) {
+
+                let message = await response.text();
+                let text = document.createTextNode(message);
+                div.replaceChildren(text);
+            }
+            else {
+
+                let data = await response.json();
+                let table = createTable(data);
+                content.replaceChildren(table);
+            }
+        }
+        
+        function createTable(data) {
+
+            let table = document.createElement('table');
+            table.style.border = '1px solid black';
+
+            if (data.length > 0) {
+
+                createTableHeaders(table, data[0]);
+            }
+
+            for (let item of data) {
+
+                createTableRow(table, item);
+            }
+
+            return table;
+        }
+        function createTableHeaders(table, item) {
+
+            let tr = table.insertRow();
+
+            let names = Object.getOwnPropertyNames(item);
+
+            for (let name of names) {
+
+                let td = createTableRowCell(tr, name);
+                td.style.fontWeight = 'bold';
+            }
+        }
+        function createTableRow(table, item) {
+
+            let tr = table.insertRow();
+
+            let names = Object.getOwnPropertyNames(item);
+
+            for (let name of names) {
+
+                createTableRowCell(tr, item[name]);
+            }
+        }
+        function createTableRowCell(tr, value) {
+
+            let td = tr.insertCell();
+            td.style.padding = '5px';
+            td.style.border = '1px solid black';
+
+            let text = document.createTextNode(value);
+
+            td.appendChild(text);
+            tr.appendChild(td);
+
+            return td;
         }
 
     </script>
@@ -39,8 +148,14 @@
     <h3>{InfoBaseName}</h3>
 
     <table>
-        <tr><td><input type="button" value="Выполнить" onclick="executeQuery()"></td></tr>
-        <tr><td><textarea id="queryScript" cols="100" rows="30">Введите скрипт запроса ...</textarea></td></tr>
+        <tr>
+            <td>
+                <input type="button" value="Код SQL" onclick="generateSql()">
+                <input type="button" value="Выполнить" onclick="executeQuery()">
+                <span id="errorText" style="color:red;padding:5px"></span>
+            </td>
+        </tr>
+        <tr><td><textarea id="queryScript" cols="100" rows="30">Код скрипта ...</textarea></td></tr>
         <tr><td><div id="content"></div></td></tr>
     </table>
 

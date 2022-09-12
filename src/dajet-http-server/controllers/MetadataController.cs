@@ -171,7 +171,7 @@ namespace DaJet.Http.Controllers
                 string.IsNullOrWhiteSpace(entity.ConnectionString) ||
                 !Enum.TryParse(entity.DatabaseProvider, out DatabaseProvider provider))
             {
-                return BadRequest();
+                return BadRequest("Неверно указаны параметры!");
             }
 
             if (_mapper.Select(entity.Name) != null || !_mapper.Insert(entity))
@@ -194,7 +194,7 @@ namespace DaJet.Http.Controllers
                 string.IsNullOrWhiteSpace(entity.ConnectionString) ||
                 !Enum.TryParse(entity.DatabaseProvider, out DatabaseProvider provider))
             {
-                return BadRequest();
+                return BadRequest("Неверно указаны параметры!");
             }
 
             InfoBaseModel record = _mapper.Select(entity.Name)!;
@@ -223,7 +223,7 @@ namespace DaJet.Http.Controllers
         {
             if (string.IsNullOrWhiteSpace(entity.Name))
             {
-                return BadRequest();
+                return BadRequest("Неверно указаны параметры!");
             }
 
             InfoBaseModel record = _mapper.Select(entity.Name)!;

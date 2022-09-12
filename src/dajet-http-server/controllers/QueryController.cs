@@ -1,4 +1,5 @@
-﻿using DaJet.Http.DataMappers;
+﻿using DaJet.Data;
+using DaJet.Http.DataMappers;
 using DaJet.Http.Model;
 using DaJet.Metadata;
 using DaJet.Scripting;
@@ -65,21 +66,21 @@ namespace DaJet.Http.Controllers
                 Content = content
             };
         }
-        [HttpPost("")] public ActionResult Insert([FromBody] InfoBaseModel model)
+        [HttpPost("execute")] public ActionResult Execute([FromBody] QueryModel query)
         {
-            if (string.IsNullOrWhiteSpace(model.Name) || string.IsNullOrWhiteSpace(model.Description))
+            if (string.IsNullOrWhiteSpace(query.DbName) || string.IsNullOrWhiteSpace(query.Script))
             {
                 return BadRequest();
             }
 
-            InfoBaseModel? record = _mapper.Select(model.Name);
+            InfoBaseModel? record = _mapper.Select(query.DbName);
 
             if (record == null)
             {
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataCache(model.Name, out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetMetadataCache(query.DbName, out MetadataCache cache, out string error))
             {
                 return BadRequest(error);
             }
@@ -90,8 +91,16 @@ namespace DaJet.Http.Controllers
 
             try
             {
-                foreach (var entity in executor.ExecuteReader(model.Description))
+                foreach (var entity in executor.ExecuteReader(query.Script))
                 {
+                    foreach (var item in entity)
+                    {
+                        if (item.Value is EntityRef value)
+                        {
+                            entity[item.Key] = value.ToString();
+                        }
+                    }
+
                     result.Add(entity);
                 }
             }
@@ -106,6 +115,48 @@ namespace DaJet.Http.Controllers
                 Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
             };
             
+            string json = JsonSerializer.Serialize(result, options);
+
+            return Content(json);
+        }
+        [HttpPost("prepare")] public ActionResult Generate([FromBody] QueryModel query)
+        {
+            if (string.IsNullOrWhiteSpace(query.DbName) || string.IsNullOrWhiteSpace(query.Script))
+            {
+                return BadRequest();
+            }
+
+            InfoBaseModel? record = _mapper.Select(query.DbName);
+
+            if (record == null)
+            {
+                return NotFound();
+            }
+
+            if (!_metadataService.TryGetMetadataCache(query.DbName, out MetadataCache cache, out string error))
+            {
+                return BadRequest(error);
+            }
+
+            ScriptExecutor executor = new(cache);
+
+            GeneratorResult result;
+
+            try
+            {
+                result = executor.PrepareScript(query.Script);
+            }
+            catch (Exception exception)
+            {
+                return BadRequest(ExceptionHelper.GetErrorMessage(exception));
+            }
+
+            JsonSerializerOptions options = new()
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+            };
+
             string json = JsonSerializer.Serialize(result, options);
 
             return Content(json);

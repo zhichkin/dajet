@@ -13,7 +13,7 @@ namespace DaJet.Scripting
             _cache = cache;
         }
         public Dictionary<string, object> Parameters { get; } = new();
-        private GeneratorResult ConfigureScript(in string script)
+        public GeneratorResult PrepareScript(in string script)
         {
             string error;
             ScriptModel model;
@@ -133,7 +133,7 @@ namespace DaJet.Scripting
         }
         public IEnumerable<Dictionary<string, object>> ExecuteReader(string script)
         {
-            GeneratorResult result = ConfigureScript(in script);
+            GeneratorResult result = PrepareScript(in script);
 
             if (!result.Success)
             {
@@ -149,7 +149,7 @@ namespace DaJet.Scripting
         }
         public IEnumerable<TEntity> ExecuteReader<TEntity>(string script) where TEntity : class, new()
         {
-            GeneratorResult result = ConfigureScript(in script);
+            GeneratorResult result = PrepareScript(in script);
 
             if (!result.Success)
             {
