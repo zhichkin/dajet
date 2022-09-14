@@ -16,6 +16,7 @@ namespace DaJet.Data.Mapping
             TypeCode = code;
         }
         #endregion
+        public int YearOffset { get; set; } = 0; // FIXME !?
         public Type Type { get; set; } = null!;
         public string Name { get; set; } = string.Empty;
         public int TypeCode { get; set; } = 0;
@@ -172,7 +173,7 @@ namespace DaJet.Data.Mapping
                 return null;
             }
 
-            return reader.GetDateTime(ordinal);
+            return reader.GetDateTime(ordinal).AddYears(-YearOffset);
         }
         private object? GetString(in IDataReader reader)
         {

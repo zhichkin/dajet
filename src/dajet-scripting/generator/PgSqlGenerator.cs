@@ -8,9 +8,12 @@ namespace DaJet.Scripting
 {
     public sealed class PgSqlGenerator : ISqlGenerator
     {
+        public int YearOffset { get; set; } = 0;
         public bool TryGenerate(in ScriptModel model, out GeneratorResult result)
         {
-            result = new();
+            result = new GeneratorResult();
+
+            result.Mapper.YearOffset = YearOffset;
 
             try
             {
@@ -683,7 +686,14 @@ namespace DaJet.Scripting
                 name = name.Replace('&', '@');
             }
 
-            script.Append(name);
+            if (identifier.Tag is Type type && type == typeof(string))
+            {
+                script.Append($"CAST({name} AS mvarchar)");
+            }
+            else
+            {
+                script.Append(name);
+            }
         }
         private void VisitScalarExpression(ScalarExpression scalar, StringBuilder script)
         {

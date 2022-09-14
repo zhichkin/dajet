@@ -6,9 +6,12 @@ namespace DaJet.Data.Mapping
     public sealed class EntityMap
     {
         public EntityMap() { }
+        public int YearOffset { get; set; } = 0;
         public List<PropertyMap> Properties { get; } = new();
         public PropertyMap MapProperty(PropertyMap property)
         {
+            property.YearOffset = YearOffset;
+
             Properties.Add(property);
             
             return property;

@@ -17,6 +17,30 @@
 
             return new EntityRef(typeCode, identity);
         }
+        public static bool TryParse(string value, out EntityRef entity)
+        {
+            entity = EntityRef.Empty;
+
+            string[] parts = value.TrimStart('{').TrimEnd('}').Split(':', StringSplitOptions.RemoveEmptyEntries);
+
+            if (parts.Length < 2)
+            {
+                return false;
+            }
+
+            try
+            {
+                int typeCode = int.Parse(parts[0]);
+                Guid identity = new Guid(parts[1]);
+                entity = new EntityRef(typeCode, identity);
+            }
+            catch
+            {
+                return false;
+            }
+
+            return true;
+        }
         public EntityRef(int typeCode, Guid identity)
         {
             TypeCode = typeCode;

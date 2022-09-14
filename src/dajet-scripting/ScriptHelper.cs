@@ -218,7 +218,7 @@ namespace DaJet.Scripting
 
         internal static bool IsFunction(string identifier, out TokenType token)
         {
-            if (_function_ru.TryGetValue(identifier.ToUpperInvariant(), out token))
+            if (_function_ru.TryGetValue(identifier, out token))
             {
                 return true;
             }

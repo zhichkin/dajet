@@ -389,7 +389,7 @@ namespace DaJet.Scripting
             {
                 if (node is DeclareStatement declare)
                 {
-                    if (declare.Name == identifier.Value)
+                    if (declare.Name.Substring(1) == identifier.Value.Substring(1)) // remove leading @ or &
                     {
                         if (ScriptHelper.IsDataType(declare.Type, out Type type))
                         {

@@ -8,9 +8,12 @@ namespace DaJet.Scripting
 {
     public sealed class MsSqlGenerator : ISqlGenerator
     {
+        public int YearOffset { get; set; } = 0;
         public bool TryGenerate(in ScriptModel model, out GeneratorResult result)
         {
-            result = new();
+            result = new GeneratorResult();
+
+            result.Mapper.YearOffset = YearOffset;
 
             try
             {
