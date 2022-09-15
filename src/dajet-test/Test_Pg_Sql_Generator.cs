@@ -512,6 +512,56 @@ namespace DaJet.Scripting.Test
 
             ShowEntityMap(result.Mapper);
         }
+        [TestMethod] public void Generate_Case_When_Then_Else()
+        {
+            filePath = "C:\\temp\\scripting-test\\case-when-then-else\\01-script.txt";
+
+            CreateScriptModel();
+
+            if (_model == null)
+            {
+                return;
+            }
+
+            ScopeBuilder builder = new();
+
+            if (!builder.TryBuild(in _model, out ScriptScope scope, out string error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            MetadataBinder binder = new();
+
+            if (!binder.TryBind(in scope, in _cache, out error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            ScriptTransformer transformer = new();
+
+            if (!transformer.TryTransform(_model, out error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            MsSqlGenerator generator = new();
+
+            if (!generator.TryGenerate(_model, out GeneratorResult result))
+            {
+                Console.WriteLine(result.Error);
+                return;
+            }
+
+            Console.WriteLine();
+            Console.WriteLine(filePath);
+            Console.WriteLine();
+            Console.WriteLine(result.Script);
+
+            ShowEntityMap(result.Mapper);
+        }
 
         [TestMethod] public void Execute_Destructive_Read()
         {
@@ -613,6 +663,38 @@ namespace DaJet.Scripting.Test
             string script;
 
             foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\over-window"))
+            {
+                Console.WriteLine();
+                Console.WriteLine(filePath);
+                Console.WriteLine();
+
+                using (StreamReader reader = new(filePath, Encoding.UTF8))
+                {
+                    script = reader.ReadToEnd();
+                }
+
+                ScriptExecutor executor = new(_cache);
+                //executor.Parameters.Add("Amount", 7);
+
+                try
+                {
+                    foreach (var entity in executor.ExecuteReader(script))
+                    {
+                        Console.WriteLine("*****");
+                        ShowEntity(entity);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Console.WriteLine(ExceptionHelper.GetErrorMessage(exception));
+                }
+            }
+        }
+        [TestMethod] public void Execute_Case_When_Then_Else()
+        {
+            string script;
+
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\case-when-then-else"))
             {
                 Console.WriteLine();
                 Console.WriteLine(filePath);

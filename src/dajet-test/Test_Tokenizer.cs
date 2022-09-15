@@ -54,6 +54,13 @@ namespace DaJet.Scripting.Test
                 TokenizeFile(in filePath);
             }
         }
+        [TestMethod] public void Tokenize_Case_When_Then_Else()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\case-when-then-else"))
+            {
+                TokenizeFile(in filePath);
+            }
+        }
         private void TokenizeFile(in string filePath)
         {
             ScriptTokenizer scanner = new();

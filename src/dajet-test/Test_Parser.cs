@@ -57,6 +57,13 @@ namespace DaJet.Scripting.Test
                 ParseScriptFile(in filePath);
             }
         }
+        [TestMethod] public void Parse_Case_When_Then_Else()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\case-when-then-else"))
+            {
+                ParseScriptFile(in filePath);
+            }
+        }
         private void ParseScriptFile(in string filePath)
         {
             Console.WriteLine("***");
@@ -221,6 +228,16 @@ namespace DaJet.Scripting.Test
         [TestMethod] public void Walker_Window_Functions()
         {
             foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\over-window"))
+            {
+                Console.WriteLine("***");
+                Console.WriteLine(filePath);
+
+                WalkScriptFile(in filePath);
+            }
+        }
+        [TestMethod] public void Walker_Case_When_Then_Else()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test\\case-when-then-else"))
             {
                 Console.WriteLine("***");
                 Console.WriteLine(filePath);

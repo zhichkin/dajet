@@ -443,12 +443,13 @@ namespace DaJet.Scripting
         }
         private SyntaxNode primary()
         {
-            while (Match(TokenType.Comment))
-            {
-                // ignore
-            }
+            Skip(TokenType.Comment);
 
-            if (Match(TokenType.Identifier))
+            if (Match(TokenType.CASE))
+            {
+                return case_expression();
+            }
+            else if (Match(TokenType.Identifier))
             {
                 return identifier(TokenType.Column);
             }
@@ -483,6 +484,45 @@ namespace DaJet.Scripting
             Ignore();
 
             throw new FormatException($"Unknown primary expression: {Previous()}");
+        }
+        private SyntaxNode case_expression()
+        {
+            CaseExpression node = new();
+
+            while (Match(TokenType.WHEN))
+            {
+                node.CASE.Add(when_expression());
+            }
+
+            if (Match(TokenType.ELSE))
+            {
+                node.ELSE = expression();
+            }
+
+            if (!Match(TokenType.END))
+            {
+                throw new FormatException($"END keyword expected.");
+            }
+
+            node.Alias = alias();
+
+            return node;
+        }
+        private SyntaxNode when_expression()
+        {
+            WhenExpression node = new()
+            {
+                WHEN = predicate()
+            };
+
+            if (!Match(TokenType.THEN))
+            {
+                throw new FormatException($"THEN keyword expected.");
+            }
+
+            node.THEN = expression();
+
+            return node;
         }
         #endregion
 
@@ -974,24 +1014,23 @@ namespace DaJet.Scripting
 
         private void select_clause(in SelectStatement select)
         {
+            Skip(TokenType.Comment);
+
             top(in select);
 
-            while (!EndOfStream() && Match(
-                TokenType.Comma, TokenType.Comment,
-                TokenType.Star, TokenType.Identifier))
+            Skip(TokenType.Comment);
+
+            select.SELECT.Add(expression());
+
+            Skip(TokenType.Comment);
+
+            while (Match(TokenType.Comma))
             {
-                // TODO: select.SELECT.Add(expression());
+                Skip(TokenType.Comment);
 
-                ScriptToken token = Previous();
+                select.SELECT.Add(expression());
 
-                if (token.Type == TokenType.Star)
-                {
-                    select.SELECT.Add(star());
-                }
-                else if (token.Type == TokenType.Identifier)
-                {
-                    select.SELECT.Add(identifier(TokenType.Column));
-                }
+                Skip(TokenType.Comment);
             }
         }
         private void top(in SelectStatement select)

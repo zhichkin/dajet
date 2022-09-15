@@ -55,7 +55,12 @@ namespace DaJet.Scripting
             { "UNBOUNDED", TokenType.UNBOUNDED },
             { "PRECEDING", TokenType.PRECEDING },
             { "CURRENT", TokenType.CURRENT },
-            { "FOLLOWING", TokenType.FOLLOWING }
+            { "FOLLOWING", TokenType.FOLLOWING },
+            { "CASE", TokenType.CASE },
+            { "WHEN", TokenType.WHEN },
+            { "THEN", TokenType.THEN },
+            { "ELSE", TokenType.ELSE },
+            { "END", TokenType.END }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {
@@ -84,7 +89,12 @@ namespace DaJet.Scripting
             { "ОБНОВИТЬ", TokenType.UPDATE },
             { "ВЫВЕСТИ", TokenType.OUTPUT },
             { "СГРУППИРОВАТЬ", TokenType.GROUP },
-            { "ИМЕЮЩИЕ", TokenType.HAVING }
+            { "ИМЕЮЩИЕ", TokenType.HAVING },
+            { "ВЫБОР", TokenType.CASE },
+            { "КОГДА", TokenType.WHEN },
+            { "ТОГДА", TokenType.THEN },
+            { "ИНАЧЕ", TokenType.ELSE },
+            { "КОНЕЦ", TokenType.END }
         };
         private static Dictionary<string, Type> _datatype_en = new()
         {

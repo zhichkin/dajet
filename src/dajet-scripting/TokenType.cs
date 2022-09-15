@@ -12,6 +12,7 @@
         ROW, ROWS, ONLY, OFFSET, FETCH, FIRST, NEXT,
         SUM, MAX, MIN, AVG, COUNT, DISTINCT,
         OVER, PARTITION, RANGE, BETWEEN, UNBOUNDED, PRECEDING, CURRENT, FOLLOWING,
+        CASE, WHEN, THEN, ELSE, END,
 
         Identifier, Table, Column, Variable, TemporaryTable, Star,
 

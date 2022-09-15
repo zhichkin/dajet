@@ -94,6 +94,10 @@ namespace DaJet.Scripting
                 {
                     VisitProjectionFunction(in columns, in function, in mapper);
                 }
+                else if (node is CaseExpression expression)
+                {
+                    VisitProjectionCase(in columns, in expression, in mapper);
+                }
             }
 
             script.AppendJoin("," + Environment.NewLine, columns).AppendLine();
@@ -191,6 +195,30 @@ namespace DaJet.Scripting
             if (!string.IsNullOrWhiteSpace(function.Alias))
             {
                 script.Append(" AS ").Append(function.Alias);
+            }
+
+            columns.Add(script.ToString());
+        }
+        private void VisitProjectionCase(in List<string> columns, in CaseExpression expression, in EntityMap mapper)
+        {
+            mapper
+                .MapProperty(new PropertyMap()
+                {
+                    Name = expression.Alias,
+                    Type = typeof(decimal) // TODO: infer type from parameters
+                })
+                .ToColumn(new ColumnMap()
+                {
+                    Name = expression.Alias
+                });
+
+            StringBuilder script = new("\t");
+
+            VisitCaseExpression(expression, script);
+
+            if (!string.IsNullOrWhiteSpace(expression.Alias))
+            {
+                script.Append(" AS ").Append(expression.Alias);
             }
 
             columns.Add(script.ToString());
@@ -442,6 +470,10 @@ namespace DaJet.Scripting
                 VisitExpression(group.Expression, script); // VisitBooleanExpression(group.Expression, script);
                 script.Append(")");
             }
+            else if (node is CaseExpression _case)
+            {
+                VisitExpression(_case, script);
+            }
         }
         private void VisitBooleanUnaryOperator(BooleanUnaryOperator node, StringBuilder script)
         {
@@ -491,6 +523,10 @@ namespace DaJet.Scripting
             else if (expression is FunctionExpression function)
             {
                 VisitFunctionExpression(function, script);
+            }
+            else if (expression is CaseExpression case_when)
+            {
+                VisitCaseExpression(case_when, script);
             }
             else
             {
@@ -625,6 +661,26 @@ namespace DaJet.Scripting
             }
         }
 
+        private void VisitCaseExpression(CaseExpression expression, StringBuilder script)
+        {
+            script.AppendLine("CASE");
+
+            foreach (WhenExpression when in expression.CASE)
+            {
+                script.Append("WHEN ");
+                VisitExpression(when.WHEN, script);
+                script.Append(" THEN ");
+                VisitExpression(when.THEN, script);
+            }
+
+            if (expression.ELSE != null)
+            {
+                script.Append(" ELSE ");
+                VisitExpression(expression.ELSE, script);
+            }
+
+            script.Append(" END");
+        }
         private void VisitIdentifier(Identifier identifier, StringBuilder script)
         {
             if (identifier.Token == TokenType.Column)

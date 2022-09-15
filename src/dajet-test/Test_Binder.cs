@@ -390,5 +390,34 @@ namespace DaJet.Scripting.Test
 
             ShowSyntaxNode(_syntaxTree, 0);
         }
+        [TestMethod] public void Bind_Metadata_Case_When_Then_Else()
+        {
+            filePath = "C:\\temp\\scripting-test\\case-when-then-else\\00-script.txt";
+
+            CreateSyntaxTree();
+
+            if (_syntaxTree == null)
+            {
+                return;
+            }
+
+            ScopeBuilder builder = new();
+
+            if (!builder.TryBuild(in _syntaxTree, out ScriptScope scope, out string error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            MetadataBinder binder = new();
+
+            if (!binder.TryBind(in scope, in _cache, out error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            ShowSyntaxNode(_syntaxTree, 0);
+        }
     }
 }
