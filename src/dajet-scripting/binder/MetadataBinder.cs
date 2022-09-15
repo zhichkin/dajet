@@ -322,9 +322,19 @@ namespace DaJet.Scripting
                         //identifier.Alias = column.Alias; // Важно пробросить наверх синоним колонки
 
                         identifier.Tag = column; // bubble up identifier, entity property is in the Tag
-                        
+
                         return; // successful binding
                     }
+                }
+                else if (item is FunctionExpression function)
+                {
+                    identifier.Tag = function;
+                    return; // successful binding
+                }
+                else if (item is CaseExpression _case)
+                {
+                    identifier.Tag = _case;
+                    return; // successful binding
                 }
             }
         }

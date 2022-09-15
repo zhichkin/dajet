@@ -154,6 +154,52 @@ namespace DaJet.Scripting
                     columns.Add(name);
                 }
             }
+            else if (identifier.Tag is CaseExpression)
+            {
+                if (mapper != null)
+                {
+                    mapper.MapProperty(new PropertyMap()
+                    {
+                        Name = columnName,
+                        Type = typeof(decimal) // TODO: infer type from expression
+                    })
+                        .ToColumn(new ColumnMap()
+                        {
+                            Name = columnName
+                        });
+                }
+                if (mapper != null)
+                {
+                    columns.Add("\t" + identifier.Value + " AS " + columnName);
+                }
+                else
+                {
+                    columns.Add("\t" + identifier.Value);
+                }
+            }
+            else if (identifier.Tag is FunctionExpression)
+            {
+                if (mapper != null)
+                {
+                    mapper.MapProperty(new PropertyMap()
+                    {
+                        Name = columnName,
+                        Type = typeof(decimal) // TODO: infer type from function parameters
+                    })
+                        .ToColumn(new ColumnMap()
+                        {
+                            Name = columnName
+                        });
+                }
+                if (mapper != null)
+                {
+                    columns.Add("\t" + identifier.Value + " AS " + columnName);
+                }
+                else
+                {
+                    columns.Add("\t" + identifier.Value);
+                }
+            }
             else if (identifier.Tag is Identifier column) /// bubbled up from subquery <see cref="MetadataBinder.BindColumn"/>
             {
                 string name = "\t" + (string.IsNullOrWhiteSpace(tableAlias) ? string.Empty : tableAlias + ".");
@@ -177,16 +223,19 @@ namespace DaJet.Scripting
         }
         private void VisitProjectionFunction(in List<string> columns, in FunctionExpression function, in EntityMap mapper)
         {
-            mapper
-                .MapProperty(new PropertyMap()
-                {
-                    Name = function.Alias,
-                    Type = typeof(decimal) // TODO: infer type from parameters
-                })
-                .ToColumn(new ColumnMap()
-                {
-                    Name = function.Alias
-                });
+            if (mapper != null)
+            {
+                mapper
+                    .MapProperty(new PropertyMap()
+                    {
+                        Name = function.Alias,
+                        Type = typeof(decimal) // TODO: infer type from parameters
+                    })
+                    .ToColumn(new ColumnMap()
+                    {
+                        Name = function.Alias
+                    });
+            }
 
             StringBuilder script = new("\t");
 
@@ -201,16 +250,19 @@ namespace DaJet.Scripting
         }
         private void VisitProjectionCase(in List<string> columns, in CaseExpression expression, in EntityMap mapper)
         {
-            mapper
-                .MapProperty(new PropertyMap()
-                {
-                    Name = expression.Alias,
-                    Type = typeof(decimal) // TODO: infer type from parameters
-                })
-                .ToColumn(new ColumnMap()
-                {
-                    Name = expression.Alias
-                });
+            if (mapper != null)
+            {
+                mapper
+                    .MapProperty(new PropertyMap()
+                    {
+                        Name = expression.Alias,
+                        Type = typeof(decimal) // TODO: infer type from parameters
+                    })
+                    .ToColumn(new ColumnMap()
+                    {
+                        Name = expression.Alias
+                    });
+            }
 
             StringBuilder script = new("\t");
 
@@ -713,6 +765,14 @@ namespace DaJet.Scripting
                     // this should be metadata binding error !
                     name = identifier.Value;
                 }
+            }
+            else if (identifier.Tag is CaseExpression)
+            {
+                name = identifier.Value;
+            }
+            else if (identifier.Tag is FunctionExpression)
+            {
+                name = identifier.Value;
             }
             else if (identifier.Tag is Identifier column) /// bubbled up from subquery <see cref="MetadataBinder.BindColumn"/>
             {

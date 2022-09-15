@@ -314,7 +314,7 @@ namespace DaJet.Scripting.Test
 
         [TestMethod] public void Generate_Script_Cte()
         {
-            filePath = "C:\\temp\\scripting-test\\cte\\04-script.txt";
+            filePath = "C:\\temp\\scripting-test\\cte\\05-нарастающий итог.txt";
 
             CreateScriptModel();
 
