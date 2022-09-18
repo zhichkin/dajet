@@ -816,11 +816,16 @@ namespace DaJet.Scripting
 
             script.Append("DELETE ");
 
-            VisitTableSource(delete.FROM.Expression, script);
+            VisitTableSource(delete.TARGET, script);
 
             if (delete.OUTPUT != null) // optional
             {
                 VisitOutputClause(delete.OUTPUT, script, mapper);
+            }
+
+            if (delete.FROM != null) // optional
+            {
+                VisitFromClause(delete.FROM, script);
             }
 
             if (delete.WHERE != null) // optional

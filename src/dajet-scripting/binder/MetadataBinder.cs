@@ -348,9 +348,9 @@ namespace DaJet.Scripting
 
                 if (ancestor.Owner is DeleteStatement delete)
                 {
-                    if (delete.FROM.Expression is TableSource expression)
+                    if (delete.TARGET != null)
                     {
-                        if (expression.Expression is Identifier table)
+                        if (delete.TARGET.Expression is Identifier table)
                         {
                             if (table.Tag is CommonTableExpression cte)
                             {

@@ -1,0 +1,16 @@
+WITH queue AS
+(SELECT TOP (@MessageCount)
+  МоментВремени, Идентификатор, ДатаВремя,
+  Отправитель,   Получатели,    Заголовки,
+  ТипОперации,   ТипСообщения,  ТелоСообщения
+FROM
+  {TABLE_NAME} WITH (ROWLOCK, READPAST)
+ORDER BY
+  МоментВремени ASC,
+  Идентификатор ASC
+)
+DELETE queue OUTPUT
+  deleted.МоментВремени, deleted.Идентификатор, deleted.ДатаВремя,
+  deleted.Отправитель,   deleted.Получатели,    deleted.Заголовки,
+  deleted.ТипОперации,   deleted.ТипСообщения,  deleted.ТелоСообщения
+;

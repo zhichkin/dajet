@@ -1,0 +1,33 @@
+DECLARE @Количество number = 1000;
+DECLARE @УзелОбмена entity = {36:c225e9c8-1e6f-11ed-9cd5-408d5c93cc8e};
+
+WITH changes AS (
+SELECT TOP (@Количество)
+  Изменения.Ссылка AS Ссылка
+FROM
+  Справочник.Номенклатура.Изменения AS Изменения WITH (ROWLOCK, READPAST)
+WHERE
+  Изменения.УзелОбмена = @УзелОбмена
+ORDER BY
+  Изменения.Ссылка     ASC,
+  Изменения.УзелОбмена ASC
+),
+
+data AS (
+SELECT
+  Данные.Ссылка       AS Ссылка,
+  Данные.Код          AS Код,
+  Данные.Наименование AS Наименование
+FROM
+  Справочник.Номенклатура AS Данные
+  INNER JOIN changes ON changes.Ссылка = Данные.Ссылка
+)
+
+DELETE changes
+OUTPUT
+  data.Ссылка       AS Ссылка,
+  data.Код          AS Код,
+  data.Наименование AS Наименование
+
+FROM changes INNER JOIN data ON changes.Ссылка = data.Ссылка
+;

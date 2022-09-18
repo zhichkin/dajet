@@ -1133,16 +1133,18 @@ namespace DaJet.Scripting
                 throw new FormatException("DELETE keyword expected.");
             }
 
-            if (Match(TokenType.FROM))
-            {
-                // do nothing
-            }
+            if (Match(TokenType.FROM)) { /* do nothing - optional */ }
 
-            delete.FROM = new FromClause() { Expression = from_clause() };
+            delete.TARGET = table_source();
 
             if (Match(TokenType.OUTPUT))
             {
                 delete.OUTPUT = output_clause();
+            }
+
+            if (Match(TokenType.FROM))
+            {
+                delete.FROM = new FromClause() { Expression = from_clause() };
             }
 
             if (Match(TokenType.WHERE))
