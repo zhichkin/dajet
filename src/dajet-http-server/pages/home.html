@@ -1,7 +1,10 @@
 ﻿<html>
 <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DaJet © HTTP server 1.0.0</title>
+    <link rel="stylesheet" type="text/css" href="ui/home/css">
+    <script type="text/javascript" src="ui/home/js"></script>
     <style>
         .modal_bg {
             position: fixed;
@@ -14,11 +17,13 @@
             pointer-events: none;
             transition: 0.5s all;
         }
+
             .modal_bg.active {
                 opacity: 1;
                 pointer-events: all;
                 transition: 0.5s all;
             }
+
         .modal {
             position: absolute;
             top: 50%;
@@ -28,10 +33,12 @@
             padding: 10px;
             transition: 0.5s all;
         }
+
             .modal.active {
                 transform: translate(-50%, -50%) scale(1);
                 transition: 0.5s all;
             }
+
         .close-modal {
             position: absolute;
             top: 5px;
@@ -108,6 +115,10 @@
             }
         }
         async function deleteInfoBase(name) {
+
+            if (!confirm("Удалить '" + name + "' из списка ?")) {
+                return;
+            }
 
             let div = document.getElementById("errorText");
             div.replaceChildren();
@@ -217,17 +228,51 @@
 
 <body>
 
-    <table>
-        <tr>
-            <td>
-                <input type="button" value="Обновить" onclick="getInfoBaseList()">
-                <input type="button" value="Добавить" onclick="openModal()">
-                <span id="errorText" style="color:red;padding:5px"></span>
-            </td>
-        </tr>
-    </table>
-
-    <div id="content"></div>
+    <div class="container">
+        <div class="header">
+            <input type="button" value="Тест" onclick="test()">
+        </div>
+        <div class="lpanel">
+            <ul id="myUL">
+                <li>
+                    <span class="caret">Beverages</span>
+                    <ul class="nested">
+                        <li>Water</li>
+                        <li>Coffee</li>
+                        <li>
+                            <span class="caret">Tea</span>
+                            <ul class="nested">
+                                <li>Black Tea</li>
+                                <li>White Tea</li>
+                                <li>
+                                    <span class="caret">Green Tea</span>
+                                    <ul class="nested">
+                                        <li>Sencha</li>
+                                        <li>Gyokuro</li>
+                                        <li>Matcha</li>
+                                        <li>Pi Lo Chun</li>
+                                        <li>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+        <div class="rpanel">
+            <table>
+                <tr>
+                    <td><input type="button" value="Обновить" onclick="getInfoBaseList()">
+                        <input type="button" value="Добавить" onclick="openModal()">
+                        <span id="errorText" style="color:red;padding:5px"></span>
+                    </td>
+                </tr>
+            </table>
+            <div id="content"></div>
+        </div>
+        <div class="footer"><span>footer</span></div>
+    </div>
 
     <div class="modal_bg">
         <div class="modal">
