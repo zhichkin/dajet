@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-test", "dajet-test\da
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-http-server", "dajet-http-server\dajet-http-server.csproj", "{29BF6B99-FC1A-4F08-9D9E-14C8C6CDC7CA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-pipeline", "dajet-pipeline\dajet-pipeline.csproj", "{D8B9FB8A-9FE6-44A2-B541-F90E9F43606E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{29BF6B99-FC1A-4F08-9D9E-14C8C6CDC7CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{29BF6B99-FC1A-4F08-9D9E-14C8C6CDC7CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{29BF6B99-FC1A-4F08-9D9E-14C8C6CDC7CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D8B9FB8A-9FE6-44A2-B541-F90E9F43606E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D8B9FB8A-9FE6-44A2-B541-F90E9F43606E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D8B9FB8A-9FE6-44A2-B541-F90E9F43606E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D8B9FB8A-9FE6-44A2-B541-F90E9F43606E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
