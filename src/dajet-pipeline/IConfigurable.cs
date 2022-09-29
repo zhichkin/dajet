@@ -2,6 +2,6 @@
 {
     public interface IConfigurable
     {
-        void Configure(Dictionary<string, string> options);
+        void Configure(in Dictionary<string, string> options);
     }
 }

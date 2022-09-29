@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\dajet-metadata\dajet-metadata.csproj" />
+    <ProjectReference Include="..\dajet-pipeline\dajet-pipeline.csproj" />
     <ProjectReference Include="..\dajet-scripting\dajet-scripting.csproj" />
   </ItemGroup>
 
