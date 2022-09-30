@@ -23,6 +23,10 @@
     <ProjectReference Include="..\dajet-scripting\dajet-scripting.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="pages\img\" />
+  </ItemGroup>
+
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <Exec Command="xcopy &quot;$(ProjectDir)pages\*&quot; &quot;$(TargetDir)pages&quot; /Y" />
   </Target>

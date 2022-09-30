@@ -1,0 +1,23 @@
+CREATE PIPELINE "(ms >>> pg)"
+SCHEDULE EACH 60 SECONDS
+OPTIONS(
+  IsActive = false,
+  ErrorDelay = 60s
+)
+
+SOURCE ms-database TYPE SqlServer
+CONSUMER DaJet.Pipeline.SqlServer.Consumer
+QUERY(
+  SELECT TOP (@BatchSize)
+    _Fld261 AS МоментВремени
+  FROM
+    FROM _InfoRg260
+)
+OPTIONS(BatchSize = 10)
+
+TARGET pg-database TYPE PostgreSql
+PRODUCER DaJet.Pipeline.PostgreSql.Producer
+QUERY(
+  INSERT INTO _InfoRg91(_Fld92)
+  SELECT CAST(@МоментВремени AS mvarchar)
+)

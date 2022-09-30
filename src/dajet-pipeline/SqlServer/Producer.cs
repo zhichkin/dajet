@@ -6,6 +6,9 @@ namespace DaJet.Pipeline.SqlServer
 {
     public sealed class Producer : TargetBlock<DbDataReader>, IConfigurable
     {
+        private SqlConnection? _connection;
+        private SqlCommand? _command;
+
         private Dictionary<string, string>? _options;
         public Producer() { }
         public void Configure(in Dictionary<string, string> options)
@@ -13,6 +16,38 @@ namespace DaJet.Pipeline.SqlServer
             _options = options;
         }
         public override void Process(in DbDataReader input)
+        {
+            if (_options?["TurboMode"] == "true")
+            {
+                ProcessTurbo(in input);
+            }
+            else
+            {
+                ProcessOrdinary(in input);
+            }
+        }
+        private void ProcessTurbo(in DbDataReader input)
+        {
+            if (_connection == null)
+            {
+                _connection = new SqlConnection(_options?["ConnectionString"]);
+            }
+
+            if (_connection.State != ConnectionState.Open)
+            {
+                _connection.Open();
+            }
+
+            if (_command == null)
+            {
+                _command = _connection.CreateCommand();
+            }
+
+            ConfigureCommand(_command, in input);
+
+            _ = _command.ExecuteNonQuery();
+        }
+        private void ProcessOrdinary(in DbDataReader input)
         {
             using (SqlConnection connection = new(_options?["ConnectionString"]))
             {
@@ -47,7 +82,22 @@ namespace DaJet.Pipeline.SqlServer
         }
         protected override void _Synchronize()
         {
-            // do nothing
+            if (_options?["TurboMode"] != "true")
+            {
+                return;
+            }
+
+            if (_command != null)
+            {
+                _command.Dispose();
+                _command = null;
+            }
+
+            if (_connection != null)
+            {
+                _connection.Dispose();
+                _connection = null;
+            }
         }
     }
 }

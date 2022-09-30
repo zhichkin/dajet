@@ -101,5 +101,22 @@ namespace DaJet.Http.Controllers
                 Content = content
             };
         }
+        [HttpGet("ui/home/img/{fileName}")] public IActionResult LoadImage([FromRoute] string fileName)
+        {
+            string root = AppContext.BaseDirectory;
+            string filePath = Path.Combine(root, "pages", "img", fileName);
+
+            FileInfo info = new(filePath);
+
+            if (!info.Exists)
+            {
+                return NotFound();
+            }
+
+            return PhysicalFile(filePath, "image/png");
+
+            //byte[] bytes = System.IO.File.ReadAllBytes(filePath);
+            //return File(bytes, "image/png");
+        }
     }
 }

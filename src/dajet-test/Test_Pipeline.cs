@@ -80,7 +80,8 @@ namespace DaJet.Pipeline.Test
             Dictionary<string, string> producerOptions = new()
             {
                 { "ConnectionString", MS_CONNECTION_STRING },
-                { "TargetScript", GetTargetScript_SqlServer() }
+                { "TargetScript", GetTargetScript_SqlServer() },
+                { "TurboMode", "true"}
             };
 
             SqlServer.Consumer consumer = new();
