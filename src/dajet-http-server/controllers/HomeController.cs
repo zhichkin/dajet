@@ -39,10 +39,10 @@ namespace DaJet.Http.Controllers
                 Content = content
             };
         }
-        [HttpGet("ui/home/js")] public ContentResult LoadJavaScript()
+        [HttpGet("ui/js/{fileName}")] public ContentResult LoadJavaScript([FromRoute] string fileName)
         {
             string root = AppContext.BaseDirectory;
-            string filePath = Path.Combine(root, "pages", "home.js");
+            string filePath = Path.Combine(root, "pages", fileName);
 
             FileInfo info = new(filePath);
 
@@ -70,10 +70,10 @@ namespace DaJet.Http.Controllers
                 Content = content
             };
         }
-        [HttpGet("ui/home/css")] public ContentResult LoadStyleSheet()
+        [HttpGet("ui/css/{fileName}")] public ContentResult LoadStyleSheet([FromRoute] string fileName)
         {
             string root = AppContext.BaseDirectory;
-            string filePath = Path.Combine(root, "pages", "home.css");
+            string filePath = Path.Combine(root, "pages", fileName);
 
             FileInfo info = new(filePath);
 
@@ -101,7 +101,7 @@ namespace DaJet.Http.Controllers
                 Content = content
             };
         }
-        [HttpGet("ui/home/img/{fileName}")] public IActionResult LoadImage([FromRoute] string fileName)
+        [HttpGet("ui/img/{fileName}")] public IActionResult LoadImageFile([FromRoute] string fileName)
         {
             string root = AppContext.BaseDirectory;
             string filePath = Path.Combine(root, "pages", "img", fileName);

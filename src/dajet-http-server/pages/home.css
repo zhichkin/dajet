@@ -60,12 +60,12 @@
     border-width: 1px;
 }
 
-ul, #myUL {
+ul, #MainTreeView {
     list-style-type: none;
 }
 
  /*Remove margins and padding from the parent ul */
-#myUL {
+#MainTreeView {
     margin: 0;
     padding: 0;
 }
@@ -81,7 +81,7 @@ ul, #myUL {
         content: "\25B6";
         color: black;
         display: inline-block;
-        margin-right: 6px;
+        margin-right: 3px;
     }
 
 /* Rotate the caret/arrow icon when clicked on (using JavaScript) */
@@ -97,4 +97,10 @@ ul, #myUL {
 /* Show the nested list when the user clicks on the caret/arrow (with JavaScript) */
 .active {
     display: block;
+    margin: 0px;
+    padding: 0px 0px 0px 20px;
+}
+
+ul > li > span:hover {
+    background-color: lightgray;
 }

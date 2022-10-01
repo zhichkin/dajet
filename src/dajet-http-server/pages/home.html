@@ -2,9 +2,10 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DaJet © HTTP server 1.0.0</title>
-    <link rel="stylesheet" type="text/css" href="ui/home/css">
-    <script type="text/javascript" src="ui/home/js"></script>
+    <title>DaJet Studio © 2.0.0</title>
+    <link rel="stylesheet" type="text/css" href="ui/css/home.css">
+    <script type="text/javascript" src="ui/js/treeview.js"></script>
+    <script type="text/javascript" src="ui/js/home.js"></script>
     <style>
         .modal_bg {
             position: fixed;
@@ -233,33 +234,7 @@
             <input type="button" value="Тест" onclick="test()">
         </div>
         <div class="lpanel">
-            <ul id="myUL">
-                <li>
-                    <span class="caret">Beverages</span>
-                    <img src="/ui/home/img/database.png" height="16" width="16">
-                    <ul class="nested">
-                        <li>Water</li>
-                        <li>Coffee</li>
-                        <li>
-                            <span class="caret">Tea</span>
-                            <ul class="nested">
-                                <li>Black Tea</li>
-                                <li>White Tea</li>
-                                <li>
-                                    <span class="caret">Green Tea</span>
-                                    <ul class="nested">
-                                        <li>Sencha</li>
-                                        <li>Gyokuro</li>
-                                        <li>Matcha</li>
-                                        <li>Pi Lo Chun</li>
-                                        <li>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</li>
-                                    </ul>
-                                </li>
-                            </ul>
-                        </li>
-                    </ul>
-                </li>
-            </ul>
+            <ul id="MainTreeView"/>
         </div>
         <div class="rpanel">
             <table>
@@ -272,7 +247,7 @@
             </table>
             <div id="content"></div>
         </div>
-        <div class="footer"><span>footer</span></div>
+        <div class="footer"><span id="footer">footer</span></div>
     </div>
 
     <div class="modal_bg">
