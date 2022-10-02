@@ -118,5 +118,36 @@ namespace DaJet.Http.Controllers
             //byte[] bytes = System.IO.File.ReadAllBytes(filePath);
             //return File(bytes, "image/png");
         }
+        [HttpGet("ui/html/{fileName}")] public IActionResult LoadHtmlFile([FromRoute] string fileName)
+        {
+            string root = AppContext.BaseDirectory;
+            string filePath = Path.Combine(root, "pages", fileName);
+
+            FileInfo info = new(filePath);
+
+            if (!info.Exists)
+            {
+                return new ContentResult()
+                {
+                    ContentType = "text/html",
+                    StatusCode = (int)HttpStatusCode.NotFound,
+                    Content = "<html><body>JavaScript is not found!</body></html>"
+                };
+            }
+
+            string content = string.Empty;
+
+            using (StreamReader reader = new(filePath, Encoding.UTF8))
+            {
+                content = reader.ReadToEnd();
+            }
+
+            return new ContentResult()
+            {
+                ContentType = "text/html",
+                StatusCode = (int)HttpStatusCode.OK,
+                Content = content
+            };
+        }
     }
 }

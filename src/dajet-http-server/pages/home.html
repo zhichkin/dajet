@@ -4,117 +4,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DaJet Studio © 2.0.0</title>
     <link rel="stylesheet" type="text/css" href="ui/css/home.css">
+    <link rel="stylesheet" type="text/css" href="ui/css/popup.css">
+    <link rel="stylesheet" type="text/css" href="ui/css/contextmenu.css">
+    <script type="text/javascript" src="ui/js/popup.js"></script>
     <script type="text/javascript" src="ui/js/treeview.js"></script>
+    <script type="text/javascript" src="ui/js/contextmenu.js"></script>
     <script type="text/javascript" src="ui/js/home.js"></script>
-    <style>
-        .modal_bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100vh;
-            background: rgba(0,0,0,0.5);
-            opacity: 0;
-            pointer-events: none;
-            transition: 0.5s all;
-        }
-
-            .modal_bg.active {
-                opacity: 1;
-                pointer-events: all;
-                transition: 0.5s all;
-            }
-
-        .modal {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0);
-            background: #fff;
-            padding: 10px;
-            transition: 0.5s all;
-        }
-
-            .modal.active {
-                transform: translate(-50%, -50%) scale(1);
-                transition: 0.5s all;
-            }
-
-        .close-modal {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            cursor: pointer;
-            border: none;
-            background: none;
-        }
-    </style>
     <script>
-
-        function openModal() {
-
-            let infoBaseName = document.getElementById("infoBaseName");
-            let description = document.getElementById("infoBaseDescription");
-            let databaseProvider = document.getElementById("databaseProvider");
-            let connectionString = document.getElementById("connectionString");
-
-            infoBaseName.value = "";
-            description.value = "";
-            databaseProvider.value = "";
-            connectionString.value = "";
-
-            let modal = document.querySelector('.modal');
-            let modal_bg = document.querySelector('.modal_bg');
-
-            modal.classList.add('active');
-            modal_bg.classList.add('active');
-        }
-        function closeModal() {
-
-            let modal = document.querySelector('.modal');
-            let modal_bg = document.querySelector('.modal_bg');
-
-            modal.classList.remove('active');
-            modal_bg.classList.remove('active');
-        }
-
-        async function insertInfoBase() {
-
-            closeModal();
-
-            let div = document.getElementById("errorText");
-            div.replaceChildren();
-
-            let infoBaseName = document.getElementById("infoBaseName");
-            let description = document.getElementById("infoBaseDescription");
-            let databaseProvider = document.getElementById("databaseProvider");
-            let connectionString = document.getElementById("connectionString");
-
-            let response = await fetch('/md',
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        'Name': infoBaseName.value,
-                        'Description': description.value,
-                        'DatabaseProvider': databaseProvider.value,
-                        'ConnectionString': connectionString.value
-                    })
-                });
-
-            if (!response.ok) {
-
-                let message = await response.text();
-                let text = document.createTextNode(message);
-                div.replaceChildren(text);
-            }
-            else {
-
-                getInfoBaseList();
-            }
-        }
         async function deleteInfoBase(name) {
 
             if (!confirm("Удалить '" + name + "' из списка ?")) {
@@ -144,7 +40,6 @@
                 getInfoBaseList();
             }
         }
-
         async function getInfoBaseList() {
 
             let div = document.getElementById("errorText");
@@ -222,8 +117,6 @@
                 }
             }
         }
-
-        window.onload = getInfoBaseList;
     </script>
 </head>
 
@@ -231,59 +124,15 @@
 
     <div class="container">
         <div class="header">
-            <input type="button" value="Тест" onclick="test()">
+            <input type="button" value="Добавить" onclick="AddInfoBase()">
         </div>
         <div class="lpanel">
             <ul id="MainTreeView"/>
         </div>
         <div class="rpanel">
-            <table>
-                <tr>
-                    <td><input type="button" value="Обновить" onclick="getInfoBaseList()">
-                        <input type="button" value="Добавить" onclick="openModal()">
-                        <span id="errorText" style="color:red;padding:5px"></span>
-                    </td>
-                </tr>
-            </table>
             <div id="content"></div>
         </div>
         <div class="footer"><span id="footer">footer</span></div>
-    </div>
-
-    <div class="modal_bg">
-        <div class="modal">
-
-            <input type="button" value="✕" class="close-modal" onclick="closeModal()">
-
-            <p><b>Регистрация информационной базы 1С</b></p>
-
-            <table>
-                <tr>
-                    <td>Имя базы:</td>
-                    <td><input id="infoBaseName" type="text"></td>
-                </tr>
-                <tr>
-                    <td>Описание:</td>
-                    <td><input id="infoBaseDescription" type="text"></td>
-                </tr>
-                <tr>
-                    <td>Тип СУБД:</td>
-                    <td><input id="databaseProvider" type="text"></td>
-                </tr>
-                <tr>
-                    <td>Строка подключения:</td>
-                    <td><input id="connectionString" type="text"></td>
-                </tr>
-                <tr>
-                    <td colspan="2" style="text-align: center;">
-                        <input type="button" value="Сохранить" onclick="insertInfoBase()">
-                        <input type="button" value="Отменить" onclick="closeModal()">
-                    </td>
-                </tr>
-                <tr><td></td></tr>
-            </table>
-
-        </div>
     </div>
 
 </body>

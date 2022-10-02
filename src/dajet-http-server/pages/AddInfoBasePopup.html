@@ -1,0 +1,29 @@
+﻿<table>
+    <tr>
+        <td>Имя базы:</td>
+        <td><input type="text" data-bind="Name"></td>
+    </tr>
+    <tr>
+        <td>Описание:</td>
+        <td><input type="text" data-bind="Description"></td>
+    </tr>
+    <tr>
+        <td>Тип СУБД:</td>
+        <td>
+            <select data-bind="DatabaseProvider">
+                <option value="SqlServer">SqlServer</option>
+                <option value="PostgreSql">PostgreSql</option>
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td>Строка подключения:</td>
+        <td><input type="text" data-bind="ConnectionString"></td>
+    </tr>
+    <tr>
+        <td colspan="2" style="text-align: center;">
+            <input type="button" class="confirm-button" value="Сохранить">
+            <input type="button" class="reject-button" value="Отменить">
+        </td>
+    </tr>
+</table>

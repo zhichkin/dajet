@@ -1,12 +1,13 @@
 ﻿function TreeNode(ul) {
+    this.Url = "";
     this.View = ul;
     this.Model = null;
     this.Nodes = [];
     this.Count = 0;
     this.Title = "";
     this.Image = "";
+    this.ContextMenu = null;
     this.OnMouseClick = null;
-    this.OnContextMenu = null;
     this.Add = function addNode(node) {
 
         let li = document.createElement("li");
@@ -33,8 +34,8 @@
         });
         span.addEventListener("contextmenu", function (event) {
             event.preventDefault();
-            if (node.OnContextMenu != null) {
-                node.OnContextMenu(node.Model, event);
+            if (node.ContextMenu != null) {
+                node.ContextMenu.Show(node.Model, event);
             }
         });
         let title = document.createTextNode(node.Title);
