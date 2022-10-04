@@ -1,0 +1,8 @@
+Распределенные транзакции для разнородных баз данных в MS .NET
+https://habr.com/ru/post/491294/?ysclid=l8ue4uv8fe663371238
+
+Собственное контекстное меню с использованием JavaScript
+https://habr.com/ru/post/258167/?ysclid=l8rgcl33lz681540398
+
+Инфраструктура System.Transactions в мире .NET
+https://habr.com/ru/company/custis/blog/433136/?ysclid=l8ueoykfs0111864758
