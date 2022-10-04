@@ -6,6 +6,7 @@
     <link rel="stylesheet" type="text/css" href="ui/css/home.css">
     <link rel="stylesheet" type="text/css" href="ui/css/popup.css">
     <link rel="stylesheet" type="text/css" href="ui/css/contextmenu.css">
+    <script type="text/javascript" src="ui/js/ui-loader.js"></script>
     <script type="text/javascript" src="ui/js/popup.js"></script>
     <script type="text/javascript" src="ui/js/treeview.js"></script>
     <script type="text/javascript" src="ui/js/contextmenu.js"></script>
@@ -117,6 +118,20 @@
                 }
             }
         }
+
+        function test() {
+
+            //UiLoader.GetJavaScript("ui/js/test.js");
+            UiLoader.GetJavaScript("ui/js/test.js", () => {
+                SayHello({
+                    "Name": "test",
+                    "Description": "test",
+                    "DatabaseProvider": "PostgreSql",
+                    "ConnectionString": "test"
+                });
+            });
+        }
+
     </script>
 </head>
 
@@ -124,7 +139,10 @@
 
     <div class="container">
         <div class="header">
-            <input type="button" value="Добавить" onclick="AddInfoBase()">
+            <div style="display:inline-block;">
+                <input type="button" value="Тест" onclick="test()">
+                <input type="button" value="Добавить" onclick="AddInfoBase()">
+            </div>
         </div>
         <div class="lpanel">
             <ul id="MainTreeView"/>

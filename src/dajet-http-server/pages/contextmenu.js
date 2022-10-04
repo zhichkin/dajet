@@ -22,7 +22,7 @@
     });
 
     this.Init = async function () {
-        let html = await GetHtmlPart("/ui/html/InfoBase.html");
+        let html = await UiLoader.GetHtml("/ui/html/InfoBase.html");
         if (html != null) {
             div.innerHTML = html;
         }
@@ -34,22 +34,4 @@
         div.classList.toggle("active");
     };
     this.Close = closeMe;
-}
-
-async function GetHtmlPart(url) {
-
-    let footer = document.getElementById("footer");
-    footer.replaceChildren();
-
-    let response = await fetch(url, { method: "GET" });
-
-    if (!response.ok) {
-
-        let message = await response.text();
-        let text = document.createTextNode(message);
-        footer.replaceChildren(text);
-        return null;
-    }
-
-    return await response.text();
 }

@@ -45,7 +45,7 @@
         title.innerText = value;
     };
     this.Show = async function (url) {
-        content.innerHTML = await GetHtmlPart(url);
+        content.innerHTML = await UiLoader.GetHtml(url);
 
         let confirmButton = content.querySelector(".confirm-button");
         if (confirmButton != null && confirm != null) {
@@ -62,24 +62,13 @@
 
         if (model != null) {
             for (let element of content.getElementsByTagName("input")) {
-                BindElementToModel(element, model);
+                UiLoader.BindElementToModel(element, model);
             }
             for (let element of content.getElementsByTagName("select")) {
-                BindElementToModel(element, model);
+                UiLoader.BindElementToModel(element, model);
             }
         }
 
         popup.classList.toggle("active");
     };
-}
-function BindElementToModel(element, model) {
-    let propertyName = element.getAttribute("data-bind");
-    if (propertyName != null && model != null && model.hasOwnProperty(propertyName)) {
-        element.addEventListener("change", function (event) {
-            model[propertyName] = event.target.value;
-        });
-        if (element.nodeName == "SELECT") {
-            model[propertyName] = element.value;
-        }
-    }
 }
