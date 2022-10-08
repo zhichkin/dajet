@@ -4,7 +4,7 @@ namespace DaJet.Data
 {
     public static class UnionTags
     {
-        // TODO: byte[] Binary _B 0x06 !!!
+        // TODO: byte[] Binary _B 0x06 ???
         public static readonly int Empty    = 0x01; // _TYPE
         public static readonly int Boolean  = 0x02; // _L
         public static readonly int Numeric  = 0x03; // _N
