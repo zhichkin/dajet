@@ -8,5 +8,6 @@
         public const string DBSchema = "DBSchema";
         public const string IBVersion = "IBVersion";
         public const string YearOffset = "_YearOffset";
+        public const string SchemaStorage = "SchemaStorage";
     }
 }

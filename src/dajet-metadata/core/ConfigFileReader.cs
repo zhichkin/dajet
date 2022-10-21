@@ -26,12 +26,14 @@ namespace DaJet.Metadata.Core
         private const string MS_DBSCHEMA_QUERY_SCRIPT = "SELECT TOP 1 (CASE WHEN SUBSTRING(SerializedData, 1, 3) = 0xEFBBBF THEN 1 ELSE 0 END) AS UTF8, CAST(DATALENGTH(SerializedData) AS int) AS DataSize, SerializedData FROM DBSchema;";
         private const string MS_IBVERSION_QUERY_SCRIPT = "SELECT TOP 1 [PlatformVersionReq] FROM [IBVersion];";
         private const string MS_YEAROFFSET_QUERY_SCRIPT = "SELECT TOP 1 [Offset] FROM [_YearOffset];";
+        private const string MS_SCHEMA_STORAGE_QUERY_SCRIPT = "SELECT (CASE WHEN SUBSTRING(CurrentSchema, 1, 3) = 0xEFBBBF THEN 1 ELSE 0 END) AS UTF8, CAST(DATALENGTH(CurrentSchema) AS int) AS DataSize, CurrentSchema FROM SchemaStorage WHERE SchemaID = 0;";
 
         private const string PG_PARAMS_QUERY_SCRIPT = "SELECT binarydata FROM params WHERE filename = '{filename}';";
         private const string PG_CONFIG_QUERY_SCRIPT = "SELECT binarydata FROM config WHERE filename = '{filename}';"; // Version 8.3 ORDER BY [PartNo] ASC";
         private const string PG_DBSCHEMA_QUERY_SCRIPT = "SELECT (CASE WHEN SUBSTRING(serializeddata, 1, 3) = E'\\\\xEFBBBF' THEN 1 ELSE 0 END) AS UTF8, CAST(OCTET_LENGTH(serializeddata) AS int) AS datasize, serializeddata FROM dbschema LIMIT 1;";
         private const string PG_IBVERSION_QUERY_SCRIPT = "SELECT platformversionreq FROM ibversion LIMIT 1;";
         private const string PG_YEAROFFSET_QUERY_SCRIPT = "SELECT ofset FROM _yearoffset LIMIT 1;";
+        private const string PG_SCHEMA_STORAGE_QUERY_SCRIPT = "SELECT (CASE WHEN SUBSTRING(currentschema, 1, 3) = E'\\\\xEFBBBF' THEN 1 ELSE 0 END) AS UTF8, CAST(OCTET_LENGTH(currentschema) AS int) AS datasize, currentschema FROM schemastorage WHERE schemaid = 0;";
 
         private const string MS_PARAMS_SCRIPT = "SELECT (CASE WHEN SUBSTRING(BinaryData, 1, 3) = 0xEFBBBF THEN 1 ELSE 0 END) AS UTF8, CAST(DataSize AS int) AS DataSize, BinaryData FROM Params WHERE FileName = @FileName;";
         private const string MS_CONFIG_SCRIPT = "SELECT (CASE WHEN SUBSTRING(BinaryData, 1, 3) = 0xEFBBBF THEN 1 ELSE 0 END) AS UTF8, CAST(DataSize AS int) AS DataSize, BinaryData FROM Config WHERE FileName = @FileName;";
@@ -75,9 +77,10 @@ namespace DaJet.Metadata.Core
         }
         public ConfigFileReader(DatabaseProvider provider, in string connectionString, in string tableName)
         {
-            if (tableName != ConfigTables.DBSchema)
+            if (!(tableName == ConfigTables.DBSchema
+                || tableName == ConfigTables.SchemaStorage))
             {
-                throw new ArgumentOutOfRangeException(nameof(tableName));
+                throw new ArgumentOutOfRangeException(nameof(tableName) + " = " + tableName);
             }
 
             InitializePath();
@@ -88,13 +91,26 @@ namespace DaJet.Metadata.Core
             YearOffset = GetYearOffset();
             PlatformVersion = GetPlatformVersion();
 
-            long bytes = ExecuteReader(
-                (provider == DatabaseProvider.SqlServer
-                ? MS_DBSCHEMA_QUERY_SCRIPT
-                : PG_DBSCHEMA_QUERY_SCRIPT)
-                , null);
+            long bytes = 0L;
 
-            if (bytes == 0)
+            if (tableName == ConfigTables.DBSchema)
+            {
+                bytes = ExecuteReader(
+                    (provider == DatabaseProvider.SqlServer
+                    ? MS_DBSCHEMA_QUERY_SCRIPT
+                    : PG_DBSCHEMA_QUERY_SCRIPT)
+                    , null);
+            }
+            else if (tableName == ConfigTables.SchemaStorage)
+            {
+                bytes = ExecuteReader(
+                    (provider == DatabaseProvider.SqlServer
+                    ? MS_SCHEMA_STORAGE_QUERY_SCRIPT
+                    : PG_SCHEMA_STORAGE_QUERY_SCRIPT)
+                    , null);
+            }
+
+            if (bytes == 0L)
             {
                 _buffer = Array.Empty<byte>();
             }
