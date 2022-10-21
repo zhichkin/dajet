@@ -35,9 +35,11 @@ namespace DaJet.Metadata.Core
 
         private const string MS_PARAMS_SCRIPT = "SELECT (CASE WHEN SUBSTRING(BinaryData, 1, 3) = 0xEFBBBF THEN 1 ELSE 0 END) AS UTF8, CAST(DataSize AS int) AS DataSize, BinaryData FROM Params WHERE FileName = @FileName;";
         private const string MS_CONFIG_SCRIPT = "SELECT (CASE WHEN SUBSTRING(BinaryData, 1, 3) = 0xEFBBBF THEN 1 ELSE 0 END) AS UTF8, CAST(DataSize AS int) AS DataSize, BinaryData FROM Config WHERE FileName = @FileName;";
+        private const string MS_CONFIG_CAS_SCRIPT = "SELECT (CASE WHEN SUBSTRING(BinaryData, 1, 3) = 0xEFBBBF THEN 1 ELSE 0 END) AS UTF8, CAST(DataSize AS int) AS DataSize, BinaryData FROM ConfigCAS WHERE FileName = @FileName;";
 
         private const string PG_PARAMS_SCRIPT = "SELECT (CASE WHEN SUBSTRING(binarydata, 1, 3) = E'\\\\xEFBBBF' THEN 1 ELSE 0 END) AS UTF8, CAST(datasize AS int) AS datasize, binarydata FROM params WHERE CAST(filename AS varchar) = @filename;";
         private const string PG_CONFIG_SCRIPT = "SELECT (CASE WHEN SUBSTRING(binarydata, 1, 3) = E'\\\\xEFBBBF' THEN 1 ELSE 0 END) AS UTF8, CAST(datasize AS int) AS datasize, binarydata FROM config WHERE CAST(filename AS varchar) = @filename;";
+        private const string PG_CONFIG_CAS_SCRIPT = "SELECT (CASE WHEN SUBSTRING(binarydata, 1, 3) = E'\\\\xEFBBBF' THEN 1 ELSE 0 END) AS UTF8, CAST(datasize AS int) AS datasize, binarydata FROM configcas WHERE CAST(filename AS varchar) = @filename;";
 
         #endregion
 
@@ -164,6 +166,14 @@ namespace DaJet.Metadata.Core
                     return MS_CONFIG_SCRIPT;
                 }
                 return PG_CONFIG_SCRIPT;
+            }
+            else if (tableName == ConfigTables.ConfigCAS)
+            {
+                if (_provider == DatabaseProvider.SqlServer)
+                {
+                    return MS_CONFIG_CAS_SCRIPT;
+                }
+                return PG_CONFIG_CAS_SCRIPT;
             }
             else if (tableName == ConfigTables.Params)
             {

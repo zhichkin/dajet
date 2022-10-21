@@ -18,6 +18,16 @@ namespace DaJet.Metadata.Test
                 }
             }
         }
+        [TestMethod] public void WriteIBParamsToFile()
+        {
+            using (ConfigFileReader reader = new(DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.Params, "ibparams.inf"))
+            {
+                using (StreamWriter stream = new StreamWriter("C:\\temp\\IBParams.txt", false, Encoding.UTF8))
+                {
+                    stream.Write(reader.Stream.ReadToEnd());
+                }
+            }
+        }
         [TestMethod] public void WriteRowDataToFile()
         {
             // Предопределённые значения "Справочник.СправочникПредопределённые"
