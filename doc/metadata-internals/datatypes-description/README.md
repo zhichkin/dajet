@@ -55,9 +55,9 @@
 | УникальныйИдентификатор                   | {"#",fc01b5df-97fe-449b-83d4-218a090e681e} |
 | Ссылка (идентификатор объекта метаданных) | {"#",70497451-981e-43b8-af46-fae8d65d16f2} |
 
-Возможные предопределённые значения для ссылок определены в классе [MetadataRegistry](https://github.com/zhichkin/dajet-metadata-core/blob/main/src/dajet-metadata-core/MetadataRegistry.cs).
+Возможные предопределённые значения для ссылок определены в классе [MetadataRegistry](https://github.com/zhichkin/dajet/blob/main/src/dajet-metadata/MetadataRegistry.cs).
 
-Чтение объекта **ОписаниеТипов** реализуется классом [DataTypeSetParser](https://github.com/zhichkin/dajet-metadata-core/blob/main/src/dajet-metadata-core/parsers/DataTypeSetParser.cs).
+Чтение объекта **ОписаниеТипов** реализуется классом [DataTypeSetParser](https://github.com/zhichkin/dajet/blob/main/src/dajet-metadata/parsers/DataTypeSetParser.cs).
 
 Основной метод чтения этого объекта на C# выглядит так:
 

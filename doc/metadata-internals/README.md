@@ -6,11 +6,14 @@
 3. [Описание типов реквизита объекта метаданных](https://github.com/zhichkin/dajet/blob/main/doc/metadata-internals/datatypes-description/README.md)
 4. [Методика исследования файлов метаданных](https://github.com/zhichkin/dajet/blob/main/doc/metadata-internals/reverse-engineering/README.md)
 5. [Принцип работы парсера файлов метаданных](https://github.com/zhichkin/dajet/blob/main/doc/metadata-internals/parser-description/README.md)
+6. [Методика тестирования библиотеки DaJet.Metadata]((https://github.com/zhichkin/dajet/blob/main/doc/metadata-internals/checklist/README.md))
 
 ### Введение
 
 Клиент-серверная версия 1С:Предприятие 8 (далее просто 1С) хранит описание своих объетов (метаданные)
-в таблицах СУБД. В частности, библиотека DaJet.Metadata.Core использует следующие таблицы:
+в таблицах СУБД.
+
+В частности, библиотека **DaJet.Metadata** использует следующие таблицы:
 - **_YearOffset** - смещение дат (добавляется ко всем значениям дат в СУБД)
 - **IBVersion** - версия среды выполнения конфигурации 1С (влияет на структуру хранения данных)
 - **Params** - файл DBNames хранит сопоставление объектов метаданных соответствующим объектам СУБД
@@ -95,7 +98,7 @@ string fileText = stream.ReadToEnd();
 
 ```
 
-Для чтения файлов конфигурации 1С библиотека DaJet.Metadata.Core использует класс
+Для чтения файлов конфигурации 1С библиотека **DaJet.Metadata** использует класс
 [ConfigFileReader](https://github.com/zhichkin/dajet/blob/main/src/dajet-metadata/core/ConfigFileReader.cs).
 
 ```C#

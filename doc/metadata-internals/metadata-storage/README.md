@@ -2,7 +2,7 @@
 
 Общая схема хранения метаданных конфигурации 1С выглядит следующим образом:
 
-![metadata_storage_1](https://github.com/zhichkin/dajet-metadata-core/blob/main/img/metadata_storage_1.png)
+![metadata_storage_1](https://github.com/zhichkin/dajet/blob/main/doc/metadata-internals/images/metadata_storage_1.png)
 
 Чтение метаданных начинается с файла **"root"**, расположенного в таблице **Config** базы данных.
 
@@ -59,7 +59,7 @@ WHERE
 
 Схема хранения описания типов данных реквизитов объектов метаданных является наверное одной из самых сложных:
 
-![metadata_storage_2](https://github.com/zhichkin/dajet-metadata-core/blob/main/img/metadata_storage_2.png)
+![metadata_storage_2](https://github.com/zhichkin/dajet/blob/main/doc/metadata-internals/images/metadata_storage_2.png)
 
 Основной файл конфигурации содержит описание:
 - общих реквизитов;

@@ -1,6 +1,6 @@
 ## Принцип работы парсера файлов метаданных
 
-Как уже было сказано [ранее](https://github.com/zhichkin/dajet-metadata-core/blob/main/doc/format-description/README.md)
+Как уже было сказано [ранее](https://github.com/zhichkin/dajet/blob/main/doc/metadata-internals/format-description/README.md)
 структура файла описания метаданных 1С:Предприятие 8 представляет из себя иерархическую структуру в виде дерева.
 
 ```txt
@@ -12,11 +12,11 @@
 -----------[5] (1.1.1.2.1.2) "0"
 ```
 
-Класс [**ConfigFileReader**](https://github.com/zhichkin/dajet-metadata-core/blob/main/src/dajet-metadata-core/core/ConfigFileReader.cs)
+Класс [**ConfigFileReader**](https://github.com/zhichkin/dajet/blob/main/src/dajet-metadata/core/ConfigFileReader.cs)
 реализует последовательное чтение такого файла в виде отдельных токенов. По сути своей этот класс является
 токенайзером или лексером, если угодно. Чтение файла выполняется однонаправленно (forward only).
 
-Таблица реализованных [токенов](https://github.com/zhichkin/dajet-metadata-core/blob/main/src/dajet-metadata-core/core/TokenType.cs):
+Таблица реализованных [токенов](https://github.com/zhichkin/dajet/blob/main/src/dajet-metadata/core/TokenType.cs):
 
 | **Токен**   | **Текущий символ** | **Значение**                       |
 |-------------|--------------------|------------------------------------|
@@ -116,18 +116,18 @@ using (ConfigFileReader reader = new ConfigFileReader(
 ```
 
 Как видите пути (0), (1), (1.0), (1.1) и (1.2) точно соответствуют значениям в выше приведённой таблице.
-Да, немного путает путь [1][-1] для StartObject (DaJet.Metadata.Model.ConfigObject), но это, как уже говорилось,
+Да, немного путает путь [1][-1] для StartObject (DaJet.Metadata.Core.ConfigObject), но это, как уже говорилось,
 небольшое исключение, которое можно понять.
 
 Всё это помогает решить выше обозначенную проблему отсутствия документации и имён свойств следующим образом.
 
-Используя [методику исследования файлов метаданных](https://github.com/zhichkin/dajet-metadata-core/blob/main/doc/reverse-engineering/README.md),
+Используя [методику исследования файлов метаданных](https://github.com/zhichkin/dajet/blob/main/doc/metadata-internals/reverse-engineering/README.md),
 а также выгрузку файлов метаданных в формате DaJet на диск, мы можем точно определить нужные нам значения и их пути.
 Остаётся открытым только один вопрос: как удобно обрабатывать эти значения программно ?
 
 Для удобства программирования по путям в иерархической структуре разработано ещё два вспомогательных класса:
-[**ConfigFileParser**](https://github.com/zhichkin/dajet-metadata-core/blob/main/src/dajet-metadata-core/core/ConfigFileParser.cs)
-и [**ConfigFileConverter**](https://github.com/zhichkin/dajet-metadata-core/blob/main/src/dajet-metadata-core/core/ConfigFileConverter.cs).
+[**ConfigFileParser**](https://github.com/zhichkin/dajet/blob/main/src/dajet-metadata/core/ConfigFileParser.cs)
+и [**ConfigFileConverter**](https://github.com/zhichkin/dajet/blob/main/src/dajet-metadata/core/ConfigFileConverter.cs).
 Оба этих класса фактически реализуют паттерн программирования [Visitor (Посетитель)](https://ru.wikipedia.org/wiki/%D0%9F%D0%BE%D1%81%D0%B5%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C_(%D1%88%D0%B0%D0%B1%D0%BB%D0%BE%D0%BD_%D0%BF%D1%80%D0%BE%D0%B5%D0%BA%D1%82%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F)).
 
 Класс **ConfigFileParser** обходит дерево объектов и для каждого пути выполняет заданный для него обработчик.
@@ -203,7 +203,7 @@ Console.WriteLine($"Значение 3 = {parser.Значение3}");
 ```
 
 Самый простой пример парсера (читает GUID конфигурации из файла 'root'):
-[**RootFileParser**](https://github.com/zhichkin/dajet-metadata-core/blob/main/src/dajet-metadata-core/parsers/RootFileParser.cs).
+[**RootFileParser**](https://github.com/zhichkin/dajet/blob/main/src/dajet-metadata/parsers/RootFileParser.cs).
 
 Более сложный пример - класс для чтения коллекций реквизитов объектов метаданных:
-[**MetadataPropertyCollectionParser**](https://github.com/zhichkin/dajet-metadata-core/blob/main/src/dajet-metadata-core/parsers/MetadataPropertyCollectionParser.cs).
+[**MetadataPropertyCollectionParser**](https://github.com/zhichkin/dajet/blob/main/src/dajet-metadata/parsers/MetadataPropertyCollectionParser.cs).

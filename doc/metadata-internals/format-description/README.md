@@ -64,7 +64,7 @@ SELECT BinaryData FROM Config WHERE FileName = '684c8f2b-d93f-49cc-b766-b3cc3896
 > последовательности следования свойств или полей объектов друг за другом.
 
 Кроме этого, можно утверждать, что GUID'ы - это идентификаторы типов объектов.
-Некоторые из таких GUID'ов можно найти в классе [**MetadataRegistry**](https://github.com/zhichkin/dajet-metadata-core/blob/main/src/dajet-metadata-core/MetadataRegistry.cs).
+Некоторые из таких GUID'ов можно найти в классе [**MetadataRegistry**](https://github.com/zhichkin/dajet/blob/main/src/dajet-metadata/MetadataRegistry.cs).
 
 Таким образом, в целях создания парсера для данного формата данных, можно сформулировать
 для него следующую грамматику, выраженную при помощи следующей псевдо BNF нотации:
@@ -74,7 +74,7 @@ SELECT BinaryData FROM Config WHERE FileName = '684c8f2b-d93f-49cc-b766-b3cc3896
 <object> = "{" [<value> | "," <value>]? "}"
 ```
 
-Библиотека DaJet.Metadata.Core реализует такой парсер при помощи класса [**ConfigFileReader**](https://github.com/zhichkin/dajet-metadata-core/blob/main/src/dajet-metadata-core/core/ConfigFileReader.cs).
+Библиотека **DaJet.Metadata** реализует такой парсер при помощи класса [**ConfigFileReader**](https://github.com/zhichkin/dajet/blob/main/src/dajet-metadata/core/ConfigFileReader.cs).
 Данные файла, обработанные этим парсером, могут быть представлены в следующем более удобном виде:
 
 ```txt
@@ -164,11 +164,11 @@ SELECT BinaryData FROM Config WHERE FileName = '684c8f2b-d93f-49cc-b766-b3cc3896
 Таким образом, исследуя файлы описания объектов метаданных 1С, можно изучить
 структуру хранения необходимых значений и использовать их для написания парсера.
 
-В частности, библиотека DaJet.Metadata.Core позволяет получить все необходимые значения основных объектов
+В частности, библиотека **DaJet.Metadata** позволяет получить все необходимые значения основных объектов
 конфигурации 1С достаточные для точной работы с таблицами СУБД этих прикладных объектов.
 
 Получить вышеуказанное удобное представление файлов описания конфигурации 1С средствами библиотеки
-DaJet.Metadata.Core можно при помощи следующего кода на C#:
+**DaJet.Metadata** можно при помощи следующего кода на C#:
 
 ```C#
 public void WriteRootConfigToFile()
