@@ -64,7 +64,7 @@ SELECT BinaryData FROM Config WHERE FileName = '684c8f2b-d93f-49cc-b766-b3cc3896
 > последовательности следования свойств или полей объектов друг за другом.
 
 Кроме этого, можно утверждать, что GUID'ы - это идентификаторы типов объектов.
-Некоторые из таких GUID'ов можно найти в классе [**MetadataRegistry**](https://github.com/zhichkin/dajet/blob/main/src/dajet-metadata/MetadataRegistry.cs).
+Некоторые из таких GUID'ов можно найти в каталоге [**/dajet-metadata/core/constants**](https://github.com/zhichkin/dajet/blob/main/src/dajet-metadata/core/constants).
 
 Таким образом, в целях создания парсера для данного формата данных, можно сформулировать
 для него следующую грамматику, выраженную при помощи следующей псевдо BNF нотации:
