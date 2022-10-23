@@ -6,7 +6,7 @@
 3. [Описание типов реквизита объекта метаданных](https://github.com/zhichkin/dajet/blob/main/doc/metadata-internals/datatypes-description/README.md)
 4. [Методика исследования файлов метаданных](https://github.com/zhichkin/dajet/blob/main/doc/metadata-internals/reverse-engineering/README.md)
 5. [Принцип работы парсера файлов метаданных](https://github.com/zhichkin/dajet/blob/main/doc/metadata-internals/parser-description/README.md)
-6. [Методика тестирования библиотеки DaJet.Metadata]((https://github.com/zhichkin/dajet/blob/main/doc/metadata-internals/checklist/README.md))
+6. [Методика тестирования библиотеки DaJet.Metadata](https://github.com/zhichkin/dajet/blob/main/doc/metadata-internals/checklist/README.md)
 
 ### Введение
 
