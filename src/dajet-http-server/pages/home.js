@@ -129,11 +129,15 @@ async function GetMetadataObjects(node) {
 }
 async function GetMetadataProperties(node) {
 
-    if (node.Count > 0) { return; }
-
     let metadata = await GetMetadata(node.Url);
 
     if (metadata == null) { return; }
+
+    UiLoader.GetJavaScript("ui/js/metadata-view.js", () => {
+        MetadataViewController.createView(metadata);
+    });
+
+    if (node.Count > 0) { return; }
 
     for (let property of metadata.Properties) {
 
