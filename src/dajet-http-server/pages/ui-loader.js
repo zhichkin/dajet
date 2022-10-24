@@ -5,6 +5,15 @@
         return await response.text();
     }
     static GetCss(url, callback) {
+        let styles = document.body.getElementsByTagName("link");
+        for (let i = 0; i < styles.length; i++) {
+            if (styles[i].getAttribute("href") == url) {
+                if (callback != null) {
+                    callback();
+                }
+                return;
+            }
+        }
         let style = document.createElement("link");
         style.setAttribute("href", url);
         style.setAttribute("type", "text/css");
@@ -14,6 +23,15 @@
         document.body.appendChild(style);
     }
     static GetJavaScript(url, callback) {
+        let scripts = document.body.getElementsByTagName("script");
+        for (let i = 0; i < scripts.length; i++) {
+            if (scripts[i].getAttribute("src") == url) {
+                if (callback != null) {
+                    callback();
+                }
+                return;
+            }
+        }
         let script = document.createElement("script");
         script.setAttribute("src", url);
         script.setAttribute("type", "text/javascript");

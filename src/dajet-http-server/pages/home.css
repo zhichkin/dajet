@@ -41,6 +41,7 @@
 }
 .rpanel {
     display: grid;
+    overflow: scroll;
     grid-area: rpanel;
     align-self: stretch;
     justify-self: stretch;
@@ -59,6 +60,10 @@
     border-color: black;
     border-width: 1px;
 }
+
+/*#content {
+    overflow: scroll;
+}*/
 
 ul, #MainTreeView {
     list-style-type: none;
@@ -103,4 +108,14 @@ ul, #MainTreeView {
 
 ul > li > span:hover {
     background-color: lightgray;
+}
+
+#InfoBaseSelector {
+    min-width: 100px;
+}
+
+.view-close-button {
+    cursor: pointer;
+    border: none;
+    background: none;
 }

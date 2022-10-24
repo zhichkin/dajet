@@ -7,141 +7,21 @@
     <link rel="stylesheet" type="text/css" href="ui/css/popup.css">
     <link rel="stylesheet" type="text/css" href="ui/css/contextmenu.css">
     <script type="text/javascript" src="ui/js/ui-loader.js"></script>
+    <script type="text/javascript" src="ui/js/1ql-executor.js"></script>
     <script type="text/javascript" src="ui/js/popup.js"></script>
     <script type="text/javascript" src="ui/js/treeview.js"></script>
     <script type="text/javascript" src="ui/js/contextmenu.js"></script>
     <script type="text/javascript" src="ui/js/home.js"></script>
-    <script>
-        async function deleteInfoBase(name) {
-
-            if (!confirm("Удалить '" + name + "' из списка ?")) {
-                return;
-            }
-
-            let div = document.getElementById("errorText");
-            div.replaceChildren();
-
-            let response = await fetch('/md',
-                {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ 'Name': name })
-                });
-
-            if (!response.ok) {
-
-                let message = await response.text();
-                let text = document.createTextNode(message);
-                div.replaceChildren(text);
-            }
-            else {
-
-                getInfoBaseList();
-            }
-        }
-        async function getInfoBaseList() {
-
-            let div = document.getElementById("errorText");
-            div.replaceChildren();
-
-            let response = await fetch('/md', { method: 'GET' });
-
-            if (!response.ok) {
-
-                let message = await response.text();
-                let text = document.createTextNode(message);
-                div.replaceChildren(text);
-            }
-            else {
-
-                let data = await response.json();
-
-                let content = document.getElementById("content");
-
-                if (data.length == 0) {
-
-                    content.replaceChildren(document.createTextNode("Список информационных баз 1С пуст."));
-                }
-                else {
-
-                    let table = document.createElement('table');
-                    table.style.border = '1px solid black';
-
-                    for (const item of data) {
-
-                        let tr = table.insertRow();
-
-                        let td = tr.insertCell();
-                        td.style.padding = '10px';
-                        td.style.border = '1px solid black';
-                        let value = document.createElement('a');
-                        value.setAttribute("href", "/1ql/" + item.Name);
-                        value.appendChild(document.createTextNode(item.Name));
-                        td.appendChild(value);
-                        tr.appendChild(td);
-
-                        td = tr.insertCell();
-                        td.style.padding = '10px';
-                        td.style.border = '1px solid black';
-                        value = document.createTextNode(item.Description);
-                        td.appendChild(value);
-                        tr.appendChild(td);
-
-                        td = tr.insertCell();
-                        td.style.padding = '10px';
-                        td.style.border = '1px solid black';
-                        value = document.createTextNode(item.DatabaseProvider);
-                        td.appendChild(value);
-                        tr.appendChild(td);
-
-                        td = tr.insertCell();
-                        td.style.padding = '10px';
-                        td.style.border = '1px solid black';
-                        value = document.createTextNode(item.ConnectionString);
-                        td.appendChild(value);
-                        tr.appendChild(td);
-
-                        td = tr.insertCell();
-                        td.style.padding = '10px';
-                        td.style.border = '1px solid black';
-                        let button = document.createElement('input');
-                        button.type = "button";
-                        button.value = "Удалить";
-                        button.setAttribute("onclick", "deleteInfoBase('" + item.Name + "')");
-                        td.appendChild(button);
-                        tr.appendChild(td);
-                    }
-
-                    content.replaceChildren(table);
-                }
-            }
-        }
-
-        function test() {
-
-            //UiLoader.GetJavaScript("ui/js/test.js");
-            UiLoader.GetJavaScript("ui/js/test.js", () => {
-                SayHello({
-                    "Name": "test",
-                    "Description": "test",
-                    "DatabaseProvider": "PostgreSql",
-                    "ConnectionString": "test"
-                });
-            });
-        }
-
-    </script>
 </head>
-
 <body>
 
     <div class="container">
         <div class="header">
-            <div style="display:inline-block;">
-                <input type="button" value="Тест" onclick="test()">
-                <input type="button" value="Добавить" onclick="AddInfoBase()">
+            <div style="display:inline-block;padding:0px 0px 0px 5px">
+                <input type="button" value="Добавить базу 1С" onclick="RegisterInfoBase()">
+                <input type="button" value="Удалить базу 1С" onclick="RemoveInfoBase()">
+                <select id="InfoBaseSelector"></select>
+                <input type="button" value="Новый скрипт ..." onclick="OpenQueryPage()">
             </div>
         </div>
         <div class="lpanel">

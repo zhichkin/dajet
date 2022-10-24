@@ -22,7 +22,7 @@
     });
 
     this.Init = async function () {
-        let html = await UiLoader.GetHtml("/ui/html/InfoBase.html");
+        let html = await UiLoader.GetHtml("/ui/html/info-base-view.html");
         if (html != null) {
             div.innerHTML = html;
         }
