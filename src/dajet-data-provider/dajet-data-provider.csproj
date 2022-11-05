@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <RootNamespace>DaJet.Data.Provider</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>DaJet.Data.Provider</AssemblyName>
+    <Version>1.0.0</Version>
+    <Authors>Zhichkin</Authors>
+    <Description>ADO.NET data provider for 1C:Enterprise 8</Description>
+    <Copyright>Zhichkin © 2022</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\dajet-data\dajet-data.csproj" />
+    <ProjectReference Include="..\dajet-metadata\dajet-metadata.csproj" />
+  </ItemGroup>
+
+</Project>
