@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\dajet-data\dajet-data.csproj" />
     <ProjectReference Include="..\dajet-metadata\dajet-metadata.csproj" />
+    <ProjectReference Include="..\dajet-scripting\dajet-scripting.csproj" />
   </ItemGroup>
 
 </Project>

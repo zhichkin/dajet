@@ -1,4 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Data.Common;
 using System.Diagnostics;
 
 namespace DaJet.Data.Provider.Test
@@ -48,6 +49,26 @@ namespace DaJet.Data.Provider.Test
 
             watch.Stop();
             Console.WriteLine($"Elapsed = {watch.ElapsedMilliseconds} ms");
+        }
+
+        [TestMethod] public void PG_ExecuteScalar()
+        {
+            string commandText =
+                "ВЫБРАТЬ Наименование ИЗ Справочник.Номенклатура ГДЕ Код = 'PG-01';";
+
+            using (OneDbConnection connection = new(PG_CONNECTION_STRING))
+            {
+                connection.Open();
+
+                using (OneDbCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = commandText;
+                    
+                    object? result = command.ExecuteScalar();
+
+                    Console.WriteLine($"Result = {result}");
+                }
+            }
         }
     }
 }

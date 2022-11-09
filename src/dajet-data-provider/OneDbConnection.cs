@@ -13,7 +13,7 @@ namespace DaJet.Data.Provider
         private readonly DbConnection _connection;
 
         private readonly string IB_KEY;
-        private MetadataCache? _metadata;
+        private MetadataCache _metadata;
         private DatabaseProvider _provider;
         private readonly string _connectionString;
         public OneDbConnection(string? connectionString)
@@ -106,7 +106,11 @@ namespace DaJet.Data.Provider
         //}
         protected override DbCommand CreateDbCommand()
         {
-            return _connection.CreateCommand();
+            return CreateCommand();
+        }
+        public new OneDbCommand CreateCommand()
+        {
+            return new OneDbCommand(_metadata) { Connection = _connection };
         }
     }
 }
