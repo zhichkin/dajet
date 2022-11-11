@@ -51,6 +51,7 @@ namespace DaJet.Data
     }
     public sealed class BadUnionAssignmentException : Exception
     {
+        public BadUnionAssignmentException() : base() { }
         public BadUnionAssignmentException(Type value, Type union) : base($"Bad union assignment [{value}] {union}") { }
     }
 

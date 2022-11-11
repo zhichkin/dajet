@@ -24,8 +24,7 @@ namespace DaJet.Data.Provider
             {
                 _command?.Dispose();
             }
-
-            _metadata = null;
+            _metadata = null!;
         }
         public override bool DesignTimeVisible { get; set; }
         public override UpdateRowSource UpdatedRowSource { get; set; } = UpdateRowSource.Both;
@@ -125,15 +124,20 @@ namespace DaJet.Data.Provider
             }
 
             return null!;
-            
-            //foreach (IDataReader reader in executor.ExecuteReader(result.Script, 10, Parameters))
-            //{
-            //    yield return result.Mapper.Map<TEntity>(in reader);
-            //}
         }
-        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
+        public new OneDbDataReader ExecuteReader()
         {
-            return _command.ExecuteReader(behavior);
+            return ExecuteDbDataReader(CommandBehavior.Default);
+        }
+        protected override OneDbDataReader ExecuteDbDataReader(CommandBehavior behavior)
+        {
+            Prepare();
+            
+            _command = Connection.CreateCommand();
+            _command.CommandText = _generator.Script;
+
+            DbDataReader reader = _command.ExecuteReader(behavior);
+            return new OneDbDataReader(in reader, in _generator);
         }
         public override int ExecuteNonQuery()
         {
