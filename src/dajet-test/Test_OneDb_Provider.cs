@@ -115,6 +115,11 @@ namespace DaJet.Data.Provider.Test
                                 Type type = reader.GetFieldType(ordinal);
                                 string typeName = reader.GetDataTypeName(ordinal);
 
+                                if (value is Union union)
+                                {
+                                    value = (union.IsEmpty ? "Неопределено" : union.Value);
+                                }
+
                                 Console.WriteLine($"| {name} = {value} [{type}] {typeName}");
                             }
                         }
@@ -135,7 +140,12 @@ namespace DaJet.Data.Provider.Test
         private void Db_ExecuteReader_GetEntity(string connectionString)
         {
             string commandText =
-                "ВЫБРАТЬ ПЕРВЫЕ 5 Ссылка, Код, Наименование, ПометкаУдаления ИЗ Справочник.Номенклатура;";
+                "ВЫБРАТЬ ПЕРВЫЕ 5 " +
+                "Ссылка, Код, " +
+                "Наименование, ПометкаУдаления, " +
+                "СоставнойТип, Валюта " +
+                "ИЗ Справочник.Номенклатура " +
+                "УПОРЯДОЧИТЬ ПО Код ВОЗР;";
 
             using (OneDbConnection connection = new(connectionString))
             {
@@ -151,11 +161,13 @@ namespace DaJet.Data.Provider.Test
                         {
                             Product product = reader.GetEntity<Product>();
 
-                            Console.WriteLine(string.Format("{0}: {1} [{2}] {3}",
+                            Console.WriteLine(string.Format("{0}: {1} [{2}] {3} {4} [{5}]",
                                 product.Код,
                                 product.Наименование,
                                 product.ПометкаУдаления,
-                                product.Ссылка));
+                                product.Ссылка,
+                                product.СоставнойТип,
+                                product.Валюта));
                         }
                         reader.Close();
                     }
@@ -170,5 +182,7 @@ namespace DaJet.Data.Provider.Test
         public string Код { get; set; } = string.Empty;
         public string Наименование { get; set; } = string.Empty;
         public bool ПометкаУдаления { get; set; }
+        public EntityRef Валюта { get; set; } = EntityRef.Empty;
+        public Union СоставнойТип { get; set; } = Union.Empty;
     }
 }

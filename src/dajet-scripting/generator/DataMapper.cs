@@ -25,7 +25,8 @@ namespace DaJet.Scripting
             }
             else if (type.IsMultipleType)
             {
-                map.Type = typeof(EntityRef); // TODO: create Union type !?
+                map.Type = typeof(Union);
+                map.TypeCode = type.TypeCode;
             }
             else if (type.CanBeBoolean)
             {

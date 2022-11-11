@@ -4,19 +4,8 @@ namespace DaJet.Data.Mapping
 {
     public sealed class PropertyMap
     {
-        #region "CONSTRUCTORS"
         public PropertyMap() { }
-        public PropertyMap(string name, Type type)
-        {
-            Name = name;
-            Type = type;
-        }
-        public PropertyMap(string name, Type type, int code) : this(name, type)
-        {
-            TypeCode = code;
-        }
-        #endregion
-        public int YearOffset { get; set; } = 0; // FIXME !?
+        public int YearOffset { get; set; } = 0;
         public Type Type { get; set; } = null!;
         public string Name { get; set; } = string.Empty;
         public int TypeCode { get; set; } = 0;
@@ -79,7 +68,7 @@ namespace DaJet.Data.Mapping
             else if (Type == typeof(byte[])) { return GetBinary(in reader); }
             else if (Type == typeof(EntityRef)) { return GetEntityRef(in reader); }
 
-            throw new NotSupportedException($"Unsupported property data type: {Type}");
+            throw new NotSupportedException($"Unsupported data type: {Type}");
         }
         private object? GetMultipleValue(in IDataReader reader)
         {
@@ -87,22 +76,48 @@ namespace DaJet.Data.Mapping
 
             if (ordinal == -1)
             {
+                // Union value without _TYPE discriminator field
                 return GetEntityRef(in reader);
             }
 
             if (reader.IsDBNull(ordinal))
             {
-                return null;
+                return Union.Empty;
             }
 
-            int tag = ((byte[])reader.GetValue(ordinal))[0]; // binary(1)
+            byte tag = ((byte[])reader.GetValue(ordinal))[0]; // _TYPE binary(1)
 
-            if (tag == 1) { return null; } // Неопределено
-            else if (tag == 2) { return GetBoolean(in reader); } // Булево
-            else if (tag == 3) { return GetNumeric(in reader); } // Число
-            else if (tag == 4) { return GetDateTime(in reader); } // Дата
-            else if (tag == 5) { return GetString(in reader); } // Строка
-            else if (tag == 8) { return GetEntityRef(in reader); } // Ссылка
+            object? value;
+
+            if (tag == 1) // Неопределено
+            {
+                return Union.Empty;
+            }
+            else if (tag == 2) // Булево
+            {
+                value = GetBoolean(in reader);
+                return (value == null ? Union.Empty : new Union.CaseBoolean((bool)value));
+            }
+            else if (tag == 3) // Число
+            {
+                value = GetNumeric(in reader);
+                return (value == null ? Union.Empty : new Union.CaseNumeric((decimal)value));
+            }
+            else if (tag == 4) // Дата
+            {
+                value = GetDateTime(in reader);
+                return (value == null ? Union.Empty : new Union.CaseDateTime((DateTime)value));
+            }
+            else if (tag == 5) // Строка
+            {
+                value = GetString(in reader);
+                return (value == null ? Union.Empty : new Union.CaseString((string)value));
+            }
+            else if (tag == 8) // Ссылка
+            {
+                value = GetEntityRef(in reader);
+                return (value == null ? Union.Empty : new Union.CaseEntity((EntityRef)value));
+            }
 
             throw new InvalidOperationException($"Invalid union tag value of {tag}");
         }
