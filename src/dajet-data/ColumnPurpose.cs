@@ -15,7 +15,7 @@
         ///<br><b>0x05</b> - Строка = string</br>
         ///<br><b>0x06</b> - byte[] = binary</br>
         ///<br><b>0x07</b> - ?</br>
-        ///<br><b>0x08</b> - Ссылка = EntityRef</br>
+        ///<br><b>0x08</b> - Ссылка = Entity</br>
         ///</summary>
         Tag,
         ///<summary>0x02 Boolean value (bool) _Fld + _L binary(1)</summary>

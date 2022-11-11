@@ -104,7 +104,7 @@ namespace DaJet.Scripting
             { "datetime", typeof(DateTime) },
             { "string", typeof(string) },
             { "binary", typeof(byte[]) },
-            { "entity", typeof(EntityRef) }
+            { "entity", typeof(Entity) }
         };
         private static Dictionary<string, Type> _datatype_ru = new()
         {
@@ -114,7 +114,7 @@ namespace DaJet.Scripting
             { "ДатаВремя", typeof(DateTime) },
             { "Строка", typeof(string) },
             { "ДвоичныеДанные", typeof(byte[]) },
-            { "Ссылка", typeof(EntityRef) }
+            { "Ссылка", typeof(Entity) }
         };
         private static Dictionary<Type, TokenType> _datatype_token = new()
         {
@@ -125,7 +125,7 @@ namespace DaJet.Scripting
             { typeof(DateTime), TokenType.DateTime },
             { typeof(string), TokenType.String },
             { typeof(byte[]), TokenType.Binary },
-            { typeof(EntityRef), TokenType.Entity }
+            { typeof(Entity), TokenType.Entity }
         };
         private static Dictionary<Type, string> _datatype_literal = new()
         {
@@ -136,7 +136,7 @@ namespace DaJet.Scripting
             { typeof(DateTime), "datetime" },
             { typeof(string), "string" },
             { typeof(byte[]), "binary" },
-            { typeof(EntityRef), "entity" }
+            { typeof(Entity), "entity" }
         };
         private static Dictionary<string, TokenType> _function_en = new()
         {

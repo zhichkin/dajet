@@ -249,7 +249,7 @@ namespace DaJet.Scripting.Test
             ScriptExecutor executor = new(_cache);
             //executor.Parameters.Add("КодУзла", "N001");
             //executor.Parameters.Add("КодУзла", uuid);
-            executor.Parameters.Add("КодУзла", new EntityRef(36, uuid));
+            executor.Parameters.Add("КодУзла", new Entity(36, uuid));
 
             try
             {

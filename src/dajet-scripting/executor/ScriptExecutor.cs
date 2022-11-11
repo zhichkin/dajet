@@ -130,9 +130,9 @@ namespace DaJet.Scripting
                             {
                                 value = DbUtilities.StringToByteArray(literal.Substring(2)); // remove leading 0x
                             }
-                            else if (type == typeof(EntityRef))
+                            else if (type == typeof(Entity))
                             {
-                                value = EntityRef.Parse(scalar.Literal); // {50:9a1984dc-3084-11ed-9cd7-408d5c93cc8e}
+                                value = Entity.Parse(scalar.Literal); // {50:9a1984dc-3084-11ed-9cd7-408d5c93cc8e}
                             }
                         }
                         else
@@ -145,7 +145,7 @@ namespace DaJet.Scripting
 
                             if (table is ApplicationObject entity)
                             {
-                                if (EntityRef.TryParse(literal, out EntityRef initializer))
+                                if (Entity.TryParse(literal, out Entity initializer))
                                 {
                                     if (initializer.TypeCode == entity.TypeCode)
                                     {
@@ -154,7 +154,7 @@ namespace DaJet.Scripting
                                 }
                                 else
                                 {
-                                    value = new EntityRef(entity.TypeCode, new Guid(literal.TrimStart('\"').TrimEnd('\"')));
+                                    value = new Entity(entity.TypeCode, new Guid(literal.TrimStart('\"').TrimEnd('\"')));
                                 }
                             }
                         }
@@ -177,7 +177,7 @@ namespace DaJet.Scripting
                         Parameters[parameter.Key] = new byte[] { Convert.ToByte(boolean) };
                     }
                 }
-                else if (parameter.Value is EntityRef entity)
+                else if (parameter.Value is Entity entity)
                 {
                     Parameters[parameter.Key] = SQLHelper.GetSqlUuid(entity.Identity);
                 }

@@ -403,11 +403,11 @@ namespace DaJet.Scripting
                     {
                         if (ScriptHelper.IsDataType(declare.Type, out Type type))
                         {
-                            if (type == typeof(EntityRef))
+                            if (type == typeof(Entity))
                             {
                                 if (declare.Initializer is ScalarExpression scalar)
                                 {
-                                    identifier.Tag = EntityRef.Parse(scalar.Literal);
+                                    identifier.Tag = Entity.Parse(scalar.Literal);
                                 }
                             }
                             else
@@ -421,7 +421,7 @@ namespace DaJet.Scripting
 
                             if (table is ApplicationObject entity)
                             {
-                                identifier.Tag = new EntityRef(entity.TypeCode, Guid.Empty);
+                                identifier.Tag = new Entity(entity.TypeCode, Guid.Empty);
                             }
                         }
                         break;

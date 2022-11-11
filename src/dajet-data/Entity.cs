@@ -1,25 +1,25 @@
 ﻿namespace DaJet.Data
 {
-    public readonly struct EntityRef
+    public readonly struct Entity
     {
-        public static readonly EntityRef Empty = new();
-        public static EntityRef Parse(string value)
+        public static readonly Entity Empty = new();
+        public static Entity Parse(string value)
         {
             string[] parts = value.TrimStart('{').TrimEnd('}').Split(':', StringSplitOptions.RemoveEmptyEntries);
 
             if (parts.Length < 2)
             {
-                throw new FormatException($"Failed to parse EntityRef value: {value}");
+                throw new FormatException($"Failed to parse Entity value: {value}");
             }
 
             int typeCode = int.Parse(parts[0]);
             Guid identity = new Guid(parts[1]);
 
-            return new EntityRef(typeCode, identity);
+            return new Entity(typeCode, identity);
         }
-        public static bool TryParse(string value, out EntityRef entity)
+        public static bool TryParse(string value, out Entity entity)
         {
-            entity = EntityRef.Empty;
+            entity = Entity.Empty;
 
             string[] parts = value.TrimStart('{').TrimEnd('}').Split(':', StringSplitOptions.RemoveEmptyEntries);
 
@@ -32,7 +32,7 @@
             {
                 int typeCode = int.Parse(parts[0]);
                 Guid identity = new Guid(parts[1]);
-                entity = new EntityRef(typeCode, identity);
+                entity = new Entity(typeCode, identity);
             }
             catch
             {
@@ -41,7 +41,7 @@
 
             return true;
         }
-        public EntityRef(int typeCode, Guid identity)
+        public Entity(int typeCode, Guid identity)
         {
             TypeCode = typeCode;
             Identity = identity;
@@ -63,19 +63,19 @@
         {
             if (obj == null) { return false; }
 
-            if (obj is not EntityRef test)
+            if (obj is not Entity test)
             {
                 return false;
             }
 
             return (this == test);
         }
-        public static bool operator ==(EntityRef left, EntityRef right)
+        public static bool operator ==(Entity left, Entity right)
         {
             return left.TypeCode == right.TypeCode
                 && left.Identity == right.Identity;
         }
-        public static bool operator !=(EntityRef left, EntityRef right)
+        public static bool operator !=(Entity left, Entity right)
         {
             return !(left == right);
         }

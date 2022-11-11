@@ -1,6 +1,6 @@
 ﻿namespace DaJet.Data
 {
-    public enum UnionTags : byte
+    public enum UnionTag : byte
     {
         // TODO: byte[] Binary _B 0x06 ???
         Empty    = 0x01, // _TYPE
@@ -21,17 +21,17 @@
     }
     public abstract class Union
     {
-        private readonly UnionTags _tag;
+        private readonly UnionTag _tag;
         public static readonly Union Empty = new CaseEmpty();
-        protected Union(UnionTags tag) { _tag = tag; }
-        public UnionTags Tag { get { return _tag; } }
-        public bool IsEmpty { get { return _tag == UnionTags.Empty; } }
+        protected Union(UnionTag tag) { _tag = tag; }
+        public UnionTag Tag { get { return _tag; } }
+        public bool IsEmpty { get { return _tag == UnionTag.Empty; } }
         public abstract object Value { get; }
         public abstract bool GetBoolean();
         public abstract decimal GetNumeric();
         public abstract DateTime GetDateTime();
         public abstract string GetString();
-        public abstract EntityRef GetEntityRef();
+        public abstract Entity GetEntityRef();
         public override string ToString()
         {
             return IsEmpty ? "Неопределено" : (Value == null ? "NULL" : Value.ToString()!);
@@ -40,10 +40,10 @@
         public static implicit operator Union(decimal value) => new CaseNumeric(value);
         public static implicit operator Union(DateTime value) => new CaseDateTime(value);
         public static implicit operator Union(string value) => new CaseString(value);
-        public static implicit operator Union(EntityRef value) => new CaseEntity(value);
+        public static implicit operator Union(Entity value) => new CaseEntity(value);
         public sealed class CaseEmpty : Union
         {
-            public CaseEmpty() : base(UnionTags.Empty) { }
+            public CaseEmpty() : base(UnionTag.Empty) { }
             public override object Value { get { return null!; } }
             public override bool GetBoolean()
             {
@@ -61,15 +61,15 @@
             {
                 throw new BadUnionAccessException(typeof(string), typeof(CaseEmpty));
             }
-            public override EntityRef GetEntityRef()
+            public override Entity GetEntityRef()
             {
-                throw new BadUnionAccessException(typeof(EntityRef), typeof(CaseEmpty));
+                throw new BadUnionAccessException(typeof(Entity), typeof(CaseEmpty));
             }
         }
         public sealed class CaseBoolean : Union
         {
             private readonly bool _value;
-            public CaseBoolean(bool value) : base(UnionTags.Boolean) { _value = value; }
+            public CaseBoolean(bool value) : base(UnionTag.Boolean) { _value = value; }
             public override object Value { get { return _value; } }
             public override bool GetBoolean()
             {
@@ -87,15 +87,15 @@
             {
                 throw new BadUnionAccessException(typeof(string), typeof(CaseBoolean));
             }
-            public override EntityRef GetEntityRef()
+            public override Entity GetEntityRef()
             {
-                throw new BadUnionAccessException(typeof(EntityRef), typeof(CaseBoolean));
+                throw new BadUnionAccessException(typeof(Entity), typeof(CaseBoolean));
             }
         }
         public sealed class CaseNumeric : Union
         {
             private readonly decimal _value;
-            public CaseNumeric(decimal value) : base(UnionTags.Numeric) { _value = value; }
+            public CaseNumeric(decimal value) : base(UnionTag.Numeric) { _value = value; }
             public override object Value { get { return _value; } }
             public override bool GetBoolean()
             {
@@ -113,15 +113,15 @@
             {
                 throw new BadUnionAccessException(typeof(string), typeof(CaseNumeric));
             }
-            public override EntityRef GetEntityRef()
+            public override Entity GetEntityRef()
             {
-                throw new BadUnionAccessException(typeof(EntityRef), typeof(CaseNumeric));
+                throw new BadUnionAccessException(typeof(Entity), typeof(CaseNumeric));
             }
         }
         public sealed class CaseDateTime : Union
         {
             private readonly DateTime _value;
-            public CaseDateTime(DateTime value) : base(UnionTags.DateTime) { _value = value; }
+            public CaseDateTime(DateTime value) : base(UnionTag.DateTime) { _value = value; }
             public override object Value { get { return _value; } }
             public override bool GetBoolean()
             {
@@ -139,15 +139,15 @@
             {
                 throw new BadUnionAccessException(typeof(string), typeof(CaseDateTime));
             }
-            public override EntityRef GetEntityRef()
+            public override Entity GetEntityRef()
             {
-                throw new BadUnionAccessException(typeof(EntityRef), typeof(CaseDateTime));
+                throw new BadUnionAccessException(typeof(Entity), typeof(CaseDateTime));
             }
         }
         public sealed class CaseString : Union
         {
             private readonly string _value;
-            public CaseString(string value) : base(UnionTags.String) { _value = value; }
+            public CaseString(string value) : base(UnionTag.String) { _value = value; }
             public override object Value { get { return _value; } }
             public override bool GetBoolean()
             {
@@ -165,15 +165,15 @@
             {
                 return _value;
             }
-            public override EntityRef GetEntityRef()
+            public override Entity GetEntityRef()
             {
-                throw new BadUnionAccessException(typeof(EntityRef), typeof(CaseString));
+                throw new BadUnionAccessException(typeof(Entity), typeof(CaseString));
             }
         }
         public sealed class CaseEntity : Union
         {
-            private readonly EntityRef _value;
-            public CaseEntity(EntityRef value) : base(UnionTags.Entity) { _value = value; }
+            private readonly Entity _value;
+            public CaseEntity(Entity value) : base(UnionTag.Entity) { _value = value; }
             public override object Value { get { return _value; } }
             public override bool GetBoolean()
             {
@@ -191,7 +191,7 @@
             {
                 throw new BadUnionAccessException(typeof(string), typeof(CaseEntity));
             }
-            public override EntityRef GetEntityRef()
+            public override Entity GetEntityRef()
             {
                 return _value;
             }

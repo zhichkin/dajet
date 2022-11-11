@@ -252,7 +252,7 @@ namespace DaJet.Scripting
                     value = (int)ColumnPurpose.Binary;
                 }
             }
-            else if (variable.Tag is EntityRef reference)
+            else if (variable.Tag is Entity reference)
             {
                 value = (int)ColumnPurpose.Identity;
                 union[(int)ColumnPurpose.TypeCode] = reference.TypeCode;

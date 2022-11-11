@@ -66,7 +66,7 @@ namespace DaJet.Data.Mapping
             else if (Type == typeof(DateTime)) { return GetDateTime(in reader); }
             else if (Type == typeof(string)) { return GetString(in reader); }
             else if (Type == typeof(byte[])) { return GetBinary(in reader); }
-            else if (Type == typeof(EntityRef)) { return GetEntityRef(in reader); }
+            else if (Type == typeof(Entity)) { return GetEntityRef(in reader); }
 
             throw new NotSupportedException($"Unsupported data type: {Type}");
         }
@@ -116,7 +116,7 @@ namespace DaJet.Data.Mapping
             else if (tag == 8) // Ссылка
             {
                 value = GetEntityRef(in reader);
-                return (value == null ? Union.Empty : new Union.CaseEntity((EntityRef)value));
+                return (value == null ? Union.Empty : new Union.CaseEntity((Entity)value));
             }
 
             throw new InvalidOperationException($"Invalid union tag value of {tag}");
@@ -230,14 +230,14 @@ namespace DaJet.Data.Mapping
 
             if (Columns.Count == 1) // single reference type value - RRef
             {
-                return new EntityRef(TypeCode, identity);
+                return new Entity(TypeCode, identity);
             }
 
             ordinal = GetOrdinal(in reader, ColumnPurpose.TypeCode, out _);
 
             if (ordinal == -1) // union having single reference type
             {
-                return new EntityRef(TypeCode, identity);
+                return new Entity(TypeCode, identity);
             }
 
             if (reader.IsDBNull(ordinal))
@@ -247,7 +247,7 @@ namespace DaJet.Data.Mapping
 
             int typeCode = DbUtilities.GetInt32((byte[])reader.GetValue(ordinal)); // binary(4)
 
-            return new EntityRef(typeCode, identity);
+            return new Entity(typeCode, identity);
         }
 
         #endregion

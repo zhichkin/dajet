@@ -210,7 +210,7 @@ namespace DaJet.Scripting
                 }
                 else if (_char == '{')
                 {
-                    EntityRef();
+                    Entity();
                 }
                 else if (_char == '\'')
                 {
@@ -445,14 +445,14 @@ namespace DaJet.Scripting
 
             AddToken(TokenType.Number);
         }
-        private void EntityRef()
+        private void Entity()
         {
             _start = _position;
             _lexeme.Append(_char);
 
             while (PeekNext() != '}' && Consume())
             {
-                // read EntityRef literal until } is met
+                // read Entity literal until } is met
 
                 _lexeme.Append(_char);
             }
@@ -465,7 +465,7 @@ namespace DaJet.Scripting
 
             if (_char != '}') // end of script
             {
-                throw new Exception(GetErrorText("Unterminated EntityRef literal"));
+                throw new Exception(GetErrorText("Unterminated Entity literal"));
             }
 
             AddToken(TokenType.Entity);

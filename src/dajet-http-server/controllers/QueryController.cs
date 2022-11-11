@@ -95,7 +95,7 @@ namespace DaJet.Http.Controllers
                 {
                     foreach (var item in entity)
                     {
-                        if (item.Value is EntityRef value)
+                        if (item.Value is Entity value)
                         {
                             entity[item.Key] = value.ToString();
                         }

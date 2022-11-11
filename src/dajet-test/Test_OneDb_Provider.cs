@@ -178,11 +178,11 @@ namespace DaJet.Data.Provider.Test
 
     internal sealed class Product
     {
-        public EntityRef Ссылка { get; set; } = EntityRef.Empty;
+        public Entity Ссылка { get; set; } = Entity.Empty;
         public string Код { get; set; } = string.Empty;
         public string Наименование { get; set; } = string.Empty;
         public bool ПометкаУдаления { get; set; }
-        public EntityRef Валюта { get; set; } = EntityRef.Empty;
+        public Entity Валюта { get; set; } = Entity.Empty;
         public Union СоставнойТип { get; set; } = Union.Empty;
     }
 }

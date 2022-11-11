@@ -46,7 +46,7 @@ namespace DaJet.Scripting
             }
             else if (type.CanBeReference)
             {
-                map.Type = typeof(EntityRef);
+                map.Type = typeof(Entity);
                 map.TypeCode = type.TypeCode;
             }
 

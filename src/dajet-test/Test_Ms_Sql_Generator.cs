@@ -249,7 +249,7 @@ namespace DaJet.Scripting.Test
             ScriptExecutor executor = new(_cache);
             //executor.Parameters.Add("КодУзла", "N001");
             //executor.Parameters.Add("КодУзла", uuid);
-            executor.Parameters.Add("КодУзла", new EntityRef(36, uuid));
+            executor.Parameters.Add("КодУзла", new Entity(36, uuid));
 
             try
             {
@@ -727,13 +727,13 @@ namespace DaJet.Scripting.Test
     {
         public string Code { get; set; }
         public string Name { get; set; }
-        public EntityRef Reference { get; set; }
+        public Entity Reference { get; set; }
         public bool IsMarkedForDeletion { get; set; }
     }
     public sealed class NodeInfo
     {
         public string NodeCode { get; set; } = string.Empty;
-        public EntityRef NodeRef { get; set; } = EntityRef.Empty;
+        public Entity NodeRef { get; set; } = Entity.Empty;
         public bool UseKafka { get; set; } = false;
         public bool UseRabbitMQ { get; set; } = false;
         public override string ToString()
