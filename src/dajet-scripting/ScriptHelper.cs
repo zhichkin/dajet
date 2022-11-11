@@ -2,7 +2,7 @@
 
 namespace DaJet.Scripting
 {
-    internal static class ScriptHelper
+    public static class ScriptHelper
     {
         private static Dictionary<string, TokenType> _keywords_en = new()
         {
@@ -170,7 +170,7 @@ namespace DaJet.Scripting
             }
             return _datatype_en.TryGetValue(identifier, out type!);
         }
-        internal static TokenType GetDataTypeToken(Type type)
+        public static TokenType GetDataTypeToken(Type type)
         {
             if (_datatype_token.TryGetValue(type, out TokenType token))
             {
@@ -178,7 +178,7 @@ namespace DaJet.Scripting
             }
             throw new NotSupportedException($"Unsupported data type token {type}");
         }
-        internal static string GetDataTypeLiteral(Type type)
+        public static string GetDataTypeLiteral(Type type)
         {
             if (_datatype_literal.TryGetValue(type, out string? literal))
             {

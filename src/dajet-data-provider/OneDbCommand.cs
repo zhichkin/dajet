@@ -8,6 +8,8 @@ namespace DaJet.Data.Provider
 {
     public sealed class OneDbCommand : DbCommand
     {
+        private readonly OneDbParameterCollection _parameters = new();
+
         private MetadataCache _metadata;
 
         private DbCommand? _command;
@@ -41,11 +43,9 @@ namespace DaJet.Data.Provider
             get { return _transaction; }
             set { _transaction = value; }
         }
-        protected override DbParameterCollection DbParameterCollection { get; } //TODO: !!!
-        protected override DbParameter CreateDbParameter()
-        {
-            throw new NotImplementedException();
-        }
+        public new OneDbParameterCollection Parameters { get { return _parameters; } }
+        protected override DbParameterCollection DbParameterCollection { get { return Parameters; } }
+        protected override DbParameter CreateDbParameter() { return new OneDbParameter(); }
         public override void Cancel()
         {
             _command?.Cancel();
@@ -63,7 +63,7 @@ namespace DaJet.Data.Provider
                 }
             }
 
-            //TODO: ConfigureParameters(in model);
+            ConfigureParameters(in model);
 
             ScopeBuilder builder = new();
 
@@ -106,6 +106,79 @@ namespace DaJet.Data.Provider
                 throw new Exception(_generator.Error);
             }
         }
+        private void ConfigureParameters(in ScriptModel model)
+        {
+            foreach (OneDbParameter parameter in Parameters)
+            {
+                if (parameter.Value is Guid uuid)
+                {
+                    parameter.Value = SQLHelper.GetSqlUuid(uuid);
+                    parameter.Size = 16;
+                    parameter.DbType = DbType.Binary;
+                }
+                else if (parameter.Value is bool boolean)
+                {
+                    if (_metadata.DatabaseProvider == DatabaseProvider.SqlServer)
+                    {
+                        parameter.Value = new byte[] { Convert.ToByte(boolean) };
+                        parameter.Size = 1;
+                        parameter.DbType = DbType.Binary;
+                    }
+                }
+                else if (parameter.Value is Entity entity)
+                {
+                    parameter.Value = SQLHelper.GetSqlUuid(entity.Identity);
+                    parameter.Size = 16;
+                    parameter.DbType = DbType.Binary;
+                }
+                else if (parameter.Value is DateTime dateTime)
+                {
+                    parameter.Value = dateTime.AddYears(_metadata.InfoBase.YearOffset);
+                    parameter.DbType = DbType.DateTime2;
+                }
+
+                if (DeclareStatementExists(in model, parameter.ParameterName))
+                {
+                    continue;
+                }
+
+                if (parameter.Value == null)
+                {
+                    continue; // TODO TokenType.NULL
+                }
+
+                Type parameterType = parameter.Value.GetType();
+
+                DeclareStatement declare = new()
+                {
+                    Name = "@" + parameter.ParameterName,
+                    Type = ScriptHelper.GetDataTypeLiteral(parameterType),
+                    Initializer = new ScalarExpression()
+                    {
+                        Token = ScriptHelper.GetDataTypeToken(parameterType),
+                        Literal = parameter.Value.ToString()!
+                    }
+                };
+
+                model.Statements.Insert(0, declare);
+            }
+        }
+        private bool DeclareStatementExists(in ScriptModel model, string name)
+        {
+            foreach (SyntaxNode statement in model.Statements)
+            {
+                if (statement is not DeclareStatement declare)
+                {
+                    continue;
+                }
+
+                if (declare.Name.Substring(1) == name) // remove leading @ or &
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
         public override object? ExecuteScalar()
         {
             Prepare();
@@ -113,6 +186,14 @@ namespace DaJet.Data.Provider
             using (_command = Connection.CreateCommand())
             {
                 _command.CommandText = _generator.Script;
+
+                foreach (OneDbParameter parameter in Parameters)
+                {
+                    DbParameter p = _command.CreateParameter();
+                    p.Value = parameter.Value;
+                    p.ParameterName = parameter.ParameterName;
+                    _ = _command.Parameters.Add(p);
+                }
 
                 using (DbDataReader reader = _command.ExecuteReader())
                 {
@@ -135,6 +216,14 @@ namespace DaJet.Data.Provider
             
             _command = Connection.CreateCommand();
             _command.CommandText = _generator.Script;
+            
+            foreach (OneDbParameter parameter in Parameters)
+            {
+                DbParameter p = _command.CreateParameter();
+                p.Value = parameter.Value;
+                p.ParameterName = parameter.ParameterName;
+                _ = _command.Parameters.Add(p);
+            }
 
             DbDataReader reader = _command.ExecuteReader(behavior);
             return new OneDbDataReader(in reader, in _generator);

@@ -2,7 +2,6 @@
 using DaJet.Scripting;
 using System.Collections;
 using System.Data.Common;
-using System.Dynamic;
 
 namespace DaJet.Data.Provider
 {
