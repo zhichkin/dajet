@@ -8,8 +8,12 @@
     <AssemblyName>DaJet.Data.Provider</AssemblyName>
     <Version>1.0.0</Version>
     <Authors>Zhichkin</Authors>
-    <Description>ADO.NET data provider for 1C:Enterprise 8</Description>
+    <Description>ADO .NET data provider for 1C:Enterprise 8.
+Microsoft SQL Server and PostgreSQL databases are supported.</Description>
     <Copyright>Zhichkin © 2022</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/zhichkin/dajet/tree/main/src/dajet-data-provider</RepositoryUrl>
+    <PackageProjectUrl>https://zhichkin.github.io/data-provider/main.html</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>

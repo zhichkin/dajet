@@ -55,5 +55,25 @@ namespace DaJet.Data.Mapping
 
             return entity;
         }
+        public void Map<TEntity>(in IDataReader reader, in TEntity entity) where TEntity : class, new()
+        {
+            object? value;
+            PropertyInfo? property;
+            Type type = typeof(TEntity);
+
+            foreach (PropertyMap map in Properties)
+            {
+                property = type.GetProperty(map.Name);
+
+                if (property == null)
+                {
+                    continue;
+                }
+
+                value = map.GetValue(in reader);
+
+                property.SetValue(entity, value);
+            }
+        }
     }
 }

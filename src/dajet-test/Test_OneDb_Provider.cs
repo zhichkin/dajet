@@ -90,7 +90,10 @@ namespace DaJet.Data.Provider.Test
         private void Db_ExecuteReader(string connectionString)
         {
             string commandText =
-                "ВЫБРАТЬ ПЕРВЫЕ 6 Ссылка, Код, Наименование, ПометкаУдаления, СоставнойТип ИЗ Справочник.Номенклатура;";
+                "ВЫБРАТЬ ПЕРВЫЕ 1 " +
+                "Ссылка, Код, Наименование, ПометкаУдаления, " +
+                "РеквизитДата, РеквизитЧисло, СоставнойТип, Валюта " +
+                "ИЗ Справочник.Номенклатура;";
 
             using (OneDbConnection connection = new(connectionString))
             {
@@ -129,15 +132,15 @@ namespace DaJet.Data.Provider.Test
             }
         }
 
-        [TestMethod] public void PG_ExecuteReader_GetEntity()
+        [TestMethod] public void PG_ExecuteReader_MapEntity()
         {
-            Db_ExecuteReader_GetEntity(PG_CONNECTION_STRING);
+            Db_ExecuteReader_MapEntity(PG_CONNECTION_STRING);
         }
-        [TestMethod] public void MS_ExecuteReader_GetEntity()
+        [TestMethod] public void MS_ExecuteReader_MapEntity()
         {
-            Db_ExecuteReader_GetEntity(MS_CONNECTION_STRING);
+            Db_ExecuteReader_MapEntity(MS_CONNECTION_STRING);
         }
-        private void Db_ExecuteReader_GetEntity(string connectionString)
+        private void Db_ExecuteReader_MapEntity(string connectionString)
         {
             string commandText =
                 "ВЫБРАТЬ ПЕРВЫЕ 5 " +
@@ -146,6 +149,8 @@ namespace DaJet.Data.Provider.Test
                 "СоставнойТип, Валюта " +
                 "ИЗ Справочник.Номенклатура " +
                 "УПОРЯДОЧИТЬ ПО Код ВОЗР;";
+
+            Product product = new(); // buffer
 
             using (OneDbConnection connection = new(connectionString))
             {
@@ -159,7 +164,9 @@ namespace DaJet.Data.Provider.Test
                     {
                         while (reader.Read())
                         {
-                            Product product = reader.GetEntity<Product>();
+                            // Product product = reader.Map<Product>();
+
+                            reader.Map(in product);
 
                             Console.WriteLine(string.Format("{0}: {1} [{2}] {3} {4} [{5}]",
                                 product.Код,
@@ -299,7 +306,7 @@ namespace DaJet.Data.Provider.Test
                     {
                         while (reader.Read())
                         {
-                            Product product = reader.GetEntity<Product>();
+                            Product product = reader.Map<Product>();
 
                             Console.WriteLine(string.Format("[{0}] {1} {2}",
                                 product.Код,

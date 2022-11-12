@@ -78,9 +78,13 @@ namespace DaJet.Data.Provider
         {
             return _generator.Mapper.Properties[ordinal].GetValue(_reader)!;
         }
-        public TEntity GetEntity<TEntity>() where TEntity : class, new()
+        public TEntity Map<TEntity>() where TEntity : class, new()
         {
             return _generator.Mapper.Map<TEntity>(_reader);
+        }
+        public void Map<TEntity>(in TEntity entity) where TEntity : class, new()
+        {
+            _generator.Mapper.Map(_reader, in entity);
         }
 
         #region "FIELD METADATA"

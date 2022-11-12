@@ -48,6 +48,7 @@
         }
         public int TypeCode { get; } = 0;
         public Guid Identity { get; } = Guid.Empty;
+        public bool IsEmpty { get { return Identity == Guid.Empty; } }
         public override string ToString()
         {
             return $"{{{TypeCode}:{Identity}}}";

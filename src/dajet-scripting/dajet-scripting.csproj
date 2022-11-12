@@ -11,6 +11,8 @@
     <Description>1QL - 1C query language transpiler</Description>
     <Copyright>Zhichkin © 2022</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/zhichkin/dajet/tree/main/src/dajet-scripting</RepositoryUrl>
+    <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>

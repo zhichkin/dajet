@@ -10,6 +10,9 @@
     <Authors>Zhichkin</Authors>
     <Copyright>Zhichkin © 2020</Copyright>
     <Description>DaJet database utilities</Description>
+    <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/zhichkin/dajet</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
