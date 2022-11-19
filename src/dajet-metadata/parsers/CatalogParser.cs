@@ -45,10 +45,17 @@ namespace DaJet.Metadata.Parsers
         }
         public void Parse(in ConfigFileReader reader, out MetadataObject target)
         {
-            _target = new Catalog()
+            //_target = new Catalog()
+            //{
+            //    Uuid = new Guid(reader.FileName)
+            //};
+
+            _target = new Catalog();
+
+            if (Guid.TryParse(reader.FileName, out Guid uuid))
             {
-                Uuid = new Guid(reader.FileName)
-            };
+                _target.Uuid = uuid;
+            }
 
             ConfigureConverter();
 

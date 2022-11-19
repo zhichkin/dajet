@@ -22,13 +22,22 @@ namespace DaJet.Metadata.Parsers
         {
             _infoBase = new InfoBase()
             {
-                Uuid = new Guid(reader.FileName),
                 YearOffset = reader.YearOffset,
                 PlatformVersion = reader.PlatformVersion
             };
 
+            if (Guid.TryParse(reader.FileName, out Guid uuid))
+            {
+                _infoBase.Uuid = uuid;
+            }
+
             _parser = new ConfigFileParser();
             _converter = new ConfigFileConverter();
+
+            if (_infoBase.Uuid == Guid.Empty)
+            {
+                _converter[1][0] += FileName; // Случай для расширения конфигурации
+            }
 
             ConfigureInfoBaseConverter();
             
@@ -48,15 +57,24 @@ namespace DaJet.Metadata.Parsers
         {
             _infoBase = new InfoBase()
             {
-                Uuid = new Guid(reader.FileName),
                 YearOffset = reader.YearOffset,
                 PlatformVersion = reader.PlatformVersion
             };
+
+            if (Guid.TryParse(reader.FileName, out Guid uuid))
+            {
+                _infoBase.Uuid = uuid;
+            }
 
             _metadata = metadata;
 
             _parser = new ConfigFileParser();
             _converter = new ConfigFileConverter();
+
+            if (_infoBase.Uuid == Guid.Empty)
+            {
+                _converter[1][0] += FileName; // Случай для расширения конфигурации
+            }
 
             ConfigureInfoBaseConverter();
             ConfigureMetadataConverter();
@@ -88,6 +106,11 @@ namespace DaJet.Metadata.Parsers
             _converter[3][1][1][17] += DataLockingMode; // Режим управления блокировкой данных в транзакции по умолчанию
             _converter[3][1][1][19] += AutoNumberingMode; // Режим автонумерации объектов
             _converter[3][1][1][38] += UICompatibilityMode; // Режим совместимости интерфейса
+
+            //_converter[3][1][1][42] // Префикс имен собственных объектов расширения конфигурации
+            //_converter[3][1][1][43] // Режим совместимости расширения конфигурации - аналогично [3][1][1][26]
+            //_converter[3][1][1][49] // Поддерживать соответствие объектам расширяемой конфигурации по внутренним идентификаторам
+            // 1 - true 0 - false
         }
         private void ConfigureMetadataConverter()
         {

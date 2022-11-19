@@ -21,7 +21,8 @@ namespace DaJet.Metadata.Extensions
         /// Это значение является значением поля "FileName" таблицы "ConfigCAS".
         /// <br>Вычисляется по алгоритму SHA-1 по значению поля "BinaryData" таблицы "ConfigCAS".</br>
         /// </summary>
-        public string FileName { get; set; }
+        public string FileName { get; set; } // TODO: re-name ?
+        public string RootFile { get; set; } // TODO: re-name ?
         public DateTime Updated { get; set; }
         /// <summary>
         /// Содержит узел распределенной информационной базы, в котором создано данное расширение конфигурации.

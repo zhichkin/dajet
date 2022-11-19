@@ -1,9 +1,13 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Extensions;
+using DaJet.Metadata.Model;
 using Microsoft.Data.SqlClient;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json.Linq;
 using System.Data;
+using System.IO.Compression;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -13,6 +17,27 @@ namespace DaJet.Metadata.Test
     {
         private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
 
+        private readonly MetadataService _service = new();
+        private readonly MetadataCache _cache;
+        private readonly ExtensionsManager _manager;
+
+        public Test_1C_Extensions()
+        {
+            _service.Add(new InfoBaseOptions()
+            {
+                Key = "test",
+                ConnectionString = MS_CONNECTION_STRING,
+                DatabaseProvider = DatabaseProvider.SqlServer
+            });
+
+            if (!_service.TryGetMetadataCache("test", out _cache, out string error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            _manager = new ExtensionsManager(_cache);
+        }
         [TestMethod] public void WriteExtensionInfoToFile()
         {
             byte[] buffer = Array.Empty<byte>();
@@ -153,7 +178,24 @@ namespace DaJet.Metadata.Test
                 new ConfigFileWriter().Write(configObject, "C:\\temp\\ConfigFile.txt");
             }
         }
-        
+
+        [TestMethod] public void DeflateHex()
+        {
+            string hex = "7BBF7B7F352F57B5A181998E412D2F572D00";
+            byte[] bin = Convert.FromHexString(hex);
+
+            using (MemoryStream memory = new(bin))
+            {
+                using (DeflateStream stream = new(memory, CompressionMode.Decompress))
+                {
+                    using(StreamReader reader = new(stream, Encoding.UTF8))
+                    {
+                        Console.WriteLine(reader.ReadToEnd());
+                    }
+                }
+            }
+        }
+
         [TestMethod] public void Extension_DBNames()
         {
             // Extension DBNames file: compound with _IDRRef field of _ExtensionsInfo table
@@ -199,11 +241,12 @@ namespace DaJet.Metadata.Test
             // Extension metadata object files (obtained from extension config file)
             string[] fileNames = new string[]
             {
-                "22b81a83c912bc42ab4daeae0c5a9eac308d7025", // 060ce774-3c4f-4be3-98d8-8feb61e22662 - [Общие/Роли] Расш2_ОсновнаяРоль
-                "a0d0ee4cf0fd943378dbceaaacdc64c90cb0ea2c", // 1c66f342-27bf-4982-9fd5-a11778663e69 - заимствованный справочник "Сотрудники"
-                "5a0b5755bb2ad8b692e973ce0dd8257ab3ad01fc", // aebaa85b-3b56-4e48-8332-0351b17ab64e - заимствованный справочник "Номенклатура"
-                "db555e00687401b06a8debd281081208bc53fe0c", // f9d8d256-fe2f-483f-8663-c7f76b2197dc - [Общие/Языки] Русский
-                "529a0e42c5c063c1613fec6ddb07999b744cf5fd", // 2a96800d-54b5-44cd-ba10-725588248b0e - собственный справочник "Расш2_Справочник1"
+                //"22b81a83c912bc42ab4daeae0c5a9eac308d7025", // 060ce774-3c4f-4be3-98d8-8feb61e22662 - [Общие/Роли] Расш2_ОсновнаяРоль
+                //"a0d0ee4cf0fd943378dbceaaacdc64c90cb0ea2c", // 1c66f342-27bf-4982-9fd5-a11778663e69 - заимствованный справочник "Сотрудники"
+                //"5a0b5755bb2ad8b692e973ce0dd8257ab3ad01fc", // aebaa85b-3b56-4e48-8332-0351b17ab64e - заимствованный справочник "Номенклатура"
+                //"db555e00687401b06a8debd281081208bc53fe0c", // f9d8d256-fe2f-483f-8663-c7f76b2197dc - [Общие/Языки] Русский
+                //"529a0e42c5c063c1613fec6ddb07999b744cf5fd", // 2a96800d-54b5-44cd-ba10-725588248b0e - собственный справочник "Расш2_Справочник1"
+                "67406f71de9fe4410e62e02e18ba225b16370984"
             };
 
             foreach (string fileName in fileNames)
@@ -215,26 +258,119 @@ namespace DaJet.Metadata.Test
                     new ConfigFileWriter().Write(configObject, $"C:\\temp\\extensions\\{fileName}.txt");
                 }
             }
+
+            Catalog catalog = _cache.GetMetadataObject<Catalog>("Справочник.Расширяемый1");
+            Console.WriteLine($"{catalog.Name} [{catalog.Uuid}]");
+
+            foreach (MetadataProperty property in catalog.Properties)
+            {
+                Console.WriteLine($" - {property.Name} [{property.Uuid}]");
+            }
         }
 
         [TestMethod] public void GetExtensionsList()
         {
-            MetadataService service = new();
-            service.Add(new InfoBaseOptions()
-            {
-                Key = "test",
-                ConnectionString = MS_CONNECTION_STRING,
-                DatabaseProvider = DatabaseProvider.SqlServer
-            });
+            List<ExtensionInfo> extensions = _manager.GetExtensions();
 
-            if (!service.TryGetMetadataCache("test", out MetadataCache cache, out string error))
+            foreach (ExtensionInfo extension in extensions)
             {
-                Console.WriteLine(error); return;
+                Console.WriteLine($"Uuid = {extension.Uuid}");
+                Console.WriteLine($"Name = {extension.Name}");
+                Console.WriteLine($"Alias = {extension.Alias}");
+                Console.WriteLine($"FileName = {extension.FileName}");
+                Console.WriteLine($"Version = {extension.Version}");
+                Console.WriteLine($"IsActive = {extension.IsActive}");
+
+                Console.WriteLine();
+                Console.WriteLine(_manager.GetRootFile(extension));
+                Console.WriteLine();
+
+                string root = _manager.ParseRootFile(extension, out Dictionary<string, string> files);
+
+                Console.WriteLine($"RootFile = {root} [{extension.RootFile}]");
+
+                foreach (var item in files)
+                {
+                    Console.WriteLine($"{item.Key} : {item.Value}");
+                }
+
+                if (files.TryGetValue(root, out string rootFile))
+                {
+                    using (ConfigFileReader reader = new(_cache.DatabaseProvider, _cache.ConnectionString, ConfigTables.ConfigCAS, rootFile))
+                    {
+                        ConfigObject configObject = new ConfigFileParser().Parse(reader);
+
+                        new ConfigFileWriter().Write(configObject, "C:\\temp\\extensions\\ExtensionRootFile.txt");
+                    }
+
+                    Console.WriteLine("C:\\temp\\extensions\\ExtensionRootFile.txt");
+                }
+            }
+        }
+        [TestMethod] public void GetExtensionDbNames()
+        {
+            List<ExtensionInfo> extensions = _manager.GetExtensions();
+
+            ExtensionInfo extension = extensions[0];
+
+            if (!_manager.TryGetDbNames(in extension, out DbNameCache database, out string error))
+            {
+                Console.WriteLine(error);
+                return;
             }
 
-            List<ExtensionInfo> extensions = new ExtensionsInfoReader(cache).GetExtensions();
+            foreach (DbName item in database.DbNames)
+            {
+                Console.WriteLine($"[{item.Uuid}] {item.Code} {item.Name}");
+            }
+        }
+        [TestMethod] public void GetExtensionMetadata()
+        {
+            List<ExtensionInfo> extensions = _manager.GetExtensions();
 
-            Console.WriteLine(extensions.Count);
+            ExtensionInfo extension = extensions[0];
+
+            _ = _manager.ParseRootFile(extension, out Dictionary<string, string> files);
+
+            if (!_manager.TryGetMetadata(in extension, out InfoBase infoBase, out Dictionary<Guid, List<Guid>> metadata, out string error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            foreach (PropertyInfo property in typeof(InfoBase).GetRuntimeProperties())
+            {
+                object? value = property.GetValue(infoBase, null);
+                Console.WriteLine($"\"{property.Name}\" = [{value}]");
+            }
+
+            foreach (var entry in metadata)
+            {
+                string name = MetadataTypes.ResolveName(entry.Key);
+                Console.WriteLine($"\"{name}\" = [{entry.Key}]");
+
+                foreach (var item in entry.Value)
+                {
+                    Console.WriteLine($"- [{item}]");
+                }
+            }
+        }
+        [TestMethod] public void GetExtensionMetadataObject()
+        {
+            string uuid = "b4c9895c-095c-4ec1-94d0-b95a12c741bc";
+            string fileName = "67406f71de9fe4410e62e02e18ba225b16370984";
+
+            if (!_manager.TryGetMetadataObject(in uuid, in fileName, out MetadataObject entity, out string error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            foreach (PropertyInfo property in typeof(Catalog).GetRuntimeProperties())
+            {
+                object? value = property.GetValue(entity, null);
+                Console.WriteLine($"\"{property.Name}\" = [{value}]");
+            }
         }
     }
 }
