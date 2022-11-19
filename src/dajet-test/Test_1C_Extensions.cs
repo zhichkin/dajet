@@ -1,5 +1,6 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata.Core;
+using DaJet.Metadata.Extensions;
 using Microsoft.Data.SqlClient;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Data;
@@ -214,6 +215,26 @@ namespace DaJet.Metadata.Test
                     new ConfigFileWriter().Write(configObject, $"C:\\temp\\extensions\\{fileName}.txt");
                 }
             }
+        }
+
+        [TestMethod] public void GetExtensionsList()
+        {
+            MetadataService service = new();
+            service.Add(new InfoBaseOptions()
+            {
+                Key = "test",
+                ConnectionString = MS_CONNECTION_STRING,
+                DatabaseProvider = DatabaseProvider.SqlServer
+            });
+
+            if (!service.TryGetMetadataCache("test", out MetadataCache cache, out string error))
+            {
+                Console.WriteLine(error); return;
+            }
+
+            List<ExtensionInfo> extensions = new ExtensionsInfoReader(cache).GetExtensions();
+
+            Console.WriteLine(extensions.Count);
         }
     }
 }
