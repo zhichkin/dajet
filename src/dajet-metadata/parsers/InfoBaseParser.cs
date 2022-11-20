@@ -36,6 +36,7 @@ namespace DaJet.Metadata.Parsers
 
             if (_infoBase.Uuid == Guid.Empty)
             {
+                // Контрольная сумма SHA-1 по полю "BinaryData" таблицы "ConfigCAS"
                 _converter[1][0] += FileName; // Случай для расширения конфигурации
             }
 
@@ -73,6 +74,7 @@ namespace DaJet.Metadata.Parsers
 
             if (_infoBase.Uuid == Guid.Empty)
             {
+                // Контрольная сумма SHA-1 по полю "BinaryData" таблицы "ConfigCAS"
                 _converter[1][0] += FileName; // Случай для расширения конфигурации
             }
 
@@ -107,10 +109,10 @@ namespace DaJet.Metadata.Parsers
             _converter[3][1][1][19] += AutoNumberingMode; // Режим автонумерации объектов
             _converter[3][1][1][38] += UICompatibilityMode; // Режим совместимости интерфейса
 
-            //_converter[3][1][1][42] // Префикс имен собственных объектов расширения конфигурации
-            //_converter[3][1][1][43] // Режим совместимости расширения конфигурации - аналогично [3][1][1][26]
-            //_converter[3][1][1][49] // Поддерживать соответствие объектам расширяемой конфигурации по внутренним идентификаторам
-            // 1 - true 0 - false
+            // Свойства расширения конфигурации
+            _converter[3][1][1][42] += NamePrefix;
+            _converter[3][1][1][43] += ExtensionCompatibility;
+            _converter[3][1][1][49] += MapMetadataByUuid;
         }
         private void ConfigureMetadataConverter()
         {
@@ -187,6 +189,18 @@ namespace DaJet.Metadata.Parsers
         private void UICompatibilityMode(in ConfigFileReader source, in CancelEventArgs args)
         {
             _infoBase.UICompatibilityMode = (UICompatibilityMode)source.GetInt32();
+        }
+        private void NamePrefix(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _infoBase.NamePrefix = source.Value;
+        }
+        private void MapMetadataByUuid(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _infoBase.MapMetadataByUuid = (source.GetInt32() == 1);
+        }
+        private void ExtensionCompatibility(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _infoBase.ExtensionCompatibility = source.GetInt32();
         }
 
         #endregion

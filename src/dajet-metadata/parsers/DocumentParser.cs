@@ -72,6 +72,12 @@ namespace DaJet.Metadata.Parsers
         {
             _converter = new ConfigFileConverter();
 
+            //TODO: extensions support (!)
+            // 1.3 - идентификатор ссылочного типа данных "ДокументСсылка"
+            // 1.9.1.1.2 - uuid объекта метаданных (FileName)
+            // 1.9.1.8 - флаг заимствования объекта из основной конфигурации ??? 0 если заимствование отстутствует
+            // 1.9.1.9 - uuid расширяемого объекта метаданных
+
             _converter[1][9][1][2] += Name;
             _converter[1][9][1][3][2] += Alias;
             _converter[1][11] += NumberType;

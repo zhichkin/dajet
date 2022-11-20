@@ -14,13 +14,21 @@ namespace DaJet.Metadata.Extensions
     {
         #region "CONSTANTS"
 
-        private const string SELECT_EXTENSIONS =
+        private const string MS_SELECT_EXTENSIONS =
             "SELECT _IDRRef, _ExtensionOrder, _ExtName, _UpdateTime, " +
             "_ExtensionUsePurpose, _ExtensionScope, _ExtensionZippedInfo, " +
             "_MasterNode, _UsedInDistributedInfoBase, _Version " +
             "FROM _ExtensionsInfo ORDER BY " +
             "CASE WHEN SUBSTRING(_MasterNode, CAST(1.0 AS INT), CAST(34.0 AS INT)) = N'0:00000000000000000000000000000000' " +
             "THEN 0x01 ELSE 0x00 END, _ExtensionUsePurpose, _ExtensionScope, _ExtensionOrder;";
+
+        private const string PG_SELECT_EXTENSIONS =
+            "SELECT _idrref, _extensionorder, CAST(_extname AS varchar), _updatetime, " +
+            "_extensionusepurpose, _extensionscope, _extensionzippedinfo, " +
+            "CAST(_masternode AS varchar), _usedindistributedinfobase, _version " +
+            "FROM _extensionsinfo ORDER BY " +
+            "CASE WHEN SUBSTRING(CAST(_masternode AS varchar), 1, 34) = '0:00000000000000000000000000000000' " +
+            "THEN 1 ELSE 0 END, _extensionusepurpose, _extensionscope, _extensionorder;";
 
         #endregion
 
@@ -32,13 +40,21 @@ namespace DaJet.Metadata.Extensions
         
         public List<ExtensionInfo> GetExtensions()
         {
+            if (_metadata.DatabaseProvider == DatabaseProvider.SqlServer)
+            {
+                return MsGetExtensions();
+            }
+            return PgGetExtensions();
+        }
+        private List<ExtensionInfo> MsGetExtensions()
+        {
             List<ExtensionInfo> list = new();
 
             byte[] zippedInfo;
 
             IQueryExecutor executor = _metadata.CreateQueryExecutor();
 
-            foreach (IDataReader reader in executor.ExecuteReader(SELECT_EXTENSIONS, 10))
+            foreach (IDataReader reader in executor.ExecuteReader(MS_SELECT_EXTENSIONS, 10))
             {
                 zippedInfo = (byte[])reader.GetValue(6);
 
@@ -63,9 +79,42 @@ namespace DaJet.Metadata.Extensions
 
             return list;
         }
+        private List<ExtensionInfo> PgGetExtensions()
+        {
+            List<ExtensionInfo> list = new();
+
+            byte[] zippedInfo;
+
+            IQueryExecutor executor = _metadata.CreateQueryExecutor();
+
+            foreach (IDataReader reader in executor.ExecuteReader(PG_SELECT_EXTENSIONS, 10))
+            {
+                zippedInfo = (byte[])reader.GetValue(6);
+
+                Guid uuid = new(SQLHelper.Get1CUuid((byte[])reader.GetValue(0)));
+
+                ExtensionInfo extension = new()
+                {
+                    Uuid = uuid, // Поле _IDRRef используется для поиска файла DbNames расширения
+                    Order = (int)reader.GetDecimal(1),
+                    Name = reader.GetString(2),
+                    Updated = reader.GetDateTime(3).AddYears(-_metadata.InfoBase.YearOffset),
+                    Purpose = (ExtensionPurpose)reader.GetDecimal(4),
+                    Scope = (ExtensionScope)reader.GetDecimal(5),
+                    MasterNode = reader.GetString(7),
+                    IsDistributed = reader.GetBoolean(8)
+                };
+
+                DecodeZippedInfo(in zippedInfo, in extension);
+
+                list.Add(extension);
+            }
+
+            return list;
+        }
         private void DecodeZippedInfo(in byte[] zippedInfo, in ExtensionInfo extension)
         {
-            extension.FileName = Convert.ToHexString(zippedInfo, 4, 20).ToLower();
+            extension.RootFile = Convert.ToHexString(zippedInfo, 4, 20).ToLower();
 
             Encoding encoding = (zippedInfo[37] == 0x97) ? Encoding.Unicode : Encoding.ASCII;
             
@@ -133,7 +182,7 @@ namespace DaJet.Metadata.Extensions
 
         public string GetRootFile(ExtensionInfo extension)
         {
-            string fileName = extension.FileName;
+            string fileName = extension.RootFile;
             string connectionString = _metadata.ConnectionString;
             DatabaseProvider provider = _metadata.DatabaseProvider;
 
@@ -146,7 +195,7 @@ namespace DaJet.Metadata.Extensions
         {
             files = new Dictionary<string, string>();
 
-            string fileName = extension.FileName;
+            string fileName = extension.RootFile;
             string connectionString = _metadata.ConnectionString;
             DatabaseProvider provider = _metadata.DatabaseProvider;
 
@@ -203,7 +252,7 @@ namespace DaJet.Metadata.Extensions
 
                 if (key == uuid)
                 {
-                    extension.RootFile = file;
+                    extension.FileName = file;
                 }
             }
 
@@ -214,7 +263,7 @@ namespace DaJet.Metadata.Extensions
         {
             error = string.Empty;
 
-            string fileName = extension.RootFile;
+            string fileName = extension.FileName;
             string connectionString = _metadata.ConnectionString;
             DatabaseProvider provider = _metadata.DatabaseProvider;
 
@@ -237,14 +286,12 @@ namespace DaJet.Metadata.Extensions
         {
             error = string.Empty;
 
-            string fileName = extension.RootFile;
+            string fileName = extension.FileName;
             string connectionString = _metadata.ConnectionString;
             DatabaseProvider provider = _metadata.DatabaseProvider;
 
             metadata = new Dictionary<Guid, List<Guid>>()
             {
-                //{ MetadataTypes.Constant,             new List<Guid>() }, // Константы
-                //{ MetadataTypes.Subsystem,            new List<Guid>() }, // Подсистемы
                 { MetadataTypes.NamedDataTypeSet,     new List<Guid>() }, // Определяемые типы
                 { MetadataTypes.SharedProperty,       new List<Guid>() }, // Общие реквизиты
                 { MetadataTypes.Catalog,              new List<Guid>() }, // Справочники

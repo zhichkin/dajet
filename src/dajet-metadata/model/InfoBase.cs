@@ -42,5 +42,17 @@
         /// Режим совместимости интерфейса
         /// </summary>
         public UICompatibilityMode UICompatibilityMode { get; set; }
+        /// <summary>
+        /// Префикс имен собственных объектов расширения конфигурации
+        /// </summary>
+        public string NamePrefix { get; set; }
+        /// <summary>
+        /// Поддерживать соответствие объектам расширяемой конфигурации по внутренним идентификаторам
+        /// </summary>
+        public bool MapMetadataByUuid { get; set; } = true;
+        /// <summary>
+        /// Режим совместимости расширения конфигурации
+        /// </summary>
+        public int ExtensionCompatibility { get; set; }
     }
 }

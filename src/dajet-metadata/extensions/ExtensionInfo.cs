@@ -4,7 +4,7 @@ using System;
 namespace DaJet.Metadata.Extensions
 {
     /// <summary>
-    /// Доступен, начиная с версии 8.3.6
+    /// Расширение конфигурации (доступно, начиная с версии 8.3.6)
     /// </summary>
     public sealed class ExtensionInfo : MetadataObject
     {
@@ -13,16 +13,25 @@ namespace DaJet.Metadata.Extensions
         /// <br>расширение не будет подключено. (Доступно, начиная с версии 8.3.12)</br>
         /// </summary>
         public bool IsActive { get; set; }
-        public string Version { get; set; } // Доступно, начиная с версии 8.3.6
+        /// <summary>Версия расширения (доступно, начиная с версии 8.3.6)</summary>
+        public string Version { get; set; }
+        /// <summary>Порядковый номер расширения</summary>
         public int Order { get; set; }
+        /// <summary>Область действия расширения (доступно, начиная с версиии 8.3.12)</summary>
         public ExtensionScope Scope { get; set; } = ExtensionScope.InfoBase;
+        /// <summary>Назначение расширения (доступно, начиная с версиии 8.3.10)</summary>
         public ExtensionPurpose Purpose { get; set; } = ExtensionPurpose.Customization;
         /// <summary>
         /// Это значение является значением поля "FileName" таблицы "ConfigCAS".
         /// <br>Вычисляется по алгоритму SHA-1 по значению поля "BinaryData" таблицы "ConfigCAS".</br>
         /// </summary>
-        public string FileName { get; set; } // TODO: re-name ?
-        public string RootFile { get; set; } // TODO: re-name ?
+        public string RootFile { get; set; }
+        /// <summary>
+        /// Это значение является значением поля "FileName" таблицы "ConfigCAS".
+        /// <br>Имя файла описания объектов метаданных, входящих в состав расширения.</br>
+        /// </summary>
+        public string FileName { get; set; }
+        /// <summary>Дата и время последнего обновления расширения</summary>
         public DateTime Updated { get; set; }
         /// <summary>
         /// Содержит узел распределенной информационной базы, в котором создано данное расширение конфигурации.

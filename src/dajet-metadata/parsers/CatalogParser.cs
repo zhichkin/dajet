@@ -45,11 +45,6 @@ namespace DaJet.Metadata.Parsers
         }
         public void Parse(in ConfigFileReader reader, out MetadataObject target)
         {
-            //_target = new Catalog()
-            //{
-            //    Uuid = new Guid(reader.FileName)
-            //};
-
             _target = new Catalog();
 
             if (Guid.TryParse(reader.FileName, out Guid uuid))
@@ -78,6 +73,12 @@ namespace DaJet.Metadata.Parsers
         private void ConfigureConverter()
         {
             _converter = new ConfigFileConverter();
+
+            //TODO: extensions support (!)
+            // 1.3 - идентификатор ссылочного типа данных "СправочникСсылка"
+            // 1.9.1.1.2 - uuid объекта метаданных (FileName)
+            // 1.9.1.8 - флаг заимствования объекта из основной конфигурации ??? 0 если заимствование отстутствует
+            // 1.9.1.9 - uuid расширяемого объекта метаданных
 
             _converter[1][9][1][2] += Name;
             _converter[1][9][1][3][2] += Alias;

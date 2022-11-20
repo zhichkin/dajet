@@ -67,6 +67,11 @@ namespace DaJet.Metadata.Parsers
         {
             _converter = new ConfigFileConverter();
 
+            //TODO: extensions support (!)
+            // 1.13.1.1.2 - uuid объекта метаданных (FileName)
+            // 1.13.1.8 - флаг заимствования объекта из основной конфигурации ??? 0 если заимствование отстутствует
+            // 1.13.1.11 - uuid расширяемого объекта метаданных
+
             _converter[1][13][1][2] += Name;
             _converter[1][13][1][3][2] += Alias;
             _converter[1][15] += RegisterKind;

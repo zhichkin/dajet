@@ -15,8 +15,9 @@ namespace DaJet.Metadata.Test
 {
     [TestClass] public class Test_1C_Extensions
     {
+        private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;";
         private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
-
+        
         private readonly MetadataService _service = new();
         private readonly MetadataCache _cache;
         private readonly ExtensionsManager _manager;
@@ -26,8 +27,8 @@ namespace DaJet.Metadata.Test
             _service.Add(new InfoBaseOptions()
             {
                 Key = "test",
-                ConnectionString = MS_CONNECTION_STRING,
-                DatabaseProvider = DatabaseProvider.SqlServer
+                ConnectionString = MS_CONNECTION_STRING, // PG_CONNECTION_STRING
+                DatabaseProvider = DatabaseProvider.SqlServer // DatabaseProvider.PostgreSql
             });
 
             if (!_service.TryGetMetadataCache("test", out _cache, out string error))
@@ -179,6 +180,57 @@ namespace DaJet.Metadata.Test
             }
         }
 
+        [TestMethod] public void Dump_MetadataObject_File()
+        {
+            string metadataName = "Справочник.Расширяемый1";
+            string outputFile = $"C:\\temp\\1c-dump\\{metadataName}.txt";
+
+            string connectionString = _cache.ConnectionString;
+            DatabaseProvider provider = _cache.DatabaseProvider;
+
+            Catalog entity = _cache.GetMetadataObject<Catalog>(metadataName);
+
+            using (ConfigFileReader reader = new(provider, connectionString, ConfigTables.Config, entity.Uuid))
+            {
+                ConfigObject configObject = new ConfigFileParser().Parse(reader);
+
+                new ConfigFileWriter().Write(configObject, outputFile);
+            }
+
+            Console.WriteLine($"{_cache.InfoBase.Name} [{_cache.InfoBase.AppConfigVersion}]");
+            Console.WriteLine();
+            Console.WriteLine($"{entity.Name} [{entity.Uuid}]");
+            foreach (MetadataProperty property in entity.Properties)
+            {
+                Console.WriteLine($" - {property.Name} [{property.Uuid}]");
+            }
+            foreach (TablePart table in entity.TableParts)
+            {
+                Console.WriteLine($"* {table.Name} [{table.Uuid}]");
+                foreach (MetadataProperty property in table.Properties)
+                {
+                    Console.WriteLine($" - {property.Name} [{property.Uuid}]");
+                }
+            }
+        }
+        [TestMethod] public void Dump_Extension_MetadataObject_File()
+        {
+            string fileName = "5497e51abcb1a0db8a048debb40d903ef3b6a7c2";
+            string outputFile = "C:\\temp\\1c-dump\\Справочник.Расширяемый1.ext.txt";
+
+            string connectionString = _cache.ConnectionString;
+            DatabaseProvider provider = _cache.DatabaseProvider;
+
+            using (ConfigFileReader reader = new(provider, connectionString, ConfigTables.ConfigCAS, fileName))
+            {
+                ConfigObject configObject = new ConfigFileParser().Parse(reader);
+
+                new ConfigFileWriter().Write(configObject, outputFile);
+            }
+
+            Console.WriteLine(outputFile);
+        }
+
         [TestMethod] public void DeflateHex()
         {
             string hex = "7BBF7B7F352F57B5A181998E412D2F572D00";
@@ -214,7 +266,7 @@ namespace DaJet.Metadata.Test
             // Contains three files in one: platform version, root file itself, list of metadata files (including config file)
             // Is changed each time extension metadata is changed !!!
 
-            string fileName = "3a2b394214145f57e4eaed428cb4f5fb9466feb0"; // 91c37e87-c0ea-43a3-a0d0-ed2027a90f1f - Расширение2
+            string fileName = "21ca0fd59bb871a891a7be309084ef23e238ab47";
 
             using (ConfigFileReader reader = new(DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.ConfigCAS, fileName))
             {
@@ -223,17 +275,34 @@ namespace DaJet.Metadata.Test
                     stream.Write(reader.Stream.ReadToEnd());
                 }
             }
+
+            using (ConfigFileReader reader = new(DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
+            {
+                using (StreamWriter stream = new StreamWriter("C:\\temp\\extensions\\MainRootFile.txt", false, Encoding.UTF8))
+                {
+                    stream.Write(reader.Stream.ReadToEnd());
+                }
+            }
         }
         [TestMethod] public void Extension_Config()
         {
             // Extension config file (obtained from extension root file): the same format as main config file have
-            string fileName = "580289d92910c2c9c88c56e47732bb9b1c24b79f"; // 91c37e87-c0ea-43a3-a0d0-ed2027a90f1f
+            string fileName = "189292c3d23fdd2b1b6ae7eeaedd8c39145ba386";
 
             using (ConfigFileReader reader = new(DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.ConfigCAS, fileName))
             {
                 ConfigObject configObject = new ConfigFileParser().Parse(reader);
 
                 new ConfigFileWriter().Write(configObject, "C:\\temp\\extensions\\ExtensionConfigFile.txt");
+            }
+
+            fileName = "684c8f2b-d93f-49cc-b766-b3cc3896b047";
+
+            using (ConfigFileReader reader = new(DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.Config, fileName))
+            {
+                ConfigObject configObject = new ConfigFileParser().Parse(reader);
+
+                new ConfigFileWriter().Write(configObject, "C:\\temp\\extensions\\MainConfigFile.txt");
             }
         }
         [TestMethod] public void Extension_Metadata()
@@ -246,7 +315,7 @@ namespace DaJet.Metadata.Test
                 //"5a0b5755bb2ad8b692e973ce0dd8257ab3ad01fc", // aebaa85b-3b56-4e48-8332-0351b17ab64e - заимствованный справочник "Номенклатура"
                 //"db555e00687401b06a8debd281081208bc53fe0c", // f9d8d256-fe2f-483f-8663-c7f76b2197dc - [Общие/Языки] Русский
                 //"529a0e42c5c063c1613fec6ddb07999b744cf5fd", // 2a96800d-54b5-44cd-ba10-725588248b0e - собственный справочник "Расш2_Справочник1"
-                "67406f71de9fe4410e62e02e18ba225b16370984"
+                "faf0bedeccf874393b10db7195d04edb123840e4"
             };
 
             foreach (string fileName in fileNames)
@@ -277,8 +346,10 @@ namespace DaJet.Metadata.Test
                 Console.WriteLine($"Uuid = {extension.Uuid}");
                 Console.WriteLine($"Name = {extension.Name}");
                 Console.WriteLine($"Alias = {extension.Alias}");
+                Console.WriteLine($"RootFile = {extension.RootFile}");
                 Console.WriteLine($"FileName = {extension.FileName}");
                 Console.WriteLine($"Version = {extension.Version}");
+                Console.WriteLine($"Updated = {extension.Updated}");
                 Console.WriteLine($"IsActive = {extension.IsActive}");
 
                 Console.WriteLine();
@@ -287,7 +358,16 @@ namespace DaJet.Metadata.Test
 
                 string root = _manager.ParseRootFile(extension, out Dictionary<string, string> files);
 
-                Console.WriteLine($"RootFile = {root} [{extension.RootFile}]");
+                Console.WriteLine($"RootFile = [{extension.RootFile}]");
+                Console.WriteLine($"FileName = {root} [{extension.FileName}]");
+
+                if (!_manager.TryGetInfoBase(in extension, out InfoBase infoBase, out string error))
+                {
+                    Console.WriteLine($"Error getting InfoBase: {error}");
+                    Console.WriteLine();
+                }
+                Console.WriteLine($"{infoBase.Name} [{infoBase.NamePrefix}] {infoBase.AppConfigVersion}");
+                Console.WriteLine();
 
                 foreach (var item in files)
                 {
@@ -332,16 +412,16 @@ namespace DaJet.Metadata.Test
 
             _ = _manager.ParseRootFile(extension, out Dictionary<string, string> files);
 
+            foreach (var item in files)
+            {
+                Console.WriteLine($"[{item.Key}] {item.Value}");
+            }
+            Console.WriteLine();
+
             if (!_manager.TryGetMetadata(in extension, out InfoBase infoBase, out Dictionary<Guid, List<Guid>> metadata, out string error))
             {
                 Console.WriteLine(error);
                 return;
-            }
-
-            foreach (PropertyInfo property in typeof(InfoBase).GetRuntimeProperties())
-            {
-                object? value = property.GetValue(infoBase, null);
-                Console.WriteLine($"\"{property.Name}\" = [{value}]");
             }
 
             foreach (var entry in metadata)
@@ -354,11 +434,18 @@ namespace DaJet.Metadata.Test
                     Console.WriteLine($"- [{item}]");
                 }
             }
+            Console.WriteLine();
+
+            foreach (PropertyInfo property in typeof(InfoBase).GetRuntimeProperties())
+            {
+                object? value = property.GetValue(infoBase, null);
+                Console.WriteLine($"\"{property.Name}\" = [{value}]");
+            }
         }
         [TestMethod] public void GetExtensionMetadataObject()
         {
-            string uuid = "b4c9895c-095c-4ec1-94d0-b95a12c741bc";
-            string fileName = "67406f71de9fe4410e62e02e18ba225b16370984";
+            string uuid = "0d158be0-15d9-490e-b7ea-0b051fc3cd46";
+            string fileName = "5497e51abcb1a0db8a048debb40d903ef3b6a7c2";
 
             if (!_manager.TryGetMetadataObject(in uuid, in fileName, out MetadataObject entity, out string error))
             {
