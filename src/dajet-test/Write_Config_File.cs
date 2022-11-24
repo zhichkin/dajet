@@ -10,7 +10,6 @@ namespace DaJet.Metadata.Test
 {
     [TestClass] public class Write_Config_File
     {
-        private const string MS_ERP_INFOBASE = "Data Source=ZHICHKIN;Initial Catalog=cerberus;Integrated Security=True;Encrypt=False;";
         private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
         [TestMethod] public void GetMetadataItemByName()
         {
@@ -87,74 +86,6 @@ namespace DaJet.Metadata.Test
                 //new ConfigFileWriter().Write(configObject, "C:\\temp\\РегистрСведений.ТестовыйРегистр.txt");
                 new ConfigFileWriter().Write(configObject, "C:\\temp\\РегистрСведений.ТестовыйРегистр.Макет1.txt");
             }
-        }
-        
-        [TestMethod] public void GetValueStorage()
-        {
-            using (OneDbConnection connection = new(MS_ERP_INFOBASE))
-            {
-                connection.Open();
-
-                using(OneDbCommand command = connection.CreateCommand())
-                {
-                    command.CommandText =
-                        "ВЫБРАТЬ " +
-                        "ИмяПланаОбмена, ВидПравил, ИмяМакетаПравил, " +
-                        "ИсточникПравил, ИнформацияОПравилах, ПравилаXML " +
-                        "ИЗ РегистрСведений.ПравилаДляОбменаДанными " +
-                        "ГДЕ ИмяПланаОбмена = @ИмяПланаОбмена" +
-                        " И ИмяМакетаПравил = @ИмяМакетаПравил;";
-
-                    //command.Parameters.AddWithValue("ИмяПланаОбмена", "ОбменСTMS");
-                    //command.Parameters.AddWithValue("ИмяМакетаПравил", "ПравилаРегистрации");
-
-                    command.Parameters.AddWithValue("ИмяПланаОбмена", "test");
-                    command.Parameters.AddWithValue("ИмяМакетаПравил", "");
-
-                    using (OneDbDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            object value = reader.GetValue(5);
-
-                            if (value is byte[] data)
-                            {
-                                WriteToFile(data);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        private void WriteToFile(byte[] data)
-        {
-            string content = string.Empty;
-
-            if (data[0] == 1)
-            {
-                using (MemoryStream memory = new(data, 10, data.Length - 10))
-                {
-                    using (StreamReader reader = new(memory, Encoding.UTF8))
-                    {
-                        content = reader.ReadToEnd();
-                    }
-                }
-            }
-            else if (data[0] == 2)
-            {
-                using (MemoryStream memory = new(data, 18, data.Length - 18))
-                {
-                    using (DeflateStream stream = new(memory, CompressionMode.Decompress))
-                    {
-                        using (StreamReader reader = new(stream, Encoding.UTF8))
-                        {
-                            content = reader.ReadToEnd();
-                        }
-                    }
-                }
-            }
-
-            Console.WriteLine(content);
         }
     }
 }

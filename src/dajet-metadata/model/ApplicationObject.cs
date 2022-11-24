@@ -15,6 +15,10 @@ namespace DaJet.Metadata.Model
         ///</summary>
         public string TableName { get; set; }
         ///<summary>
+        ///Макеты прикладного объекта метаданных.
+        ///</summary>
+        public List<Template> Templates { get; set; } = new List<Template>();
+        ///<summary>
         ///Свойства прикладного объекта метаданных.
         ///</summary>
         public List<MetadataProperty> Properties { get; set; } = new List<MetadataProperty>();

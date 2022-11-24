@@ -43,5 +43,8 @@ namespace DaJet.Metadata.Core
         public static Guid AccumulationRegister_Property = new Guid("b64d9a42-1642-11d6-a3c7-0050bae0a776");
         ///<summary>Идентификатор коллекции измерений регистра накопления</summary>
         public static Guid AccumulationRegister_Dimension = new Guid("b64d9a43-1642-11d6-a3c7-0050bae0a776");
+
+        ///<summary>Идентификатор коллекции макетов объекта метаданных</summary>
+        public static Guid Template_Collection = new Guid("3daea016-69b7-4ed4-9453-127911372fe6");
     }
 }

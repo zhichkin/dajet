@@ -83,6 +83,7 @@ namespace DaJet.Metadata.Parsers
             _converter[1][26] += IsDistributed;
 
             _converter[3] += PropertyCollection;
+            _converter[4] += TemplateCollection;
             _converter[5] += TablePartCollection;
         }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
@@ -143,6 +144,18 @@ namespace DaJet.Metadata.Parsers
                 if (tables != null && tables.Count > 0)
                 {
                     _target.TableParts = tables;
+                }
+            }
+        }
+        private void TemplateCollection(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            if (source.Token == TokenType.StartObject)
+            {
+                new TemplateCollectionParser(_cache).Parse(in source, out List<Template> templates);
+
+                if (templates != null && templates.Count > 0)
+                {
+                    _target.Templates = templates;
                 }
             }
         }

@@ -70,6 +70,141 @@ namespace DaJet.Metadata.Core
         public string ConnectionString { get { return _connectionString; } }
         public DatabaseProvider DatabaseProvider { get { return _provider; } }
 
+        #region "STATIC MEMBERS"
+
+        public static StreamReader Create(in string connectionString, in string tableName, in string fileName)
+        {
+            DatabaseProvider provider = connectionString.StartsWith("Host")
+                ? DatabaseProvider.PostgreSql
+                : DatabaseProvider.SqlServer;
+
+            byte[] fileData = ExecuteDbReader(provider, in connectionString, in tableName, in fileName);
+
+            if (fileData == null)
+            {
+                fileData = Array.Empty<byte>();
+            }
+
+            return CreateReader(in fileData);
+        }
+        private static bool IsUTF8(in byte[] fileData)
+        {
+            if (fileData == null) throw new ArgumentNullException(nameof(fileData));
+
+            if (fileData.Length < 3) return false;
+
+            return fileData[0] == 0xEF  // (b)yte
+                && fileData[1] == 0xBB  // (o)rder
+                && fileData[2] == 0xBF; // (m)ark
+        }
+        private static byte[] CombineArrays(byte[] a1, byte[] a2)
+        {
+            if (a1 == null) return a2;
+
+            byte[] result = new byte[a1.Length + a2.Length];
+
+            Buffer.BlockCopy(a1, 0, result, 0, a1.Length);
+            Buffer.BlockCopy(a2, 0, result, a1.Length, a2.Length);
+
+            return result;
+        }
+        private static StreamReader CreateReader(in byte[] fileData)
+        {
+            MemoryStream memory = new(fileData);
+
+            if (IsUTF8(in fileData))
+            {
+                return new StreamReader(memory, Encoding.UTF8);
+            }
+
+            DeflateStream stream = new(memory, CompressionMode.Decompress);
+
+            return new StreamReader(stream, Encoding.UTF8);
+        }
+        private static string ConfigureDatabaseScript(DatabaseProvider provider, in string tableName)
+        {
+            if (tableName == ConfigTables.Config)
+            {
+                if (provider == DatabaseProvider.SqlServer)
+                {
+                    return MS_CONFIG_SCRIPT;
+                }
+                return PG_CONFIG_SCRIPT;
+            }
+            else if (tableName == ConfigTables.ConfigCAS)
+            {
+                if (provider == DatabaseProvider.SqlServer)
+                {
+                    return MS_CONFIG_CAS_SCRIPT;
+                }
+                return PG_CONFIG_CAS_SCRIPT;
+            }
+            else if (tableName == ConfigTables.Params)
+            {
+                if (provider == DatabaseProvider.SqlServer)
+                {
+                    return MS_PARAMS_SCRIPT;
+                }
+                return PG_PARAMS_SCRIPT;
+            }
+            return null;
+        }
+        private static DbConnection CreateDbConnection(DatabaseProvider provider, in string connectionString)
+        {
+            if (provider == DatabaseProvider.SqlServer)
+            {
+                return new SqlConnection(connectionString);
+            }
+            return new NpgsqlConnection(connectionString);
+        }
+        private static void ConfigureDbParameters(in DbCommand command, in string fileName)
+        {
+            if (command is SqlCommand ms_cmd)
+            {
+                ms_cmd.Parameters.AddWithValue("FileName", fileName);
+            }
+            else if (command is NpgsqlCommand pg_cmd)
+            {
+                pg_cmd.Parameters.AddWithValue("filename", fileName); ;
+            }
+        }
+        private static byte[] ExecuteDbReader(DatabaseProvider provider, in string connectionString, in string tableName, in string fileName)
+        {
+            byte[] fileData = null;
+
+            string script = ConfigureDatabaseScript(provider, tableName);
+
+            using (DbConnection connection = CreateDbConnection(provider, in connectionString))
+            {
+                connection.Open();
+
+                using (DbCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = script;
+                    command.CommandType = CommandType.Text;
+                    command.CommandTimeout = 10; // seconds
+
+                    ConfigureDbParameters(in command, in fileName);
+
+                    using (DbDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            bool utf8 = (reader.GetInt32(0) == 1);
+                            int size = reader.GetInt32(1);
+                            byte[] data = (byte[])reader[2];
+                            
+                            fileData = CombineArrays(fileData, data);
+                        }
+                    }
+                }
+            }
+
+            return fileData;
+        }
+        
+        #endregion
+
         public ConfigFileReader(StreamReader stream)
         {
             InitializePath();
@@ -275,18 +410,7 @@ namespace DaJet.Metadata.Core
 
             return bytesRead;
         }
-        private byte[] CombineArrays(byte[] a1, byte[] a2)
-        {
-            if (a1 == null) return a2;
-
-            byte[] result = new byte[a1.Length + a2.Length];
-
-            Buffer.BlockCopy(a1, 0, result, 0, a1.Length);
-            Buffer.BlockCopy(a2, 0, result, a1.Length, a2.Length);
-
-            return result;
-        }
-
+        
         private int GetYearOffset()
         {
             if (_provider == DatabaseProvider.SqlServer)
@@ -306,24 +430,6 @@ namespace DaJet.Metadata.Core
 
         #endregion
 
-        private bool IsUTF8(in byte[] fileData)
-        {
-            if (fileData == null) throw new ArgumentNullException(nameof(fileData));
-
-            if (fileData.Length < 3) return false;
-
-            return fileData[0] == 0xEF  // (b)yte
-                && fileData[1] == 0xBB  // (o)rder
-                && fileData[2] == 0xBF; // (m)ark
-        }
-        private StreamReader CreateReader(in byte[] fileData)
-        {
-            if (IsUTF8(in fileData))
-            {
-                return CreateStreamReader(in fileData);
-            }
-            return CreateDeflateReader(in fileData);
-        }
         private StreamReader CreateReader(in byte[] fileData, bool utf8)
         {
             if (utf8)
