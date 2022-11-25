@@ -1024,5 +1024,59 @@ namespace DaJet.Metadata
         }
 
         #endregion
+
+        /// <summary>
+        /// Получает внутренний индентификатор значения перечисления или
+        /// <br>предопределённого значения справочника по его полному имени</br>
+        /// <br><b>Например:</b> "Перечисление.СтавкиНДС.БезНДС"</br>
+        /// </summary>
+        /// <param name="enumValueFullName"></param>
+        /// <returns>Возвращает внутренний индентификатор значения</returns>
+        /// <exception cref="FormatException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
+        public Guid GetEnumValue(in string valueFullName)
+        {
+            string[] identifiers = GetIdentifiers(valueFullName);
+
+            if (identifiers.Length != 3)
+            {
+                throw new FormatException(nameof(valueFullName));
+            }
+
+            string valueName = identifiers[2];
+            string metadataName = string.Join(".", identifiers[0], identifiers[1]);
+
+            MetadataObject entity = GetMetadataObject(metadataName);
+
+            if (entity == null)
+            {
+                throw new InvalidOperationException($"Объект метаданных \"{metadataName}\" не найден.");
+            }
+
+            if (entity is Enumeration enumeration)
+            {
+                foreach (EnumValue value in enumeration.Values)
+                {
+                    if (value.Name == valueName)
+                    {
+                        return value.Uuid;
+                    }
+                }
+                throw new InvalidOperationException($"Значение [{valueName}] перечисления \"{metadataName}\" не найдено.");
+            }
+            else if (entity is Catalog catalog)
+            {
+                foreach (PredefinedValue value in catalog.PredefinedValues)
+                {
+                    if (value.Name == valueName)
+                    {
+                        return value.Uuid;
+                    }
+                }
+                throw new InvalidOperationException($"Предопределённое значение [{valueName}] справочника \"{metadataName}\" не найдено.");
+            }
+
+            throw new InvalidOperationException($"Предопределённые значения для объекта метаданных \"{metadataName}\" не поддерживаются.");
+        }
     }
 }

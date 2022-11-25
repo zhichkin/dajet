@@ -16,7 +16,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\dajet-data\dajet-data.csproj" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.0.1" />
+    <PackageReference Include="Npgsql" Version="7.0.0" />
   </ItemGroup>
 
 </Project>

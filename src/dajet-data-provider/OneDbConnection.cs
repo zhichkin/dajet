@@ -16,6 +16,25 @@ namespace DaJet.Data.Provider
         private MetadataCache _metadata;
         private DatabaseProvider _provider;
         private readonly string _connectionString;
+        public OneDbConnection(MetadataCache metadata)
+        {
+            _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
+
+            _provider = _metadata.DatabaseProvider;
+            _connectionString = _metadata.ConnectionString;
+
+            if (_provider == DatabaseProvider.PostgreSql)
+            {
+                _connection = new NpgsqlConnection(_connectionString);
+            }
+            else
+            {
+                _connection = new SqlConnection(_connectionString);
+            }
+
+            //TODO: ib key generation algorithm !?
+            IB_KEY = _connection.Database;
+        }
         public OneDbConnection(string? connectionString)
         {
             if (string.IsNullOrWhiteSpace(connectionString))
@@ -28,12 +47,12 @@ namespace DaJet.Data.Provider
             if (connectionString.StartsWith("Host"))
             {
                 _provider = DatabaseProvider.PostgreSql;
-                _connection = new NpgsqlConnection(connectionString);
+                _connection = new NpgsqlConnection(_connectionString);
             }
             else
             {
                 _provider = DatabaseProvider.SqlServer;
-                _connection = new SqlConnection(connectionString);
+                _connection = new SqlConnection(_connectionString);
             }
 
             //TODO: ib key generation algorithm !?
@@ -41,6 +60,8 @@ namespace DaJet.Data.Provider
         }
         private void InitializeMetadataCache()
         {
+            if (_metadata != null) { return; }
+
             if (MetadataSingleton.Instance.TryGetMetadataCache(IB_KEY, out _metadata, out string error))
             {
                 return;
@@ -90,7 +111,7 @@ namespace DaJet.Data.Provider
                 _connection.Dispose();
             }
 
-            _metadata = null;
+            _metadata = null!;
         }
         protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
         {

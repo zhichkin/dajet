@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.3.32811.315
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-data", "dajet-data\dajet-data.csproj", "{EF8F667F-CB1D-429B-B582-C0D765D86EEF}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-metadata", "dajet-metadata\dajet-metadata.csproj", "{CC7CAB43-EB25-4730-B588-2A13BFB3C5B2}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-scripting", "dajet-scripting\dajet-scripting.csproj", "{8D74C7A9-1DE8-4207-A145-3EC3A29180CF}"
@@ -17,7 +15,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-pipeline", "dajet-pip
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-data-provider", "dajet-data-provider\dajet-data-provider.csproj", "{72378D5D-039A-4AC0-875F-271350B5B49C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-console", "dajet-console\dajet-console.csproj", "{91BAFE54-3DD0-408A-8AC1-8F8F0A7DCF0E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-console", "dajet-console\dajet-console.csproj", "{91BAFE54-3DD0-408A-8AC1-8F8F0A7DCF0E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -25,10 +23,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{EF8F667F-CB1D-429B-B582-C0D765D86EEF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EF8F667F-CB1D-429B-B582-C0D765D86EEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EF8F667F-CB1D-429B-B582-C0D765D86EEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EF8F667F-CB1D-429B-B582-C0D765D86EEF}.Release|Any CPU.Build.0 = Release|Any CPU
 		{CC7CAB43-EB25-4730-B588-2A13BFB3C5B2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{CC7CAB43-EB25-4730-B588-2A13BFB3C5B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CC7CAB43-EB25-4730-B588-2A13BFB3C5B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
