@@ -20,12 +20,12 @@ namespace DaJet.Metadata.Parsers
         {
             _cache = cache;
         }
-        public void Parse(in ConfigFileReader source, out MetadataInfo target)
+        public void Parse(in ConfigFileReader source, Guid uuid, out MetadataInfo target)
         {
             _entry = new MetadataInfo()
             {
-                MetadataType = MetadataTypes.Publication,
-                MetadataUuid = new Guid(source.FileName)
+                MetadataUuid = uuid,
+                MetadataType = MetadataTypes.Publication
             };
 
             _parser = new ConfigFileParser();
@@ -42,12 +42,9 @@ namespace DaJet.Metadata.Parsers
             _parser = null;
             _converter = null;
         }
-        public void Parse(in ConfigFileReader reader, out MetadataObject target)
+        public void Parse(in ConfigFileReader reader, Guid uuid, out MetadataObject target)
         {
-            _target = new Publication()
-            {
-                Uuid = new Guid(reader.FileName)
-            };
+            _target = new Publication() { Uuid = uuid };
 
             ConfigureConverter();
 

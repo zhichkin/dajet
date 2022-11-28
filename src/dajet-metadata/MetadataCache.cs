@@ -2,39 +2,44 @@
 using DaJet.Data.PostgreSql;
 using DaJet.Data.SqlServer;
 using DaJet.Metadata.Core;
+using DaJet.Metadata.Extensions;
 using DaJet.Metadata.Model;
 using DaJet.Metadata.Parsers;
 using DaJet.Metadata.Services;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Data;
+using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace DaJet.Metadata
 {
-    public interface IMetadataCache
+    public sealed class MetadataCache
     {
-        InfoBase InfoBase { get; }
-        MetadataItem GetMetadataItem(Guid uuid);
-        MetadataItem GetMetadataItem(int typeCode);
-        string GetMetadataName(Guid type, Guid uuid);
-        IEnumerable<MetadataItem> GetMetadataItems(Guid type);
+        #region "CONSTANTS"
 
-        MetadataObject GetMetadataObject(Guid uuid);
-        MetadataObject GetMetadataObject(int typeCode);
-        MetadataObject GetMetadataObject(MetadataItem item);
-        MetadataObject GetMetadataObject(string metadataName);
-        MetadataObject GetMetadataObject(Guid type, Guid uuid);
+        private const string MS_SELECT_EXTENSIONS =
+            "SELECT _IDRRef, _ExtensionOrder, _ExtName, _UpdateTime, " +
+            "_ExtensionUsePurpose, _ExtensionScope, _ExtensionZippedInfo, " +
+            "_MasterNode, _UsedInDistributedInfoBase, _Version " +
+            "FROM _ExtensionsInfo ORDER BY " +
+            "CASE WHEN SUBSTRING(_MasterNode, CAST(1.0 AS INT), CAST(34.0 AS INT)) = N'0:00000000000000000000000000000000' " +
+            "THEN 0x01 ELSE 0x00 END, _ExtensionUsePurpose, _ExtensionScope, _ExtensionOrder;";
 
-        T GetMetadataObject<T>(Guid uuid) where T : MetadataObject;
-        T GetMetadataObject<T>(int typeCode) where T : MetadataObject;
-        T GetMetadataObject<T>(MetadataItem item) where T : MetadataObject;
-        T GetMetadataObject<T>(string metadataName) where T : MetadataObject;
-        T GetMetadataObject<T>(Guid type, Guid uuid) where T : MetadataObject;
-    }
-    public sealed class MetadataCache : IMetadataCache
-    {
+        private const string PG_SELECT_EXTENSIONS =
+            "SELECT _idrref, _extensionorder, CAST(_extname AS varchar), _updatetime, " +
+            "_extensionusepurpose, _extensionscope, _extensionzippedinfo, " +
+            "CAST(_masternode AS varchar), _usedindistributedinfobase, _version " +
+            "FROM _extensionsinfo ORDER BY " +
+            "CASE WHEN SUBSTRING(CAST(_masternode AS varchar), 1, 34) = '0:00000000000000000000000000000000' " +
+            "THEN 1 ELSE 0 END, _extensionusepurpose, _extensionscope, _extensionorder;";
+
+        #endregion
+
         private InfoBase _infoBase;
+        private readonly ExtensionInfo _extension;
         private readonly string _connectionString;
         private readonly DatabaseProvider _provider;
         private readonly MetadataObjectParserFactory _parsers;
@@ -270,12 +275,14 @@ namespace DaJet.Metadata
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
 
+            _extension = options.Extension;
             _provider = options.DatabaseProvider;
             _connectionString = options.ConnectionString;
 
             _parsers = new MetadataObjectParserFactory(this);
         }
         public InfoBase InfoBase { get { return _infoBase; } }
+        public ExtensionInfo Extension { get { return _extension; } }
         public string ConnectionString { get { return _connectionString; } }
         public DatabaseProvider DatabaseProvider { get { return _provider; } }
         public IQueryExecutor CreateQueryExecutor()
@@ -296,11 +303,17 @@ namespace DaJet.Metadata
 
         internal void Initialize()
         {
-            InitializeRootFile();
-            InitializeDbNameCache();
-            InitializeMetadataCache(out InfoBase infoBase);
-
-            _infoBase = infoBase;
+            if (_extension == null)
+            {
+                InitializeRootFile();
+                InitializeDbNameCache();
+                InitializeMetadataCache(out InfoBase infoBase);
+                _infoBase = infoBase;
+            }
+            else
+            {
+                InitializeExtension();
+            }
         }
         private void InitializeRootFile()
         {
@@ -311,7 +324,11 @@ namespace DaJet.Metadata
         }
         private void InitializeDbNameCache()
         {
-            using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Params, ConfigFiles.DbNames))
+            string fileName = (_extension == null)
+                ? ConfigFiles.DbNames
+                : ConfigFiles.DbNames + "-ext-" + _extension.Identity.ToString().ToLower();
+
+            using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Params, in fileName))
             {
                 new DbNamesParser().Parse(in reader, out _database);
             }
@@ -348,9 +365,19 @@ namespace DaJet.Metadata
                 { MetadataTypes.AccumulationRegister, new List<Guid>() }  // Регистры накопления
             };
 
-            using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Config, _root))
+            if (_extension == null)
             {
-                new InfoBaseParser().Parse(in reader, out infoBase, in metadata);
+                using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Config, _root))
+                {
+                    new InfoBaseParser(this).Parse(in reader, _root, out infoBase, in metadata);
+                }
+            }
+            else
+            {
+                using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.ConfigCAS, _extension.FileName))
+                {
+                    new InfoBaseParser(this).Parse(in reader, _extension.Uuid, out infoBase, in metadata);
+                }
             }
 
             foreach (var entry in metadata)
@@ -389,6 +416,9 @@ namespace DaJet.Metadata
                 return; // Unsupported metadata type
             }
 
+            string fileName;
+            string tableName = (_extension == null) ? ConfigTables.Config : ConfigTables.ConfigCAS;
+
             foreach (var entry in cache.Value)
             {
                 if (entry.Key == Guid.Empty)
@@ -396,9 +426,11 @@ namespace DaJet.Metadata
                     continue;
                 }
 
-                using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Config, entry.Key))
+                fileName = (_extension == null) ? entry.Key.ToString() : _extension.FileMap[entry.Key];
+
+                using (ConfigFileReader reader = new(_provider, in _connectionString, in tableName, in fileName))
                 {
-                    parser.Parse(in reader, out MetadataInfo metadata);
+                    parser.Parse(in reader, entry.Key, out MetadataInfo metadata);
 
                     if (string.IsNullOrWhiteSpace(metadata.Name))
                     {
@@ -624,9 +656,12 @@ namespace DaJet.Metadata
 
             if (type == MetadataTypes.SharedProperty || type == MetadataTypes.NamedDataTypeSet)
             {
-                using (ConfigFileReader reader = new(_provider, _connectionString, ConfigTables.Config, uuid))
+                string tableName = (_extension == null) ? ConfigTables.Config : ConfigTables.ConfigCAS;
+                string fileName = (_extension == null) ? uuid.ToString() : _extension.FileMap[uuid];
+
+                using (ConfigFileReader reader = new(_provider, in _connectionString, in tableName, in fileName))
                 {
-                    parser.Parse(in reader, out metadata);
+                    parser.Parse(in reader, uuid, out metadata);
                 }
 
                 if (type == MetadataTypes.SharedProperty)
@@ -641,9 +676,12 @@ namespace DaJet.Metadata
         }
         private void GetApplicationObject(Guid uuid, in IMetadataObjectParser parser, out MetadataObject metadata)
         {
-            using (ConfigFileReader reader = new(_provider, _connectionString, ConfigTables.Config, uuid))
+            string tableName = (_extension == null) ? ConfigTables.Config : ConfigTables.ConfigCAS;
+            string fileName = (_extension == null) ? uuid.ToString() : _extension.FileMap[uuid];
+
+            using (ConfigFileReader reader = new(_provider, in _connectionString, in tableName, in fileName))
             {
-                parser.Parse(in reader, out metadata);
+                parser.Parse(in reader, uuid, out metadata);
             }
 
             // Конфигурирование DBNames в том числе устанавливает
@@ -1021,6 +1059,185 @@ namespace DaJet.Metadata
             Configurator.ConfigureSystemProperties(this, table);
 
             return table;
+        }
+
+        #endregion
+
+        #region "CONFIGURATION EXTENSIONS"
+
+        public List<ExtensionInfo> GetExtensions()
+        {
+            if (_provider == DatabaseProvider.SqlServer)
+            {
+                return MsGetExtensions();
+            }
+            return PgGetExtensions();
+        }
+        private List<ExtensionInfo> MsGetExtensions()
+        {
+            List<ExtensionInfo> list = new();
+
+            byte[] zippedInfo;
+
+            IQueryExecutor executor = CreateQueryExecutor();
+
+            foreach (IDataReader reader in executor.ExecuteReader(MS_SELECT_EXTENSIONS, 10))
+            {
+                zippedInfo = (byte[])reader.GetValue(6);
+
+                Guid uuid = new(SQLHelper.Get1CUuid((byte[])reader.GetValue(0)));
+
+                ExtensionInfo extension = new()
+                {
+                    Identity = uuid, // Поле _IDRRef используется для поиска файла DbNames расширения
+                    Order = (int)reader.GetDecimal(1),
+                    Name = reader.GetString(2),
+                    Updated = reader.GetDateTime(3).AddYears(-InfoBase.YearOffset),
+                    Purpose = (ExtensionPurpose)reader.GetDecimal(4),
+                    Scope = (ExtensionScope)reader.GetDecimal(5),
+                    MasterNode = reader.GetString(7),
+                    IsDistributed = (((byte[])reader.GetValue(8))[0] == 1)
+                };
+
+                DecodeZippedInfo(in zippedInfo, in extension);
+
+                list.Add(extension);
+            }
+
+            return list;
+        }
+        private List<ExtensionInfo> PgGetExtensions()
+        {
+            List<ExtensionInfo> list = new();
+
+            byte[] zippedInfo;
+
+            IQueryExecutor executor = CreateQueryExecutor();
+
+            foreach (IDataReader reader in executor.ExecuteReader(PG_SELECT_EXTENSIONS, 10))
+            {
+                zippedInfo = (byte[])reader.GetValue(6);
+
+                Guid uuid = new(SQLHelper.Get1CUuid((byte[])reader.GetValue(0)));
+
+                ExtensionInfo extension = new()
+                {
+                    Identity = uuid, // Поле _IDRRef используется для поиска файла DbNames расширения
+                    Order = (int)reader.GetDecimal(1),
+                    Name = reader.GetString(2),
+                    Updated = reader.GetDateTime(3).AddYears(-InfoBase.YearOffset),
+                    Purpose = (ExtensionPurpose)reader.GetDecimal(4),
+                    Scope = (ExtensionScope)reader.GetDecimal(5),
+                    MasterNode = reader.GetString(7),
+                    IsDistributed = reader.GetBoolean(8)
+                };
+
+                DecodeZippedInfo(in zippedInfo, in extension);
+
+                list.Add(extension);
+            }
+
+            return list;
+        }
+        private void DecodeZippedInfo(in byte[] zippedInfo, in ExtensionInfo extension)
+        {
+            extension.RootFile = Convert.ToHexString(zippedInfo, 4, 20).ToLower();
+
+            Encoding encoding = (zippedInfo[37] == 0x97) ? Encoding.Unicode : Encoding.ASCII;
+
+            int chars = zippedInfo[38];
+            char[] buffer = new char[chars];
+
+            using (MemoryStream stream = new(zippedInfo, 39, zippedInfo.Length - 39))
+            {
+                using (StreamReader reader = new(stream, encoding))
+                {
+                    for (int i = 0; i < chars; i++)
+                    {
+                        buffer[i] = (char)reader.Read();
+                    }
+                }
+            }
+
+            string config = new(buffer);
+            int size = encoding.GetByteCount(config);
+            byte current = zippedInfo[size + 38]; // '\0'
+
+            using (MemoryStream memory = new(zippedInfo, 39, size))
+            {
+                using (StreamReader stream = new(memory, encoding))
+                {
+                    using (ConfigFileReader reader = new(stream))
+                    {
+                        ConfigObject info = new ConfigFileParser().Parse(reader);
+
+                        extension.Alias = info[2].GetString(2);
+                    }
+                }
+            }
+
+            if (zippedInfo[size + 39] == 0x81) // Значение версии отсутствует
+            {
+                extension.IsActive = (zippedInfo[size + 40] == 0x82);
+            }
+            else
+            {
+                encoding = (zippedInfo[size + 39] == 0x97) ? Encoding.Unicode : Encoding.ASCII;
+                chars = zippedInfo[size + 40];
+                buffer = new char[chars];
+
+                int offset = size + 41;
+
+                using (MemoryStream stream = new(zippedInfo, offset, zippedInfo.Length - offset))
+                {
+                    using (StreamReader reader = new(stream, encoding))
+                    {
+                        for (int i = 0; i < chars; i++)
+                        {
+                            buffer[i] = (char)reader.Read();
+                        }
+                    }
+                }
+
+                config = new(buffer);
+                size = encoding.GetByteCount(config);
+
+                extension.Version = config;
+                extension.IsActive = (zippedInfo[offset + size] == 0x82);
+            }
+        }
+
+        private void InitializeExtension()
+        {
+            _root = new ExtensionRootFileParser().Parse(this, in _extension);
+
+            InitializeDbNameCache();
+
+            InitializeMetadataCache(out _infoBase);
+        }
+        public bool TryGetMetadata(in ExtensionInfo extension, out MetadataCache metadata, out string error)
+        {
+            error = string.Empty;
+
+            metadata = new MetadataCache(new MetadataCacheOptions()
+            {
+                Extension = extension,
+                DatabaseProvider = _provider,
+                ConnectionString = _connectionString
+            });
+
+            try
+            {
+                metadata.Initialize();
+            }
+            catch (Exception exception)
+            {
+                metadata = null;
+                error = ExceptionHelper.GetErrorMessage(exception);
+                return false;
+            }
+
+            return (metadata != null);
         }
 
         #endregion

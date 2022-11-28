@@ -8,37 +8,29 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class InfoBaseParser
     {
+        private readonly MetadataCache _cache;
         private ConfigFileParser _parser;
         private ConfigFileConverter _converter;
         private readonly ConfigFileTokenHandler _metadataHandler; // cache delegate for re-use
 
         private InfoBase _infoBase;
         private Dictionary<Guid, List<Guid>> _metadata;
-        public InfoBaseParser()
+        public InfoBaseParser(MetadataCache cache)
         {
+            _cache = cache;
             _metadataHandler = new ConfigFileTokenHandler(MetadataCollection);
         }
-        public void Parse(in ConfigFileReader reader, out InfoBase infoBase)
+        public void Parse(in ConfigFileReader reader, Guid uuid, out InfoBase infoBase)
         {
             _infoBase = new InfoBase()
             {
+                Uuid = uuid,
                 YearOffset = reader.YearOffset,
                 PlatformVersion = reader.PlatformVersion
             };
 
-            if (Guid.TryParse(reader.FileName, out Guid uuid))
-            {
-                _infoBase.Uuid = uuid;
-            }
-
             _parser = new ConfigFileParser();
             _converter = new ConfigFileConverter();
-
-            if (_infoBase.Uuid == Guid.Empty)
-            {
-                // Контрольная сумма SHA-1 по полю "BinaryData" таблицы "ConfigCAS"
-                _converter[1][0] += FileName; // Случай для расширения конфигурации
-            }
 
             ConfigureInfoBaseConverter();
             
@@ -54,29 +46,19 @@ namespace DaJet.Metadata.Parsers
             _parser = null;
             _converter = null;
         }
-        public void Parse(in ConfigFileReader reader, out InfoBase infoBase, in Dictionary<Guid, List<Guid>> metadata)
+        public void Parse(in ConfigFileReader reader, Guid uuid, out InfoBase infoBase, in Dictionary<Guid, List<Guid>> metadata)
         {
             _infoBase = new InfoBase()
             {
+                Uuid = uuid,
                 YearOffset = reader.YearOffset,
                 PlatformVersion = reader.PlatformVersion
             };
-
-            if (Guid.TryParse(reader.FileName, out Guid uuid))
-            {
-                _infoBase.Uuid = uuid;
-            }
 
             _metadata = metadata;
 
             _parser = new ConfigFileParser();
             _converter = new ConfigFileConverter();
-
-            if (_infoBase.Uuid == Guid.Empty)
-            {
-                // Контрольная сумма SHA-1 по полю "BinaryData" таблицы "ConfigCAS"
-                _converter[1][0] += FileName; // Случай для расширения конфигурации
-            }
 
             ConfigureInfoBaseConverter();
             ConfigureMetadataConverter();
@@ -94,7 +76,6 @@ namespace DaJet.Metadata.Parsers
         }
         private void ConfigureInfoBaseConverter()
         {
-            // DONE: take file name from reader
             //_converter[1][0] += FileName; // Значение поля FileName в таблице Config
 
             // Свойства конфигурации
@@ -110,9 +91,12 @@ namespace DaJet.Metadata.Parsers
             _converter[3][1][1][38] += UICompatibilityMode; // Режим совместимости интерфейса
 
             // Свойства расширения конфигурации
-            _converter[3][1][1][42] += NamePrefix;
-            _converter[3][1][1][43] += ExtensionCompatibility;
-            _converter[3][1][1][49] += MapMetadataByUuid;
+            if (_cache != null && _cache.Extension != null)
+            {
+                _converter[3][1][1][42] += NamePrefix;
+                _converter[3][1][1][43] += ExtensionCompatibility;
+                _converter[3][1][1][49] += MapMetadataByUuid;
+            }
         }
         private void ConfigureMetadataConverter()
         {

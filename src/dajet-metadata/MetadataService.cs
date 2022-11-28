@@ -76,7 +76,7 @@ namespace DaJet.Metadata
                 using (ConfigFileReader reader = new(
                     entry.Options.DatabaseProvider, entry.Options.ConnectionString, ConfigTables.Config, root))
                 {
-                    new InfoBaseParser().Parse(in reader, out infoBase);
+                    new InfoBaseParser(entry.Value).Parse(in reader, root, out infoBase);
                 }
             }
             catch (Exception exception)
