@@ -361,18 +361,48 @@ namespace DaJet.Metadata.Test
                 }
             }
         }
+        private void DumpMetadataObject(in MetadataCache metadata, in MetadataObject @object)
+        {
+            string fileName = metadata.Extension.FileMap[@object.Uuid];
+            string outputFile = $"C:\\temp\\1c-dump\\{@object}.ext.txt";
+
+            string connectionString = metadata.ConnectionString;
+            DatabaseProvider provider = metadata.DatabaseProvider;
+
+            using (ConfigFileReader reader = new(provider, connectionString, ConfigTables.ConfigCAS, fileName))
+            {
+                ConfigObject configObject = new ConfigFileParser().Parse(reader);
+
+                new ConfigFileWriter().Write(configObject, outputFile);
+            }
+
+            Console.WriteLine(outputFile);
+        }
         private void ShowMetadataObjects(in MetadataCache metadata)
         {
-            foreach (MetadataItem item in metadata.GetMetadataItems(MetadataTypes.Catalog))
+            foreach (MetadataItem item in metadata.GetMetadataItems(MetadataTypes.NamedDataTypeSet))
             {
-                Catalog catalog = metadata.GetMetadataObject<Catalog>(item);
-                
-                Console.WriteLine($"* {catalog.Name} [{catalog.TableName}]");
+                NamedDataTypeSet entity = metadata.GetMetadataObject<NamedDataTypeSet>(item);
 
-                foreach (MetadataProperty property in catalog.Properties)
+                string fileName = metadata.Extension.FileMap[entity.Uuid];
+
+                Console.WriteLine($"* {entity.Name} {entity.Parent} >> {{{entity.Uuid}}} [{fileName}]");
+                Console.WriteLine($"> {entity.DataTypeSet.GetDescription()}");
+
+                MetadataObject @object = _cache.GetMetadataObject(entity.ToString());
+
+                if (@object is NamedDataTypeSet parent)
                 {
-                    Console.WriteLine($"  - {property.Name} [{property.DbName}]");
+                    Console.WriteLine($"- {parent.Name} {parent.Uuid}");
+                    Console.WriteLine($"> {parent.DataTypeSet.GetDescription()}");
                 }
+
+                DumpMetadataObject(in metadata, entity);
+
+                //foreach (MetadataProperty property in catalog.Properties)
+                //{
+                //    Console.WriteLine($"  - {property.Name} [{property.DbName}]");
+                //}
             }
         }
     }

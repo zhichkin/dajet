@@ -45,7 +45,9 @@ namespace DaJet.Metadata.Model
                 if (value)
                 {
                     _flags = DataTypeFlags.UniqueIdentifier;
+                    TypeCode = 0;
                     Reference = Guid.Empty;
+                    References.Clear();
                 }
                 else if (IsUuid)
                 {
@@ -62,7 +64,9 @@ namespace DaJet.Metadata.Model
                 if (value)
                 {
                     _flags = DataTypeFlags.Binary;
+                    TypeCode = 0;
                     Reference = Guid.Empty;
+                    References.Clear();
                 }
                 else if (IsBinary)
                 {
@@ -79,7 +83,9 @@ namespace DaJet.Metadata.Model
                 if (value)
                 {
                     _flags = DataTypeFlags.ValueStorage;
+                    TypeCode = 0;
                     Reference = Guid.Empty;
+                    References.Clear();
                 }
                 else if (IsValueStorage)
                 {
@@ -243,6 +249,7 @@ namespace DaJet.Metadata.Model
 
         ///<summary>
         ///Применяет описание типов определяемого типа или характеристики к свойству объекта метаданных.
+        ///<br>Используется методом <see cref="Configurator.ResolveAndCountReferenceTypes"/></br>
         ///</summary>
         ///<param name="source">Описание типов определяемого типа или характеристики.</param>
         internal void Apply(in DataTypeSet source)
@@ -260,6 +267,8 @@ namespace DaJet.Metadata.Model
             
             TypeCode = source.TypeCode;
             Reference = source.Reference;
+            References.Clear();
+            References.AddRange(source.References);
         }
 
         ///<summary>Проверяет является ли свойство составным типом данных</summary>
@@ -294,6 +303,123 @@ namespace DaJet.Metadata.Model
             else if (CanBeDateTime) return "DateTime";
             else if (CanBeReference) return "Reference";
             else return "Undefined";
+        }
+        public string GetDescription()
+        {
+            List<string> description = new();
+
+            if (IsUuid)
+            {
+                description.Add("УникальныйИдентификатор");
+            }
+            else if (IsValueStorage)
+            {
+                description.Add("ХранилищеЗначения");
+            }
+            else
+            {
+                if (CanBeBoolean)
+                {
+                    description.Add("Булево");
+                }
+                if (CanBeNumeric)
+                {
+                    description.Add($"Число({NumericPrecision},{NumericScale})");
+                }
+                if (CanBeDateTime)
+                {
+                    description.Add($"Дата({DateTimePart})");
+                }
+                if (CanBeString)
+                {
+                    description.Add($"Строка({StringLength})");
+                }
+                if (CanBeReference)
+                {
+                    description.Add($"Ссылка({TypeCode})");
+                }
+            }
+
+            if (description.Count == 0)
+            {
+                return ToString();
+            }
+
+            return string.Join(';', description);
+        }
+        /// <summary>
+        /// Объединяет два описания типов, отдавая приоритет входящему параметру <b>source</b>.
+        /// </summary>
+        /// <param name="source">Описание типов, определяемых расширением или объектом основной конфигурации</param>
+        internal void Merge(in DataTypeSet source)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            if (source._flags == DataTypeFlags.None)
+            {
+                return; // Undefined data type set - empty
+            }
+
+            if (_flags == DataTypeFlags.None)
+            {
+                Apply(in source);
+                return;
+            }
+
+            if (source.IsUuid || source.IsValueStorage || source.IsBinary)
+            {
+                _flags = source._flags;
+                TypeCode = 0;
+                Reference = Guid.Empty;
+                References.Clear();
+                return;
+            }
+
+            if (source.CanBeBoolean)
+            {
+                CanBeBoolean = source.CanBeBoolean;
+            }
+
+            if (source.CanBeNumeric)
+            {
+                CanBeNumeric = source.CanBeNumeric;
+                NumericKind = source.NumericKind;
+                NumericScale = source.NumericScale;
+                NumericPrecision = source.NumericPrecision;
+            }
+
+            if (source.CanBeDateTime)
+            {
+                CanBeDateTime = source.CanBeDateTime;
+                DateTimePart = source.DateTimePart;
+            }
+
+            if (source.CanBeString)
+            {
+                CanBeString = source.CanBeString;
+                StringKind = source.StringKind;
+                StringLength = source.StringLength;
+            }
+
+            if (source.CanBeReference)
+            {
+                //TODO: merge references of two data type sets
+                CanBeReference = source.CanBeReference;
+                References.AddRange(source.References);
+                if (References.Count > 0)
+                {
+                    TypeCode = 0;
+                    Reference = Guid.Empty;
+                }
+                else
+                {
+                    TypeCode = source.TypeCode;
+                    Reference = source.Reference;
+                }
+            }
         }
     }
 }

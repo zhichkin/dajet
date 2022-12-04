@@ -30,6 +30,8 @@ namespace DaJet.Metadata.Parsers
             _parser = new ConfigFileParser();
             _converter = new ConfigFileConverter();
 
+            // 1.13.1.1.2 - uuid объекта метаданных (FileName)
+
             _converter[1][13][1][2] += Name; // Имя объекта конфигурации
 
             _parser.Parse(in source, in _converter);
@@ -67,10 +69,10 @@ namespace DaJet.Metadata.Parsers
         {
             _converter = new ConfigFileConverter();
 
-            //TODO: extensions support (!)
-            // 1.13.1.1.2 - uuid объекта метаданных (FileName)
-            // 1.13.1.8 - флаг заимствования объекта из основной конфигурации ??? 0 если заимствование отстутствует
-            // 1.13.1.11 - uuid расширяемого объекта метаданных
+            if (_cache.Extension != null) // 1.13.1.8 = 0 если заимствование отстутствует
+            {
+                _converter[1][13][1][11] += Parent; // uuid расширяемого объекта метаданных
+            }
 
             _converter[1][13][1][2] += Name;
             _converter[1][13][1][3][2] += Alias;
@@ -123,6 +125,10 @@ namespace DaJet.Metadata.Parsers
                     _target.Properties.AddRange(properties);
                 }
             }
+        }
+        private void Parent(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _target.Parent = source.GetUuid();
         }
     }
 }

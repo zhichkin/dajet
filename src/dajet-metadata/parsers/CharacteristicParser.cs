@@ -32,6 +32,8 @@ namespace DaJet.Metadata.Parsers
             _parser = new ConfigFileParser();
             _converter = new ConfigFileConverter();
 
+            // 1.13.1.1.2 - uuid объекта метаданных (FileName)
+
             _converter[1][3] += Reference; // ПланВидовХарактеристикСсылка
             _converter[1][9] += CharacteristicUuid; // Идентификатор характеристики
             _converter[1][13][1][2] += Name; // Имя объекта конфигурации
@@ -71,6 +73,19 @@ namespace DaJet.Metadata.Parsers
         private void ConfigureConverter()
         {
             _converter = new ConfigFileConverter();
+
+            if (_cache.Extension != null) // 1.13.1.8 = 0 если заимствование отстутствует
+            {
+                _converter[1][13][1][11] += Parent; // uuid расширяемого объекта метаданных
+
+                //TODO: extensions support (!)
+                // [1][13][1][15] - Объект описания дополнительных типов данных определяемого типа
+                // [1][13][1][15][0] = #
+                // [1][13][1][15][1] = f5c65050-3bbb-11d5-b988-0050bae0a95d (константа)
+                // [1][13][1][15][2] = {объект описания типов данных - Pattern} аналогично [1][18] += DataTypeSet
+
+                //TODO: _converter[1][13][1][15][2] += ExtensionDataTypeSet;
+            }
 
             _converter[1][13][1][2] += Name;
             _converter[1][13][1][3][2] += Alias;
@@ -162,6 +177,10 @@ namespace DaJet.Metadata.Parsers
                     _target.TableParts = tables;
                 }
             }
+        }
+        private void Parent(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _target.Parent = source.GetUuid();
         }
     }
 }

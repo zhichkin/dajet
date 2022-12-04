@@ -6,6 +6,11 @@ namespace DaJet.Metadata.Model
     {
         ///<summary>Идентификатор объекта метаданных</summary>
         public Guid Uuid { get; set; } = Guid.Empty;
+        ///<summary>Идентификатор расширяемого объекта метаданных основной конфигурации
+        ///<br>Используется при синхронизации объектов расширения по внутренним идентификаторам</br>
+        ///<br>Смотри также: <see cref="InfoBase.MapMetadataByUuid"/></br>
+        ///</summary>
+        public Guid Parent { get; set; } = Guid.Empty;
         ///<summary>Имя объекта метаданных</summary>
         public string Name { get; set; } = string.Empty;
         ///<summary>Синоним объекта метаданных для представления в интерфейсе пользователя</summary>

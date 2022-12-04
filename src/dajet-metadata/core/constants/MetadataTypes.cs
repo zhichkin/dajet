@@ -114,9 +114,9 @@ namespace DaJet.Metadata.Core
         private const string EN_DOCUMENT = "Document";
         private const string EN_CONSTANT = "Constant";
         private const string EN_SUBSYSTEM = "Subsystem";
-        private const string EN_PUBLICATION = "ExchangePlan";
-        private const string EN_ENUMERATION = "Enum";
-        private const string EN_CHARACTERISTIC = "ChartOfCharacteristicTypes";
+        private const string EN_PUBLICATION = "Publication";
+        private const string EN_ENUMERATION = "Enumeration";
+        private const string EN_CHARACTERISTIC = "Characteristic";
         private const string EN_INFORMATION_REGISTER = "InformationRegister";
         private const string EN_ACCUMULATION_REGISTER = "AccumulationRegister";
         private const string EN_SHARED_PROPERTY = "SharedProperty";
