@@ -14,6 +14,7 @@ namespace DaJet.Metadata.Model
         public HierarchyType HierarchyType { get; set; } = HierarchyType.Groups;
         public List<TablePart> TableParts { get; set; } = new List<TablePart>();
         public List<PredefinedValue> PredefinedValues { get; set; } = new List<PredefinedValue>();
+        public DataTypeSet ExtensionDataTypeSet { get; set; }
     }
     
     //PropertyNameLookup.Add("_idrref", "Ссылка");

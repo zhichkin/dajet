@@ -380,21 +380,23 @@ namespace DaJet.Metadata.Test
         }
         private void ShowMetadataObjects(in MetadataCache metadata)
         {
-            foreach (MetadataItem item in metadata.GetMetadataItems(MetadataTypes.NamedDataTypeSet))
+            foreach (MetadataItem item in metadata.GetMetadataItems(MetadataTypes.Characteristic))
             {
-                NamedDataTypeSet entity = metadata.GetMetadataObject<NamedDataTypeSet>(item);
+                Characteristic entity = metadata.GetMetadataObject<Characteristic>(item);
 
                 string fileName = metadata.Extension.FileMap[entity.Uuid];
 
                 Console.WriteLine($"* {entity.Name} {entity.Parent} >> {{{entity.Uuid}}} [{fileName}]");
                 Console.WriteLine($"> {entity.DataTypeSet.GetDescription()}");
+                Console.WriteLine($">> {entity.ExtensionDataTypeSet?.GetDescription()}");
 
                 MetadataObject @object = _cache.GetMetadataObject(entity.ToString());
 
-                if (@object is NamedDataTypeSet parent)
+                if (@object is Characteristic parent)
                 {
                     Console.WriteLine($"- {parent.Name} {parent.Uuid}");
                     Console.WriteLine($"> {parent.DataTypeSet.GetDescription()}");
+                    Console.WriteLine($">> {parent.ExtensionDataTypeSet?.GetDescription()}");
                 }
 
                 DumpMetadataObject(in metadata, entity);
@@ -403,6 +405,95 @@ namespace DaJet.Metadata.Test
                 //{
                 //    Console.WriteLine($"  - {property.Name} [{property.DbName}]");
                 //}
+            }
+        }
+
+        [TestMethod] public void GetExtensionTablePart()
+        {
+            Console.WriteLine();
+            Console.WriteLine($"{_cache.InfoBase.Name} {{{_cache.InfoBase.Uuid}}}");
+
+            List<ExtensionInfo> extensions = _cache.GetExtensions();
+
+            foreach (ExtensionInfo extension in extensions)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"Root: {extension.Name} {{{extension.Identity}}} [{extension.RootFile}]");
+
+                if (!_cache.TryGetMetadata(in extension, out MetadataCache metadata, out string error))
+                {
+                    Console.WriteLine(error);
+                }
+                else
+                {
+                    Console.WriteLine($"Info: {metadata.InfoBase.Name} {{{metadata.InfoBase.Uuid}}} [{extension.FileName}]");
+                    Console.WriteLine();
+
+                    ShowTablePartObjects(in metadata);
+                }
+            }
+        }
+        private void ShowTablePartObjects(in MetadataCache metadata)
+        {
+            foreach (MetadataItem item in metadata.GetMetadataItems(MetadataTypes.Document))
+            {
+                MetadataObject entity = metadata.GetMetadataObject(item);
+
+                if (entity is ITablePartOwner owner)
+                {
+                    if (owner.TableParts.Count > 0)
+                    {
+                        string fileName = metadata.Extension.FileMap[entity.Uuid];
+                        Console.WriteLine($"+ {entity.Name} {entity.Parent} >> {{{entity.Uuid}}} [{fileName}]");
+
+                        MetadataObject parent = _cache.GetMetadataObject(entity.ToString());
+                        Console.WriteLine($"> {parent.Name} {parent.Uuid}");
+
+                        ShowObjectProperties(in metadata, in entity);
+
+                        ShowTablePartObjects(in metadata, in entity);
+                    }
+                }
+            }
+        }
+        private void ShowTablePartObjects(in MetadataCache metadata, in MetadataObject @object)
+        {
+            if (@object is not Document entity)
+            {
+                return;
+            }
+
+            foreach (TablePart table in entity.TableParts)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"+ {table.Name} {table.Parent} >> {{{table.Uuid}}}");
+
+                string tableName = $"Документ.{entity.Name}.{table.Name}";
+                TablePart parentTable = _cache.GetMetadataObject<TablePart>(tableName);
+                if (parentTable == null)
+                {
+                    Console.WriteLine($"> Parent table part is absent");
+                }
+                else
+                {
+                    Console.WriteLine($"> {parentTable.Name} {parentTable.Uuid}");
+                }
+
+                ShowObjectProperties(in metadata, table);
+            }
+        }
+        private void ShowObjectProperties(in MetadataCache metadata, in MetadataObject @object)
+        {
+            if (@object is not ApplicationObject entity)
+            {
+                return;
+            }
+
+            foreach (MetadataProperty property in entity.Properties)
+            {
+                Console.WriteLine($"@ {property.Name} {{{property.Uuid}}} >> {{{property.Parent}}}");
+                Console.WriteLine($"= {property.PropertyType.GetDescription()}");
+                Console.WriteLine($"> {property.ExtensionPropertyType?.GetDescription()}");
             }
         }
     }

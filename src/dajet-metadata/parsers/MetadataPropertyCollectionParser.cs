@@ -127,7 +127,6 @@ namespace DaJet.Metadata.Parsers
 
                 _property = new MetadataProperty() { Purpose = _purpose };
 
-                //TODO: extensions support (!)
                 // Свойство объекта:
                 // -----------------
                 // [6][2] 0.1.1.1.8 = 0 если заимствование отстутствует
@@ -137,7 +136,6 @@ namespace DaJet.Metadata.Parsers
                 // [6][2] 0.1.1.1.15.1 = f5c65050-3bbb-11d5-b988-0050bae0a95d (константа)
                 // [6][2] 0.1.1.1.15.2 = {объект описания типов данных - Pattern} [0][1][1][2] += PropertyType
 
-                //TODO: extensions support (!)
                 // Свойство табличной части:
                 // -------------------------
                 // [5][2] 0.1.1.1.8 = 0 если заимствование отстутствует
@@ -146,6 +144,12 @@ namespace DaJet.Metadata.Parsers
                 // [5][2] 0.1.1.1.15.0 = #
                 // [5][2] 0.1.1.1.15.1 = f5c65050-3bbb-11d5-b988-0050bae0a95d (константа)
                 // [5][2] 0.1.1.1.15.2 = {объект описания типов данных - Pattern} аналогично [0][1][1][2] += PropertyType
+
+                if (_cache.Extension != null) // 0.1.1.1.8 = 0 если заимствование отстутствует
+                {
+                    _converter[0][1][1][1][11] += Parent; // uuid расширяемого объекта метаданных
+                    _converter[0][1][1][1][15][2] += ExtensionPropertyType;
+                }
 
                 _converter[0][1][1][1][1][2] += PropertyUuid;
                 _converter[0][1][1][1][2] += PropertyName;
@@ -209,6 +213,26 @@ namespace DaJet.Metadata.Parsers
         private void DimensionUsage(in ConfigFileReader source, in CancelEventArgs args)
         {
             _property.DimensionUsage = (source.GetInt32() == 1);
+        }
+        private void Parent(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _property.Parent = source.GetUuid();
+        }
+        private void ExtensionPropertyType(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            // Корневой узел объекта "ОписаниеТипов"
+
+            if (source.Token != TokenType.StartObject)
+            {
+                return;
+            }
+
+            _typeParser.Parse(in source, out DataTypeSet type);
+
+            _property.ExtensionPropertyType = type;
+
+            //FIXME: extension has higher priority
+            //_target.DataTypeSet.Merge(in type);
         }
     }
 }

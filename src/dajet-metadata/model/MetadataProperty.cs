@@ -14,6 +14,8 @@ namespace DaJet.Metadata.Model
         public PropertyPurpose Purpose { get; set; } = PropertyPurpose.Property;
         ///<summary>Описание типов данных <see cref="DataTypeSet"/>, которые могут использоваться для значений свойства.</summary>
         public DataTypeSet PropertyType { get; set; } = new DataTypeSet();
+        ///<summary>Описание типов данных свойства, определённых в расширении.</summary>
+        public DataTypeSet ExtensionPropertyType { get; set; } = new DataTypeSet();
         /// <summary>Вариант использования реквизита для групп и элементов</summary>
         public PropertyUsage PropertyUsage { get; set; } = PropertyUsage.Item;
         /// <summary>Использование измерения периодического или непереодического регистра сведений,

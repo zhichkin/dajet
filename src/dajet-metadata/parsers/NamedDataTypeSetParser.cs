@@ -14,10 +14,7 @@ namespace DaJet.Metadata.Parsers
         private MetadataInfo _entry;
         private NamedDataTypeSet _target;
         private ConfigFileConverter _converter;
-        public NamedDataTypeSetParser(MetadataCache cache)
-        {
-            _cache = cache;
-        }
+        public NamedDataTypeSetParser(MetadataCache cache) { _cache = cache; }
         public void Parse(in ConfigFileReader source, Guid uuid, out MetadataInfo target)
         {
             _entry = new MetadataInfo()
@@ -70,7 +67,7 @@ namespace DaJet.Metadata.Parsers
             {
                 _converter[1][3][11] += Parent; // uuid расширяемого объекта метаданных
 
-                //TODO: extensions support (!)
+                //FIXME: extensions support (!)
                 // [1][3][15] - Объект описания дополнительных типов данных определяемого типа
                 // [1][3][15][0] = #
                 // [1][3][15][1] = f5c65050-3bbb-11d5-b988-0050bae0a95d (константа)
@@ -123,17 +120,11 @@ namespace DaJet.Metadata.Parsers
             {
                 _typeParser.Parse(in source, out DataTypeSet type);
 
-                if (_cache.Extension == null ||
-                    _target.DataTypeSet == null)
-                {
-                    _target.DataTypeSet = type;
-                }
-                else
-                {
-                    //TODO: extension has higher priority
-                    type.Merge(_target.DataTypeSet);
-                    _target.DataTypeSet = type;
-                }
+                _target.DataTypeSet = type;
+
+                //FIXME: extension has higher priority
+                //type.Merge(_target.DataTypeSet);
+                //_target.DataTypeSet = type;
             }
         }
         private void Parent(in ConfigFileReader source, in CancelEventArgs args)
@@ -151,15 +142,10 @@ namespace DaJet.Metadata.Parsers
 
             _typeParser.Parse(in source, out DataTypeSet type);
 
-            if (_target.DataTypeSet == null)
-            {
-                _target.DataTypeSet = type;
-            }
-            else
-            {
-                //TODO: extension has higher priority
-                _target.DataTypeSet.Merge(in type);
-            }
+            _target.ExtensionDataTypeSet = type;
+
+            //FIXME: extension has higher priority
+            //_target.DataTypeSet.Merge(in type);
         }
     }
 }

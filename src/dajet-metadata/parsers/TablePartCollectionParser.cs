@@ -13,10 +13,7 @@ namespace DaJet.Metadata.Parsers
         private MetadataPropertyCollectionParser _propertyParser;
         private TablePart _tablePart;
         private List<TablePart> _target;
-        public TablePartCollectionParser(MetadataCache cache)
-        {
-            _cache = cache;
-        }
+        public TablePartCollectionParser(MetadataCache cache) { _cache = cache; }
         public void Parse(in ConfigFileReader reader, out List<TablePart> target)
         {
             ConfigureCollectionConverter(in reader);
@@ -86,10 +83,11 @@ namespace DaJet.Metadata.Parsers
 
                 _tablePart = new TablePart();
 
-                //TODO: extensions support (!)
-                // [5][2] 0.1.5.1.8 - флаг заимствования объекта из основной конфигурации ??? 0 если заимствование отстутствует
-                // [5][2] 0.1.5.1.9 - uuid расширяемого объекта метаданных
-
+                if (_cache.Extension != null) // [5][2] 0.1.5.1.8 = 0 если заимствование отстутствует
+                {
+                    _converter[0][1][5][1][9] += Parent; // uuid расширяемого объекта метаданных
+                }
+                
                 _converter[0][1][5][1][1][2] += Uuid;
                 _converter[0][1][5][1][2] += Name;
                 
@@ -121,6 +119,10 @@ namespace DaJet.Metadata.Parsers
                     _tablePart.Properties = properties;
                 }
             }
+        }
+        private void Parent(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _tablePart.Parent = source.GetUuid();
         }
     }
 }

@@ -17,10 +17,7 @@ namespace DaJet.Metadata.Parsers
         private MetadataInfo _entry;
         private Characteristic _target;
         private ConfigFileConverter _converter;
-        public CharacteristicParser(MetadataCache cache)
-        {
-            _cache = cache;
-        }
+        public CharacteristicParser(MetadataCache cache) { _cache = cache; }
         public void Parse(in ConfigFileReader source, Guid uuid, out MetadataInfo target)
         {
             _entry = new MetadataInfo()
@@ -78,13 +75,13 @@ namespace DaJet.Metadata.Parsers
             {
                 _converter[1][13][1][11] += Parent; // uuid расширяемого объекта метаданных
 
-                //TODO: extensions support (!)
+                //FIXME: extensions support (!)
                 // [1][13][1][15] - Объект описания дополнительных типов данных определяемого типа
                 // [1][13][1][15][0] = #
                 // [1][13][1][15][1] = f5c65050-3bbb-11d5-b988-0050bae0a95d (константа)
                 // [1][13][1][15][2] = {объект описания типов данных - Pattern} аналогично [1][18] += DataTypeSet
 
-                //TODO: _converter[1][13][1][15][2] += ExtensionDataTypeSet;
+                _converter[1][13][1][15][2] += ExtensionDataTypeSet;
             }
 
             _converter[1][13][1][2] += Name;
@@ -152,6 +149,10 @@ namespace DaJet.Metadata.Parsers
                 _typeParser.Parse(in source, out DataTypeSet type);
 
                 _target.DataTypeSet = type;
+
+                //FIXME: extension has higher priority
+                //type.Merge(_target.DataTypeSet);
+                //_target.DataTypeSet = type;
             }
         }
         private void PropertyCollection(in ConfigFileReader source, in CancelEventArgs args)
@@ -181,6 +182,22 @@ namespace DaJet.Metadata.Parsers
         private void Parent(in ConfigFileReader source, in CancelEventArgs args)
         {
             _target.Parent = source.GetUuid();
+        }
+        private void ExtensionDataTypeSet(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            // Корневой узел объекта "ОписаниеТипов"
+
+            if (source.Token != TokenType.StartObject)
+            {
+                return;
+            }
+
+            _typeParser.Parse(in source, out DataTypeSet type);
+
+            _target.ExtensionDataTypeSet = type;
+
+            //FIXME: extension has higher priority
+            //_target.DataTypeSet.Merge(in type);
         }
     }
 }
