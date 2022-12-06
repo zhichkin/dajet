@@ -15,7 +15,7 @@ namespace DaJet.Metadata.Extensions
 
             int count = 0;
             int version = 0;
-            string uuid = string.Empty;
+            string root = string.Empty;
 
             ConfigObject config;
 
@@ -32,8 +32,8 @@ namespace DaJet.Metadata.Extensions
                     using (ConfigFileReader reader1 = new(stream))
                     {
                         config = new ConfigFileParser().Parse(reader1);
-                        uuid = config.GetString(1); // uuid корневого файла описания метаданных расширения
-                        extension.Uuid = new Guid(uuid);
+                        root = config.GetString(1); // uuid корневого файла описания метаданных расширения
+                        extension.Uuid = new Guid(root);
 
                         if (!stream.EndOfStream && stream.Read() == ',')
                         {
@@ -63,9 +63,18 @@ namespace DaJet.Metadata.Extensions
                 byte[] hex = Convert.FromBase64String(value);
                 string file = Convert.ToHexString(hex).ToLower();
 
-                extension.FileMap.Add(new Guid(key), file);
+                if (Guid.TryParse(key, out Guid uuid))
+                {
+                    extension.FileMap.Add(uuid, file);
+                }
+                else
+                {
+                    // TODO: состав плана обмена расширения
+                    // Пример uuid : 8daa2f38-04c2-4e36-83c9-8eb828e4131d.1
+                    // Пример file : 52621f02c2b6a123de616603c376f3d319817441
+                }
 
-                if (key == uuid)
+                if (key == root)
                 {
                     extension.FileName = file;
                 }

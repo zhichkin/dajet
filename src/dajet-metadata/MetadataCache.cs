@@ -124,11 +124,40 @@ namespace DaJet.Metadata
         {
             return _database.TryGet(uuid, out entry);
         }
+        internal bool TryGetVT(Guid uuid, out DbName entry)
+        {
+            if (!_database.TryGet(uuid, out entry))
+            {
+                return false;
+            }
+
+            if (entry.Name == MetadataTokens.VT)
+            {
+                return true; //TODO: костыль из-за того, что в файле DBNames-Ext-... расширений VT и LineNo не идут по порядку
+            }
+
+            foreach (DbName child in entry.Children)
+            {
+                if (child.Name == MetadataTokens.VT)
+                {
+                    entry = child;
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
         internal bool TryGetLineNo(Guid uuid, out DbName entry)
         {
             if (!_database.TryGet(uuid, out entry))
             {
                 return false;
+            }
+
+            if (entry.Name == MetadataTokens.LineNo)
+            {
+                return true; //TODO: костыль из-за того, что в файле DBNames-Ext-... расширений VT и LineNo не идут по порядку
             }
 
             foreach (DbName child in entry.Children)
@@ -1073,6 +1102,20 @@ namespace DaJet.Metadata
             }
             return PgGetExtensions();
         }
+        public ExtensionInfo GetExtension(string name)
+        {
+            List<ExtensionInfo> list = GetExtensions();
+
+            foreach (ExtensionInfo extension in list)
+            {
+                if (extension.Name == name)
+                {
+                    return extension;
+                }
+            }
+
+            return null;
+        }
         private List<ExtensionInfo> MsGetExtensions()
         {
             List<ExtensionInfo> list = new();
@@ -1238,6 +1281,14 @@ namespace DaJet.Metadata
             }
 
             return (metadata != null);
+        }
+        public bool TryApplyExtension(in MetadataCache extension, out string error)
+        {
+            error = string.Empty;
+
+            //TODO: _Document123X1 + _Document123_VT123X1
+
+            return true; 
         }
 
         #endregion

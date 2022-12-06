@@ -447,7 +447,7 @@ namespace DaJet.Metadata.Test
                         Console.WriteLine($"+ {entity.Name} {entity.Parent} >> {{{entity.Uuid}}} [{fileName}]");
 
                         MetadataObject parent = _cache.GetMetadataObject(entity.ToString());
-                        Console.WriteLine($"> {parent.Name} {parent.Uuid}");
+                        Console.WriteLine($"> {parent?.Name} {parent?.Uuid}");
 
                         ShowObjectProperties(in metadata, in entity);
 
@@ -494,6 +494,136 @@ namespace DaJet.Metadata.Test
                 Console.WriteLine($"@ {property.Name} {{{property.Uuid}}} >> {{{property.Parent}}}");
                 Console.WriteLine($"= {property.PropertyType.GetDescription()}");
                 Console.WriteLine($"> {property.ExtensionPropertyType?.GetDescription()}");
+            }
+        }
+
+        [TestMethod] public void GetExtensionSharedProperty()
+        {
+            Console.WriteLine();
+            Console.WriteLine($"{_cache.InfoBase.Name} {{{_cache.InfoBase.Uuid}}}");
+
+            List<ExtensionInfo> extensions = _cache.GetExtensions();
+
+            foreach (ExtensionInfo extension in extensions)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"Root: {extension.Name} {{{extension.Identity}}} [{extension.RootFile}]");
+
+                if (!_cache.TryGetMetadata(in extension, out MetadataCache metadata, out string error))
+                {
+                    Console.WriteLine(error);
+                }
+                else
+                {
+                    Console.WriteLine($"Info: {metadata.InfoBase.Name} {{{metadata.InfoBase.Uuid}}} [{extension.FileName}]");
+                    Console.WriteLine();
+
+                    ShowSharedProperty(in metadata);
+                }
+            }
+        }
+        private void ShowSharedProperty(in MetadataCache metadata)
+        {
+            foreach (MetadataItem item in metadata.GetMetadataItems(MetadataTypes.SharedProperty))
+            {
+                MetadataObject entity = metadata.GetMetadataObject(item);
+
+                string fileName = metadata.Extension.FileMap[entity.Uuid];
+                Console.WriteLine($"+ {entity.Name} {entity.Parent} >> {{{entity.Uuid}}} [{fileName}]");
+
+                MetadataObject parent = _cache.GetMetadataObject("SharedProperty." + entity.ToString());
+                Console.WriteLine($"> {parent?.Name} {parent?.Uuid}");
+            }
+        }
+
+        [TestMethod] public void GetExtensionPublication()
+        {
+            Console.WriteLine();
+            Console.WriteLine($"{_cache.InfoBase.Name} {{{_cache.InfoBase.Uuid}}}");
+
+            List<ExtensionInfo> extensions = _cache.GetExtensions();
+
+            foreach (ExtensionInfo extension in extensions)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"Root: {extension.Name} {{{extension.Identity}}} [{extension.RootFile}]");
+
+                if (!_cache.TryGetMetadata(in extension, out MetadataCache metadata, out string error))
+                {
+                    Console.WriteLine(error);
+                }
+                else
+                {
+                    Console.WriteLine($"Info: {metadata.InfoBase.Name} {{{metadata.InfoBase.Uuid}}} [{extension.FileName}]");
+                    Console.WriteLine();
+
+                    ShowPublication(in metadata);
+                }
+            }
+        }
+        private void ShowPublication(in MetadataCache metadata)
+        {
+            foreach (MetadataItem item in metadata.GetMetadataItems(MetadataTypes.Publication))
+            {
+                MetadataObject entity = metadata.GetMetadataObject(item);
+
+                string fileName = metadata.Extension.FileMap[entity.Uuid];
+                Console.WriteLine($"+ {entity.Name} {entity.Parent} >> {{{entity.Uuid}}} [{fileName}]");
+
+                MetadataObject parent = _cache.GetMetadataObject(entity.ToString());
+                Console.WriteLine($"> {parent?.Name} {parent?.Uuid}");
+            }
+        }
+
+        [TestMethod] public void GetExtensionDocument()
+        {
+            Console.WriteLine();
+            Console.WriteLine($"{_cache.InfoBase.Name} {{{_cache.InfoBase.Uuid}}}");
+
+            ExtensionInfo extension = _cache.GetExtension("Расширение1");
+            
+            Console.WriteLine();
+            Console.WriteLine($"Root: {extension.Name} {{{extension.Identity}}} [{extension.RootFile}]");
+
+            if (!_cache.TryGetMetadata(in extension, out MetadataCache metadata, out string error))
+            {
+                Console.WriteLine(error);
+            }
+            else
+            {
+                Console.WriteLine($"Info: {metadata.InfoBase.Name} {{{metadata.InfoBase.Uuid}}} [{extension.FileName}]");
+
+                ShowDocuments(in metadata);
+            }
+        }
+        private void ShowDocuments(in MetadataCache metadata)
+        {
+            foreach (MetadataItem item in metadata.GetMetadataItems(MetadataTypes.Document))
+            {
+                Console.WriteLine();
+
+                Document entity = metadata.GetMetadataObject<Document>(item);
+
+                string fileName = metadata.Extension.FileMap[entity.Uuid];
+                Console.WriteLine($"+ {entity.Name} [{entity.TableName}] {entity.Parent} >> {{{entity.Uuid}}} [{fileName}]");
+
+                Document parent = _cache.GetMetadataObject<Document>(entity.ToString());
+                Console.WriteLine($"> {parent?.Name} [{parent?.TableName}] {parent?.Uuid}");
+
+                foreach (MetadataProperty property in entity.Properties)
+                {
+                    Console.WriteLine($"  - {property.Name} [{property.Columns.FirstOrDefault()}]");
+                }
+
+                foreach (TablePart table in entity.TableParts)
+                {
+                    Console.WriteLine($"  * {table.Name} [{table.TableName}]");
+
+                    foreach (MetadataProperty property in table.Properties)
+                    {
+                        Console.WriteLine($"    - {property.Name} [{property.Columns.FirstOrDefault()}]");
+                    }
+                }
             }
         }
     }

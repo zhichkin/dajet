@@ -1491,18 +1491,16 @@ namespace DaJet.Metadata.Core
         }
         internal static void ConfigureDatabaseNames(in MetadataCache cache, in MetadataObject metadata)
         {
-            if (!cache.TryGetDbName(metadata.Uuid, out DbName entry))
-            {
-                //TODO: extensions support !!! Сюда также можно попасть если объект метаданных является заимствованным в расширении
-                return; // Сюда попадаем если для общего реквизита не настроено ни одного объекта метаданных для использования
-            }
-
             if (metadata is SharedProperty property)
             {
+                if (!cache.TryGetDbName(metadata.Uuid, out DbName entry))
+                {
+                    // Для общего реквизита не настроено ни одного объекта метаданных для использования
+                    // или общий реквизит является заимствованным объектом метаданных расширения
+                    return; 
+                }
                 property.DbName = CreateDbName(entry.Name, entry.Code);
-
                 ConfigureDatabaseColumns(in cache, property);
-                
                 return;
             }
 
@@ -1511,8 +1509,27 @@ namespace DaJet.Metadata.Core
                 return;
             }
 
-            entity.TypeCode = entry.Code;
-            entity.TableName = CreateDbName(entry.Name, entry.Code);
+            // NOTE: Заимствованный из основной конфигурации, объект метаданных
+            // расширения не имеет записи сопоставления в файле DBNames-Ext-...
+
+            if (!cache.TryGetDbName(metadata.Uuid, out DbName dbn))
+            {
+                if (cache.Extension == null) // Это основная конфигурация
+                {
+                    return; //FIXME: this should not happen - log error : DbNames file is broken
+                }
+            }
+            else
+            {
+                entity.TypeCode = dbn.Code;
+                entity.TableName = CreateDbName(dbn.Name, dbn.Code);
+            }
+
+            //TODO: Если сопоставление DbName не найдено, то здесь мы конфигурируем расширение:
+            //это заимствованный объект основной конфигурации, а значит, что TableName = null и TypeCode = 0
+            //NOTE: решение о добавлении X1 к названию таблицы СУБД принимается другой функцией,
+            //а именно функцией применения расширения к основной конфигурации
+            //Пример: _Document123X1 + _Document123_VT123X1
 
             ConfigureDatabaseProperties(in cache, in entity);
             
@@ -1551,12 +1568,23 @@ namespace DaJet.Metadata.Core
 
             foreach (TablePart tablePart in aggregate.TableParts)
             {
-                if (!cache.TryGetDbName(tablePart.Uuid, out DbName entry))
+                // NOTE: Заимствованный из основной конфигурации, объект метаданных
+                // расширения не имеет записи сопоставления в файле DBNames-Ext-...
+
+                if (!cache.TryGetVT(tablePart.Uuid, out DbName entry))
                 {
-                    continue;
+                    if (cache.Extension == null) // Это основная конфигурация
+                    {
+                        continue; //FIXME: this should not happen - log error : DbNames file is broken
+                    }
+                }
+                else
+                {
+                    tablePart.TableName = entity.TableName + CreateDbName(entry.Name, entry.Code);
                 }
 
-                tablePart.TableName = entity.TableName + CreateDbName(entry.Name, entry.Code);
+                //TODO: Если сопоставление DbName не найдено, то здесь мы конфигурируем расширение:
+                //это заимствованная табличная часть объекта основной конфигурации, а значит, что TableName = null и TypeCode = 0
 
                 ConfigureDatabaseProperties(in cache, tablePart);
             }
