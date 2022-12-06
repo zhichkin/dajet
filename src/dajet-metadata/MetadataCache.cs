@@ -728,15 +728,27 @@ namespace DaJet.Metadata
             // They have default property purpose - Property.
             Configurator.ConfigureSharedProperties(this, in metadata);
 
-            Configurator.ConfigureSystemProperties(this, in metadata);
-
-            if (metadata is ApplicationObject owner && metadata is ITablePartOwner)
+            if (metadata is ApplicationObject entity)
             {
-                // ConfigureDatabaseNames should be called for the owner first:
-                // the name of table part reference field is dependent on table name of the owner
-                // Owner table name: _Reference1008
-                // Table part reference field name: _Reference1008_IDRRef
-                Configurator.ConfigureTableParts(this, in owner);
+                if (Extension == null) // Это основная конфигурация, а не расширение
+                {
+                    Configurator.ConfigureSystemProperties(this, in metadata);
+                }
+                else if (!string.IsNullOrEmpty(entity.TableName)) // Это собственный объект метаданных расширения
+                {
+                    //NOTE: Заимствованные объекты метаданных в расширениях
+                    //не имеют системных свойств, если они их не переопределяют.
+                    Configurator.ConfigureSystemProperties(this, in metadata);
+                }
+
+                if (entity is ITablePartOwner)
+                {
+                    // ConfigureDatabaseNames should be called for the owner first:
+                    // the name of table part reference field is dependent on table name of the owner
+                    // Owner table name: _Reference1008
+                    // Table part reference field name: _Reference1008_IDRRef
+                    Configurator.ConfigureTableParts(this, in entity);
+                }
             }
 
             if (metadata is Publication publication)
@@ -1286,7 +1298,7 @@ namespace DaJet.Metadata
         {
             error = string.Empty;
 
-            //TODO: _Document123X1 + _Document123_VT123X1
+            //TODO: apply extensions _Document123X1 + _Document123_VT123X1
 
             return true; 
         }

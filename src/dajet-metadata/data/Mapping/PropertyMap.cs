@@ -31,7 +31,7 @@ namespace DaJet.Data.Mapping
 
         #region "GET VALUE FROM DATA READER"
 
-        public object? GetValue(in IDataReader reader)
+        public object GetValue(in IDataReader reader)
         {
             if (Columns.Count == 0)
             {
@@ -60,7 +60,7 @@ namespace DaJet.Data.Mapping
 
             return reader.GetOrdinal(string.IsNullOrEmpty(column.Alias) ? column.Name : column.Alias);
         }
-        private object? GetSingleValue(in IDataReader reader)
+        private object GetSingleValue(in IDataReader reader)
         {
             if (Type == typeof(Guid)) { return GetUuid(in reader); }
             else if (Type == typeof(bool)) { return GetBoolean(in reader); }
@@ -72,7 +72,7 @@ namespace DaJet.Data.Mapping
 
             throw new NotSupportedException($"Unsupported data type: {Type}");
         }
-        private object? GetMultipleValue(in IDataReader reader)
+        private object GetMultipleValue(in IDataReader reader)
         {
             int ordinal = GetOrdinal(in reader, ColumnPurpose.Tag, out _);
 
@@ -89,7 +89,7 @@ namespace DaJet.Data.Mapping
 
             byte tag = ((byte[])reader.GetValue(ordinal))[0]; // _TYPE binary(1)
 
-            object? value;
+            object value;
 
             if (tag == 1) // Неопределено
             {
@@ -123,7 +123,7 @@ namespace DaJet.Data.Mapping
 
             throw new InvalidOperationException($"Invalid union tag value of {tag}");
         }
-        private object? GetUuid(in IDataReader reader)
+        private object GetUuid(in IDataReader reader)
         {
             int ordinal = GetOrdinal(in reader, ColumnPurpose.Default, out _); // single value type only
 
@@ -134,7 +134,7 @@ namespace DaJet.Data.Mapping
 
             return new Guid(SQLHelper.Get1CUuid((byte[])reader.GetValue(ordinal)));
         }
-        private object? GetBoolean(in IDataReader reader)
+        private object GetBoolean(in IDataReader reader)
         {
             int ordinal = GetOrdinal(in reader, ColumnPurpose.Boolean, out ColumnMap column);
 
@@ -163,7 +163,7 @@ namespace DaJet.Data.Mapping
                 return value; 
             }
         }
-        private object? GetNumeric(in IDataReader reader)
+        private object GetNumeric(in IDataReader reader)
         {
             int ordinal = GetOrdinal(in reader, ColumnPurpose.Numeric, out ColumnMap column);
 
@@ -181,7 +181,7 @@ namespace DaJet.Data.Mapping
                 return reader.GetDecimal(ordinal);
             }
         }
-        private object? GetDateTime(in IDataReader reader)
+        private object GetDateTime(in IDataReader reader)
         {
             int ordinal = GetOrdinal(in reader, ColumnPurpose.DateTime, out _);
 
@@ -192,7 +192,7 @@ namespace DaJet.Data.Mapping
 
             return reader.GetDateTime(ordinal).AddYears(-YearOffset);
         }
-        private object? GetString(in IDataReader reader)
+        private object GetString(in IDataReader reader)
         {
             int ordinal = GetOrdinal(in reader, ColumnPurpose.String, out _);
 
@@ -203,7 +203,7 @@ namespace DaJet.Data.Mapping
 
             return reader.GetString(ordinal);
         }
-        private object? GetBinary(in IDataReader reader)
+        private object GetBinary(in IDataReader reader)
         {
             int ordinal = GetOrdinal(in reader, ColumnPurpose.Default, out _); // single value type only
 
@@ -214,7 +214,7 @@ namespace DaJet.Data.Mapping
 
             return ((byte[])reader.GetValue(ordinal));
         }
-        private object? GetEntityRef(in IDataReader reader)
+        private object GetEntityRef(in IDataReader reader)
         {
             int ordinal = GetOrdinal(in reader, ColumnPurpose.Identity, out _);
 

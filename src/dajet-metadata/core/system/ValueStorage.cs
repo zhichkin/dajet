@@ -8,13 +8,15 @@ namespace DaJet.Data
     public sealed class ValueStorage
     {
         private readonly byte[] _data;
-        private readonly int _null_char = 0x00;
-        private readonly string _utf8 = "0xEFBBBF"; // 3 bytes
-        private readonly string _header0 = "0x0101"; // 2 bytes { 0x0101 - plain, 0x0201 - deflate }
-        private readonly string _header1 = "0x3D00000000000000"; // 8 bytes
-        private readonly string _header2 = "0x534B6FF4888DC14EA0D5EBB6BDA0A70D"; // 16 bytes
-        private readonly string _header3 = "0x000000000F00000000000000"; // 12 bytes
         private string _type = string.Empty;
+
+        //private readonly int _null_char = 0x00;
+        //private readonly string _utf8 = "0xEFBBBF"; // 3 bytes
+        //private readonly string _header0 = "0x0101"; // 2 bytes { 0x0101 - plain, 0x0201 - deflate }
+        //private readonly string _header1 = "0x3D00000000000000"; // 8 bytes
+        //private readonly string _header2 = "0x534B6FF4888DC14EA0D5EBB6BDA0A70D"; // 16 bytes
+        //private readonly string _header3 = "0x000000000F00000000000000"; // 12 bytes
+
         public ValueStorage(byte[] data)
         {
             _data = data;

@@ -37,8 +37,8 @@ namespace DaJet.Data.Mapping
         {
             TEntity entity = new();
 
-            object? value;
-            PropertyInfo? property;
+            object value;
+            PropertyInfo property;
             Type type = typeof(TEntity);
 
             foreach (PropertyMap map in Properties)
@@ -59,8 +59,8 @@ namespace DaJet.Data.Mapping
         }
         public void Map<TEntity>(in IDataReader reader, in TEntity entity) where TEntity : class, new()
         {
-            object? value;
-            PropertyInfo? property;
+            object value;
+            PropertyInfo property;
             Type type = typeof(TEntity);
 
             foreach (PropertyMap map in Properties)

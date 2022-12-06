@@ -309,6 +309,13 @@ namespace DaJet.Metadata.Core
 
             foreach (TablePart tablePart in aggregate.TableParts)
             {
+                if (cache.Extension != null && string.IsNullOrEmpty(tablePart.TableName))
+                {
+                    //NOTE: Заимствованные из основной конфигурации табличные части в расширениях
+                    //не имеют системных свойств (они их наследуют), если только они их не переопределяют.
+                    continue;
+                }
+
                 ConfigurePropertyСсылка(in owner, in tablePart);
                 ConfigurePropertyКлючСтроки(in tablePart);
                 ConfigurePropertyНомерСтроки(in cache, in tablePart);
@@ -1525,7 +1532,7 @@ namespace DaJet.Metadata.Core
                 entity.TableName = CreateDbName(dbn.Name, dbn.Code);
             }
 
-            //TODO: Если сопоставление DbName не найдено, то здесь мы конфигурируем расширение:
+            //NOTE: Если сопоставление DbName не найдено, то здесь мы конфигурируем расширение:
             //это заимствованный объект основной конфигурации, а значит, что TableName = null и TypeCode = 0
             //NOTE: решение о добавлении X1 к названию таблицы СУБД принимается другой функцией,
             //а именно функцией применения расширения к основной конфигурации

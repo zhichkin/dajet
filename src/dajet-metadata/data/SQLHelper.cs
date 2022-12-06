@@ -16,7 +16,6 @@ namespace DaJet.Data
         public byte NUMERIC_PRECISION;
         public int NUMERIC_SCALE;
         public bool IS_NULLABLE;
-        public bool IsFound;
     }
     internal sealed class IndexInfo
     {
