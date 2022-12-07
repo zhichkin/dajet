@@ -71,6 +71,8 @@
         public const string ChngR = "ChngR";
         ///<summary>Хранилище метаданных конфигурации 1С</summary>
         public const string Config = "Config";
+        ///<summary>Задача бизнес-процесса</summary>
+        public const string Task = "Task";
 
         #endregion
 

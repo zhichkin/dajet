@@ -124,40 +124,11 @@ namespace DaJet.Metadata
         {
             return _database.TryGet(uuid, out entry);
         }
-        internal bool TryGetVT(Guid uuid, out DbName entry)
-        {
-            if (!_database.TryGet(uuid, out entry))
-            {
-                return false;
-            }
-
-            if (entry.Name == MetadataTokens.VT)
-            {
-                return true; //TODO: костыль из-за того, что в файле DBNames-Ext-... расширений VT и LineNo не идут по порядку
-            }
-
-            foreach (DbName child in entry.Children)
-            {
-                if (child.Name == MetadataTokens.VT)
-                {
-                    entry = child;
-
-                    return true;
-                }
-            }
-
-            return false;
-        }
         internal bool TryGetLineNo(Guid uuid, out DbName entry)
         {
             if (!_database.TryGet(uuid, out entry))
             {
                 return false;
-            }
-
-            if (entry.Name == MetadataTokens.LineNo)
-            {
-                return true; //TODO: костыль из-за того, что в файле DBNames-Ext-... расширений VT и LineNo не идут по порядку
             }
 
             foreach (DbName child in entry.Children)

@@ -41,6 +41,20 @@ namespace DaJet.Metadata.Model
     {
         private readonly Dictionary<int, Guid> _codes = new();
         private readonly Dictionary<Guid, DbName> _cache = new();
+        private readonly HashSet<string> _main = new()
+        {
+            MetadataTokens.VT,
+            MetadataTokens.Fld,
+            MetadataTokens.Enum,
+            MetadataTokens.Chrc,
+            MetadataTokens.Node,
+            MetadataTokens.Task,
+            MetadataTokens.Const,
+            MetadataTokens.Document,
+            MetadataTokens.Reference,
+            MetadataTokens.InfoRg,
+            MetadataTokens.AccumRg
+        };
         public IEnumerable<DbName> DbNames
         {
             get { return _cache.Values; }
@@ -72,14 +86,21 @@ namespace DaJet.Metadata.Model
                 name == MetadataTokens.Document ||
                 name == MetadataTokens.Reference)
             {
-                _ = _codes.TryAdd(code, uuid);
+                _ = _codes.TryAdd(code, uuid); // Ссылочные типы данных
             }
-
-            // NOTE: the case when child and parent items are in the wrong order is not assumed
 
             if (_cache.TryGetValue(uuid, out DbName entry))
             {
-                entry.Children.Add(new DbName(uuid, code, name));
+                if (_main.Contains(entry.Name)) // check if the root of DBNames is the main table
+                {
+                    entry.Children.Add(new DbName(uuid, code, name));
+                }
+                else
+                {
+                    DbName mainTable = new(uuid, code, name);
+                    _cache[uuid] = mainTable; // the main table should be the root of DBNames
+                    mainTable.Children.Add(entry);
+                }
             }
             else
             {

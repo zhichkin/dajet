@@ -1578,7 +1578,7 @@ namespace DaJet.Metadata.Core
                 // NOTE: Заимствованный из основной конфигурации, объект метаданных
                 // расширения не имеет записи сопоставления в файле DBNames-Ext-...
 
-                if (!cache.TryGetVT(tablePart.Uuid, out DbName entry))
+                if (!cache.TryGetDbName(tablePart.Uuid, out DbName entry))
                 {
                     if (cache.Extension == null) // Это основная конфигурация
                     {
