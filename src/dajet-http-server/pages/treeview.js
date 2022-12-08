@@ -5,9 +5,13 @@
     this.Nodes = [];
     this.Count = 0;
     this.Title = "";
+    this.TitleNode = null;
     this.Image = "";
     this.ContextMenu = null;
     this.OnMouseClick = null;
+    this.Clear = function clearAll() {
+        this.View.replaceChildren();
+    };
     this.Add = function addNode(node) {
 
         let li = document.createElement("li");
@@ -39,6 +43,7 @@
             }
         });
         let title = document.createTextNode(node.Title);
+        node.TitleNode = title;
         span.appendChild(title);
         li.appendChild(span);
 

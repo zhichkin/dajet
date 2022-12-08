@@ -1,6 +1,7 @@
 ﻿using DaJet.Metadata.Model;
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace DaJet.Metadata.Extensions
 {
@@ -52,7 +53,7 @@ namespace DaJet.Metadata.Extensions
         /// </summary>
         public bool IsDistributed { get; set; } // Доступно, начиная с версии 8.3.12
 
-        public Dictionary<Guid, string> FileMap { get; } = new();
+        [JsonIgnore] public Dictionary<Guid, string> FileMap { get; } = new();
     }
 }
 

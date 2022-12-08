@@ -19,54 +19,70 @@ function AddInfoBaseTreeNode(root, infoBase) {
     //node.ContextMenu = new ContextMenu();
     root.Add(node);
 
+    let config = new TreeNode();
+    config.Url = "/md/" + infoBase.Name;
+    config.Model = infoBase;
+    config.Title = "Конфигурация";
+    config.Image = "/ui/img/Конфигурация.png";
+    config.OnMouseClick = null;
+    node.Add(config);
+
+    let mdex = new TreeNode();
+    mdex.Url = "/mdex/" + infoBase.Name;
+    mdex.Model = infoBase;
+    mdex.Title = "Расширения";
+    mdex.Image = "/ui/img/Расширение.png";
+    mdex.OnMouseClick = GetExtensions;
+    node.Add(mdex);
+
     let meta = new TreeNode();
     meta.Url = "/md/" + infoBase.Name + "/Справочник";
     meta.Title = "Справочники";
     meta.Image = "/ui/img/Справочник.png";
     meta.OnMouseClick = GetMetadataObjects;
-    node.Add(meta);
+    config.Add(meta);
 
     meta = new TreeNode();
     meta.Url = "/md/" + infoBase.Name + "/Документ";
     meta.Title = "Документы";
     meta.Image = "/ui/img/Документ.png";
     meta.OnMouseClick = GetMetadataObjects;
-    node.Add(meta);
+    config.Add(meta);
 
     meta = new TreeNode();
     meta.Url = "/md/" + infoBase.Name + "/Перечисление";
     meta.Title = "Перечисления";
     meta.Image = "/ui/img/Перечисление.png";
     meta.OnMouseClick = GetMetadataObjects;
-    node.Add(meta);
+    config.Add(meta);
 
     meta = new TreeNode();
     meta.Url = "/md/" + infoBase.Name + "/ПланВидовХарактеристик";
     meta.Title = "Планы видов характеристик";
     meta.Image = "/ui/img/ПланВидовХарактеристик.png";
     meta.OnMouseClick = GetMetadataObjects;
-    node.Add(meta);
+    config.Add(meta);
 
     meta = new TreeNode();
     meta.Url = "/md/" + infoBase.Name + "/РегистрСведений";
     meta.Title = "Регистры сведений";
     meta.Image = "/ui/img/РегистрСведений.png";
     meta.OnMouseClick = GetMetadataObjects;
-    node.Add(meta);
+    config.Add(meta);
 
     meta = new TreeNode();
     meta.Url = "/md/" + infoBase.Name + "/РегистрНакопления";
     meta.Title = "Регистры накопления";
     meta.Image = "/ui/img/РегистрНакопления.png";
     meta.OnMouseClick = GetMetadataObjects;
-    node.Add(meta);
+    config.Add(meta);
 
     meta = new TreeNode();
     meta.Url = "/md/" + infoBase.Name + "/ПланОбмена";
     meta.Title = "Планы обмена";
     meta.Image = "/ui/img/ПланОбмена.png";
     meta.OnMouseClick = GetMetadataObjects;
-    node.Add(meta);
+    config.Add(meta);
 }
 
 async function GetMetadata(url) {
@@ -133,17 +149,37 @@ async function GetMetadataProperties(node) {
 
     if (metadata == null) { return; }
 
-    UiLoader.GetJavaScript("ui/js/metadata-view.js", () => {
-        MetadataViewController.createView(metadata);
-    });
+    //UiLoader.GetJavaScript("ui/js/metadata-view.js", () => {
+    //    MetadataViewController.createView(metadata);
+    //});
 
     if (node.Count > 0) { return; }
+
+    if (node.TitleNode != null) {
+        if (metadata.TableName == null) {
+            node.TitleNode.nodeValue += " [Заимствован]";
+        }
+        else {
+            node.TitleNode.nodeValue += " [" + metadata.TableName + "]";
+        }
+    }
 
     for (let property of metadata.Properties) {
 
         let child = new TreeNode();
         child.Model = property;
-        child.Title = property.Name;
+
+        if (property.Columns.length == 0) {
+            child.Title = property.Name + " [Заимствовано]";
+        }
+        else {
+            let fields = [];
+            for (let column of property.Columns) {
+                fields.push(column.Name);
+            }
+            child.Title = property.Name + " [" + fields.join(", ") + "]";
+        }
+
         if (property.Purpose == 1) {
             child.Image = "/ui/img/Реквизит.png";
         }
@@ -156,6 +192,7 @@ async function GetMetadataProperties(node) {
         else {
             child.Image = "/ui/img/Реквизит.png";
         }
+
         node.Add(child);
     }
 
@@ -164,7 +201,7 @@ async function GetMetadataProperties(node) {
 
             let tableNode = new TreeNode();
             tableNode.Model = table;
-            tableNode.Title = table.Name;
+            tableNode.Title = table.Name + (table.TableName == null ? " [Заимствована]" : " [" + table.TableName + "]");
             tableNode.Image = "/ui/img/ВложеннаяТаблица.png";
             node.Add(tableNode);
 
@@ -172,12 +209,103 @@ async function GetMetadataProperties(node) {
 
                 let child = new TreeNode();
                 child.Model = property;
-                child.Title = property.Name;
+
+                if (property.Columns.length == 0) {
+                    child.Title = property.Name + " [Заимствовано]";
+                }
+                else {
+                    let fields = [];
+                    for (let column of property.Columns) {
+                        fields.push(column.Name);
+                    }
+                    child.Title = property.Name + " [" + fields.join(", ") + "]";
+                }
+
                 child.Image = "/ui/img/Реквизит.png";
                 tableNode.Add(child);
             }
         }
     }
+}
+
+async function GetExtensions(node) {
+
+    node.Clear();
+
+    let data = await GetMetadata(node.Url);
+
+    if (data == null || data.length == 0) { return; }
+
+    for (let item of data) {
+
+        let extension = new TreeNode();
+        extension.Url = node.Url + "/" + item.Name;
+        extension.Model = item;
+        if (item.IsActive) {
+            extension.Title = item.Name + " (Активно)";
+        }
+        else {
+            extension.Title = item.Name + " (Не активно)";
+        }
+        extension.Image = node.Image;
+        extension.OnMouseClick = null;
+        node.Add(extension);
+
+        AddMetadataNodes(extension);
+    }
+}
+function AddMetadataNodes(infoBase) {
+
+    let baseUrl = infoBase.Url;
+
+    let meta = new TreeNode();
+    meta.Url = baseUrl + "/Справочник";
+    meta.Title = "Справочники";
+    meta.Image = "/ui/img/Справочник.png";
+    meta.OnMouseClick = GetMetadataObjects;
+    infoBase.Add(meta);
+
+    meta = new TreeNode();
+    meta.Url = baseUrl + "/Документ";
+    meta.Title = "Документы";
+    meta.Image = "/ui/img/Документ.png";
+    meta.OnMouseClick = GetMetadataObjects;
+    infoBase.Add(meta);
+
+    meta = new TreeNode();
+    meta.Url = baseUrl + "/Перечисление";
+    meta.Title = "Перечисления";
+    meta.Image = "/ui/img/Перечисление.png";
+    meta.OnMouseClick = GetMetadataObjects;
+    infoBase.Add(meta);
+
+    meta = new TreeNode();
+    meta.Url = baseUrl + "/ПланВидовХарактеристик";
+    meta.Title = "Планы видов характеристик";
+    meta.Image = "/ui/img/ПланВидовХарактеристик.png";
+    meta.OnMouseClick = GetMetadataObjects;
+    infoBase.Add(meta);
+
+    meta = new TreeNode();
+    meta.Url = baseUrl + "/РегистрСведений";
+    meta.Title = "Регистры сведений";
+    meta.Image = "/ui/img/РегистрСведений.png";
+    meta.OnMouseClick = GetMetadataObjects;
+    infoBase.Add(meta);
+
+    meta = new TreeNode();
+    meta.Url = baseUrl + "/РегистрНакопления";
+    meta.Title = "Регистры накопления";
+    meta.Image = "/ui/img/РегистрНакопления.png";
+    meta.OnMouseClick = GetMetadataObjects;
+    infoBase.Add(meta);
+
+    meta = new TreeNode();
+    meta.Url = baseUrl + "/ПланОбмена";
+    meta.Title = "Планы обмена";
+    meta.Image = "/ui/img/ПланОбмена.png";
+    meta.OnMouseClick = GetMetadataObjects;
+    infoBase.Add(meta);
 }
 
 // MAIN MENU
