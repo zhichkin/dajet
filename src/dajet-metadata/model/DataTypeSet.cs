@@ -5,7 +5,7 @@ using System.Collections.Generic;
 namespace DaJet.Metadata.Model
 {
     ///<summary>Типы данных реквизитов объектов метаданных 1С</summary>
-    [Flags] internal enum DataTypeFlags : byte
+    [Flags] public enum DataTypeFlags : byte
     {
         None = 0x00,
         Binary = 0x01,
@@ -33,6 +33,7 @@ namespace DaJet.Metadata.Model
     public sealed class DataTypeSet
     {
         private DataTypeFlags _flags = DataTypeFlags.None;
+        public DataTypeFlags Flags { get { return _flags; } }
 
         #region "SIMPLE DATA TYPES"
 

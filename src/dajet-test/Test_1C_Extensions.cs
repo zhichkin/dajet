@@ -626,5 +626,28 @@ namespace DaJet.Metadata.Test
                 }
             }
         }
+
+        [TestMethod] public void UseExtensions()
+        {
+            Console.WriteLine();
+            Console.WriteLine($"{_cache.InfoBase.Name} [{_cache.InfoBase.Uuid}]");
+
+            List<ExtensionInfo> extensions = _cache.GetExtensions();
+
+            foreach (ExtensionInfo extension in extensions)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"Root: {extension.Name} [{extension.Identity}]");
+
+                if (_cache.TryApplyExtension(in extension, out string error))
+                {
+                    Console.WriteLine($"Extension {extension.Name} applied successfully.");
+                }
+                else
+                {
+                    Console.WriteLine($"Failed to apply extension {extension.Name}: {error}");
+                }
+            }
+        }
     }
 }
