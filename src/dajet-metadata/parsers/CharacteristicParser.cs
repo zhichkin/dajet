@@ -17,7 +17,43 @@ namespace DaJet.Metadata.Parsers
         private MetadataInfo _entry;
         private Characteristic _target;
         private ConfigFileConverter _converter;
+        public CharacteristicParser() { }
         public CharacteristicParser(MetadataCache cache) { _cache = cache; }
+        public void Parse(in ConfigFileOptions options, out MetadataInfo info)
+        {
+            _entry = new MetadataInfo()
+            {
+                MetadataUuid = options.MetadataUuid,
+                MetadataType = MetadataTypes.Characteristic
+            };
+
+            _parser = new ConfigFileParser();
+            _converter = new ConfigFileConverter();
+
+            // 1.13.1.1.2 - uuid объекта метаданных (FileName)
+
+            _converter[1][3] += Reference; // ПланВидовХарактеристикСсылка
+            _converter[1][9] += CharacteristicUuid; // Идентификатор характеристики
+            _converter[1][13][1][2] += Name; // Имя объекта конфигурации
+
+            if (options.IsExtension)
+            {
+                _converter[1][13][1][11] += Parent;
+            }
+            
+            _converter[1][13][1] += Cancel; // Прервать чтение файла
+
+            using (ConfigFileReader reader = new(options.DatabaseProvider, options.ConnectionString, options.TableName, options.FileName))
+            {
+                _parser.Parse(in reader, in _converter);
+            }
+
+            info = _entry;
+
+            _entry = null;
+            _parser = null;
+            _converter = null;
+        }
         public void Parse(in ConfigFileReader source, Guid uuid, out MetadataInfo target)
         {
             _entry = new MetadataInfo()
@@ -34,6 +70,7 @@ namespace DaJet.Metadata.Parsers
             _converter[1][3] += Reference; // ПланВидовХарактеристикСсылка
             _converter[1][9] += CharacteristicUuid; // Идентификатор характеристики
             _converter[1][13][1][2] += Name; // Имя объекта конфигурации
+            _converter[1][13][1] += Cancel; // Прервать чтение файла
 
             _parser.Parse(in source, in _converter);
 
@@ -94,6 +131,13 @@ namespace DaJet.Metadata.Parsers
             _converter[3] += PropertyCollection; // 31182525-9346-4595-81f8-6f91a72ebe06 - идентификатор коллекции реквизитов
             _converter[5] += TablePartCollection; // 54e36536-7863-42fd-bea3-c5edd3122fdc - идентификатор коллекции табличных частей
         }
+        private void Cancel(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            if (source.Token == TokenType.EndObject)
+            {
+                args.Cancel = true;
+            }
+        }
         private void Reference(in ConfigFileReader source, in CancelEventArgs args)
         {
             if (_entry != null)
@@ -113,13 +157,8 @@ namespace DaJet.Metadata.Parsers
             if (_entry != null)
             {
                 _entry.Name = source.Value;
-                
-                args.Cancel = true;
-                
-                return;
             }
-
-            if (_target != null)
+            else if (_target != null)
             {
                 _target.Name = source.Value;
             }
@@ -181,7 +220,14 @@ namespace DaJet.Metadata.Parsers
         }
         private void Parent(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _target.Parent = source.GetUuid();
+            if (_entry != null)
+            {
+                _entry.MetadataParent = source.GetUuid();
+            }
+            else if (_target != null)
+            {
+                _target.Parent = source.GetUuid();
+            }
         }
         private void ExtensionDataTypeSet(in ConfigFileReader source, in CancelEventArgs args)
         {

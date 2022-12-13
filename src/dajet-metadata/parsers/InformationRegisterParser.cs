@@ -15,9 +15,40 @@ namespace DaJet.Metadata.Parsers
         private MetadataInfo _entry;
         private InformationRegister _target;
         private ConfigFileConverter _converter;
-        public InformationRegisterParser(MetadataCache cache)
+        public InformationRegisterParser() { }
+        public InformationRegisterParser(MetadataCache cache) { _cache = cache; }
+        public void Parse(in ConfigFileOptions options, out MetadataInfo info)
         {
-            _cache = cache;
+            _entry = new MetadataInfo()
+            {
+                MetadataUuid = options.MetadataUuid,
+                MetadataType = MetadataTypes.InformationRegister
+            };
+
+            _parser = new ConfigFileParser();
+            _converter = new ConfigFileConverter();
+
+            // 1.15.1.1.2 - uuid объекта метаданных (FileName)
+
+            _converter[1][15][1][2] += Name; // Имя объекта метаданных конфигурации
+
+            if (options.IsExtension)
+            {
+                _converter[1][15][1][13] += Parent;
+            }
+
+            _converter[1][15][1] += Cancel;
+
+            using (ConfigFileReader reader = new(options.DatabaseProvider, options.ConnectionString, options.TableName, options.FileName))
+            {
+                _parser.Parse(in reader, in _converter);
+            }
+
+            info = _entry;
+
+            _entry = null;
+            _parser = null;
+            _converter = null;
         }
         public void Parse(in ConfigFileReader source, Guid uuid, out MetadataInfo target)
         {
@@ -78,18 +109,20 @@ namespace DaJet.Metadata.Parsers
 
             ConfigurePropertyConverters();
         }
+        private void Cancel(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            if (source.Token == TokenType.EndObject)
+            {
+                args.Cancel = true;
+            }
+        }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
         {
             if (_entry != null)
             {
                 _entry.Name = source.Value;
-
-                args.Cancel = true;
-
-                return;
             }
-
-            if (_target != null)
+            else if (_target != null)
             {
                 _target.Name = source.Value;
             }
@@ -127,7 +160,14 @@ namespace DaJet.Metadata.Parsers
         }
         private void Parent(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _target.Parent = source.GetUuid();
+            if (_entry != null)
+            {
+                _entry.MetadataParent = source.GetUuid();
+            }
+            else if (_target != null)
+            {
+                _target.Parent = source.GetUuid();
+            }
         }
     }
 }

@@ -1,25 +1,49 @@
-﻿using DaJet.Data;
-using DaJet.Metadata.Core;
+﻿using DaJet.Metadata.Core;
 using System;
 using System.IO;
 
 namespace DaJet.Metadata.Extensions
 {
-    public sealed class ExtensionRootFileParser
+    public static class ExtensionRootFileParser
     {
-        public Guid Parse(in MetadataCache cache, in ExtensionInfo extension)
+        public static bool TryParse(in ConfigFileOptions options, in ExtensionInfo extension, out string error)
         {
-            string fileName = extension.RootFile;
-            string connectionString = cache.ConnectionString;
-            DatabaseProvider provider = cache.DatabaseProvider;
+            error = string.Empty;
 
+            try
+            {
+                ParseRootFile(in options, in extension);
+            }
+            catch (Exception exception)
+            {
+                error = ExceptionHelper.GetErrorMessage(exception);
+            }
+
+            return string.IsNullOrWhiteSpace(error);
+        }
+        public static Guid Parse(in MetadataCache cache, in ExtensionInfo extension)
+        {
+            ConfigFileOptions options = new()
+            {
+                FileName = extension.RootFile,
+                TableName = ConfigTables.ConfigCAS,
+                DatabaseProvider = cache.DatabaseProvider,
+                ConnectionString = cache.ConnectionString
+            };
+
+            ParseRootFile(in options, in extension);
+
+            return extension.Uuid;
+        }
+        private static void ParseRootFile(in ConfigFileOptions options, in ExtensionInfo extension)
+        {
             int count = 0;
             int version = 0;
             string root = string.Empty;
 
             ConfigObject config;
 
-            using (ConfigFileReader reader0 = new(provider, in connectionString, ConfigTables.ConfigCAS, in fileName))
+            using (ConfigFileReader reader0 = new(options.DatabaseProvider, options.ConnectionString, options.TableName, options.FileName))
             {
                 config = new ConfigFileParser().Parse(reader0);
 
@@ -49,7 +73,7 @@ namespace DaJet.Metadata.Extensions
 
             if (count == 0)
             {
-                return extension.Uuid;
+                return;
             }
 
             int next = 1;
@@ -79,8 +103,6 @@ namespace DaJet.Metadata.Extensions
                     extension.FileName = file;
                 }
             }
-
-            return extension.Uuid;
         }
     }
 }

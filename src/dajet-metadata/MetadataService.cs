@@ -115,6 +115,7 @@ namespace DaJet.Metadata
 
                 cache = new MetadataCache(new MetadataCacheOptions()
                 {
+                    UseExtensions = entry.Options.UseExtensions,
                     DatabaseProvider = entry.Options.DatabaseProvider,
                     ConnectionString = entry.Options.ConnectionString
                 });

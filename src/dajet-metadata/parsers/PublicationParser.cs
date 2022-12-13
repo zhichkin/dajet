@@ -16,9 +16,41 @@ namespace DaJet.Metadata.Parsers
         private Publication _target;
         private MetadataInfo _entry;
         private ConfigFileConverter _converter;
-        public PublicationParser(MetadataCache cache)
+        public PublicationParser() { }
+        public PublicationParser(MetadataCache cache) { _cache = cache; }
+        public void Parse(in ConfigFileOptions options, out MetadataInfo info)
         {
-            _cache = cache;
+            _entry = new MetadataInfo()
+            {
+                MetadataUuid = options.MetadataUuid,
+                MetadataType = MetadataTypes.Publication
+            };
+
+            _parser = new ConfigFileParser();
+            _converter = new ConfigFileConverter();
+
+            // 1.12.1.2 - uuid объекта метаданных (FileName)
+
+            _converter[1][3] += Reference; // Идентификатор ссылочного типа данных
+            _converter[1][12][2] += Name;  // Имя объекта конфигурации
+
+            if (options.IsExtension)
+            {
+                _converter[1][12][9] += Parent;
+            }
+
+            _converter[1][12] += Cancel;
+
+            using (ConfigFileReader reader = new(options.DatabaseProvider, options.ConnectionString, options.TableName, options.FileName))
+            {
+                _parser.Parse(in reader, in _converter);
+            }
+
+            info = _entry;
+
+            _entry = null;
+            _parser = null;
+            _converter = null;
         }
         public void Parse(in ConfigFileReader source, Guid uuid, out MetadataInfo target)
         {
@@ -35,6 +67,7 @@ namespace DaJet.Metadata.Parsers
 
             _converter[1][3] += Reference; // Идентификатор ссылочного типа данных
             _converter[1][12][2] += Name;  // Имя объекта конфигурации
+            _converter[1][12] += Cancel;
 
             _parser.Parse(in source, in _converter);
 
@@ -85,16 +118,20 @@ namespace DaJet.Metadata.Parsers
             _converter[4] += TemplateCollection;
             _converter[5] += TablePartCollection;
         }
+        private void Cancel(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            if (source.Token == TokenType.EndObject)
+            {
+                args.Cancel = true;
+            }
+        }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
         {
             if (_entry != null)
             {
                 _entry.Name = source.Value;
-                args.Cancel = true;
-                return;
             }
-
-            if (_target != null)
+            else if (_target != null)
             {
                 _target.Name = source.Value;
             }
@@ -160,7 +197,14 @@ namespace DaJet.Metadata.Parsers
         }
         private void Parent(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _target.Parent = source.GetUuid();
+            if (_entry != null)
+            {
+                _entry.MetadataParent = source.GetUuid();
+            }
+            else if (_target != null)
+            {
+                _target.Parent = source.GetUuid();
+            }
         }
     }
 }

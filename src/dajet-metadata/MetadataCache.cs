@@ -304,18 +304,33 @@ namespace DaJet.Metadata
 
         #region "INITIALIZE CACHE BEFORE USE"
 
+        private Dictionary<Guid, List<Guid>> CreateSupportedMetadataDictionary()
+        {
+            return new()
+            {
+                //{ MetadataTypes.Constant,             new List<Guid>() }, // Константы
+                //{ MetadataTypes.Subsystem,            new List<Guid>() }, // Подсистемы
+                { MetadataTypes.NamedDataTypeSet,     new List<Guid>() }, // Определяемые типы
+                { MetadataTypes.SharedProperty,       new List<Guid>() }, // Общие реквизиты
+                { MetadataTypes.Catalog,              new List<Guid>() }, // Справочники
+                { MetadataTypes.Document,             new List<Guid>() }, // Документы
+                { MetadataTypes.Enumeration,          new List<Guid>() }, // Перечисления
+                { MetadataTypes.Publication,          new List<Guid>() }, // Планы обмена
+                { MetadataTypes.Characteristic,       new List<Guid>() }, // Планы видов характеристик
+                { MetadataTypes.InformationRegister,  new List<Guid>() }, // Регистры сведений
+                { MetadataTypes.AccumulationRegister, new List<Guid>() }  // Регистры накопления
+            };
+        }
+
         internal void Initialize()
         {
             if (_extension == null)
             {
                 InitializeRootFile();
                 InitializeDbNameCache();
-                InitializeMetadataCache(out InfoBase infoBase);
-                _infoBase = infoBase;
+                InitializeMetadataCache(out _infoBase);
 
-                ApplyExtensions();
-
-                //TODO: if (UseExtensions) { ApplyExtensions(); }
+                if (UseExtensions) { ApplyExtensions(); }
             }
             else
             {
@@ -357,20 +372,7 @@ namespace DaJet.Metadata
             _references.TryAdd(ReferenceTypes.Publication, new MetadataItem(MetadataTypes.Publication, Guid.Empty));
             _references.TryAdd(ReferenceTypes.Characteristic, new MetadataItem(MetadataTypes.Characteristic, Guid.Empty));
 
-            Dictionary<Guid, List<Guid>> metadata = new()
-            {
-                //{ MetadataTypes.Constant,             new List<Guid>() }, // Константы
-                //{ MetadataTypes.Subsystem,            new List<Guid>() }, // Подсистемы
-                { MetadataTypes.NamedDataTypeSet,     new List<Guid>() }, // Определяемые типы
-                { MetadataTypes.SharedProperty,       new List<Guid>() }, // Общие реквизиты
-                { MetadataTypes.Catalog,              new List<Guid>() }, // Справочники
-                { MetadataTypes.Document,             new List<Guid>() }, // Документы
-                { MetadataTypes.Enumeration,          new List<Guid>() }, // Перечисления
-                { MetadataTypes.Publication,          new List<Guid>() }, // Планы обмена
-                { MetadataTypes.Characteristic,       new List<Guid>() }, // Планы видов характеристик
-                { MetadataTypes.InformationRegister,  new List<Guid>() }, // Регистры сведений
-                { MetadataTypes.AccumulationRegister, new List<Guid>() }  // Регистры накопления
-            };
+            Dictionary<Guid, List<Guid>> metadata = CreateSupportedMetadataDictionary();
 
             if (_extension == null)
             {
@@ -474,18 +476,6 @@ namespace DaJet.Metadata
                             AddDocumentRegister(metadata.MetadataUuid, register);
                         }
                     }
-                }
-            }
-        }
-        private void ApplyExtensions()
-        {
-            List<ExtensionInfo> extensions = GetExtensions();
-
-            foreach (ExtensionInfo extension in extensions)
-            {
-                if (!TryApplyExtension(in extension, out string error))
-                {
-                    throw new InvalidOperationException($"Failed to apply extension {extension.Name}: {error}");
                 }
             }
         }
@@ -767,9 +757,9 @@ namespace DaJet.Metadata
                 return ConfigTables.Config;
             }
 
-            if (_extended.TryGetValue(uuid, out string fileName))
+            if (_extended.TryGetValue(uuid, out MetadataItemEx item))
             {
-                return (fileName == null) ? ConfigTables.Config : ConfigTables.ConfigCAS;
+                return (item.Parent == Guid.Empty) ? ConfigTables.Config : ConfigTables.ConfigCAS;
             }
             
             return ConfigTables.Config;
@@ -781,9 +771,9 @@ namespace DaJet.Metadata
                 return _extension.FileMap[uuid];
             }
 
-            if (_extended.TryGetValue(uuid, out string fileName))
+            if (_extended.TryGetValue(uuid, out MetadataItemEx item))
             {
-                return (fileName == null) ? uuid.ToString() : fileName;
+                return (item.Parent == Guid.Empty) ? uuid.ToString() : item.File;
             }
 
             return uuid.ToString();
@@ -1289,9 +1279,36 @@ namespace DaJet.Metadata
             }
         }
 
+        private IMetadataObjectParser CreateParser(Guid type)
+        {
+            if (type == MetadataTypes.Catalog) { return new CatalogParser(); }
+            if (type == MetadataTypes.Document) { return new DocumentParser(); }
+            if (type == MetadataTypes.Enumeration) { return new EnumerationParser(); }
+            if (type == MetadataTypes.Publication) { return new PublicationParser(); }
+            if (type == MetadataTypes.Characteristic) { return new CharacteristicParser(); }
+            if (type == MetadataTypes.SharedProperty) { return new SharedPropertyParser(); } // since 1C:Enterprise 8.2.14 version
+            if (type == MetadataTypes.NamedDataTypeSet) { return new NamedDataTypeSetParser(); } // since 1C:Enterprise 8.3.3 version
+            if (type == MetadataTypes.InformationRegister) { return new InformationRegisterParser(); }
+            if (type == MetadataTypes.AccumulationRegister) { return new AccumulationRegisterParser(); }
+
+            return null;
+        }
+
+        private void ApplyExtensions()
+        {
+            List<ExtensionInfo> extensions = GetExtensions();
+
+            foreach (ExtensionInfo extension in extensions)
+            {
+                if (!TryApplyExtension(in extension, out string error))
+                {
+                    throw new InvalidOperationException($"Failed to apply extension {extension.Name}: {error}");
+                }
+            }
+        }
         private void InitializeExtension()
         {
-            _root = new ExtensionRootFileParser().Parse(this, in _extension);
+            _root = ExtensionRootFileParser.Parse(this, in _extension);
 
             InitializeDbNameCache();
 
@@ -1323,67 +1340,126 @@ namespace DaJet.Metadata
         }
 
         //TODO: apply extension _Document123X1 + _Document123_VT123X1
-        private readonly ConcurrentDictionary<Guid, string> _extended = new(); // is not used by extension
+        ///<summary>
+        ///<b>Информация о расширении объекта метаданных:</b>
+        ///<br><b>Ключ:</b> UUID объекта метаданных, например, "Справочник.Номенклатура"</br>
+        ///<br><b>Значение:</b> информация для загрузки метаданных объекта из расширения</br>
+        ///</summary>
+        private readonly ConcurrentDictionary<Guid, MetadataItemEx> _extended = new();
         public bool TryApplyExtension(in ExtensionInfo extension, out string error)
         {
-            error = string.Empty;
+            ConfigFileOptions options = new()
+            {
+                IsExtension = true,
+                FileName = extension.RootFile,
+                TableName = ConfigTables.ConfigCAS,
+                DatabaseProvider = _provider,
+                ConnectionString = _connectionString
+            };
 
-            if (!TryGetMetadata(in extension, out MetadataCache metadata, out error))
+            // Initialize extension root file and file map
+
+            if (!ExtensionRootFileParser.TryParse(in options, in extension, out error))
             {
                 return false;
             }
 
-            foreach (DbName dbn in metadata._database.DbNames)
+            // Initialize extension DbNames
+
+            string fileName = ConfigFiles.DbNames + "-ext-" + extension.Identity.ToString().ToLower();
+
+            using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Params, in fileName))
             {
-                _database.Add(dbn.Uuid, dbn.Code, dbn.Name);
+                new DbNamesParser().Parse(in reader, out DbNameCache database);
+
+                foreach (DbName dbn in database.DbNames)
+                {
+                    _database.Add(dbn.Uuid, dbn.Code, dbn.Name);
+                }
             }
 
-            foreach (var type in metadata._cache)
-            {
-                foreach (var item in type.Value)
-                {
-                    MetadataObject entity = metadata.GetMetadataObject(type.Key, item.Key);
+            // Initialize extension metadata types and items list
 
-                    if (entity != null)
+            Dictionary<Guid, List<Guid>> metadata = CreateSupportedMetadataDictionary();
+            
+            using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.ConfigCAS, extension.FileName))
+            {
+                new InfoBaseParser(this).Parse(in reader, extension.Uuid, out _, in metadata);
+            }
+
+            foreach (var type in metadata)
+            {
+                IMetadataObjectParser parser = CreateParser(type.Key);
+
+                if (parser == null)
+                {
+                    continue;
+                }
+
+                foreach (var uuid in type.Value)
+                {
+                    if (uuid == MetadataTypes.SharedProperty)
                     {
-                        if (!TryApplyMetadataObject(in extension, type.Key, in entity, out string message))
-                        {
-                            error += $"{message}{Environment.NewLine}";
-                        }
+                        continue;
+                    }
+
+                    if (!extension.FileMap.TryGetValue(uuid, out fileName))
+                    {
+                        continue;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(fileName))
+                    {
+                        continue;
+                    }
+
+                    options.FileName = fileName;
+                    options.MetadataUuid = uuid;
+
+                    parser.Parse(in options, out MetadataInfo info);
+
+                    MetadataItemEx item = new(info.MetadataType, info.MetadataUuid, info.Name, fileName, info.MetadataParent);
+
+                    if (!TryApplyMetadataObject(in item, out string message))
+                    {
+                        error += $"{message}{Environment.NewLine}";
                     }
                 }
             }
 
             return string.IsNullOrEmpty(error);
         }
-        private bool TryApplyMetadataObject(in ExtensionInfo extension, Guid type, in MetadataObject entity, out string error)
+        private bool TryApplyMetadataObject(in MetadataItemEx item, out string error)
         {
             error = string.Empty;
 
-            if (entity.Parent == Guid.Empty) // Синхронизация объектов по их именам
+            if (item.Parent == Guid.Empty) // Синхронизация объектов по их именам
             {
-                if (_names.TryGetValue(type, out Dictionary<string, Guid> names))
+                if (_names.TryGetValue(item.Type, out Dictionary<string, Guid> names))
                 {
-                    if (names.TryGetValue(entity.Name, out Guid parent))
+                    if (names.TryGetValue(item.Name, out Guid parent))
                     {
-                        _ = _extended.TryAdd(parent, null);
+                        //TODO: set flag for main and extension object !!!
+                        // Это важно для корректного пределения имени файла
+                        // См. функции GetConfigTableName и GetConfigFileName
+                        _ = _extended.TryAdd(parent, item.Clone(parent));
                         return true; // Заимствованный из основной конфигурации объект
                     }
                     else // Собственный объект расширения - новый для основной конфигурации
                     {
-                        _cache[type].Add(entity.Uuid, new WeakReference<MetadataObject>(null));
-                        AddName(type, entity.Uuid, entity.Name);
-                        _ = _extended.TryAdd(entity.Uuid, extension.FileMap[entity.Uuid]);
+                        _cache[item.Type].Add(item.Uuid, new WeakReference<MetadataObject>(null));
+                        AddName(item.Type, item.Uuid, item.Name);
+                        _ = _extended.TryAdd(item.Uuid, item);
                     }
                 }
                 else // Основная конфигурация не содержит данный тип метаданных
                 {
-                    _ = _cache.TryAdd(type, new Dictionary<Guid, WeakReference<MetadataObject>>()
+                    _ = _cache.TryAdd(item.Type, new Dictionary<Guid, WeakReference<MetadataObject>>()
                     {
-                        { entity.Uuid, new WeakReference<MetadataObject>(null) }
+                        { item.Uuid, new WeakReference<MetadataObject>(null) }
                     });
-                    AddName(type, entity.Uuid, entity.Name);
-                    _ = _extended.TryAdd(entity.Uuid, extension.FileMap[entity.Uuid]);
+                    AddName(item.Type, item.Uuid, item.Name);
+                    _ = _extended.TryAdd(item.Uuid, item);
                 }
             }
             else
@@ -1391,15 +1467,15 @@ namespace DaJet.Metadata
                 // Синхронизация объектов по их внутренним идентификаторам.
                 // Должны присутствовать в основной конфигруации - иначе ошибка !!!
 
-                if (!_cache.TryGetValue(type, out Dictionary<Guid, WeakReference<MetadataObject>> items))
+                if (!_cache.TryGetValue(item.Type, out Dictionary<Guid, WeakReference<MetadataObject>> items))
                 {
-                    error = $"Объект метаданных \"{MetadataTypes.ResolveNameRu(type)}.{entity.Name}\" не найден в основной конфигурации!";
+                    error = $"Объект метаданных \"{MetadataTypes.ResolveNameRu(item.Type)}.{item.Name}\" не найден в основной конфигурации!";
                     return false;
                 }
                 
-                if (!items.ContainsKey(entity.Parent))
+                if (!items.ContainsKey(item.Parent))
                 {
-                    error = $"Объект метаданных \"{MetadataTypes.ResolveNameRu(type)}.{entity.Name}\" не найден в основной конфигурации!";
+                    error = $"Объект метаданных \"{MetadataTypes.ResolveNameRu(item.Type)}.{item.Name}\" не найден в основной конфигурации!";
                     return false;
                 }
             }

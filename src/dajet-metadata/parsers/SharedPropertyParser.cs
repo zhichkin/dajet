@@ -15,9 +15,38 @@ namespace DaJet.Metadata.Parsers
         private MetadataInfo _entry;
         private SharedProperty _target;
         private ConfigFileConverter _converter;
-        public SharedPropertyParser(MetadataCache cache)
+        public SharedPropertyParser() { }
+        public SharedPropertyParser(MetadataCache cache) { _cache = cache; }
+        public void Parse(in ConfigFileOptions options, out MetadataInfo info)
         {
-            _cache = cache;
+            _entry = new MetadataInfo()
+            {
+                MetadataUuid = options.MetadataUuid,
+                MetadataType = MetadataTypes.Enumeration
+            };
+
+            _parser = new ConfigFileParser();
+            _converter = new ConfigFileConverter();
+
+            _converter[1][1][1][1][2] += Name; // Имя объекта конфигурации
+
+            //if (options.IsExtension)
+            //{
+            //    _converter[1][1][1][1][13] += Parent;
+            //}
+
+            //_converter[1][1][1][1] += Cancel;
+
+            using (ConfigFileReader reader = new(options.DatabaseProvider, options.ConnectionString, options.TableName, options.FileName))
+            {
+                _parser.Parse(in reader, in _converter);
+            }
+
+            info = _entry;
+
+            _entry = null;
+            _parser = null;
+            _converter = null;
         }
         public void Parse(in ConfigFileReader source, Guid uuid, out MetadataInfo target)
         {

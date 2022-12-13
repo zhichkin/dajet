@@ -24,6 +24,11 @@ namespace DaJet.Metadata.Core
         ///<br>Пример: "Справочник.Номенклатура"</br>
         ///</summary>
         public Guid MetadataUuid { get; set; } = Guid.Empty;
+        ///<summary>Идентификатор расширяемого объекта метаданных основной конфигурации
+        ///<br>Используется при синхронизации объектов расширения по внутренним идентификаторам</br>
+        ///<br>Смотри также: <see cref="InfoBase.MapMetadataByUuid"/></br>
+        ///</summary>
+        public Guid MetadataParent { get; set; } = Guid.Empty;
         ///<summary>
         ///UUID ссылочного типа данных "Ссылка"
         ///<br>Пример: "СправочникСсылка.Номенклатура"</br>

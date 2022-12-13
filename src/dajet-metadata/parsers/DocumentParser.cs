@@ -16,9 +16,40 @@ namespace DaJet.Metadata.Parsers
         private Document _target;
         private MetadataInfo _entry;
         private ConfigFileConverter _converter;
-        public DocumentParser(MetadataCache cache)
+        public DocumentParser() { }
+        public DocumentParser(MetadataCache cache) { _cache = cache; }
+        public void Parse(in ConfigFileOptions options, out MetadataInfo info)
         {
-            _cache = cache;
+            _entry = new MetadataInfo()
+            {
+                MetadataUuid = options.MetadataUuid,
+                MetadataType = MetadataTypes.Document
+            };
+
+            _parser = new ConfigFileParser();
+            _converter = new ConfigFileConverter();
+
+            // 1.9.1.1.2 - uuid объекта метаданных (FileName)
+
+            _converter[1][3] += Reference; // ДокументСсылка
+            _converter[1][9][1][2] += Name; // Имя объекта метаданных конфигурации
+            _converter[1][24] += Registers; // Коллекция регистров движения документа
+
+            if (options.IsExtension)
+            {
+                _converter[1][9][1][9] += Parent;
+            }
+
+            using (ConfigFileReader reader = new(options.DatabaseProvider, options.ConnectionString, options.TableName, options.FileName))
+            {
+                _parser.Parse(in reader, in _converter);
+            }
+
+            info = _entry;
+
+            _entry = null;
+            _parser = null;
+            _converter = null;
         }
         public void Parse(in ConfigFileReader source, Guid uuid, out MetadataInfo target)
         {
@@ -91,8 +122,7 @@ namespace DaJet.Metadata.Parsers
             {
                 _entry.Name = source.Value;
             }
-
-            if (_target != null)
+            else if (_target != null)
             {
                 _target.Name = source.Value;
             }
@@ -184,7 +214,14 @@ namespace DaJet.Metadata.Parsers
         }
         private void Parent(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _target.Parent = source.GetUuid();
+            if (_entry != null)
+            {
+                _entry.MetadataParent = source.GetUuid();
+            }
+            else if (_target != null)
+            {
+                _target.Parent = source.GetUuid();
+            }
         }
     }
 }
