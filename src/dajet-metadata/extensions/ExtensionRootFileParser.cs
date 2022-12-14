@@ -71,10 +71,7 @@ namespace DaJet.Metadata.Extensions
                 }
             }
 
-            if (count == 0)
-            {
-                return;
-            }
+            if (count == 0) { return; }
 
             int next = 1;
 

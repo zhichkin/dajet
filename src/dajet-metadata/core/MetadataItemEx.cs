@@ -5,23 +5,26 @@ namespace DaJet.Metadata.Core
     internal readonly struct MetadataItemEx
     {
         public static MetadataItemEx Empty { get; } = new();
-        internal MetadataItemEx(Guid type, Guid uuid, string name, string file)
+        internal MetadataItemEx(Guid extension, Guid type, Guid uuid, string name, string file)
         {
+            Extension = extension;
             Type = type;
             Uuid = uuid;
             Name = name;
             File = file;
         }
-        internal MetadataItemEx(Guid type, Guid uuid, string name, string file, Guid parent) : this(type, uuid, name, file)
+        internal MetadataItemEx(Guid extension, Guid type, Guid uuid, string name, string file, Guid parent)
+            : this(extension, type, uuid, name, file)
         {
             Parent = parent;
         }
+        public Guid Extension { get; } = Guid.Empty;
         public Guid Type { get; } = Guid.Empty;
         public Guid Uuid { get; } = Guid.Empty;
         public Guid Parent { get; } = Guid.Empty;
         public string Name { get; } = string.Empty;
         public string File { get; } = string.Empty;
-        public MetadataItemEx Clone(Guid parent) { return new MetadataItemEx(Type, Uuid, Name, File, parent); }
+        public MetadataItemEx SetParent(Guid parent) { return new MetadataItemEx(Extension, Type, Uuid, Name, File, parent); }
         public override string ToString()
         {
             if (this == Empty)
@@ -80,7 +83,7 @@ namespace DaJet.Metadata.Core
         }
         public static bool operator ==(MetadataItemEx left, MetadataItemEx right)
         {
-            return left.Type == right.Type && left.Uuid == right.Uuid;
+            return left.Extension == right.Extension && left.Type == right.Type && left.Uuid == right.Uuid;
         }
         public static bool operator !=(MetadataItemEx left, MetadataItemEx right)
         {

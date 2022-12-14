@@ -1511,10 +1511,7 @@ namespace DaJet.Metadata.Core
                 return;
             }
 
-            if (metadata is not ApplicationObject entity)
-            {
-                return;
-            }
+            if (metadata is not ApplicationObject entity) { return; }
 
             // NOTE: Заимствованный из основной конфигурации, объект метаданных
             // расширения не имеет записи сопоставления в файле DBNames-Ext-...
@@ -1525,6 +1522,10 @@ namespace DaJet.Metadata.Core
                 {
                     return; //FIXME: this should not happen - log error : DbNames file is broken
                 }
+                else // Это контекст расширения
+                {
+                    // Заимствованный из основной конфигурации, объект метаданных расширения
+                }
             }
             else
             {
@@ -1534,9 +1535,6 @@ namespace DaJet.Metadata.Core
 
             //NOTE: Если сопоставление DbName не найдено, то здесь мы конфигурируем расширение:
             //это заимствованный объект основной конфигурации, а значит, что TableName = null и TypeCode = 0
-            //NOTE: решение о добавлении X1 к названию таблицы СУБД принимается другой функцией,
-            //а именно функцией применения расширения к основной конфигурации
-            //Пример: _Document123X1 + _Document123_VT123X1
 
             ConfigureDatabaseProperties(in cache, in entity);
             
@@ -1584,13 +1582,17 @@ namespace DaJet.Metadata.Core
                     {
                         continue; //FIXME: this should not happen - log error : DbNames file is broken
                     }
+                    else // Это контекст расширения
+                    {
+                        // Заимствованный из основной конфигурации, объект метаданных расширения
+                    }
                 }
                 else
                 {
                     tablePart.TableName = entity.TableName + CreateDbName(entry.Name, entry.Code);
                 }
 
-                //TODO: Если сопоставление DbName не найдено, то здесь мы конфигурируем расширение:
+                //TODO: Если сопоставление DbName не найдено, то здесь мы конфигурируем в контексте расширения:
                 //это заимствованная табличная часть объекта основной конфигурации, а значит, что TableName = null и TypeCode = 0
 
                 ConfigureDatabaseProperties(in cache, tablePart);

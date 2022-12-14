@@ -58,6 +58,20 @@ namespace DaJet.Metadata
         private readonly ConcurrentDictionary<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> _cache = new();
 
         ///<summary>
+        ///<b>Заимствованные и собственные объекты метаданных расширений:</b>
+        ///<br><b>Ключ:</b> UUID объекта метаданных, например, "Справочник.Номенклатура"</br>
+        ///<br><b>Значение:</b> информация для загрузки метаданных объекта из расширения</br>
+        ///</summary>
+        private readonly ConcurrentDictionary<Guid, MetadataItemEx> _extended = new();
+
+        ///<summary>
+        ///<b>Кэш расширений основной конфигурации:</b>
+        ///<br><b>Ключ:</b> идентификатор расширения _IDRRef в таблице _ExtensionsInfo</br>
+        ///<br><b>Значение:</b> кэш объектов метаданных расширения</br>
+        ///</summary>
+        private readonly ConcurrentDictionary<Guid, MetadataCache> _extensions = new();
+
+        ///<summary>
         ///<b>Имена объектов метаданных (первичный индекс для поиска имён):</b>
         ///<br><b>Ключ 1:</b> UUID общего типа метаданных, например, "Справочник"</br>
         ///<br><b>Ключ 2:</b> UUID объекта метаданных, например, "Справочник.Номенклатура"</br>
@@ -116,8 +130,8 @@ namespace DaJet.Metadata
         private readonly ConcurrentDictionary<Guid, List<Guid>> _registers = new();
 
         ///<summary>
-        ///<br>Кэш идентификаторов <see cref="DbName"/> объектов СУБД</br>
-        ///<br>и их сопоставление объектам метаданных конфигурации</br>
+        ///<br>Кэш идентификаторов <see cref="DbName"/> объектов СУБД,</br>
+        ///<br>а также числовые коды ссылочных типов данных (!)</br>
         ///</summary>
         private DbNameCache _database;
         internal bool TryGetDbName(Guid uuid, out DbName entry)
@@ -269,13 +283,21 @@ namespace DaJet.Metadata
             return MetadataItem.Empty;
         }
 
+        internal bool TryGetExtendedInfo(Guid uuid, out MetadataItemEx info)
+        {
+            return _extended.TryGetValue(uuid, out info);
+        }
+
         #endregion
 
         internal MetadataCache(MetadataCacheOptions options)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
 
-            UseExtensions = options.UseExtensions;
+            if (options.UseExtensions && options.Extension == null)
+            {
+                UseExtensions = options.UseExtensions; // Only the main configuration is allowed to have extensions
+            }
 
             _extension = options.Extension;
             _provider = options.DatabaseProvider;
@@ -302,7 +324,7 @@ namespace DaJet.Metadata
             throw new InvalidOperationException($"Unsupported database provider: {_provider}");
         }
 
-        #region "INITIALIZE CACHE BEFORE USE"
+        #region "INITIALIZE CACHE BEFORE USE IT"
 
         private Dictionary<Guid, List<Guid>> CreateSupportedMetadataDictionary()
         {
@@ -324,24 +346,23 @@ namespace DaJet.Metadata
 
         internal void Initialize()
         {
-            if (_extension == null)
-            {
-                InitializeRootFile();
-                InitializeDbNameCache();
-                InitializeMetadataCache(out _infoBase);
-
-                if (UseExtensions) { ApplyExtensions(); }
-            }
-            else
-            {
-                InitializeExtension();
-            }
+            InitializeRootFile();
+            InitializeDbNameCache();
+            InitializeMetadataCache(out _infoBase);
+            if (UseExtensions) { ApplyExtensions(); }
         }
         private void InitializeRootFile()
         {
-            using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Config, ConfigFiles.Root))
+            if (_extension == null)
             {
-                _root = new RootFileParser().Parse(in reader);
+                using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Config, ConfigFiles.Root))
+                {
+                    _root = new RootFileParser().Parse(in reader);
+                }
+            }
+            else
+            {
+                _root = ExtensionRootFileParser.Parse(this, in _extension);
             }
         }
         private void InitializeDbNameCache()
@@ -426,7 +447,7 @@ namespace DaJet.Metadata
             }
 
             string fileName;
-            string tableName = GetConfigTableName(Guid.Empty);
+            string tableName = (_extension == null) ? ConfigTables.Config : ConfigTables.ConfigCAS;
 
             foreach (var entry in cache.Value)
             {
@@ -435,7 +456,7 @@ namespace DaJet.Metadata
                     continue;
                 }
 
-                fileName = GetConfigFileName(entry.Key);
+                fileName = (_extension == null) ? entry.Key.ToString() : _extension.FileMap[entry.Key];
 
                 using (ConfigFileReader reader = new(_provider, in _connectionString, in tableName, in fileName))
                 {
@@ -478,6 +499,314 @@ namespace DaJet.Metadata
                     }
                 }
             }
+        }
+        private void ApplyExtensions()
+        {
+            if (_extension != null) { return; } // Only the main configuration is allowed to have extensions
+
+            List<ExtensionInfo> extensions = GetExtensions();
+
+            foreach (ExtensionInfo extension in extensions)
+            {
+                if (!TryApplyExtension(in extension, out string error))
+                {
+                    throw new InvalidOperationException($"Failed to apply extension {extension.Name}: {error}");
+                }
+
+                //FIXME: FileName and FileMap is already read
+                extension.FileName = null;
+                extension.FileMap.Clear();
+
+                if (TryGetMetadata(in extension, out MetadataCache cache, out _))
+                {
+                    _ = _extensions.TryAdd(extension.Identity, cache); //FIXME: process errors loading extension
+                }
+            }
+        }
+
+        #endregion
+
+        #region "GETTING METADATA OBJECTS FROM DATABASE"
+
+        private string GetConfigFileName(Guid uuid)
+        {
+            if (_extension != null)
+            {
+                return _extension.FileMap[uuid];
+            }
+
+            if (_extended.TryGetValue(uuid, out MetadataItemEx item))
+            {
+                return (item.Uuid == item.Parent) ? item.File : uuid.ToString();
+            }
+
+            return uuid.ToString();
+        }
+        private string GetConfigTableName(Guid uuid)
+        {
+            if (_extension != null) { return ConfigTables.ConfigCAS; }
+
+            if (uuid == Guid.Empty) { return ConfigTables.Config; }
+
+            if (_extended.TryGetValue(uuid, out MetadataItemEx item))
+            {
+                return (item.Uuid == item.Parent) ? ConfigTables.ConfigCAS : ConfigTables.Config;
+            }
+
+            return ConfigTables.Config;
+        }
+        private void GetMetadataObject(Guid type, Guid uuid, out MetadataObject metadata)
+        {
+            if (!_parsers.TryCreateParser(type, out IMetadataObjectParser parser))
+            {
+                throw new InvalidOperationException($"Unsupported metadata type {{{type}}}");
+            }
+            else if (parser == null)
+            {
+                string metadataType = MetadataTypes.ResolveName(type);
+                throw new InvalidOperationException($"Metadata type parser is under development \"{metadataType}\"");
+            }
+
+            if (type == MetadataTypes.SharedProperty || type == MetadataTypes.NamedDataTypeSet)
+            {
+                string tableName = GetConfigTableName(uuid);
+                string fileName = GetConfigFileName(uuid);
+
+                using (ConfigFileReader reader = new(_provider, in _connectionString, in tableName, in fileName))
+                {
+                    parser.Parse(in reader, uuid, out metadata);
+                }
+
+                if (type == MetadataTypes.SharedProperty)
+                {
+                    Configurator.ConfigureDatabaseNames(this, in metadata);
+                }
+            }
+            else
+            {
+                GetApplicationObject(uuid, in parser, out metadata);
+            }
+        }
+        private void GetApplicationObject(Guid uuid, in IMetadataObjectParser parser, out MetadataObject metadata)
+        {
+            string tableName = GetConfigTableName(uuid);
+            string fileName = GetConfigFileName(uuid);
+
+            using (ConfigFileReader reader = new(_provider, in _connectionString, in tableName, in fileName))
+            {
+                parser.Parse(in reader, uuid, out metadata);
+            }
+
+            //TODO: refactor !!! apply extension for extended objects
+            if (TryGetExtendedInfo(metadata.Uuid, out MetadataItemEx info))
+            {
+                if (info.Uuid != info.Parent) // Заимствованный объект расширения
+                {
+                    if (_extensions.TryGetValue(info.Extension, out MetadataCache extension))
+                    {
+                        MetadataObject extent = extension.GetMetadataObject(info.Type, info.Uuid);
+                        
+                        if (extent is ApplicationObject child && metadata is ApplicationObject parent)
+                        {
+                            foreach (MetadataProperty property in child.Properties)
+                            {
+                                if (property.Columns.Count > 0) // Собственный объект расширения
+                                {
+                                    property.Columns.Clear(); //TODO: do not clear columns !?
+                                    parent.Properties.Add(property);
+                                }
+                            }
+
+                            if (child is ITablePartOwner owner1 && parent is ITablePartOwner owner2)
+                            {
+                                foreach (TablePart table in owner1.TableParts)
+                                {
+                                    if (string.IsNullOrEmpty(table.TableName)) // Заимствованный объект расширения
+                                    {
+                                        foreach (MetadataProperty property in table.Properties)
+                                        {
+                                            if (property.Columns.Count > 0) // Собственный объект расширения
+                                            {
+                                                foreach (TablePart target in owner2.TableParts)
+                                                {
+                                                    if (table.Parent == target.Uuid || table.Name == target.Name)
+                                                    {
+                                                        property.Columns.Clear(); //TODO: do not clear columns !?
+                                                        target.Properties.Add(property);
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    else // Собственный объект расширения
+                                    {
+                                        owner2.TableParts.Add(table);
+                                        foreach (MetadataProperty property in table.Properties)
+                                        {
+                                            property.Columns.Clear(); //TODO: do not clear columns !?
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Конфигурирование DBNames в том числе устанавливает
+            // числовой код типа (type code) объекта метаданных.
+            // Важно!
+            // Этот код типа используется для дальнейшего конфигурирования
+            // основных реквизитов (system properties) объектов метаданных в тех случаях,
+            // когда соответствующие свойства имеют одиночный (single) ссылочный тип данных:
+            // - Справочник.Родитель;
+            // - Справочник.Владелец;
+            // - Регистр.Регистратор.
+            Configurator.ConfigureDatabaseNames(this, in metadata);
+
+            // Shared properties are always in the bottom.
+            // They have default property purpose - Property.
+            Configurator.ConfigureSharedProperties(this, in metadata);
+
+            if (metadata is ApplicationObject entity)
+            {
+                if (_extension == null) // Это основная конфигурация, а не расширение
+                {
+                    Configurator.ConfigureSystemProperties(this, in metadata);
+                }
+                else if (!string.IsNullOrEmpty(entity.TableName)) // Это собственный объект метаданных расширения
+                {
+                    //NOTE: Заимствованные объекты метаданных в расширениях
+                    //не имеют системных свойств, если они их не переопределяют.
+                    Configurator.ConfigureSystemProperties(this, in metadata);
+                }
+
+                if (entity is ITablePartOwner)
+                {
+                    // ConfigureDatabaseNames should be called for the owner first:
+                    // the name of table part reference field is dependent on table name of the owner
+                    // Owner table name: _Reference1008
+                    // Table part name: _Reference1008_VT1023
+                    // Table part reference field name: _Reference1008_IDRRef
+                    Configurator.ConfigureTableParts(this, in entity);
+                }
+
+                if (TryGetExtendedInfo(entity.Uuid, out _))
+                {
+                    entity.TableName += "x1"; // _Document123X1
+
+                    if (entity is ITablePartOwner owner)
+                    {
+                        foreach (TablePart table in owner.TableParts)
+                        {
+                            table.TableName += "x1"; // _Document123_VT45X1
+                        }
+                    }
+                }
+            }
+
+            if (metadata is Publication publication)
+            {
+                Configurator.ConfigureArticles(this, in publication);
+            }
+
+            if (metadata is IPredefinedValueOwner)
+            {
+                Configurator.ConfigurePredefinedValues(this, in metadata);
+            }
+        }
+
+        #endregion
+
+        #region "GETTING METADATA OBJECTS FROM CACHE"
+
+        internal MetadataObject GetMetadataObjectCached(Guid type, Guid uuid)
+        {
+            if (!_cache.TryGetValue(type, out Dictionary<Guid, WeakReference<MetadataObject>> entry))
+            {
+                return null;
+            }
+
+            if (!entry.TryGetValue(uuid, out WeakReference<MetadataObject> reference))
+            {
+                return null;
+            }
+
+            if (!reference.TryGetTarget(out MetadataObject metadata))
+            {
+                UpdateMetadataObjectCache(type, uuid, out metadata);
+            }
+
+            return metadata;
+        }
+        private MetadataObject GetMetadataObjectCached(in string typeName, in string objectName, in string tableName)
+        {
+            Guid type = MetadataTypes.ResolveName(typeName);
+
+            if (type == Guid.Empty)
+            {
+                return null;
+            }
+
+            if (!_names.TryGetValue(type, out Dictionary<string, Guid> names))
+            {
+                return null;
+            }
+
+            if (!names.TryGetValue(objectName, out Guid uuid))
+            {
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(tableName))
+            {
+                // Основная таблица объекта метаданных
+                return GetMetadataObjectCached(type, uuid);
+            }
+
+            MetadataObject metadata = GetMetadataObjectCached(type, uuid);
+
+            // Табличная часть или таблица изменений плана обмена
+
+            if (tableName == "Изменения")
+            {
+                if (metadata is ApplicationObject entity)
+                {
+                    return GetChangeTrackingTable(entity);
+                }
+            }
+
+            if (metadata is not ITablePartOwner owner)
+            {
+                return null;
+            }
+
+            foreach (TablePart table in owner.TableParts)
+            {
+                if (table.Name == tableName)
+                {
+                    return table;
+                }
+            }
+
+            return null;
+        }
+        private void UpdateMetadataObjectCache(Guid type, Guid uuid, out MetadataObject metadata)
+        {
+            if (!_cache.TryGetValue(type, out Dictionary<Guid, WeakReference<MetadataObject>> entry))
+            {
+                throw new InvalidOperationException(); // this should not happen
+            }
+
+            if (!entry.TryGetValue(uuid, out WeakReference<MetadataObject> reference))
+            {
+                throw new InvalidOperationException(); // this should not happen
+            }
+
+            GetMetadataObject(type, uuid, out metadata);
+
+            reference.SetTarget(metadata);
         }
 
         #endregion
@@ -567,218 +896,7 @@ namespace DaJet.Metadata
                 yield return metadata;
             }
         }
-        internal MetadataObject GetMetadataObjectCached(Guid type, Guid uuid)
-        {
-            if (!_cache.TryGetValue(type, out Dictionary<Guid, WeakReference<MetadataObject>> entry))
-            {
-                return null;
-            }
-
-            if (!entry.TryGetValue(uuid, out WeakReference<MetadataObject> reference))
-            {
-                return null;
-            }
-
-            if (!reference.TryGetTarget(out MetadataObject metadata))
-            {
-                UpdateMetadataObjectCache(type, uuid, out metadata);
-            }
-
-            return metadata;
-        }        
-        private MetadataObject GetMetadataObjectCached(in string typeName, in string objectName, in string tableName)
-        {
-            Guid type = MetadataTypes.ResolveName(typeName);
-
-            if (type == Guid.Empty)
-            {
-                return null;
-            }
-
-            if (!_names.TryGetValue(type, out Dictionary<string, Guid> names))
-            {
-                return null;
-            }
-
-            if (!names.TryGetValue(objectName, out Guid uuid))
-            {
-                return null;
-            }
-
-            if (string.IsNullOrWhiteSpace(tableName))
-            {
-                // Основная таблица объекта метаданных
-                return GetMetadataObjectCached(type, uuid);
-            }
-
-            MetadataObject metadata = GetMetadataObjectCached(type, uuid);
-
-            // Табличная часть или таблица изменений плана обмена
-
-            if (tableName == "Изменения")
-            {
-                if (metadata is ApplicationObject entity)
-                {
-                    return GetChangeTrackingTable(entity);
-                }
-            }    
-
-            if (metadata is not ITablePartOwner owner)
-            {
-                return null;
-            }
-
-            foreach (TablePart table in owner.TableParts)
-            {
-                if (table.Name == tableName)
-                {
-                    return table;
-                }
-            }
-
-            return null;
-        }
-        private void UpdateMetadataObjectCache(Guid type, Guid uuid, out MetadataObject metadata)
-        {
-            if (!_cache.TryGetValue(type, out Dictionary<Guid, WeakReference<MetadataObject>> entry))
-            {
-                throw new InvalidOperationException(); // this should not happen
-            }
-
-            if (!entry.TryGetValue(uuid, out WeakReference<MetadataObject> reference))
-            {
-                throw new InvalidOperationException(); // this should not happen
-            }
-
-            GetMetadataObject(type, uuid, out metadata);
-
-            reference.SetTarget(metadata);
-        }
-        private void GetMetadataObject(Guid type, Guid uuid, out MetadataObject metadata)
-        {
-            if (!_parsers.TryCreateParser(type, out IMetadataObjectParser parser))
-            {
-                throw new InvalidOperationException($"Unsupported metadata type {{{type}}}");
-            }
-            else if (parser == null)
-            {
-                string metadataType = MetadataTypes.ResolveName(type);
-                throw new InvalidOperationException($"Metadata type parser is under development \"{metadataType}\"");
-            }
-
-            if (type == MetadataTypes.SharedProperty || type == MetadataTypes.NamedDataTypeSet)
-            {
-                string tableName = GetConfigTableName(uuid);
-                string fileName = GetConfigFileName(uuid);
-
-                using (ConfigFileReader reader = new(_provider, in _connectionString, in tableName, in fileName))
-                {
-                    parser.Parse(in reader, uuid, out metadata);
-                }
-
-                if (type == MetadataTypes.SharedProperty)
-                {
-                    Configurator.ConfigureDatabaseNames(this, in metadata);
-                }
-            }
-            else
-            {
-                GetApplicationObject(uuid, in parser, out metadata);
-            }
-        }
-        private void GetApplicationObject(Guid uuid, in IMetadataObjectParser parser, out MetadataObject metadata)
-        {
-            string tableName = GetConfigTableName(uuid);
-            string fileName = GetConfigFileName(uuid);
-
-            using (ConfigFileReader reader = new(_provider, in _connectionString, in tableName, in fileName))
-            {
-                parser.Parse(in reader, uuid, out metadata);
-            }
-
-            // Конфигурирование DBNames в том числе устанавливает
-            // числовой код типа (type code) объекта метаданных.
-            // Важно!
-            // Этот код типа используется для дальнейшего конфигурирования
-            // основных реквизитов (system properties) объектов метаданных в тех случаях,
-            // когда соответствующие свойства имеют одиночный (single) ссылочный тип данных:
-            // - Справочник.Родитель;
-            // - Справочник.Владелец;
-            // - Регистр.Регистратор.
-            Configurator.ConfigureDatabaseNames(this, in metadata);
-
-            // Shared properties are always in the bottom.
-            // They have default property purpose - Property.
-            Configurator.ConfigureSharedProperties(this, in metadata);
-
-            if (metadata is ApplicationObject entity)
-            {
-                if (Extension == null) // Это основная конфигурация, а не расширение
-                {
-                    Configurator.ConfigureSystemProperties(this, in metadata);
-                }
-                else if (!string.IsNullOrEmpty(entity.TableName)) // Это собственный объект метаданных расширения
-                {
-                    //NOTE: Заимствованные объекты метаданных в расширениях
-                    //не имеют системных свойств, если они их не переопределяют.
-                    Configurator.ConfigureSystemProperties(this, in metadata);
-                }
-
-                if (entity is ITablePartOwner)
-                {
-                    // ConfigureDatabaseNames should be called for the owner first:
-                    // the name of table part reference field is dependent on table name of the owner
-                    // Owner table name: _Reference1008
-                    // Table part reference field name: _Reference1008_IDRRef
-                    Configurator.ConfigureTableParts(this, in entity);
-                }
-            }
-
-            if (metadata is Publication publication)
-            {
-                Configurator.ConfigureArticles(this, in publication);
-            }
-
-            if (metadata is IPredefinedValueOwner)
-            {
-                Configurator.ConfigurePredefinedValues(this, in metadata);
-            }
-        }
-
-        private string GetConfigTableName(Guid uuid)
-        {
-            if (_extension != null)
-            {
-                return ConfigTables.ConfigCAS;
-            }
-
-            if (uuid == Guid.Empty)
-            {
-                return ConfigTables.Config;
-            }
-
-            if (_extended.TryGetValue(uuid, out MetadataItemEx item))
-            {
-                return (item.Parent == Guid.Empty) ? ConfigTables.Config : ConfigTables.ConfigCAS;
-            }
-            
-            return ConfigTables.Config;
-        }
-        private string GetConfigFileName(Guid uuid)
-        {
-            if (_extension != null)
-            {
-                return _extension.FileMap[uuid];
-            }
-
-            if (_extended.TryGetValue(uuid, out MetadataItemEx item))
-            {
-                return (item.Parent == Guid.Empty) ? uuid.ToString() : item.File;
-            }
-
-            return uuid.ToString();
-        }
-
+        
         #endregion
 
         #region "RESOLVE DATA TYPE SET REFERENCES"
@@ -1279,41 +1397,6 @@ namespace DaJet.Metadata
             }
         }
 
-        private IMetadataObjectParser CreateParser(Guid type)
-        {
-            if (type == MetadataTypes.Catalog) { return new CatalogParser(); }
-            if (type == MetadataTypes.Document) { return new DocumentParser(); }
-            if (type == MetadataTypes.Enumeration) { return new EnumerationParser(); }
-            if (type == MetadataTypes.Publication) { return new PublicationParser(); }
-            if (type == MetadataTypes.Characteristic) { return new CharacteristicParser(); }
-            if (type == MetadataTypes.SharedProperty) { return new SharedPropertyParser(); } // since 1C:Enterprise 8.2.14 version
-            if (type == MetadataTypes.NamedDataTypeSet) { return new NamedDataTypeSetParser(); } // since 1C:Enterprise 8.3.3 version
-            if (type == MetadataTypes.InformationRegister) { return new InformationRegisterParser(); }
-            if (type == MetadataTypes.AccumulationRegister) { return new AccumulationRegisterParser(); }
-
-            return null;
-        }
-
-        private void ApplyExtensions()
-        {
-            List<ExtensionInfo> extensions = GetExtensions();
-
-            foreach (ExtensionInfo extension in extensions)
-            {
-                if (!TryApplyExtension(in extension, out string error))
-                {
-                    throw new InvalidOperationException($"Failed to apply extension {extension.Name}: {error}");
-                }
-            }
-        }
-        private void InitializeExtension()
-        {
-            _root = ExtensionRootFileParser.Parse(this, in _extension);
-
-            InitializeDbNameCache();
-
-            InitializeMetadataCache(out _infoBase);
-        }
         public bool TryGetMetadata(in ExtensionInfo extension, out MetadataCache metadata, out string error)
         {
             error = string.Empty;
@@ -1339,13 +1422,20 @@ namespace DaJet.Metadata
             return (metadata != null);
         }
 
-        //TODO: apply extension _Document123X1 + _Document123_VT123X1
-        ///<summary>
-        ///<b>Информация о расширении объекта метаданных:</b>
-        ///<br><b>Ключ:</b> UUID объекта метаданных, например, "Справочник.Номенклатура"</br>
-        ///<br><b>Значение:</b> информация для загрузки метаданных объекта из расширения</br>
-        ///</summary>
-        private readonly ConcurrentDictionary<Guid, MetadataItemEx> _extended = new();
+        private IMetadataObjectParser CreateParser(Guid type)
+        {
+            if (type == MetadataTypes.Catalog) { return new CatalogParser(); }
+            if (type == MetadataTypes.Document) { return new DocumentParser(); }
+            if (type == MetadataTypes.Enumeration) { return new EnumerationParser(); }
+            if (type == MetadataTypes.Publication) { return new PublicationParser(); }
+            if (type == MetadataTypes.Characteristic) { return new CharacteristicParser(); }
+            if (type == MetadataTypes.SharedProperty) { return new SharedPropertyParser(); } // since 1C:Enterprise 8.2.14 version
+            if (type == MetadataTypes.NamedDataTypeSet) { return new NamedDataTypeSetParser(); } // since 1C:Enterprise 8.3.3 version
+            if (type == MetadataTypes.InformationRegister) { return new InformationRegisterParser(); }
+            if (type == MetadataTypes.AccumulationRegister) { return new AccumulationRegisterParser(); }
+
+            return null;
+        }
         public bool TryApplyExtension(in ExtensionInfo extension, out string error)
         {
             ConfigFileOptions options = new()
@@ -1372,10 +1462,7 @@ namespace DaJet.Metadata
             {
                 new DbNamesParser().Parse(in reader, out DbNameCache database);
 
-                foreach (DbName dbn in database.DbNames)
-                {
-                    _database.Add(dbn.Uuid, dbn.Code, dbn.Name);
-                }
+                _database.AddRange(database.DbNames);
             }
 
             // Initialize extension metadata types and items list
@@ -1418,7 +1505,7 @@ namespace DaJet.Metadata
 
                     parser.Parse(in options, out MetadataInfo info);
 
-                    MetadataItemEx item = new(info.MetadataType, info.MetadataUuid, info.Name, fileName, info.MetadataParent);
+                    MetadataItemEx item = new(extension.Identity, info.MetadataType, info.MetadataUuid, info.Name, fileName, info.MetadataParent);
 
                     if (!TryApplyMetadataObject(in item, out string message))
                     {
@@ -1433,23 +1520,29 @@ namespace DaJet.Metadata
         {
             error = string.Empty;
 
-            if (item.Parent == Guid.Empty) // Синхронизация объектов по их именам
+            if (item.Parent == Guid.Empty) // Синхронизация объектов по имени
             {
                 if (_names.TryGetValue(item.Type, out Dictionary<string, Guid> names))
                 {
                     if (names.TryGetValue(item.Name, out Guid parent))
                     {
-                        //TODO: set flag for main and extension object !!!
-                        // Это важно для корректного пределения имени файла
-                        // См. функции GetConfigTableName и GetConfigFileName
-                        _ = _extended.TryAdd(parent, item.Clone(parent));
-                        return true; // Заимствованный из основной конфигурации объект
+                        // Заимствованный из основной конфигурации объект
+
+                        //TODO: check for new properties or table parts
+
+                        _ = _extended.TryAdd(parent, item.SetParent(parent));
+
+                        return true;
                     }
-                    else // Собственный объект расширения - новый для основной конфигурации
+                    else
                     {
+                        // Собственный объект расширения - новый для основной конфигурации
+
                         _cache[item.Type].Add(item.Uuid, new WeakReference<MetadataObject>(null));
+
                         AddName(item.Type, item.Uuid, item.Name);
-                        _ = _extended.TryAdd(item.Uuid, item);
+                        
+                        _ = _extended.TryAdd(item.Uuid, item.SetParent(item.Uuid));
                     }
                 }
                 else // Основная конфигурация не содержит данный тип метаданных
@@ -1458,13 +1551,14 @@ namespace DaJet.Metadata
                     {
                         { item.Uuid, new WeakReference<MetadataObject>(null) }
                     });
+                    
                     AddName(item.Type, item.Uuid, item.Name);
-                    _ = _extended.TryAdd(item.Uuid, item);
+
+                    _ = _extended.TryAdd(item.Uuid, item.SetParent(item.Uuid));
                 }
             }
-            else
+            else // Синхронизация объектов по внутреннему идентификатору
             {
-                // Синхронизация объектов по их внутренним идентификаторам.
                 // Должны присутствовать в основной конфигруации - иначе ошибка !!!
 
                 if (!_cache.TryGetValue(item.Type, out Dictionary<Guid, WeakReference<MetadataObject>> items))
@@ -1478,12 +1572,17 @@ namespace DaJet.Metadata
                     error = $"Объект метаданных \"{MetadataTypes.ResolveNameRu(item.Type)}.{item.Name}\" не найден в основной конфигурации!";
                     return false;
                 }
+
+                //TODO: check for new properties or table parts
+                _ = _extended.TryAdd(item.Parent, item);
             }
 
             return true;
         }
 
         #endregion
+
+        #region "USER API METHODS"
 
         /// <summary>
         /// Получает внутренний индентификатор значения перечисления или
@@ -1538,5 +1637,7 @@ namespace DaJet.Metadata
 
             throw new InvalidOperationException($"Предопределённые значения для объекта метаданных \"{metadataName}\" не поддерживаются.");
         }
+
+        #endregion
     }
 }

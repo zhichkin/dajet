@@ -6,7 +6,7 @@ namespace DaJet.Metadata.Model
     ///<summary>
     ///Идентификатор объекта СУБД:
     ///<br>Uuid - UUID объекта метаданных, в том числе реквизита или вспомогательной таблицы СУБД</br>
-    ///<br>Code - Уникальный числовой код объекта СУБД</br>
+    ///<br>Code - Уникальный числовой код объекта СУБД (binary(4) - integer)</br>
     ///<br>Name - Буквенный идентификатор объекта СУБД, чаще всего это префикс его имени</br>
     ///<br>Children - идентификаторы <see cref="DbName"/> дочерних объектов СУБД, например, VT + LineNo или Reference + ReferenceChngR</br>
     ///</summary>
@@ -55,6 +55,15 @@ namespace DaJet.Metadata.Model
             MetadataTokens.InfoRg,
             MetadataTokens.AccumRg
         };
+        private readonly HashSet<string> _tref = new()
+        {
+            MetadataTokens.Enum,
+            MetadataTokens.Chrc,
+            MetadataTokens.Node,
+            MetadataTokens.Task,
+            MetadataTokens.Document,
+            MetadataTokens.Reference
+        };
         public IEnumerable<DbName> DbNames
         {
             get { return _cache.Values; }
@@ -78,13 +87,24 @@ namespace DaJet.Metadata.Model
 
             return _cache.TryGetValue(uuid, out entry);
         }
+        public void AddRange(IEnumerable<DbName> entries)
+        {
+            foreach (DbName entry in entries)
+            {
+                if (_main.Contains(entry.Name)) // check if it is the main table
+                {
+                    if (_tref.Contains(entry.Name))
+                    {
+                        _ = _codes.TryAdd(entry.Code, entry.Uuid); // Ссылочные типы данных
+                    }
+
+                    _cache.Add(entry.Uuid, entry); // Включая дочерние DbName, например, LineNo и ChngR
+                }
+            }
+        }
         public void Add(Guid uuid, int code, string name)
         {
-            if (name == MetadataTokens.Chrc ||
-                name == MetadataTokens.Enum ||
-                name == MetadataTokens.Node ||
-                name == MetadataTokens.Document ||
-                name == MetadataTokens.Reference)
+            if (_tref.Contains(name))
             {
                 _ = _codes.TryAdd(code, uuid); // Ссылочные типы данных
             }
@@ -100,6 +120,7 @@ namespace DaJet.Metadata.Model
                     DbName mainTable = new(uuid, code, name);
                     _cache[uuid] = mainTable; // the main table should be the root of DBNames
                     mainTable.Children.Add(entry);
+                    mainTable.Children.AddRange(entry.Children);
                 }
             }
             else
