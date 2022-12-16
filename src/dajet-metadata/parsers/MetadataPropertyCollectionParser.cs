@@ -18,10 +18,19 @@ namespace DaJet.Metadata.Parsers
         private MetadataProperty _property;
         private List<MetadataProperty> _target;
         private ConfigFileConverter _converter;
+        ///<summary>
+        ///FIXME: если cache равен null, то обработка идентификаторов ссылочных типов не выполняется.
+        ///<br>Дополнительная информация: <see cref="DataTypeSetParser"/></br>
+        ///</summary>
         public MetadataPropertyCollectionParser(MetadataCache cache)
         {
             _cache = cache;
         }
+        ///<summary>
+        ///FIXME: если cache равен null, то обработка идентификаторов ссылочных типов не выполняется.
+        ///<br>Дополнительная информация: <see cref="DataTypeSetParser"/></br>
+        ///</summary>
+        ///<param name="owner">Используется для определения вида свойства: реквизит, ресурс или измерение.</param>
         public MetadataPropertyCollectionParser(MetadataCache cache, MetadataObject owner)
         {
             _cache = cache;
@@ -145,7 +154,7 @@ namespace DaJet.Metadata.Parsers
                 // [5][2] 0.1.1.1.15.1 = f5c65050-3bbb-11d5-b988-0050bae0a95d (константа)
                 // [5][2] 0.1.1.1.15.2 = {объект описания типов данных - Pattern} аналогично [0][1][1][2] += PropertyType
 
-                if (_cache.Extension != null) // 0.1.1.1.8 = 0 если заимствование отстутствует
+                if (_cache != null && _cache.Extension != null) // 0.1.1.1.8 = 0 если заимствование отстутствует
                 {
                     _converter[0][1][1][1][11] += Parent; // uuid расширяемого объекта метаданных
                     _converter[0][1][1][1][15][2] += ExtensionPropertyType;

@@ -103,28 +103,28 @@ namespace DaJet.Metadata.Core
                 table.Properties.Add(property);
             }
         }
-        internal static void ConfigureDataTypeSet(in MetadataCache cache, in DataTypeSet target, in List<Guid> references)
+        internal static void ConfigureDataTypeSet(in MetadataCache cache, in DataTypeSet target, in List<Guid> identifiers)
         {
-            if (references == null || references.Count == 0)
+            if (identifiers == null || identifiers.Count == 0)
             {
                 return;
             }
 
             int count = 0;
-            Guid reference = Guid.Empty;
+            Guid identifier = Guid.Empty;
 
-            for (int i = 0; i < references.Count; i++)
+            for (int i = 0; i < identifiers.Count; i++)
             {
-                reference = references[i];
+                identifier = identifiers[i];
 
-                if (reference == Guid.Empty ||
-                    reference == SingleTypes.ValueStorage ||
-                    reference == SingleTypes.Uniqueidentifier)
+                if (identifier == Guid.Empty ||
+                    identifier == SingleTypes.ValueStorage ||
+                    identifier == SingleTypes.Uniqueidentifier)
                 {
                     continue;
                 }
 
-                count += ResolveAndCountReferenceTypes(in cache, in target, reference);
+                count += ResolveAndCountReferenceTypes(in cache, in target, identifier);
 
                 if (count > 1) { break; }
             }
@@ -141,7 +141,7 @@ namespace DaJet.Metadata.Core
             {
                 target.CanBeReference = true;
 
-                if (cache.TryGetReferenceInfo(reference, out MetadataItem entry))
+                if (cache.TryGetReferenceInfo(identifier, out MetadataItem entry))
                 {
                     /// Редкий, исключительный случай, но всё-таки надо учесть ¯\_(ツ)_/¯
                     /// Если reference это общий ссылочный тип данных, например, ПланОбменаСсылка <see cref="ReferenceTypes"/>,
@@ -157,7 +157,7 @@ namespace DaJet.Metadata.Core
                     /// создаётся только одно _Fld123RRef ...
 
                     Guid uuid = (entry.Uuid == Guid.Empty) // Общий ссылочный тип
-                        ? cache.GetSingleMetadataObjectUuid(reference) // Пытаемся получить единственный конкретный тип
+                        ? cache.GetSingleMetadataObjectUuid(identifier) // Пытаемся получить единственный конкретный тип
                         : entry.Uuid; // Иначе всё, как обычно
 
                     target.Reference = uuid; // uuid объекта метаданных
@@ -171,7 +171,7 @@ namespace DaJet.Metadata.Core
                 {
                     // unsupported reference type, например "БизнесПроцесс"
                     target.TypeCode = 0;
-                    target.Reference = reference;
+                    target.Reference = identifier;
                 }
             }
             else // multiple reference type

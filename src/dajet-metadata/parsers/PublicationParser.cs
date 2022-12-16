@@ -103,7 +103,7 @@ namespace DaJet.Metadata.Parsers
         {
             _converter = new ConfigFileConverter();
 
-            if (_cache.Extension != null) // 1.12.8 = 0 если заимствование отстутствует
+            if (_cache != null && _cache.Extension != null) // 1.12.8 = 0 если заимствование отстутствует
             {
                 _converter[1][12][9] += Parent; // uuid расширяемого объекта метаданных
             }
@@ -115,8 +115,12 @@ namespace DaJet.Metadata.Parsers
             _converter[1][26] += IsDistributed;
 
             _converter[3] += PropertyCollection;
-            _converter[4] += TemplateCollection;
             _converter[5] += TablePartCollection;
+
+            if (_cache != null)
+            {
+                _converter[4] += TemplateCollection;
+            }
         }
         private void Cancel(in ConfigFileReader source, in CancelEventArgs args)
         {

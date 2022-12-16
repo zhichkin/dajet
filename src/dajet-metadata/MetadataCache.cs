@@ -1469,7 +1469,7 @@ namespace DaJet.Metadata
             return (metadata != null);
         }
 
-        private IMetadataObjectParser CreateParser(Guid type)
+        private IMetadataObjectParser CreateExtensionParser(Guid type)
         {
             if (type == MetadataTypes.Catalog) { return new CatalogParser(); }
             if (type == MetadataTypes.Document) { return new DocumentParser(); }
@@ -1525,20 +1525,25 @@ namespace DaJet.Metadata
 
             foreach (var type in metadata)
             {
-                IMetadataObjectParser parser = CreateParser(type.Key);
+                IMetadataObjectParser parser = CreateExtensionParser(type.Key);
 
                 if (parser == null)
                 {
                     continue;
                 }
 
+                if (type.Key == MetadataTypes.SharedProperty)
+                {
+                    continue;
+                }
+
+                if (type.Key == MetadataTypes.NamedDataTypeSet)
+                {
+                    continue; //TODO: (!) заполнить коллекцию MetadataCache._references.
+                }
+
                 foreach (var uuid in type.Value)
                 {
-                    if (uuid == MetadataTypes.SharedProperty)
-                    {
-                        continue;
-                    }
-
                     if (!extension.FileMap.TryGetValue(uuid, out fileName))
                     {
                         continue;
@@ -1552,14 +1557,10 @@ namespace DaJet.Metadata
                     options.FileName = fileName;
                     options.MetadataUuid = uuid;
 
-                    //TODO: (!) extensions check: optimize code
-                    //if (uuid != MetadataTypes.NamedDataTypeSet)
-                    //{
-                    //    if (!ExtendsDatabaseSchema(in database, in options, in parser))
-                    //    {
-                    //        continue;
-                    //    }
-                    //}
+                    if (!ExtendsDatabaseSchema(in database, in options, in parser))
+                    {
+                        continue;
+                    }
 
                     parser.Parse(in options, out MetadataInfo info);
 
@@ -1583,7 +1584,7 @@ namespace DaJet.Metadata
 
             MetadataObject metadata;
 
-            using (ConfigFileReader reader = new(options.DatabaseProvider, options.ConnectionString, options.TableName, options.TableName))
+            using (ConfigFileReader reader = new(options.DatabaseProvider, options.ConnectionString, options.TableName, options.FileName))
             {
                 parser.Parse(in reader, options.MetadataUuid, out metadata);
             }
@@ -1625,7 +1626,7 @@ namespace DaJet.Metadata
         private bool TryApplyMetadataObject(in MetadataItemEx item, out string error)
         {
             error = string.Empty;
-
+            
             //TODO: (!) заполнить коллекции _references, _characteristics, _owners и _registers.
 
             if (item.Parent == Guid.Empty) // Синхронизация объектов по имени

@@ -240,6 +240,19 @@ namespace DaJet.Metadata.Model
         #endregion
 
         ///<summary>
+        ///Список идентификаторов ссылочных типов данных объекта "ОписаниеТипов".
+        ///<br><b>Возможные типы данных:</b></br>
+        ///<br>- ХранилищеЗначения</br>
+        ///<br>- УникальныйИдентификатор</br>
+        ///<br>- Характеристика <see cref="MetadataCache._characteristics"/></br>
+        ///<br>- ОпределяемыйТип <see cref="MetadataCache._references"/></br>
+        ///<br>- Общие ссылочные типы, например, ЛюбаяСсылка или СправочникСсылка</br>
+        ///<br>- Конкретные ссылочные типы, например, СправочникСсылка.Номенклатура</br>
+        ///<br>Функция для обработки идентификаторов: <see cref="Configurator.ConfigureDataTypeSet(in MetadataCache, in DataTypeSet, in List{Guid})"/></br>
+        ///</summary>
+        public List<Guid> Identifiers { get; set; } = new();
+
+        ///<summary>
         ///Список ссылочных типов данных объекта "ОписаниеТипов".
         ///<br><b>Назначение использования:</b></br>
         ///<br>1. Отображение информации в интерфейсе пользователя.</br>

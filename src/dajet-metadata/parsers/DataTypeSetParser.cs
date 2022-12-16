@@ -11,10 +11,8 @@ namespace DaJet.Metadata.Parsers
         private readonly MetadataCache _cache;
         private int _pointer;
         private string[] _qualifiers = new string[3];
-        public DataTypeSetParser(MetadataCache cache)
-        {
-            _cache = cache;
-        }
+        ///<param name="cache">Если cache равен null, то обработка идентификаторов ссылочных типов не выполняется</param>
+        public DataTypeSetParser(MetadataCache cache) { _cache = cache; }
         ///<summary>
         ///Объект чтения файла метаданных <see cref="ConfigFileReader"/> перед вызовом этого метода
         ///<br>
@@ -31,12 +29,35 @@ namespace DaJet.Metadata.Parsers
             target = new DataTypeSet();
             List<Guid> references = new();
 
+            ParseDataTypeSet(in source, in target, in references);
+
+            if (_cache == null) // Обработка идентификаторов ссылочных типов не требуется
+            {
+                target.Identifiers = references;
+            }
+            else if (references.Count > 0)
+            {
+                // Конфигурирование ссылочных типов данных объекта "ОписаниеТипов".
+                // Внимание!
+                // Если описание типов ссылается на определяемый тип или характеристику,
+                // которые не являются или не содержат в своём составе ссылочные типы данных,
+                // то в таком случае описание типов будет содержать только примитивные типы данных.
+                Configurator.ConfigureDataTypeSet(in _cache, in target, in references);
+
+                //TODO: add setting to MetadataCache to resolve references optionally !?
+                List<MetadataItem> list = _cache.ResolveReferences(in references);
+
+                target.References.AddRange(list);
+            }
+        }
+        private void ParseDataTypeSet(in ConfigFileReader source, in DataTypeSet target, in List<Guid> references)
+        {
             _ = source.Read(); // 0 index
             if (source.Value != "Pattern")
             {
                 return; // Это не объект "ОписаниеТипов" !
             }
-            
+
             while (source.Read())
             {
                 if (source.Token == TokenType.EndObject)
@@ -78,21 +99,6 @@ namespace DaJet.Metadata.Parsers
                         }
                     }
                 }
-            }
-
-            if (references.Count > 0)
-            {
-                // Configure reference part of data type
-                // Внимание!
-                // Если описание типов ссылается на определяемый тип или характеристику,
-                // которые не являются или не содержат в своём составе ссылочные типы данных,
-                // то в таком случае описание типов будет содержать только примитивные типы данных.
-                Configurator.ConfigureDataTypeSet(in _cache, in target, in references);
-
-                //TODO: add setting to MetadataCache to resolve references optionally !?
-                List<MetadataItem> list = _cache.ResolveReferences(in references);
-
-                target.References.AddRange(list);
             }
         }
         private void ReadQualifiers(in ConfigFileReader reader)

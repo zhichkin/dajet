@@ -83,7 +83,7 @@ namespace DaJet.Metadata.Parsers
 
                 _tablePart = new TablePart();
 
-                if (_cache.Extension != null) // [5][2] 0.1.5.1.8 = 0 если заимствование отстутствует
+                if (_cache != null && _cache.Extension != null) // [5][2] 0.1.5.1.8 = 0 если заимствование отстутствует
                 {
                     _converter[0][1][5][1][9] += Parent; // uuid расширяемого объекта метаданных
                 }

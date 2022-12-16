@@ -102,7 +102,7 @@ namespace DaJet.Metadata.Parsers
         {
             _converter = new ConfigFileConverter();
 
-            if (_cache.Extension != null) // 1.9.1.8 = 0 если заимствование отстутствует
+            if (_cache != null && _cache.Extension != null) // 1.9.1.8 = 0 если заимствование отстутствует
             {
                 _converter[1][9][1][9] += Parent; // uuid расширяемого объекта метаданных
             }
