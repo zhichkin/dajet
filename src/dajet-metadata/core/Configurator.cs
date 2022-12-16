@@ -1592,7 +1592,7 @@ namespace DaJet.Metadata.Core
                     tablePart.TableName = entity.TableName + CreateDbName(entry.Name, entry.Code);
                 }
 
-                //TODO: Если сопоставление DbName не найдено, то здесь мы конфигурируем в контексте расширения:
+                //NOTE: Если сопоставление DbName не найдено, то здесь мы конфигурируем в контексте расширения:
                 //это заимствованная табличная часть объекта основной конфигурации, а значит, что TableName = null и TypeCode = 0
 
                 ConfigureDatabaseProperties(in cache, tablePart);

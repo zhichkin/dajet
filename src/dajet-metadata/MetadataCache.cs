@@ -9,8 +9,10 @@ using DaJet.Metadata.Services;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.IO;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -597,63 +599,6 @@ namespace DaJet.Metadata
                 parser.Parse(in reader, uuid, out metadata);
             }
 
-            //TODO: refactor !!! apply extension for extended objects
-            if (TryGetExtendedInfo(metadata.Uuid, out MetadataItemEx info))
-            {
-                if (info.Uuid != info.Parent) // Заимствованный объект расширения
-                {
-                    if (_extensions.TryGetValue(info.Extension, out MetadataCache extension))
-                    {
-                        MetadataObject extent = extension.GetMetadataObject(info.Type, info.Uuid);
-                        
-                        if (extent is ApplicationObject child && metadata is ApplicationObject parent)
-                        {
-                            foreach (MetadataProperty property in child.Properties)
-                            {
-                                if (property.Columns.Count > 0) // Собственный объект расширения
-                                {
-                                    property.Columns.Clear(); //TODO: do not clear columns !?
-                                    parent.Properties.Add(property);
-                                }
-                            }
-
-                            if (child is ITablePartOwner owner1 && parent is ITablePartOwner owner2)
-                            {
-                                foreach (TablePart table in owner1.TableParts)
-                                {
-                                    if (string.IsNullOrEmpty(table.TableName)) // Заимствованный объект расширения
-                                    {
-                                        foreach (MetadataProperty property in table.Properties)
-                                        {
-                                            if (property.Columns.Count > 0) // Собственный объект расширения
-                                            {
-                                                foreach (TablePart target in owner2.TableParts)
-                                                {
-                                                    if (table.Parent == target.Uuid || table.Name == target.Name)
-                                                    {
-                                                        property.Columns.Clear(); //TODO: do not clear columns !?
-                                                        target.Properties.Add(property);
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    else // Собственный объект расширения
-                                    {
-                                        owner2.TableParts.Add(table);
-                                        foreach (MetadataProperty property in table.Properties)
-                                        {
-                                            property.Columns.Clear(); //TODO: do not clear columns !?
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             // Конфигурирование DBNames в том числе устанавливает
             // числовой код типа (type code) объекта метаданных.
             // Важно!
@@ -692,18 +637,7 @@ namespace DaJet.Metadata
                     Configurator.ConfigureTableParts(this, in entity);
                 }
 
-                if (TryGetExtendedInfo(entity.Uuid, out _))
-                {
-                    entity.TableName += "x1"; // _Document123X1
-
-                    if (entity is ITablePartOwner owner)
-                    {
-                        foreach (TablePart table in owner.TableParts)
-                        {
-                            table.TableName += "x1"; // _Document123_VT45X1
-                        }
-                    }
-                }
+                ExtendApplicationObject(in entity);
             }
 
             if (metadata is Publication publication)
@@ -714,6 +648,119 @@ namespace DaJet.Metadata
             if (metadata is IPredefinedValueOwner)
             {
                 Configurator.ConfigurePredefinedValues(this, in metadata);
+            }
+        }
+        private void ExtendApplicationObject(in ApplicationObject parent)
+        {
+            if (!TryGetExtendedInfo(parent.Uuid, out MetadataItemEx item))
+            {
+                return; // Объект не имеет расширения и не является собственным объектом расширения
+            }
+
+            if (item.Uuid == item.Parent)
+            {
+                // Cобственный объект расширения - родительский объект основной конфигурации отсутствует
+
+                if (parent is ITablePartOwner owner)
+                {
+                    foreach (TablePart table in owner.TableParts)
+                    {
+                        table.TableName += "x1"; // _Document123_VT45X1
+                    }
+                }
+
+                parent.TableName += "x1"; // _Document123X1
+
+                return;
+            }
+
+            // Заимствованный объект основной конфигурации - требуется применение расширения
+
+            if (!_extensions.TryGetValue(item.Extension, out MetadataCache extension))
+            {
+                return; // This should not happen - extension is not found in the cache!
+            }
+
+            MetadataObject entity = extension.GetMetadataObject(item.Type, item.Uuid);
+
+            if (entity == null)
+            {
+                return; // This should not happen - extent is not found in the extension!
+            }
+
+            if (entity is ApplicationObject extent)
+            {
+                ApplyExtensionProperties(in parent, in extent);
+
+                if (parent is ITablePartOwner parentOwner && extent is ITablePartOwner childOwner)
+                {
+                    ApplyExtensionTableParts(in parent, in parentOwner, in childOwner);
+                }
+
+                parent.TableName += "x1";
+            }
+        }
+        private void ApplyExtensionProperties(in ApplicationObject parent, in ApplicationObject extent)
+        {
+            foreach (MetadataProperty property in extent.Properties)
+            {
+                //TODO: применение переопределённых свойств объекта основной конфигурации (parent)
+
+                if (property.Columns.Count > 0) // Собственное свойство расширения
+                {
+                    parent.Properties.Add(property);
+                }
+            }
+        }
+        private void ApplyExtensionTableParts(in ApplicationObject owner, in ITablePartOwner parent, in ITablePartOwner extent)
+        {
+            foreach (TablePart source in extent.TableParts)
+            {
+                if (string.IsNullOrEmpty(source.TableName)) // Заимствованная табличная часть расширяемого объекта
+                {
+                    TablePart target = null;
+
+                    foreach (TablePart table in parent.TableParts)
+                    {
+                        // Find parent's corresponding table part by uuid or name
+                        if (source.Parent == table.Uuid || source.Name == table.Name)
+                        {
+                            target = table; break;
+                        }
+                    }
+
+                    if (target == null)
+                    {
+                        return; // This should not happen - extension table part is not found in the derived object!
+                    }
+
+                    foreach (MetadataProperty property in source.Properties)
+                    {
+                        if (property.Columns.Count > 0) // Собственное свойство расширения заимствованной табличной части
+                        {
+                            target.Properties.Add(property); break;
+                        }
+                    }
+                }
+                else // Собственная табличная часть расширения заимствованного объекта
+                {
+                    parent.TableParts.Add(source);
+
+                    source.TableName = owner.TableName + source.TableName;
+
+                    foreach (MetadataProperty property in source.Properties)
+                    {
+                        if (property.Purpose == PropertyPurpose.System && property.Name == "Ссылка" && property.Columns.Count > 0)
+                        {
+                            property.Columns[0].Name = owner.TableName + "_IDRRef"; break;
+                        }
+                    }
+                }
+            }
+
+            foreach (TablePart table in parent.TableParts)
+            {
+                table.TableName += "x1";
             }
         }
 
@@ -1458,9 +1505,11 @@ namespace DaJet.Metadata
 
             string fileName = ConfigFiles.DbNames + "-ext-" + extension.Identity.ToString().ToLower();
 
+            DbNameCache database;
+
             using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Params, in fileName))
             {
-                new DbNamesParser().Parse(in reader, out DbNameCache database);
+                new DbNamesParser().Parse(in reader, out database);
 
                 _database.AddRange(database.DbNames);
             }
@@ -1503,6 +1552,15 @@ namespace DaJet.Metadata
                     options.FileName = fileName;
                     options.MetadataUuid = uuid;
 
+                    //TODO: (!) extensions check: optimize code
+                    //if (uuid != MetadataTypes.NamedDataTypeSet)
+                    //{
+                    //    if (!ExtendsDatabaseSchema(in database, in options, in parser))
+                    //    {
+                    //        continue;
+                    //    }
+                    //}
+
                     parser.Parse(in options, out MetadataInfo info);
 
                     MetadataItemEx item = new(extension.Identity, info.MetadataType, info.MetadataUuid, info.Name, fileName, info.MetadataParent);
@@ -1516,9 +1574,59 @@ namespace DaJet.Metadata
 
             return string.IsNullOrEmpty(error);
         }
+        private bool ExtendsDatabaseSchema(in DbNameCache database, in ConfigFileOptions options, in IMetadataObjectParser parser)
+        {
+            if (database.TryGet(options.MetadataUuid, out _))
+            {
+                return true; // Собственный объект расширения
+            }
+
+            MetadataObject metadata;
+
+            using (ConfigFileReader reader = new(options.DatabaseProvider, options.ConnectionString, options.TableName, options.TableName))
+            {
+                parser.Parse(in reader, options.MetadataUuid, out metadata);
+            }
+
+            if (metadata is not ApplicationObject entity)
+            {
+                return false; // Utility metadata objects do not change the database schema
+            }
+
+            foreach (MetadataProperty property in entity.Properties)
+            {
+                if (database.TryGet(property.Uuid, out _))
+                {
+                    return true; // Собственное свойство расширения заимствованного объекта основной конфигурации
+                }
+            }
+
+            if (entity is ITablePartOwner owner)
+            {
+                foreach (TablePart table in owner.TableParts)
+                {
+                    if (database.TryGet(table.Uuid, out _))
+                    {
+                        return true; // Собственная табличная часть расширения заимствованного объекта основной конфигурации
+                    }
+
+                    foreach (MetadataProperty property in table.Properties)
+                    {
+                        if (database.TryGet(property.Uuid, out _))
+                        {
+                            return true; // Собственное свойство табличной части заимствованного объекта основной конфигурации
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
         private bool TryApplyMetadataObject(in MetadataItemEx item, out string error)
         {
             error = string.Empty;
+
+            //TODO: (!) заполнить коллекции _references, _characteristics, _owners и _registers.
 
             if (item.Parent == Guid.Empty) // Синхронизация объектов по имени
             {
@@ -1527,8 +1635,6 @@ namespace DaJet.Metadata
                     if (names.TryGetValue(item.Name, out Guid parent))
                     {
                         // Заимствованный из основной конфигурации объект
-
-                        //TODO: check for new properties or table parts
 
                         _ = _extended.TryAdd(parent, item.SetParent(parent));
 
@@ -1573,7 +1679,6 @@ namespace DaJet.Metadata
                     return false;
                 }
 
-                //TODO: check for new properties or table parts
                 _ = _extended.TryAdd(item.Parent, item);
             }
 
