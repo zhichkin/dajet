@@ -44,8 +44,8 @@
     this.Title = function (value) {
         title.innerText = value;
     };
-    this.Show = async function (url) {
-        content.innerHTML = await UiLoader.GetHtml(url);
+    this.Show = function (url) {
+        content.innerHTML = UiLoader.GetHtml(url);
 
         let confirmButton = content.querySelector(".confirm-button");
         if (confirmButton != null && confirm != null) {

@@ -1,11 +1,11 @@
 ﻿class QueryViewController {
     constructor() { }
-    static async createView(model) {
+    static createView(model) {
 
         let _model = model;
 
         let content = document.getElementById("content");
-        content.innerHTML = await UiLoader.GetHtml("/ui/html/1ql-query.html");
+        content.innerHTML = UiLoader.GetHtml("1ql-query-console");
 
         let query_view_script = content.querySelector(".query-view-script");
         let query_view_result = content.querySelector(".query-view-result");

@@ -2,7 +2,7 @@
     constructor() { }
     static async generateSql(infoBaseName, queryText) {
 
-        let response = await fetch('/1ql/prepare',
+        let response = await fetch(DAJET_URL + "/1ql/prepare",
             {
                 method: 'POST',
                 headers: {
@@ -28,7 +28,7 @@
     }
     static async executeScript(infoBaseName, queryText) {
 
-        let response = await fetch('/1ql/execute',
+        let response = await fetch(DAJET_URL + "/1ql/execute",
             {
                 method: 'POST',
                 headers: {

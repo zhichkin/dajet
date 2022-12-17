@@ -21,6 +21,8 @@ namespace DaJet.Http.Server
             builder.Host.UseSystemd();
             builder.Host.UseWindowsService();
 
+            // Allow CORS (Cross Origin Resource Sharing)
+            builder.Services.AddCors();
             // Add services to the container.
             builder.Services.AddControllers();
 
@@ -28,18 +30,17 @@ namespace DaJet.Http.Server
             ConfigureFileProvider(builder.Services);
 
             WebApplication app = builder.Build();
+            app.UseCors(policy => policy
+                .AllowAnyOrigin()
+                .AllowAnyHeader()
+                .AllowAnyMethod());
+            
             //app.UseHttpsRedirection();
+            
             app.MapControllers();
-
-            //app.UseRouting();
 
             //app.UseAuthentication();
             //app.UseAuthorization();
-
-            //app.UseEndpoints(endpoints =>
-            //{
-            //    endpoints.MapControllers();
-            //});
 
             app.Run();
         }

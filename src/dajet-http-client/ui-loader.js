@@ -1,8 +1,8 @@
 ﻿class UiLoader {
     constructor() { }
-    static async GetHtml(url) {
-        let response = await fetch(url, { method: "GET" });
-        return await response.text();
+    static GetHtml(html_id) {
+        let content = document.getElementById(html_id);
+        return content.innerHTML;
     }
     static GetCss(url, callback) {
         let styles = document.body.getElementsByTagName("link");

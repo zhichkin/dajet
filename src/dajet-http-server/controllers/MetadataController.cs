@@ -106,6 +106,14 @@ namespace DaJet.Http.Controllers
 
             foreach (MetadataItem item in cache.GetMetadataItems(uuid))
             {
+                if (cache.TryGetExtendedInfo(item.Uuid, out MetadataItemEx extended))
+                {
+                    if (item.Uuid == extended.Uuid)
+                    {
+                        continue; // Cобственный объект расширения - в основной конфигурации не показываем
+                    }
+                }
+
                 list.Add(item);
             }
 

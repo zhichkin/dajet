@@ -285,7 +285,7 @@ namespace DaJet.Metadata
             return MetadataItem.Empty;
         }
 
-        internal bool TryGetExtendedInfo(Guid uuid, out MetadataItemEx info)
+        public bool TryGetExtendedInfo(Guid uuid, out MetadataItemEx info)
         {
             return _extended.TryGetValue(uuid, out info);
         }

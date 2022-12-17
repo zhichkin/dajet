@@ -2,9 +2,9 @@
 
 namespace DaJet.Metadata.Core
 {
-    internal readonly struct MetadataItemEx
+    public readonly struct MetadataItemEx
     {
-        public static MetadataItemEx Empty { get; } = new();
+        internal static MetadataItemEx Empty { get; } = new();
         internal MetadataItemEx(Guid extension, Guid type, Guid uuid, string name, string file)
         {
             Extension = extension;
@@ -24,13 +24,10 @@ namespace DaJet.Metadata.Core
         public Guid Parent { get; } = Guid.Empty;
         public string Name { get; } = string.Empty;
         public string File { get; } = string.Empty;
-        public MetadataItemEx SetParent(Guid parent) { return new MetadataItemEx(Extension, Type, Uuid, Name, File, parent); }
+        internal MetadataItemEx SetParent(Guid parent) { return new MetadataItemEx(Extension, Type, Uuid, Name, File, parent); }
         public override string ToString()
         {
-            if (this == Empty)
-            {
-                return "Неопределено";
-            }
+            if (this == Empty) { return "Неопределено"; }
 
             if (Type == SingleTypes.ValueStorage) { return "ХранилищеЗначения"; }
             if (Type == SingleTypes.Uniqueidentifier) { return "УникальныйИдентификатор"; }

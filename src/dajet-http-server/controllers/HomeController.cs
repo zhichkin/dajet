@@ -11,7 +11,7 @@ namespace DaJet.Http.Controllers
         [HttpGet()] public ContentResult Home()
         {
             string root = AppContext.BaseDirectory;
-            string filePath = Path.Combine(root, "pages", "home.html");
+            string filePath = Path.Combine(root, "readme.html");
 
             FileInfo info = new(filePath);
 
@@ -21,7 +21,7 @@ namespace DaJet.Http.Controllers
                 {
                     ContentType = "text/html",
                     StatusCode = (int)HttpStatusCode.NotFound,
-                    Content = "<html><body>Home page is not found!</body></html>"
+                    Content = "<html><body>Page is not found!</body></html>"
                 };
             }
 
@@ -42,7 +42,7 @@ namespace DaJet.Http.Controllers
         [HttpGet("ui/js/{fileName}")] public ContentResult LoadJavaScript([FromRoute] string fileName)
         {
             string root = AppContext.BaseDirectory;
-            string filePath = Path.Combine(root, "pages", fileName);
+            string filePath = Path.Combine(root, "ui", fileName);
 
             FileInfo info = new(filePath);
 
@@ -73,7 +73,7 @@ namespace DaJet.Http.Controllers
         [HttpGet("ui/css/{fileName}")] public ContentResult LoadStyleSheet([FromRoute] string fileName)
         {
             string root = AppContext.BaseDirectory;
-            string filePath = Path.Combine(root, "pages", fileName);
+            string filePath = Path.Combine(root, "ui", fileName);
 
             FileInfo info = new(filePath);
 
@@ -104,7 +104,7 @@ namespace DaJet.Http.Controllers
         [HttpGet("ui/img/{fileName}")] public IActionResult LoadImageFile([FromRoute] string fileName)
         {
             string root = AppContext.BaseDirectory;
-            string filePath = Path.Combine(root, "pages", "img", fileName);
+            string filePath = Path.Combine(root, "ui", "img", fileName);
 
             FileInfo info = new(filePath);
 
@@ -121,7 +121,7 @@ namespace DaJet.Http.Controllers
         [HttpGet("ui/html/{fileName}")] public IActionResult LoadHtmlFile([FromRoute] string fileName)
         {
             string root = AppContext.BaseDirectory;
-            string filePath = Path.Combine(root, "pages", fileName);
+            string filePath = Path.Combine(root, "ui", fileName);
 
             FileInfo info = new(filePath);
 

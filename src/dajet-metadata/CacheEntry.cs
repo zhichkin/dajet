@@ -10,10 +10,7 @@ namespace DaJet.Metadata
         private readonly InfoBaseOptions _options;
         private readonly WeakReference<MetadataCache> _value = new(null);
         private long _lastUpdate = 0L; // milliseconds
-        internal CacheEntry(InfoBaseOptions options)
-        {
-            _options = options;
-        }
+        internal CacheEntry(InfoBaseOptions options) { _options = options; }
         internal InfoBaseOptions Options { get { return _options; } }
         internal RWLockSlim.UpgradeableLockToken UpdateLock() { return _lock.UpgradeableLock(); }
         internal MetadataCache Value

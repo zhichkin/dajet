@@ -17,6 +17,37 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-data-provider", "daje
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-console", "dajet-console\dajet-console.csproj", "{91BAFE54-3DD0-408A-8AC1-8F8F0A7DCF0E}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dajet-http-client", "dajet-http-client", "{7B967D22-CE57-4062-AFC6-EB75191D77BF}"
+	ProjectSection(SolutionItems) = preProject
+		dajet-http-client\1ql-console.js = dajet-http-client\1ql-console.js
+		dajet-http-client\1ql-executor.js = dajet-http-client\1ql-executor.js
+		dajet-http-client\main.css = dajet-http-client\main.css
+		dajet-http-client\main.html = dajet-http-client\main.html
+		dajet-http-client\main.js = dajet-http-client\main.js
+		dajet-http-client\popup.css = dajet-http-client\popup.css
+		dajet-http-client\popup.js = dajet-http-client\popup.js
+		dajet-http-client\treeview.js = dajet-http-client\treeview.js
+		dajet-http-client\ui-loader.js = dajet-http-client\ui-loader.js
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "img", "img", "{40E26238-CA7D-4C9A-9BE3-68E986A293EF}"
+	ProjectSection(SolutionItems) = preProject
+		dajet-http-client\img\database.png = dajet-http-client\img\database.png
+		dajet-http-client\img\ВложеннаяТаблица.png = dajet-http-client\img\ВложеннаяТаблица.png
+		dajet-http-client\img\Документ.png = dajet-http-client\img\Документ.png
+		dajet-http-client\img\Измерение.png = dajet-http-client\img\Измерение.png
+		dajet-http-client\img\Конфигурация.png = dajet-http-client\img\Конфигурация.png
+		dajet-http-client\img\Перечисление.png = dajet-http-client\img\Перечисление.png
+		dajet-http-client\img\ПланВидовХарактеристик.png = dajet-http-client\img\ПланВидовХарактеристик.png
+		dajet-http-client\img\ПланОбмена.png = dajet-http-client\img\ПланОбмена.png
+		dajet-http-client\img\Расширение.png = dajet-http-client\img\Расширение.png
+		dajet-http-client\img\РегистрНакопления.png = dajet-http-client\img\РегистрНакопления.png
+		dajet-http-client\img\РегистрСведений.png = dajet-http-client\img\РегистрСведений.png
+		dajet-http-client\img\Реквизит.png = dajet-http-client\img\Реквизит.png
+		dajet-http-client\img\Ресурс.png = dajet-http-client\img\Ресурс.png
+		dajet-http-client\img\Справочник.png = dajet-http-client\img\Справочник.png
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -54,6 +85,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{40E26238-CA7D-4C9A-9BE3-68E986A293EF} = {7B967D22-CE57-4062-AFC6-EB75191D77BF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {EBFA2DCC-5FF1-4151-B0EB-1DD23076B5FB}
