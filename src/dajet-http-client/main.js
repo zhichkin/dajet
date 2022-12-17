@@ -3,6 +3,10 @@
 var MainTreeView;
 
 function initMainTreeView() {
+
+    let label = document.getElementById("dajet-http-server");
+    label.innerText = DAJET_URL;
+
     let ul = document.getElementById("MainTreeView");
     ul.replaceChildren();
     MainTreeView = new TreeNode(ul);
