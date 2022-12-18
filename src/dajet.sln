@@ -11,8 +11,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-test", "dajet-test\da
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-http-server", "dajet-http-server\dajet-http-server.csproj", "{29BF6B99-FC1A-4F08-9D9E-14C8C6CDC7CA}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-pipeline", "dajet-pipeline\dajet-pipeline.csproj", "{D8B9FB8A-9FE6-44A2-B541-F90E9F43606E}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-data-provider", "dajet-data-provider\dajet-data-provider.csproj", "{72378D5D-039A-4AC0-875F-271350B5B49C}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-console", "dajet-console\dajet-console.csproj", "{91BAFE54-3DD0-408A-8AC1-8F8F0A7DCF0E}"
@@ -70,10 +68,6 @@ Global
 		{29BF6B99-FC1A-4F08-9D9E-14C8C6CDC7CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{29BF6B99-FC1A-4F08-9D9E-14C8C6CDC7CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{29BF6B99-FC1A-4F08-9D9E-14C8C6CDC7CA}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D8B9FB8A-9FE6-44A2-B541-F90E9F43606E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D8B9FB8A-9FE6-44A2-B541-F90E9F43606E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D8B9FB8A-9FE6-44A2-B541-F90E9F43606E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D8B9FB8A-9FE6-44A2-B541-F90E9F43606E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{72378D5D-039A-4AC0-875F-271350B5B49C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{72378D5D-039A-4AC0-875F-271350B5B49C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{72378D5D-039A-4AC0-875F-271350B5B49C}.Release|Any CPU.ActiveCfg = Release|Any CPU

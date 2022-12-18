@@ -77,6 +77,7 @@ namespace DaJet.Http.Controllers
             _metadataService.Add(new InfoBaseOptions()
             {
                 Key = infobase,
+                UseExtensions = true,
                 DatabaseProvider = provider,
                 ConnectionString = options.ConnectionString
             });
@@ -190,6 +191,7 @@ namespace DaJet.Http.Controllers
             _metadataService.Add(new InfoBaseOptions()
             {
                 Key = entity.Name,
+                UseExtensions = true,
                 DatabaseProvider = provider,
                 ConnectionString = entity.ConnectionString
             });
@@ -221,6 +223,7 @@ namespace DaJet.Http.Controllers
             _metadataService.Add(new InfoBaseOptions()
             {
                 Key = entity.Name,
+                UseExtensions = true,
                 DatabaseProvider = provider,
                 ConnectionString = entity.ConnectionString
             });
