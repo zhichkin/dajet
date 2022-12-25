@@ -13,34 +13,67 @@ namespace DaJet.Http.Server
             WebApplicationOptions options = new()
             {
                 Args = args,
+                WebRootPath = "ui",
                 ContentRootPath = AppContext.BaseDirectory
             };
 
             WebApplicationBuilder builder = WebApplication.CreateBuilder(options);
-
             builder.Host.UseSystemd();
             builder.Host.UseWindowsService();
-
-            // Allow CORS (Cross Origin Resource Sharing)
-            builder.Services.AddCors();
-            // Add services to the container.
             builder.Services.AddControllers();
-
+            builder.Services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(builder =>
+                {
+                    builder
+                    .AllowAnyOrigin()
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+                });
+            });
             ConfigureServices(builder.Services);
             ConfigureFileProvider(builder.Services);
 
             WebApplication app = builder.Build();
-            app.UseCors(policy => policy
-                .AllowAnyOrigin()
-                .AllowAnyHeader()
-                .AllowAnyMethod());
-            
-            //app.UseHttpsRedirection();
-            
-            app.MapControllers();
-
             //app.UseAuthentication();
             //app.UseAuthorization();
+            app.UseCors();
+            app.UseHttpsRedirection();
+
+            //(!?) context.Request.Host.Port == 5001
+
+            app.MapWhen(context =>
+            {
+                return context.Request.Path.StartsWithSegments("/md")
+                || context.Request.Path.StartsWithSegments("/mdex")
+                || context.Request.Path.StartsWithSegments("/1ql");
+            },
+            builder =>
+            {
+                builder.UseRouting().UseEndpoints(endpoints =>
+                {
+                    endpoints.MapControllers();
+                });
+            });
+
+            app.MapWhen((context) =>
+            {
+                return !(context.Request.Path.StartsWithSegments("/md")
+                || context.Request.Path.StartsWithSegments("/mdex")
+                || context.Request.Path.StartsWithSegments("/1ql"));
+            },
+            builder =>
+            {
+                builder.UseDefaultFiles();
+                builder.UseStaticFiles(new StaticFileOptions()
+                {
+                    ServeUnknownFileTypes = true // .wasm + .dll + .blat + .dat
+                });
+                builder.UseRouting().UseEndpoints(endpoints =>
+                {
+                    endpoints.MapFallbackToFile("/index.html");
+                });
+            });
 
             app.Run();
         }

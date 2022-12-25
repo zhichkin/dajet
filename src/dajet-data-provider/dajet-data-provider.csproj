@@ -5,7 +5,7 @@
     <RootNamespace>DaJet.Data.Provider</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>DaJet.DataProvider</AssemblyName>
+    <AssemblyName>DaJet.DbProvider</AssemblyName>
     <Version>1.1.1</Version>
     <Authors>Zhichkin</Authors>
     <Description>ADO .NET data provider for 1C:Enterprise 8.

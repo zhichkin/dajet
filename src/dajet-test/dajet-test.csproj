@@ -21,7 +21,6 @@
   <ItemGroup>
     <ProjectReference Include="..\dajet-data-provider\dajet-data-provider.csproj" />
     <ProjectReference Include="..\dajet-metadata\dajet-metadata.csproj" />
-    <ProjectReference Include="..\dajet-pipeline\dajet-pipeline.csproj" />
     <ProjectReference Include="..\dajet-scripting\dajet-scripting.csproj" />
   </ItemGroup>
 
