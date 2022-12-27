@@ -24,7 +24,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("{infobase}")] public ActionResult Select([FromRoute] string infobase)
         {
-            InfoBaseModel? record = _mapper.Select(infobase);
+            InfoBaseModel record = _mapper.Select(infobase);
 
             if (record == null)
             {

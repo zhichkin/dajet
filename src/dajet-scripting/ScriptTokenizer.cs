@@ -5,7 +5,7 @@ namespace DaJet.Scripting
 {
     public struct ScriptTokenizer : IDisposable
     {
-        private StringReader? _reader = null!;
+        private StringReader _reader = null!;
         private readonly StringBuilder _lexeme = new(256);
         private readonly List<ScriptToken> _tokens = new();
 

@@ -26,7 +26,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseModel? record = _mapper.Select(query.DbName);
+            InfoBaseModel record = _mapper.Select(query.DbName);
 
             if (record == null)
             {
@@ -79,7 +79,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseModel? record = _mapper.Select(query.DbName);
+            InfoBaseModel record = _mapper.Select(query.DbName);
 
             if (record == null)
             {

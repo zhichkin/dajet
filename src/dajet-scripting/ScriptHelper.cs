@@ -180,7 +180,7 @@ namespace DaJet.Scripting
         }
         public static string GetDataTypeLiteral(Type type)
         {
-            if (_datatype_literal.TryGetValue(type, out string? literal))
+            if (_datatype_literal.TryGetValue(type, out string literal))
             {
                 return literal;
             }

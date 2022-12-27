@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using MudBlazor.Services;
 
 namespace DaJet.Studio
 {
@@ -7,11 +7,11 @@ namespace DaJet.Studio
     {
         private const string DAJET_HTTP_CLIENT = "DaJetClient";
         private const string DAJET_HOST_SETTING = "DaJetHost";
-        public async static Task Main(string[] args)
+        public static async Task Main(string[] args)
         {
             WebAssemblyHostBuilder builder = WebAssemblyHostBuilder.CreateDefault(args);
             builder.RootComponents.Add<App>("#app");
-            builder.RootComponents.Add<HeadOutlet>("head::after");
+            //builder.RootComponents.Add<HeadOutlet>("head::after");
 
             builder.Services.AddHttpClient(DAJET_HTTP_CLIENT, (services, client) =>
             {
@@ -33,6 +33,8 @@ namespace DaJet.Studio
             {
                 return services.GetRequiredService<IHttpClientFactory>().CreateClient(DAJET_HTTP_CLIENT);
             });
+
+            builder.Services.AddMudServices();
 
             await builder.Build().RunAsync();
         }

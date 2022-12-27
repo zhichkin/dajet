@@ -2,12 +2,14 @@ using DaJet.Data;
 using DaJet.Http.DataMappers;
 using DaJet.Http.Model;
 using DaJet.Metadata;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.Extensions.FileProviders;
 
 namespace DaJet.Http.Server
 {
     public static class Program
     {
+        private static readonly string[] webapi = new string[] { "/1ql", "/md", "/mdex"};
         public static void Main(string[] args)
         {
             WebApplicationOptions options = new()
@@ -21,16 +23,7 @@ namespace DaJet.Http.Server
             builder.Host.UseSystemd();
             builder.Host.UseWindowsService();
             builder.Services.AddControllers();
-            builder.Services.AddCors(options =>
-            {
-                options.AddDefaultPolicy(builder =>
-                {
-                    builder
-                    .AllowAnyOrigin()
-                    .AllowAnyHeader()
-                    .AllowAnyMethod();
-                });
-            });
+            builder.Services.AddCors(ConfigureCors);
             ConfigureServices(builder.Services);
             ConfigureFileProvider(builder.Services);
 
@@ -39,43 +32,50 @@ namespace DaJet.Http.Server
             //app.UseAuthorization();
             app.UseCors();
             app.UseHttpsRedirection();
-
-            //(!?) context.Request.Host.Port == 5001
-
-            app.MapWhen(context =>
-            {
-                return context.Request.Path.StartsWithSegments("/md")
-                || context.Request.Path.StartsWithSegments("/mdex")
-                || context.Request.Path.StartsWithSegments("/1ql");
-            },
-            builder =>
-            {
-                builder.UseRouting().UseEndpoints(endpoints =>
-                {
-                    endpoints.MapControllers();
-                });
-            });
-
-            app.MapWhen((context) =>
-            {
-                return !(context.Request.Path.StartsWithSegments("/md")
-                || context.Request.Path.StartsWithSegments("/mdex")
-                || context.Request.Path.StartsWithSegments("/1ql"));
-            },
-            builder =>
-            {
-                builder.UseDefaultFiles();
-                builder.UseStaticFiles(new StaticFileOptions()
-                {
-                    ServeUnknownFileTypes = true // .wasm + .dll + .blat + .dat
-                });
-                builder.UseRouting().UseEndpoints(endpoints =>
-                {
-                    endpoints.MapFallbackToFile("/index.html");
-                });
-            });
-
+            app.MapWhen(IsWebApiRequest, ConfigureWebApiPipeline);
+            app.MapWhen(IsBlazorRequest, ConfigureBlazorPipeline);
             app.Run();
+        }
+        private static void ConfigureCors(CorsOptions options)
+        {
+            options.AddDefaultPolicy(builder =>
+            {
+                builder.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+            });
+        }
+        private static bool IsWebApiRequest(HttpContext context)
+        {
+            for (int i = 0; i < webapi.Length; i++)
+            {
+                if (context.Request.Path.StartsWithSegments(webapi[i]))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        private static bool IsBlazorRequest(HttpContext context)
+        {
+            return !IsWebApiRequest(context);
+        }
+        private static void ConfigureWebApiPipeline(IApplicationBuilder builder)
+        {
+            builder.UseRouting().UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+            });
+        }
+        private static void ConfigureBlazorPipeline(IApplicationBuilder builder)
+        {
+            builder.UseDefaultFiles();
+            builder.UseStaticFiles(new StaticFileOptions()
+            {
+                ServeUnknownFileTypes = true // .wasm + .dll + .blat + .dat
+            });
+            builder.UseRouting().UseEndpoints(endpoints =>
+            {
+                endpoints.MapFallbackToFile("/index.html");
+            });
         }
         private static void ConfigureServices(IServiceCollection services)
         {

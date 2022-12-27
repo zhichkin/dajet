@@ -46,7 +46,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "img", "img", "{40E26238-CA7
 		dajet-http-client\img\Справочник.png = dajet-http-client\img\Справочник.png
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-studio", "dajet-studio\dajet-studio.csproj", "{1FD3F812-EB69-407F-BD78-FC5542308B91}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-studio", "dajet-studio\dajet-studio.csproj", "{1FD3F812-EB69-407F-BD78-FC5542308B91}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

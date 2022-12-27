@@ -36,7 +36,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("{infobase}")] public ActionResult Select([FromRoute] string infobase)
         {
-            InfoBaseModel? record = _mapper.Select(infobase);
+            InfoBaseModel record = _mapper.Select(infobase);
 
             if (record == null)
             {
@@ -60,7 +60,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("reset/{infobase}")] public ActionResult ResetCache([FromRoute] string infobase)
         {
-            InfoBaseModel? options = _mapper.Select(infobase);
+            InfoBaseModel options = _mapper.Select(infobase);
 
             if (options == null)
             {

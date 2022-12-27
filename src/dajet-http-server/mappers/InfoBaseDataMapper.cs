@@ -78,7 +78,7 @@ namespace DaJet.Http.DataMappers
 
             return list;
         }
-        public InfoBaseModel? Select(string name)
+        public InfoBaseModel Select(string name)
         {
             InfoBaseModel entity = null;
 

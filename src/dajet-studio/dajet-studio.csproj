@@ -7,6 +7,13 @@
     <RootNamespace>DaJet.Studio</RootNamespace>
     <PackageId>$(AssemblyName)</PackageId>
     <AssemblyName>DaJet.Studio</AssemblyName>
+    <Version>2.0.0</Version>
+    <Authors>Zhichkin</Authors>
+    <Copyright>Zhichkin © 2022</Copyright>
+    <Description>DaJet HTTP server Blazor UI</Description>
+    <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/zhichkin/dajet/tree/main/src/dajet-studio</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,6 +25,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="7.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="7.0.1" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="7.0.0" />
+    <PackageReference Include="MudBlazor" Version="6.1.6" />
   </ItemGroup>
 
 </Project>

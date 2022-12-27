@@ -6,9 +6,9 @@ namespace DaJet.Scripting
     public struct ScriptParser : IDisposable
     {
         private int _current = 0;
-        private ScriptToken? _token = null;
-        private List<ScriptToken>? _tokens = null;
-        private List<ScriptToken>? _ignore = null; // test and debug purposes
+        private ScriptToken _token = null;
+        private List<ScriptToken> _tokens = null;
+        private List<ScriptToken> _ignore = null; // test and debug purposes
         public ScriptParser() { }
         public void Dispose()
         {
@@ -34,7 +34,7 @@ namespace DaJet.Scripting
             
             try
             {
-                SyntaxNode? node;
+                SyntaxNode node;
 
                 while (!EndOfStream())
                 {

@@ -4,7 +4,7 @@
     <TargetFramework>net7.0</TargetFramework>
     <RootNamespace>DaJet.Scripting</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <Nullable>disable</Nullable>
     <AssemblyName>DaJet.Scripting</AssemblyName>
     <Version>1.1.1</Version>
     <Authors>Zhichkin</Authors>

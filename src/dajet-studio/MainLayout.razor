@@ -1,5 +1,46 @@
 ﻿@inherits LayoutComponentBase
 
-<main>
-    @Body
-</main>
+<MudThemeProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+@*https://mudblazor.com/docs/overview*@
+
+<div class="app-layout">
+    <div class="app-header">
+        APPLICATION HEADER
+    </div>
+    <div class="app-lpanel">
+        <MainTreeView />
+    </div>
+    <div class="app-rpanel">
+        @Body
+    </div>
+    <div class="app-footer">FOOTER</div>
+</div>
+
+@*<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+        <MudText Typo="Typo.h6" Class="ml-2">DaJet Studio © 2.0.0</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" Edge="Edge.End" />
+    </MudAppBar>
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+        <MainTreeView/>
+    </MudDrawer>
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    bool _drawerOpen = true;
+
+    void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+}*@
