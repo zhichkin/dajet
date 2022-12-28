@@ -15,18 +15,19 @@
     justify-self: stretch;
     border: 1px solid black;
     grid-template:
-        "app-header app-header app-header app-header app-header" 30px
+        "app-header app-header app-header app-header app-header" min-content
         "app-lpanel app-rpanel app-rpanel app-rpanel app-rpanel" auto
-        "app-footer app-footer app-footer app-footer app-footer" 30px / 1fr 1fr 1fr 1fr 1fr;
+        "app-footer app-footer app-footer app-footer app-footer" min-content / 1fr 1fr 1fr 1fr 1fr;
 }
 
 .app-header {
     display: grid;
     grid-area: app-header;
+    align-self: start;
     justify-self: stretch;
     align-content: center;
-    justify-content: start;
     border: 1px solid black;
+    height: min-content;
 }
 
 .app-lpanel {
@@ -56,8 +57,9 @@
 .app-footer {
     display: grid;
     grid-area: app-footer;
+    align-self: end;
     justify-self: stretch;
     align-content: center;
-    justify-content: start;
     border: 1px solid black;
+    height: min-content;
 }

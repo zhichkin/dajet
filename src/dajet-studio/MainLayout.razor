@@ -8,7 +8,16 @@
 
 <div class="app-layout">
     <div class="app-header">
-        APPLICATION HEADER
+        <MudToolBar Dense="true" DisableGutters="true" Class="px-3">
+            <MudTooltip Text="Обновить">
+                <MudIconButton Icon="@Icons.Material.Outlined.Refresh" Size="Size.Small" OnClick="RefreshMainTreeView" />
+            </MudTooltip>
+            <MudTooltip Text="Добавить базу данных">
+                <MudIconButton Icon="@Icons.Material.Outlined.Add" Size="Size.Small" OnClick="RegisterInfoBase" />
+            </MudTooltip>
+            <MudSpacer />
+            <MudIconButton Icon="@Icons.Custom.Brands.GitHub" Size="Size.Small" Href="https://github.com/zhichkin/dajet" />
+        </MudToolBar>
     </div>
     <div class="app-lpanel">
         <MainTreeView />
@@ -16,31 +25,7 @@
     <div class="app-rpanel">
         @Body
     </div>
-    <div class="app-footer">FOOTER</div>
+    <div class="app-footer">
+        <MudText Typo="Typo.body2" Class="ml-2">@FooterText</MudText>
+    </div>
 </div>
-
-@*<MudLayout>
-    <MudAppBar Elevation="1">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
-        <MudText Typo="Typo.h6" Class="ml-2">DaJet Studio © 2.0.0</MudText>
-        <MudSpacer />
-        <MudIconButton Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" Edge="Edge.End" />
-    </MudAppBar>
-    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
-        <MainTreeView/>
-    </MudDrawer>
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.Large">
-            @Body
-        </MudContainer>
-    </MudMainContent>
-</MudLayout>
-
-@code {
-    bool _drawerOpen = true;
-
-    void DrawerToggle()
-    {
-        _drawerOpen = !_drawerOpen;
-    }
-}*@

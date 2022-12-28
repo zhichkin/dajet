@@ -1,6 +1,8 @@
-﻿<MudTreeView ServerData="GetTreeNodeItems" Items="RootNodes"> @*Class="overflow-scroll"*@
+﻿<MudTreeView ServerData="GetTreeNodeItems" Items="RootNodes"
+             Style="overflow:visible;white-space:nowrap" Dense="true">
     <ItemTemplate>
-        <MudTreeViewItem Value="@context" Icon="@context.Icon" Text="@context.Title" LoadingIconColor="Color.Info"
-                         TextTypo="Typo.body2" Style="white-space:nowrap" CanExpand="@context.CanExpand" />
+        <MudTreeViewItem Value="@context" Icon="@context.Icon"
+                         Text="@context.Title" CanExpand="@context.CanExpand"
+                         TextTypo="Typo.body2" LoadingIconColor="Color.Info" />
     </ItemTemplate>
 </MudTreeView>
