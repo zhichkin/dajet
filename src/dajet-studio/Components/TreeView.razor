@@ -1,0 +1,11 @@
+﻿<ul style="display: block; list-style-type:none; margin:0px; padding: 0px;">
+
+    @if (Nodes != null && Nodes.Count > 0)
+    {
+        @foreach (TreeNodeModel model in Nodes)
+        {
+            <TreeNode Model="model" />
+        }
+    }
+
+</ul>

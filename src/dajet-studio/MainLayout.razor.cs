@@ -10,9 +10,5 @@ namespace DaJet.Studio
         {
 
         }
-        protected void RefreshMainTreeView(MouseEventArgs args)
-        {
-            
-        }
     }
 }

@@ -1,0 +1,23 @@
+﻿<li style="white-space:nowrap; margin: 0px; padding: 0px 0px 0px 10px;">
+
+    <span style="display:inline; margin:0px; padding: 0px; cursor:pointer; user-select:none;" @onclick="OpenCloseClick">
+        @(Model.IsExpanded ? "-" : "+")
+    </span>
+
+    <span style="display: inline; margin: 0px; padding: 0px;">
+        @(Model == null ? string.Empty : Model.Title)
+    </span>
+
+    @if (Model != null && Model.Nodes != null && Model.Nodes.Count > 0)
+    {
+        <ul style="@(Model.IsExpanded ? "display: block;" : "display: none;")">
+            
+            @foreach (TreeNodeModel model in Model.Nodes)
+            {
+                <TreeNode Model="model" />
+            }
+
+        </ul>
+    }
+
+</li>

@@ -1,4 +1,4 @@
-﻿namespace DaJet.Studio.Pages
+﻿namespace DaJet.Studio.Model
 {
     public sealed class InfoBaseModel
     {

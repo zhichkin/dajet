@@ -36,7 +36,7 @@
     grid-area: app-lpanel;
     align-self: stretch;
     justify-self: stretch;
-    align-content: stretch;
+    align-content: start;
     border: 1px solid black;
     resize: horizontal;
     width: 20vw;

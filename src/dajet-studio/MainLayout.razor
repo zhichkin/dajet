@@ -1,5 +1,7 @@
 ﻿@inherits LayoutComponentBase
 
+@inject AppState AppState;
+
 <MudThemeProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -10,7 +12,7 @@
     <div class="app-header">
         <MudToolBar Dense="true" DisableGutters="true" Class="px-3">
             <MudTooltip Text="Обновить">
-                <MudIconButton Icon="@Icons.Material.Outlined.Refresh" Size="Size.Small" OnClick="RefreshMainTreeView" />
+                <MudIconButton Icon="@Icons.Material.Outlined.Refresh" Size="Size.Small" OnClick="AppState.RefreshMainTreeView" />
             </MudTooltip>
             <MudTooltip Text="Добавить базу данных">
                 <MudIconButton Icon="@Icons.Material.Outlined.Add" Size="Size.Small" OnClick="RegisterInfoBase" />

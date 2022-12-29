@@ -11,7 +11,6 @@ namespace DaJet.Studio
         {
             WebAssemblyHostBuilder builder = WebAssemblyHostBuilder.CreateDefault(args);
             builder.RootComponents.Add<App>("#app");
-            //builder.RootComponents.Add<HeadOutlet>("head::after");
 
             builder.Services.AddHttpClient(DAJET_HTTP_CLIENT, (services, client) =>
             {
@@ -35,6 +34,8 @@ namespace DaJet.Studio
             });
 
             builder.Services.AddMudServices();
+
+            builder.Services.AddSingleton<AppState>();
 
             await builder.Build().RunAsync();
         }
