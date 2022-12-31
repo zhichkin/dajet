@@ -6,9 +6,12 @@ namespace DaJet.Studio.Components
     public partial class TreeNode : ComponentBase
     {
         [Parameter] public TreeNodeModel Model { get; set; }
-        private async Task OpenCloseClick(MouseEventArgs args)
+        private async Task ToggleClick(MouseEventArgs args)
         {
-            await Model?.OpenCloseCommand();
+            if (Model != null && Model.UseToggle)
+            {
+                await Model?.ToggleCommand();
+            }
         }
     }
 }

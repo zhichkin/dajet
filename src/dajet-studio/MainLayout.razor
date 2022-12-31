@@ -1,6 +1,7 @@
 ﻿@inherits LayoutComponentBase
 
 @inject AppState AppState;
+@inject HttpClient Http;
 
 <MudThemeProvider />
 <MudDialogProvider />
@@ -11,9 +12,12 @@
 <div class="app-layout">
     <div class="app-header">
         <MudToolBar Dense="true" DisableGutters="true" Class="px-3">
-            <MudTooltip Text="Обновить">
-                <MudIconButton Icon="@Icons.Material.Outlined.Refresh" Size="Size.Small" OnClick="AppState.RefreshMainTreeView" />
-            </MudTooltip>
+            <MudSelect @bind-Value="AppState.CurrentInfoBase" Label="Текущая база данных" Variant="Variant.Outlined" Margin="Margin.Dense" T="string">
+                @foreach (string name in InfoBaseList)
+                {
+                    <MudSelectItem Value="name" />
+                }
+            </MudSelect>
             <MudTooltip Text="Добавить базу данных">
                 <MudIconButton Icon="@Icons.Material.Outlined.Add" Size="Size.Small" OnClick="RegisterInfoBase" />
             </MudTooltip>

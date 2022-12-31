@@ -3,20 +3,21 @@
     public enum TreeNodeType { Undefined, Catalog, Document, InfoReg, AccumReg }
     public sealed class TreeNodeModel
     {
-        public TreeNodeType Type { get; set; } = TreeNodeType.Undefined;
         public object Tag { get; set; } = null;
         public string Url { get; set; } = string.Empty;
         public string Icon { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
+        public bool IsVisible { get; set; } = true;
+        public bool UseToggle { get; set; } = true;
         public bool IsExpanded { get; set; } = false;
         public List<TreeNodeModel> Nodes { get; set; } = new();
-        public Func<Task> OpenCloseCommand { get; private set; }
+        public Func<Task> ToggleCommand { get; private set; }
         public Func<TreeNodeModel, Task> OpenNodeHandler { get; set; }
         public TreeNodeModel()
         {
-            OpenCloseCommand = new(OpenCloseCommandHandler);
+            ToggleCommand = new(ToggleCommandHandler);
         }
-        private async Task OpenCloseCommandHandler()
+        private async Task ToggleCommandHandler()
         {
             IsExpanded = !IsExpanded;
 

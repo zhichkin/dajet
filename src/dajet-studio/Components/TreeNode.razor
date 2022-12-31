@@ -1,8 +1,11 @@
-﻿<li style="white-space:nowrap; margin: 0px; padding: 0px 0px 0px 10px;">
+﻿<li style="white-space:nowrap; margin: 0px; padding: 0px 0px 0px 15px; @(Model.IsVisible ? "display: block;" : "display: none;")">
 
-    <span style="display:inline; margin:0px; padding: 0px; cursor:pointer; user-select:none;" @onclick="OpenCloseClick">
-        @(Model.IsExpanded ? "-" : "+")
-    </span>
+    @if (Model != null && Model.UseToggle)
+    {
+        <span style="display:inline; margin-right:3px; padding: 0px; cursor:pointer; user-select:none;" @onclick="ToggleClick">
+            @(Model.IsExpanded ? "-" : "+")
+        </span>
+    }
 
     <span style="display: inline; margin: 0px; padding: 0px;">
         @(Model == null ? string.Empty : Model.Title)

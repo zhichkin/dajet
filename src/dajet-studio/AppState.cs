@@ -2,10 +2,6 @@
 {
     public sealed class AppState
     {
-        public event Action OnRefreshMainTreeView;
-        public void RefreshMainTreeView()
-        {
-            OnRefreshMainTreeView?.Invoke();
-        }
+        public string CurrentInfoBase { get; set; } = string.Empty;
     }
 }
