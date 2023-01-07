@@ -1,0 +1,27 @@
+﻿<MudDialog>
+    
+    <DialogContent>
+        <MudTextField T="string" Label="Имя" @bind-Value="@Model.Name"
+                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                      HelperText="Имя базы данных в списке"
+                      Style="font-size:var(--mud-typography-default-size);" />
+
+        <MudSelect T="string" Label="Тип СУБД" @bind-Value="@Model.DatabaseProvider"
+                   HelperText="Провайдер баз данных"
+                   Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+            <MudSelectItem Value="@("SqlServer")" />
+            <MudSelectItem Value="@("PostgreSql")" />
+        </MudSelect>
+
+        <MudTextField T="string" Label="Строка подключения" @bind-Value="@Model.ConnectionString"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Lines="5"
+                      HelperText="Строка подключения базы данных"
+                      Style="font-size:var(--mud-typography-default-size);" />
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Submit" Color="Color.Success">Добавить</MudButton>
+        <MudButton OnClick="Cancel" Color="Color.Error">Отмена</MudButton>
+    </DialogActions>
+
+</MudDialog>

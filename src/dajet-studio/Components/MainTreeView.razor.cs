@@ -19,10 +19,21 @@ namespace DaJet.Studio.Components
         protected override async Task OnInitializedAsync()
         {
             await IntializeInfoBaseList();
+
+            AppState.RefreshInfoBaseCommand += Refresh;
         }
-        protected async Task Refresh(MouseEventArgs args)
+        private async void Refresh()
         {
-            await IntializeInfoBaseList();
+            try
+            {
+                await IntializeInfoBaseList();
+                
+                StateHasChanged();
+            }
+            catch (Exception error)
+            {
+                //TODO: handle error
+            }
         }
 
         private async Task IntializeInfoBaseList()
@@ -227,6 +238,7 @@ namespace DaJet.Studio.Components
             }
         }
 
+        #region "Filter Tree View"
         protected void FilterTreeView(string filter)
         {
             string database = AppState.CurrentInfoBase;
@@ -245,8 +257,6 @@ namespace DaJet.Studio.Components
 
             Search(in target, in filter);
         }
-
-        #region "Filter Tree View"
         private void Search(in TreeNodeModel node, in string filter)
         {
             CultureInfo culture;
@@ -307,7 +317,6 @@ namespace DaJet.Studio.Components
                 }
             }
         }
-        
         #endregion 
     }
 }

@@ -2,6 +2,8 @@
 
 @inject AppState AppState;
 @inject HttpClient Http;
+@inject ISnackbar Snackbar;
+@inject IDialogService DialogService;
 
 <MudThemeProvider />
 <MudDialogProvider />
@@ -12,16 +14,31 @@
 <div class="app-layout">
     <div class="app-header">
         <MudToolBar Dense="true" DisableGutters="true" Class="px-3">
-            <MudSelect @bind-Value="AppState.CurrentInfoBase" Label="Текущая база данных" Variant="Variant.Outlined" Margin="Margin.Dense" T="string">
-                @foreach (string name in InfoBaseList)
-                {
-                    <MudSelectItem Value="name" />
-                }
-            </MudSelect>
-            <MudTooltip Text="Добавить базу данных">
-                <MudIconButton Icon="@Icons.Material.Outlined.Add" Size="Size.Small" OnClick="RegisterInfoBase" />
-            </MudTooltip>
+            
+            <MudContainer MaxWidth="MaxWidth.ExtraSmall" Class="mx-0 px-0">
+                <MudSelect T="string" @bind-Value="AppState.CurrentInfoBase" Label="Текущая база данных"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                    @foreach (string name in InfoBaseList)
+                    {
+                        <MudSelectItem Value="name" />
+                    }
+                </MudSelect>
+            </MudContainer>
+
+            <MudContainer MaxWidth="MaxWidth.ExtraSmall" Class="ml-3">
+                <MudTooltip Text="Обновить список баз данных">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Refresh" Color="Color.Info" Size="Size.Small" OnClick="RefreshInfoBaseList" />
+                </MudTooltip>
+                <MudTooltip Text="Добавить базу данных">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Add" Color="Color.Success" Size="Size.Small" OnClick="RegisterNewInfoBase" />
+                </MudTooltip>
+                <MudTooltip Text="Удалить базу данных">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Error" Size="Size.Small" OnClick="UnRegisterInfoBase" />
+                </MudTooltip>
+            </MudContainer>
+
             <MudSpacer />
+            <MudIconButton Icon="@Icons.Custom.Brands.Telegram" Size="Size.Small" Href="https://t.me/dajet_studio" />
             <MudIconButton Icon="@Icons.Custom.Brands.GitHub" Size="Size.Small" Href="https://github.com/zhichkin/dajet" />
         </MudToolBar>
     </div>
