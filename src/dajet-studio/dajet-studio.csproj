@@ -17,6 +17,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Remove="wwwroot\css\script-editor.css" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="wwwroot\css\script-editor.css" />
     <None Include="wwwroot\css\app.css" />
     <None Include="wwwroot\index.html" />
   </ItemGroup>

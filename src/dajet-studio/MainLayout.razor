@@ -1,5 +1,6 @@
 ﻿@inherits LayoutComponentBase
 
+@inject NavigationManager Navigator;
 @inject AppState AppState;
 @inject HttpClient Http;
 @inject ISnackbar Snackbar;
@@ -26,6 +27,9 @@
             </MudContainer>
 
             <MudContainer MaxWidth="MaxWidth.ExtraSmall" Class="ml-3">
+                <MudTooltip Text="Домашняя страница">
+                    <MudIconButton Icon="@Icons.Material.Filled.Home" Color="Color.Default" Size="Size.Small" OnClick="NavigateToHomePage" />
+                </MudTooltip>
                 <MudTooltip Text="Обновить список баз данных">
                     <MudIconButton Icon="@Icons.Material.Outlined.Refresh" Color="Color.Info" Size="Size.Small" OnClick="RefreshInfoBaseList" />
                 </MudTooltip>
@@ -34,6 +38,9 @@
                 </MudTooltip>
                 <MudTooltip Text="Удалить базу данных">
                     <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Error" Size="Size.Small" OnClick="UnRegisterInfoBase" />
+                </MudTooltip>
+                <MudTooltip Text="Создать новый скрипт">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Description" Color="Color.Default" Size="Size.Small" OnClick="CreateNewScript" />
                 </MudTooltip>
             </MudContainer>
 

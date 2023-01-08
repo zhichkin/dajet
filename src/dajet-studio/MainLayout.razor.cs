@@ -12,6 +12,10 @@ namespace DaJet.Studio
     {
         protected string FooterText { get; set; } = string.Empty;
         protected List<string> InfoBaseList { get; set; } = new();
+        protected void NavigateToHomePage()
+        {
+            Navigator.NavigateTo("/");
+        }
         protected override async Task OnInitializedAsync()
         {
             await IntializeInfoBaseList();
@@ -124,6 +128,10 @@ namespace DaJet.Studio
             {
                 Snackbar.Add(error.Message, Severity.Error);
             }
+        }
+        protected void CreateNewScript(MouseEventArgs args)
+        {
+            Navigator.NavigateTo("/script-editor");
         }
     }
 }

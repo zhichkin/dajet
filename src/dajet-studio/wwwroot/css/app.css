@@ -46,11 +46,10 @@
 
 .app-rpanel {
     display: grid;
-    overflow: scroll;
+    overflow: hidden;
     grid-area: app-rpanel;
     align-self: stretch;
     justify-self: stretch;
-    align-content: start;
     border: 1px solid black;
 }
 

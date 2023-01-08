@@ -1,0 +1,66 @@
+﻿@page "/script-editor"
+
+@inject AppState AppState;
+@inject NavigationManager Navigator;
+
+<div class="script-editor-layout">
+
+    <div class="script-editor-action">
+        <div>
+            <span style="font-weight:bold;padding:5px">@(AppState.CurrentInfoBase)</span>
+            <input type="button" value="✕" @onclick="CloseScriptEditor">
+        </div>
+        <div>
+            <input type="button" value="Показать SQL" @onclick="ExecuteScript">
+            <input type="button" value="Выполнить JSON">
+            <input type="button" value="Выполнить (таблица)">
+            <span style="color:red;padding:5px">@ErrorText</span>
+        </div>
+    </div>
+
+    <div class="script-editor-script">
+        <textarea @bind="ScriptText" style="border: 1px solid black; padding: 3px; white-space: nowrap;" rows="10" />
+    </div>
+
+    <div class="script-editor-result">
+        
+        <table>
+            <tr>
+                <td style="padding:1px;white-space:nowrap;">
+                    fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff fffffffffffffff end
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    ffffffffffffff<br />
+                    end<br />
+                </td>
+            </tr>
+        </table>
+        
+    </div>
+
+</div>

@@ -1,0 +1,36 @@
+.script-editor-layout {
+    display: grid;
+    gap: 1px;
+    padding: 1px;
+    border: 1px solid black;
+    align-content: start;
+    height: calc(100vh - 60px);
+    grid-template:
+        "script-editor-action" min-content
+        "script-editor-script"
+        "script-editor-result" / 1fr;
+}
+
+.script-editor-action {
+    display: grid;
+    grid-area: script-editor-action;
+}
+
+.script-editor-script {
+    display: grid;
+    grid-area: script-editor-script;
+    height: 50vh;
+    min-height: 20vh;
+    max-height: 75vh;
+    resize: vertical;
+    overflow: hidden;
+    border: 1px solid black;
+}
+
+.script-editor-result {
+    display: grid;
+    grid-area: script-editor-result;
+    overflow: scroll;
+    white-space: nowrap;
+    border: 1px solid black;
+}
