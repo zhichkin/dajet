@@ -34,3 +34,20 @@
     white-space: nowrap;
     border: 1px solid black;
 }
+
+.script-editor-button {
+    cursor: pointer;
+    margin-left: 5px;
+    min-width: 75px;
+    padding: 0px 5px 0px 5px;
+    border: 1px solid black;
+    border-radius: 5px;
+    -moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
+}
+
+.script-editor-close-button {
+    cursor: pointer;
+    border: none;
+    background: none;
+}

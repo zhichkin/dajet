@@ -1,20 +1,20 @@
 ﻿@page "/script-editor"
 
+@inject HttpClient Http;
 @inject AppState AppState;
 @inject NavigationManager Navigator;
 
 <div class="script-editor-layout">
 
     <div class="script-editor-action">
-        <div>
-            <span style="font-weight:bold;padding:5px">@(AppState.CurrentInfoBase)</span>
-            <input type="button" value="✕" @onclick="CloseScriptEditor">
+        <div style="margin:5px;">
+            <span style="font-weight:bold;">@Database</span>
+            <input type="button" value="✕" class="script-editor-close-button" @onclick="CloseScriptEditor">
         </div>
         <div>
-            <input type="button" value="Показать SQL" @onclick="ExecuteScript">
-            <input type="button" value="Выполнить JSON">
-            <input type="button" value="Выполнить (таблица)">
-            <span style="color:red;padding:5px">@ErrorText</span>
+            <input type="button" class="script-editor-button" value="SQL" @onclick="ExecuteScriptSql">
+            <input type="button" class="script-editor-button" value="JSON" @onclick="ExecuteScriptJson">
+            <input type="button" class="script-editor-button" value="Таблица" @onclick="ExecuteScriptTable">
         </div>
     </div>
 
@@ -24,42 +24,37 @@
 
     <div class="script-editor-result">
         
-        <table>
-            <tr>
-                <td style="padding:1px;white-space:nowrap;">
-                    fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff fffffffffffffff end
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    ffffffffffffff<br />
-                    end<br />
-                </td>
-            </tr>
-        </table>
+        @if (!string.IsNullOrEmpty(ErrorText))
+        {
+            <span style="color:red;margin:5px">@ErrorText</span>
+        }
+        else if (!string.IsNullOrEmpty(ResultText))
+        {
+            <textarea style="border:none; margin:5px;" rows="10">@ResultText</textarea>
+        }
+        else if (ResultTable is not null && ResultTable.Count > 0)
+        {
+            <table style="border: 1px solid black">
+
+                <tr>
+                    @foreach (string name in ResultTable[0].Keys)
+                    {
+                        <td style="padding: 2px; border: 1px solid black; font-weight: bold;">@name</td>
+                    }
+                </tr>
+
+                @foreach (var row in ResultTable)
+                {
+                    <tr>
+                        @foreach (string name in row.Keys)
+                        {
+                            <td style="padding: 2px; border: 1px solid black;">@row[name]</td>
+                        }
+                    </tr>
+                }
+
+            </table>
+        }
         
     </div>
 

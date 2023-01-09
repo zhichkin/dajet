@@ -1,6 +1,5 @@
 ﻿using DaJet.Studio.Model;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 using System.Globalization;
 using System.Net.Http.Json;
 
@@ -239,7 +238,7 @@ namespace DaJet.Studio.Components
         }
 
         #region "Filter Tree View"
-        protected void FilterTreeView(string filter)
+        protected async Task FilterTreeView(string filter)
         {
             string database = AppState.CurrentInfoBase;
 
@@ -249,13 +248,37 @@ namespace DaJet.Studio.Components
             {
                 if (node.Title == database)
                 {
-                    target = node; break;
+                    target = node;
+                    target.IsExpanded = true;
+                }
+                else
+                {
+                    node.IsExpanded = false;
                 }
             }
 
             if (target == null) { return; }
 
+            await LazyLoad_MetadataItems(target);
+
             Search(in target, in filter);
+        }
+        private async Task LazyLoad_MetadataItems(TreeNodeModel target)
+        {
+            foreach (var node in target.Nodes)
+            {
+                if (node.Title == NODE_TYPE_EXTENSIONS)
+                {
+                    // TODO: ignore ?
+                }
+                else if (node.Title == NODE_TYPE_CONFIGURATION)
+                {
+                    foreach (var metaNode in node.Nodes)
+                    {
+                        await OpenMetadataNodeHandler(metaNode);
+                    }
+                }
+            }
         }
         private void Search(in TreeNodeModel node, in string filter)
         {
@@ -285,31 +308,33 @@ namespace DaJet.Studio.Components
                 ClearFilter(node.Nodes);
 
                 node.IsVisible = true;
-
-                if (node.Tag is InfoBaseModel)
-                {
-                    node.IsExpanded = true;
-                }
-                else
-                {
-                    node.IsExpanded = false;
-                }
+                node.IsExpanded = false;
             }
         }
         private void FilterNodes(IEnumerable<TreeNodeModel> nodes, string filter, CultureInfo culture)
         {
             foreach (TreeNodeModel node in nodes)
             {
-                FilterNodes(node.Nodes, filter, culture);
-
-                if (node.Tag is MetadataItemModel model)
+                if (node.Tag is ExtensionModel)
                 {
-                    node.IsVisible = culture.CompareInfo.IndexOf(model.Name, filter, CompareOptions.IgnoreCase) >= 0;
+                    node.IsExpanded = false;
+                    continue; // TODO: ignore ?
                 }
 
-                if (node.Tag is InfoBaseModel || node.Tag is ExtensionModel)
+                FilterNodes(node.Nodes, filter, culture);
+
+                if (node.Tag is InfoBaseModel)
                 {
                     node.IsExpanded = true;
+                }
+                else if (node.Tag is MetadataItemModel model)
+                {
+                    node.IsVisible = culture.CompareInfo.IndexOf(model.Name, filter, CompareOptions.IgnoreCase) >= 0;
+                    
+                    if (node.IsVisible)
+                    {
+                        node.IsExpanded = false;
+                    }
                 }
                 else
                 {
