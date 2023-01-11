@@ -12,10 +12,13 @@
         public bool IsExpanded { get; set; } = false;
         public List<TreeNodeModel> Nodes { get; set; } = new();
         public Func<Task> ToggleCommand { get; private set; }
+        public Func<Task> ContextMenuCommand { get; private set; }
         public Func<TreeNodeModel, Task> OpenNodeHandler { get; set; }
+        public Func<TreeNodeModel, Task> ContextMenuHandler { get; set; }
         public TreeNodeModel()
         {
             ToggleCommand = new(ToggleCommandHandler);
+            ContextMenuCommand = new(ContextMenuCommandHandler);
         }
         private async Task ToggleCommandHandler()
         {
@@ -24,6 +27,13 @@
             if (IsExpanded && OpenNodeHandler != null)
             {
                 await OpenNodeHandler(this);
+            }
+        }
+        private async Task ContextMenuCommandHandler()
+        {
+            if (ContextMenuHandler != null)
+            {
+                await ContextMenuHandler(this);
             }
         }
         public override string ToString()

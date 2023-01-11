@@ -13,5 +13,9 @@ namespace DaJet.Studio.Components
                 await Model?.ToggleCommand();
             }
         }
+        private async Task OpenContextMenu(MouseEventArgs args)
+        {
+            await Model?.ContextMenuCommand();
+        }
     }
 }

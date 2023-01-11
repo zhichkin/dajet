@@ -1,5 +1,7 @@
-﻿using DaJet.Studio.Model;
+﻿using DaJet.Studio.Controllers;
+using DaJet.Studio.Model;
 using Microsoft.AspNetCore.Components;
+using MudBlazor;
 using System.Globalization;
 using System.Net.Http.Json;
 
@@ -15,10 +17,11 @@ namespace DaJet.Studio.Components
         public const string NODE_TYPE_ACCUMREGISTER = "РегистрНакопления";
         protected string FilterValue { get; set; } = string.Empty;
         protected List<TreeNodeModel> Nodes { get; set; } = new();
+        [Inject] private ApiTreeViewController ApiTreeViewController { get; set; }
         protected override async Task OnInitializedAsync()
         {
             await IntializeInfoBaseList();
-
+            
             AppState.RefreshInfoBaseCommand += Refresh;
         }
         private async void Refresh()
@@ -69,6 +72,8 @@ namespace DaJet.Studio.Components
             node.Title = model.Name;
             node.Url = $"/md/{model.Name}";
 
+            ConfigureApiTreeViewNode(in node, in model);
+
             node.Nodes.Add(new TreeNodeModel()
             {
                 Tag = model,
@@ -87,6 +92,17 @@ namespace DaJet.Studio.Components
             ConfigureConfigurationTreeNode(in configuration);
 
             node.Nodes.Add(configuration);
+        }
+        private void ConfigureApiTreeViewNode(in TreeNodeModel node, in InfoBaseModel model)
+        {
+            try
+            {
+                node.Nodes.Add(ApiTreeViewController.CreateRootNode(model));
+            }
+            catch (Exception error)
+            {
+                Snackbar.Add(error.Message, Severity.Error);
+            }
         }
         private async Task OpenExtensionsNodeHandler(TreeNodeModel node)
         {

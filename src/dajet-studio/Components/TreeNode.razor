@@ -7,7 +7,7 @@
         </span>
     }
 
-    <span style="display: inline; margin: 0px; padding: 0px;">
+    <span style="display: inline; margin: 0px; padding: 0px;" @oncontextmenu="OpenContextMenu" @oncontextmenu:preventDefault="true">
         @(Model == null ? string.Empty : Model.Title)
     </span>
 

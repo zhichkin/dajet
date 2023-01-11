@@ -1,3 +1,4 @@
+using DaJet.Studio.Controllers;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
 
@@ -34,8 +35,8 @@ namespace DaJet.Studio
             });
 
             builder.Services.AddMudServices();
-
             builder.Services.AddSingleton<AppState>();
+            builder.Services.AddSingleton<ApiTreeViewController>();
 
             await builder.Build().RunAsync();
         }
