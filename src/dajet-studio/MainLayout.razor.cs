@@ -10,7 +10,6 @@ namespace DaJet.Studio
 {
     public partial class MainLayout : LayoutComponentBase
     {
-        protected string FooterText { get; set; } = string.Empty;
         protected List<string> InfoBaseList { get; set; } = new();
         protected void NavigateToHomePage()
         {
@@ -24,7 +23,7 @@ namespace DaJet.Studio
         {
             try
             {
-                FooterText = "Загрузка списка баз данных...";
+                AppState.FooterText = "Загрузка списка баз данных...";
 
                 InfoBaseList.Clear();
 
@@ -42,11 +41,11 @@ namespace DaJet.Studio
                     AppState.CurrentInfoBase = list[0]?.Name;
                 }
 
-                FooterText = string.Empty;
+                AppState.FooterText = string.Empty;
             }
             catch (Exception error)
             {
-                FooterText = "Ошибка загрузки списка баз данных!";
+                AppState.FooterText = "Ошибка загрузки списка баз данных!";
             }
         }
         protected async Task RefreshInfoBaseList(MouseEventArgs args)

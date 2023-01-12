@@ -4,7 +4,7 @@
     {
         public string Uuid { get; set; }
         public string Name { get; set; }
-        public bool IsFolder { get; set; }
+        public bool IsFolder { get; set; } = true;
         public List<ScriptModel> Children { get; set; } = new();
     }
 }

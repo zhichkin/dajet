@@ -15,7 +15,7 @@ namespace DaJet.Studio.Components
         }
         private async Task OpenContextMenu(MouseEventArgs args)
         {
-            await Model?.ContextMenuCommand();
+            await Model?.ContextMenuCommand(DialogService);
         }
     }
 }

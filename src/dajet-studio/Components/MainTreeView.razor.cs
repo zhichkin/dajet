@@ -77,6 +77,7 @@ namespace DaJet.Studio.Components
             node.Nodes.Add(new TreeNodeModel()
             {
                 Tag = model,
+                Parent = node,
                 Url = $"/mdex/{model.Name}",
                 Title = NODE_TYPE_EXTENSIONS,
                 OpenNodeHandler = OpenExtensionsNodeHandler
@@ -86,6 +87,7 @@ namespace DaJet.Studio.Components
             {
                 Tag = model,
                 Url = node.Url,
+                Parent = node,
                 Title = NODE_TYPE_CONFIGURATION
             };
 
@@ -97,7 +99,9 @@ namespace DaJet.Studio.Components
         {
             try
             {
-                node.Nodes.Add(ApiTreeViewController.CreateRootNode(model));
+                TreeNodeModel api = ApiTreeViewController.CreateRootNode(model);
+                api.Parent = node;
+                node.Nodes.Add(api);
             }
             catch (Exception error)
             {
@@ -123,6 +127,7 @@ namespace DaJet.Studio.Components
                     {
                         Tag = item,
                         Title = item.Name,
+                        Parent = node,
                         Url = $"{node.Url}/{item.Name}"
                     };
 
@@ -140,6 +145,7 @@ namespace DaJet.Studio.Components
         {
             parent.Nodes.Add(new TreeNodeModel()
             {
+                Parent = parent,
                 Tag = parent.Tag,
                 Title = NODE_TYPE_CATALOG,
                 Url = $"{parent.Url}/{NODE_TYPE_CATALOG}",
@@ -147,6 +153,7 @@ namespace DaJet.Studio.Components
             });
             parent.Nodes.Add(new TreeNodeModel()
             {
+                Parent = parent,
                 Tag = parent.Tag,
                 Title = NODE_TYPE_DOCUMENT,
                 Url = $"{parent.Url}/{NODE_TYPE_DOCUMENT}",
@@ -154,6 +161,7 @@ namespace DaJet.Studio.Components
             });
             parent.Nodes.Add(new TreeNodeModel()
             {
+                Parent = parent,
                 Tag = parent.Tag,
                 Title = NODE_TYPE_INFOREGISTER,
                 Url = $"{parent.Url}/{NODE_TYPE_INFOREGISTER}",
@@ -161,6 +169,7 @@ namespace DaJet.Studio.Components
             });
             parent.Nodes.Add(new TreeNodeModel()
             {
+                Parent = parent,
                 Tag = parent.Tag,
                 Title = NODE_TYPE_ACCUMREGISTER,
                 Url = $"{parent.Url}/{NODE_TYPE_ACCUMREGISTER}",
@@ -188,6 +197,7 @@ namespace DaJet.Studio.Components
                     TreeNodeModel model = new()
                     {
                         Tag = item,
+                        Parent = node,
                         Title = item.Name,
                         Url = $"{node.Url}/{item.Name}",
                         OpenNodeHandler = OpenEntityNodeHandler
@@ -232,6 +242,7 @@ namespace DaJet.Studio.Components
                 TreeNodeModel model = new()
                 {
                     Tag = property,
+                    Parent = node,
                     Title = property.Name,
                     UseToggle = false
                 };
@@ -244,6 +255,7 @@ namespace DaJet.Studio.Components
                 TreeNodeModel model = new()
                 {
                     Tag = table,
+                    Parent = node,
                     Title = table.Name
                 };
 

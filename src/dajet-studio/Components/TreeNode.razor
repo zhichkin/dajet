@@ -1,4 +1,6 @@
-﻿<li style="white-space:nowrap; margin: 0px; padding: 0px 0px 0px 15px; @(Model.IsVisible ? "display: block;" : "display: none;")">
+﻿@inject IDialogService DialogService;
+
+<li style="white-space:nowrap; margin: 0px; padding: 0px 0px 0px 15px; @(Model.IsVisible ? "display: block;" : "display: none;")">
 
     @if (Model != null && Model.UseToggle)
     {

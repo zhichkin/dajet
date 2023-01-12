@@ -1,0 +1,45 @@
+﻿@using DaJet.Studio.Model;
+
+<MudDialog OnBackdropClick="CloseDialog" DefaultFocus="DefaultFocus.Element" DisableSidePadding="true">
+
+    <DialogContent>
+
+        <MudContainer MaxWidth="MaxWidth.ExtraSmall" Class="mx-0 my-0">
+
+            <span Style="display:block; font-size:var(--mud-typography-default-size);">
+                @Model.Url
+            </span>
+
+            @if (Model.Tag is InfoBaseModel || (Model.Tag is ScriptModel script && script.IsFolder))
+            {
+                <MudTooltip Text="Создать новый каталог">
+                    <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder" Color="Color.Success" Size="Size.Large" OnClick="CreateFolder" />
+                </MudTooltip>
+
+                <MudTooltip Text="Создать новый скрипт">
+                    <MudIconButton Icon="@Icons.Material.Filled.PostAdd" Color="Color.Info" Size="Size.Large" OnClick="CreateScript" />
+                </MudTooltip>
+            }
+            else
+            {
+                <MudTooltip Text="Редактировать скрипт">
+                    <MudIconButton Icon="@Icons.Material.Filled.EditNote" Color="Color.Success" Size="Size.Large" OnClick="UpdateScript" />
+                </MudTooltip>
+            }
+            
+            @if (Model.Tag is ScriptModel)
+            {
+                <MudTooltip Text="Удалить каталог или скрипт">
+                    <MudIconButton Icon="@Icons.Material.Filled.FolderOff" Color="Color.Error" Size="Size.Large" OnClick="DeleteFolderOrScript" />
+                </MudTooltip>
+            }
+
+            <MudTooltip Text="Отмена">
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Dark" Size="Size.Large" OnClick="CloseDialog" />
+            </MudTooltip>
+
+        </MudContainer>
+
+    </DialogContent>
+
+</MudDialog>
