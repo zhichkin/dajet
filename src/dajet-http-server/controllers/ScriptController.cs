@@ -2,9 +2,9 @@
 using DaJet.Http.DataMappers;
 using DaJet.Http.Model;
 using DaJet.Metadata;
-using DaJet.Metadata.Model;
 using DaJet.Scripting;
 using Microsoft.AspNetCore.Mvc;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
@@ -21,20 +21,8 @@ namespace DaJet.Http.Controllers
         {
             _metadataService = metadataService;
         }
-        [HttpGet("{infobase}")] public ActionResult Select([FromRoute] string infobase)
+        [HttpGet("select/{infobase}")] public ActionResult Select([FromRoute] string infobase)
         {
-            InfoBaseModel record = _mapper.Select(infobase);
-
-            if (record == null)
-            {
-                return NotFound();
-            }
-
-            if (!_metadataService.TryGetInfoBase(infobase, out InfoBase entity, out string error))
-            {
-                return BadRequest(error);
-            }
-
             List<ScriptModel> list = _scripts.Select(infobase);
 
             foreach (ScriptModel parent in list)
@@ -69,59 +57,49 @@ namespace DaJet.Http.Controllers
             }
         }
 
-        [HttpPost("{infobase}/{**path}")] public ActionResult Insert([FromRoute] string infobase, [FromRoute] string path, [FromBody] ScriptModel script)
+        [HttpGet("{uuid:guid}")] public ActionResult SelectScript([FromRoute] Guid uuid)
         {
-            if (string.IsNullOrEmpty(path))
+            if (!_scripts.TrySelect(uuid, out ScriptModel script))
             {
-                script.Owner = infobase;
-                script.Parent = Guid.Empty;
+                return NotFound();
+            }
+
+            JsonSerializerOptions options = new()
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+            };
+
+            string json = JsonSerializer.Serialize(script, options);
+
+            return Content(json);
+        }
+        [HttpPost("")] public ActionResult InsertScript([FromBody] ScriptModel script)
+        {
+            string parentName;
+
+            if (script.Parent == Guid.Empty)
+            {
+                parentName = string.Empty;
+            }
+            else if (_scripts.TrySelect(script.Parent, out ScriptModel parent))
+            {
+                parentName = $"/{parent.Name}";
             }
             else
             {
-                string[] segments = path.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-
-                int counter = 0;
-                ScriptModel parent = null;
-                List<ScriptModel> list = _scripts.Select(infobase);
-
-                foreach (string segment in segments)
-                {
-                    parent = list.Where(item => item.Name == segment).FirstOrDefault();
-
-                    if (parent == null) { break; }
-                    
-                    counter++;
-
-                    if (counter < segments.Length)
-                    {
-                        list = _scripts.Select(parent);
-                    }
-                }
-
-                if (counter == segments.Length && parent != null)
-                {
-                    script.Owner = infobase;
-                    script.Parent = parent.Uuid;
-                }
-            }
-
-            if (string.IsNullOrEmpty(script.Owner))
-            {
-                return BadRequest($"Не найден родитель для скрипта!");
+                return NotFound();
             }
 
             if (!_scripts.Insert(script))
             {
-                return BadRequest($"Ошибка создания скрипта.");
+                return BadRequest();
             }
 
-            return Created($"/api/{infobase}/{path}/{script.Name}", $"{script.Uuid}");
+            return Created($"/{script.Owner}{parentName}/{script.Name}", $"{script.Uuid}");
         }
-        [HttpPut("{infobase}/{**path}")] public ActionResult Update([FromRoute] string infobase, [FromRoute] string path, [FromBody] ScriptModel script)
+        [HttpPut("")] public ActionResult UpdateScript([FromBody] ScriptModel script)
         {
-            script.Owner = infobase;
-            script.Parent = Guid.Empty; // TODO !!!
-
             if (!_scripts.Update(script))
             {
                 return Conflict();
@@ -129,14 +107,9 @@ namespace DaJet.Http.Controllers
 
             return Ok();
         }
-        [HttpDelete("{infobase}/{uuid}")] public ActionResult Delete([FromRoute] string infobase, [FromRoute] string uuid)
+        [HttpDelete("{uuid:guid}")] public ActionResult DeleteScript([FromRoute] Guid uuid)
         {
-            if (!Guid.TryParse(uuid, out Guid _))
-            {
-                return BadRequest();
-            }
-
-            if (!_scripts.TrySelect(in uuid, out ScriptModel script))
+            if (!_scripts.TrySelect(uuid, out ScriptModel script))
             {
                 return NotFound();
             }
@@ -171,33 +144,57 @@ namespace DaJet.Http.Controllers
             _scripts.Delete(script);
         }
 
-
-        [HttpPost("execute")] public ActionResult Execute([FromBody] QueryModel query)
+        [HttpPost("{infobase}/{**path}")] public async Task<ActionResult> ExecuteScript([FromRoute] string infobase, [FromRoute] string path)
         {
-            if (string.IsNullOrWhiteSpace(query.DbName) || string.IsNullOrWhiteSpace(query.Script))
+            HttpRequest request = HttpContext.Request;
+            int contentLength = (int)request.ContentLength;
+
+            byte[] buffer = new byte[contentLength];
+
+            int bytesRead = await request.Body.ReadAsync(buffer, 0, contentLength);
+
+            string content = Encoding.UTF8.GetString(buffer);
+
+            ScriptModel script = SelectScriptByPath(infobase, path);
+
+            if (script == null)
+            {
+                return NotFound();
+            }
+
+            if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(script.Script))
             {
                 return BadRequest();
             }
 
-            InfoBaseModel record = _mapper.Select(query.DbName);
+            InfoBaseModel record = _mapper.Select(infobase);
 
             if (record == null)
             {
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataCache(query.DbName, out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetMetadataCache(infobase, out MetadataCache cache, out string error))
             {
                 return BadRequest(error);
             }
 
             ScriptExecutor executor = new(cache);
 
-            List<Dictionary<string, object>> result = new();
+            //TODO: parse parameters from request body !!!
 
+            //if (parameters != null)
+            //{
+            //    foreach (var parameter in parameters)
+            //    {
+            //        executor.Parameters.Add(parameter.Key, parameter.Value);
+            //    }
+            //}
+
+            List<Dictionary<string, object>> result = new();
             try
             {
-                foreach (var entity in executor.ExecuteReader(query.Script))
+                foreach (var entity in executor.ExecuteReader(script.Script))
                 {
                     foreach (var item in entity)
                     {
@@ -206,7 +203,6 @@ namespace DaJet.Http.Controllers
                             entity[item.Key] = value.ToString();
                         }
                     }
-
                     result.Add(entity);
                 }
             }
@@ -224,6 +220,42 @@ namespace DaJet.Http.Controllers
             string json = JsonSerializer.Serialize(result, options);
 
             return Content(json);
+        }
+        private ScriptModel SelectScriptByPath(string infobase, string path)
+        {
+            string[] segments = path.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+            int counter = 0;
+            ScriptModel current = null;
+            List<ScriptModel> list = _scripts.Select(infobase);
+
+            foreach (string segment in segments)
+            {
+                current = list.Where(item => item.Name == segment).FirstOrDefault();
+
+                if (current == null) { break; }
+
+                counter++;
+
+                if (counter < segments.Length)
+                {
+                    list = _scripts.Select(current);
+                }
+            }
+
+            if (counter == segments.Length && current != null)
+            {
+                if (_scripts.TrySelect(current.Uuid, out ScriptModel script))
+                {
+                    return script;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+
+            return null; // not found
         }
     }
 }

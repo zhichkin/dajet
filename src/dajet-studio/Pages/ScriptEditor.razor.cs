@@ -1,23 +1,94 @@
 ﻿using DaJet.Studio.Model;
 using Microsoft.AspNetCore.Components;
+using System.Net;
 using System.Net.Http.Json;
 
 namespace DaJet.Studio.Pages
 {
     public partial class ScriptEditor : ComponentBase
     {
-        protected string Database { get; set; } = string.Empty;
-        protected string ScriptText { get; set; } = "Код скрипта ...";
+        [Parameter] public Guid Uuid { get; set; } = Guid.Empty;
+        protected ScriptModel Model { get; set; } = new ScriptModel();
+        protected bool ScriptIsChanged { get; set; } = false;
         protected string ErrorText { get; set; } = string.Empty;
         protected string ResultText { get; set; } = string.Empty;
         protected List<Dictionary<string, object>> ResultTable { get; set; }
-        protected override void OnInitialized()
+        protected override async Task OnInitializedAsync()
         {
-            Database = AppState.CurrentInfoBase;
+            if (Uuid != Guid.Empty)
+            {
+                Model = await SelectScript(Uuid);
+            }
+            else
+            {
+                Model.Uuid = Guid.NewGuid();
+                Model.Name = "NewScript";
+                Model.IsFolder = false;
+                Model.Owner = AppState.CurrentInfoBase;
+            }
+        }
+        protected void OnNameChanged(ChangeEventArgs args)
+        {
+            Model.Name = args.Value.ToString();
+            ScriptIsChanged = true;
+        }
+        protected void OnScriptChanged(ChangeEventArgs args)
+        {
+            Model.Script = args.Value.ToString();
+            ScriptIsChanged = true;
         }
         protected void CloseScriptEditor()
         {
             Navigator.NavigateTo("/");
+        }
+        private async Task<ScriptModel> SelectScript(Guid uuid)
+        {
+            ScriptModel script = null;
+
+            try
+            {
+                HttpResponseMessage response = await Http.GetAsync($"/api/{uuid}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    string result = await response.Content.ReadAsStringAsync();
+
+                    ErrorText = response.ReasonPhrase
+                        + (string.IsNullOrEmpty(result)
+                        ? string.Empty
+                        : Environment.NewLine + result);
+                }
+                else
+                {
+                    script = await response.Content.ReadFromJsonAsync<ScriptModel>();
+                }
+            }
+            catch (Exception error)
+            {
+                ErrorText = error.Message;
+            }
+
+            return script;
+        }
+        private async Task SaveScriptCommand()
+        {
+            try
+            {
+                HttpResponseMessage response = await Http.PutAsJsonAsync($"/api", Model);
+
+                if (response.StatusCode != HttpStatusCode.OK)
+                {
+                    AppState.FooterText = response.ReasonPhrase;
+                }
+                else
+                {
+                    ScriptIsChanged = false;
+                }
+            }
+            catch (Exception error)
+            {
+                AppState.FooterText = error.Message;
+            }
         }
         protected async Task ExecuteScriptSql()
         {
@@ -27,8 +98,8 @@ namespace DaJet.Studio.Pages
 
             QueryRequest request = new()
             {
-                DbName = Database,
-                Script = ScriptText
+                DbName = Model.Owner,
+                Script = Model.Script
             };
 
             try
@@ -71,8 +142,8 @@ namespace DaJet.Studio.Pages
 
             QueryRequest request = new()
             {
-                DbName = Database,
-                Script = ScriptText
+                DbName = Model.Owner,
+                Script = Model.Script
             };
 
             try
@@ -106,8 +177,8 @@ namespace DaJet.Studio.Pages
 
             QueryRequest request = new()
             {
-                DbName = Database,
-                Script = ScriptText
+                DbName = Model.Owner,
+                Script = Model.Script
             };
 
             try

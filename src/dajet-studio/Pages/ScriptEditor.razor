@@ -1,4 +1,4 @@
-﻿@page "/script-editor"
+﻿@page "/script-editor/{uuid:guid?}"
 
 @inject HttpClient Http;
 @inject AppState AppState;
@@ -8,18 +8,30 @@
 
     <div class="script-editor-action">
         <div style="margin:5px;">
-            <span style="font-weight:bold;">@Database</span>
+            <span style="font-weight:bold;">@Model.Owner</span>
             <input type="button" value="✕" class="script-editor-close-button" @onclick="CloseScriptEditor">
         </div>
-        <div>
+        <div style="margin-left:5px;">
+            
+            <input type="text" value="@Model.Name" @oninput="OnNameChanged" style="border: 1px solid black; border-radius:3px; padding: 0px 3px 0px 3px;" />
+            
+            @if (ScriptIsChanged)
+            {
+                <MudTooltip Text="Сохранить изменения">
+                    <MudIconButton Icon="@Icons.Material.Filled.Save" Color="Color.Dark" Size="Size.Small" OnClick="SaveScriptCommand" />
+                </MudTooltip>
+            }
             <input type="button" class="script-editor-button" value="SQL" @onclick="ExecuteScriptSql">
             <input type="button" class="script-editor-button" value="JSON" @onclick="ExecuteScriptJson">
             <input type="button" class="script-editor-button" value="Таблица" @onclick="ExecuteScriptTable">
+
         </div>
     </div>
 
     <div class="script-editor-script">
-        <textarea @bind="ScriptText" style="border: 1px solid black; padding: 3px; white-space: nowrap;" rows="10" />
+        <textarea @oninput="OnScriptChanged" style="border: 1px solid black; padding: 3px; white-space: nowrap;" rows="10">
+            @Model.Script
+        </textarea>
     </div>
 
     <div class="script-editor-result">

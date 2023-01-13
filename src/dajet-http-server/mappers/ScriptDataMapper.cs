@@ -7,13 +7,13 @@ namespace DaJet.Http.DataMappers
     {
         private const string DATABASE_FILE_NAME = "dajet-http-server.db";
         private const string CREATE_INFOBASE_TABLE_SCRIPT = "CREATE TABLE IF NOT EXISTS " +
-            "scripts (uuid TEXT NOT NULL, owner TEXT NOT NULL, parent TEXT NOT NULL, is_folder INTEGER NOT NULL, name TEXT NOT NULL, " +
+            "scripts (uuid TEXT NOT NULL, owner TEXT NOT NULL, parent TEXT NOT NULL, is_folder INTEGER NOT NULL, name TEXT NOT NULL, script TEXT NOT NULL, " +
             "PRIMARY KEY (uuid)) WITHOUT ROWID;";
         private const string SELECT_ROOT_SCRIPT = "SELECT uuid, owner, parent, is_folder, name FROM scripts WHERE owner = @owner AND parent = @parent ORDER BY is_folder ASC, name ASC;";
         private const string SELECT_NODE_SCRIPT = "SELECT uuid, owner, parent, is_folder, name FROM scripts WHERE parent = @parent ORDER BY is_folder ASC, name ASC;";
-        private const string SELECT_SCRIPT = "SELECT uuid, owner, parent, is_folder, name FROM scripts WHERE uuid = @uuid;";
-        private const string INSERT_SCRIPT = "INSERT INTO scripts (uuid, owner, parent, is_folder, name) VALUES (@uuid, @owner, @parent, @is_folder, @name);";
-        private const string UPDATE_SCRIPT = "UPDATE scripts SET owner = @owner, parent = @parent, is_folder = @is_folder, name = @name WHERE uuid = @uuid;";
+        private const string SELECT_SCRIPT = "SELECT uuid, owner, parent, is_folder, name, script FROM scripts WHERE uuid = @uuid;";
+        private const string INSERT_SCRIPT = "INSERT INTO scripts (uuid, owner, parent, is_folder, name, script) VALUES (@uuid, @owner, @parent, @is_folder, @name, @script);";
+        private const string UPDATE_SCRIPT = "UPDATE scripts SET owner = @owner, parent = @parent, is_folder = @is_folder, name = @name, script = @script WHERE uuid = @uuid;";
         private const string DELETE_SCRIPT = "DELETE FROM scripts WHERE uuid = @uuid;";
 
         private readonly string _connectionString;
@@ -72,7 +72,8 @@ namespace DaJet.Http.DataMappers
                                 Owner = reader.GetString(1),
                                 Parent = new Guid(reader.GetString(2)),
                                 IsFolder = (reader.GetInt32(3) == 1),
-                                Name = reader.GetString(4)
+                                Name = reader.GetString(4),
+                                Script = string.Empty
                             };
                             list.Add(item);
                         }
@@ -107,7 +108,8 @@ namespace DaJet.Http.DataMappers
                                 Owner = reader.GetString(1),
                                 Parent = new Guid(reader.GetString(2)),
                                 IsFolder = (reader.GetInt32(3) == 1),
-                                Name = reader.GetString(4)
+                                Name = reader.GetString(4),
+                                Script = string.Empty
                             };
                             list.Add(item);
                         }
@@ -118,7 +120,7 @@ namespace DaJet.Http.DataMappers
 
             return list;
         }
-        public bool TrySelect(in string uuid, out ScriptModel script)
+        public bool TrySelect(Guid uuid, out ScriptModel script)
         {
             script = null;
 
@@ -130,7 +132,7 @@ namespace DaJet.Http.DataMappers
                 {
                     command.CommandText = SELECT_SCRIPT;
 
-                    command.Parameters.AddWithValue("uuid", uuid);
+                    command.Parameters.AddWithValue("uuid", uuid.ToString());
 
                     using (SqliteDataReader reader = command.ExecuteReader())
                     {
@@ -142,7 +144,8 @@ namespace DaJet.Http.DataMappers
                                 Owner = reader.GetString(1),
                                 Parent = new Guid(reader.GetString(2)),
                                 IsFolder = (reader.GetInt32(3) == 1),
-                                Name = reader.GetString(4)
+                                Name = reader.GetString(4),
+                                Script = reader.GetString(5)
                             };
                         }
                         reader.Close();
@@ -169,6 +172,7 @@ namespace DaJet.Http.DataMappers
                     command.Parameters.AddWithValue("parent", script.Parent.ToString());
                     command.Parameters.AddWithValue("is_folder", script.IsFolder ? 1 : 0);
                     command.Parameters.AddWithValue("name", script.Name);
+                    command.Parameters.AddWithValue("script", script.Script);
 
                     result = command.ExecuteNonQuery();
                 }
@@ -193,6 +197,7 @@ namespace DaJet.Http.DataMappers
                     command.Parameters.AddWithValue("parent", script.Parent.ToString());
                     command.Parameters.AddWithValue("is_folder", script.IsFolder ? 1 : 0);
                     command.Parameters.AddWithValue("name", script.Name);
+                    command.Parameters.AddWithValue("script", script.Script);
 
                     result = command.ExecuteNonQuery();
                 }
