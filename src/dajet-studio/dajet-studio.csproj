@@ -18,9 +18,11 @@
 
   <ItemGroup>
     <Content Remove="wwwroot\css\script-editor.css" />
+    <Content Remove="wwwroot\css\tree-view.css" />
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="wwwroot\css\tree-view.css" />
     <None Include="wwwroot\css\script-editor.css" />
     <None Include="wwwroot\css\app.css" />
     <None Include="wwwroot\index.html" />

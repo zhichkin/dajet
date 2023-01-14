@@ -3,6 +3,7 @@ using DaJet.Studio.Model;
 using DaJet.Studio.Pages;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
+using System.ComponentModel;
 using System.Net;
 using System.Net.Http.Json;
 
@@ -13,11 +14,14 @@ namespace DaJet.Studio.Controllers
         private HttpClient Http { get; set; }
         private AppState AppState { get; set; }
         private NavigationManager Navigator { get; set; }
+        private readonly Func<TreeNodeModel, CancelEventArgs, Task> _updateTitleCommandHandler;
         public ApiTreeViewController(AppState appState, HttpClient http, NavigationManager navigator)
         {
             Http = http;
             AppState = appState;
             Navigator = navigator;
+
+            _updateTitleCommandHandler = new(UpdateTitleCommandHandler);
         }
         public TreeNodeModel CreateRootNode(InfoBaseModel model)
         {
@@ -77,7 +81,9 @@ namespace DaJet.Studio.Controllers
                 Parent = parent,
                 Title = model.Name,
                 UseToggle = model.IsFolder,
-                ContextMenuHandler = OpenContextMenu
+                CanBeEdited = true,
+                ContextMenuHandler = OpenContextMenu,
+                UpdateTitleCommand = _updateTitleCommandHandler
             };
 
             foreach (ScriptModel script in model.Children)
@@ -203,7 +209,9 @@ namespace DaJet.Studio.Controllers
                 Parent = node,
                 Title = script.Name,
                 UseToggle = script.IsFolder,
-                ContextMenuHandler = OpenContextMenu
+                CanBeEdited = true,
+                ContextMenuHandler = OpenContextMenu,
+                UpdateTitleCommand = _updateTitleCommandHandler
             };
 
             node.Nodes.Add(child);
@@ -213,6 +221,28 @@ namespace DaJet.Studio.Controllers
             if (node.Tag is ScriptModel script)
             {
                 Navigator.NavigateTo($"/script-editor/{script.Uuid}");
+            }
+        }
+        private async Task UpdateTitleCommandHandler(TreeNodeModel node, CancelEventArgs args)
+        {
+            if (node.Tag is not ScriptModel script)
+            {
+                return;
+            }
+
+            bool success = await UpdateScriptName(new ScriptModel()
+            {
+                Uuid = script.Uuid,
+                Name = node.Title
+            });
+
+            if (success)
+            {
+                script.Name = node.Title;
+            }
+            else
+            {
+                args.Cancel = true;
             }
         }
         private async Task DeleteFolderScript(TreeNodeModel node)
@@ -251,6 +281,26 @@ namespace DaJet.Studio.Controllers
                     return false;
                 }
                 return true;
+            }
+            catch (Exception error)
+            {
+                AppState.FooterText = error.Message;
+                return false;
+            }
+        }
+        private async Task<bool> UpdateScriptName(ScriptModel script)
+        {
+            try
+            {
+                HttpResponseMessage response = await Http.PutAsJsonAsync($"/api/name", script);
+
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    return true;
+                }
+
+                AppState.FooterText = response.ReasonPhrase;
+                return false;
             }
             catch (Exception error)
             {

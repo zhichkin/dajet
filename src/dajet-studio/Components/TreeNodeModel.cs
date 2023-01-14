@@ -1,4 +1,5 @@
 ﻿using MudBlazor;
+using System.ComponentModel;
 
 namespace DaJet.Studio.Components
 {
@@ -11,12 +12,15 @@ namespace DaJet.Studio.Components
         public bool IsVisible { get; set; } = true;
         public bool UseToggle { get; set; } = true;
         public bool IsExpanded { get; set; } = false;
+        public bool CanBeEdited { get; set; } = false;
+        public bool IsInEditMode { get; set; } = false;
         public TreeNodeModel Parent { get; set; }
         public List<TreeNodeModel> Nodes { get; set; } = new();
         public Func<Task> ToggleCommand { get; private set; }
         public Func<IDialogService, Task> ContextMenuCommand { get; private set; }
         public Func<TreeNodeModel, Task> OpenNodeHandler { get; set; }
         public Func<TreeNodeModel, IDialogService, Task> ContextMenuHandler { get; set; }
+        public Func<TreeNodeModel, CancelEventArgs, Task> UpdateTitleCommand { get; set; }
         public TreeNodeModel()
         {
             ToggleCommand = new(ToggleCommandHandler);

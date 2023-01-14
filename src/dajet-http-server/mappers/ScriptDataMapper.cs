@@ -1,5 +1,6 @@
 ﻿using DaJet.Http.Model;
 using Microsoft.Data.Sqlite;
+using System;
 
 namespace DaJet.Http.DataMappers
 {
@@ -11,9 +12,11 @@ namespace DaJet.Http.DataMappers
             "PRIMARY KEY (uuid)) WITHOUT ROWID;";
         private const string SELECT_ROOT_SCRIPT = "SELECT uuid, owner, parent, is_folder, name FROM scripts WHERE owner = @owner AND parent = @parent ORDER BY is_folder ASC, name ASC;";
         private const string SELECT_NODE_SCRIPT = "SELECT uuid, owner, parent, is_folder, name FROM scripts WHERE parent = @parent ORDER BY is_folder ASC, name ASC;";
+        private const string SELECT_INFO_SCRIPT = "SELECT uuid, owner, parent, is_folder, name FROM scripts WHERE uuid = @uuid;";
         private const string SELECT_SCRIPT = "SELECT uuid, owner, parent, is_folder, name, script FROM scripts WHERE uuid = @uuid;";
         private const string INSERT_SCRIPT = "INSERT INTO scripts (uuid, owner, parent, is_folder, name, script) VALUES (@uuid, @owner, @parent, @is_folder, @name, @script);";
         private const string UPDATE_SCRIPT = "UPDATE scripts SET owner = @owner, parent = @parent, is_folder = @is_folder, name = @name, script = @script WHERE uuid = @uuid;";
+        private const string UPDATE_NAME_SCRIPT = "UPDATE scripts SET name = @name WHERE uuid = @uuid;";
         private const string DELETE_SCRIPT = "DELETE FROM scripts WHERE uuid = @uuid;";
 
         private readonly string _connectionString;
@@ -120,6 +123,40 @@ namespace DaJet.Http.DataMappers
 
             return list;
         }
+        public ScriptModel SelectScript(Guid uuid)
+        {
+            ScriptModel script = null;
+
+            using (SqliteConnection connection = new(_connectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = SELECT_INFO_SCRIPT;
+
+                    command.Parameters.AddWithValue("uuid", uuid.ToString());
+
+                    using (SqliteDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            script = new ScriptModel()
+                            {
+                                Uuid = new Guid(reader.GetString(0)),
+                                Owner = reader.GetString(1),
+                                Parent = new Guid(reader.GetString(2)),
+                                IsFolder = (reader.GetInt32(3) == 1),
+                                Name = reader.GetString(4)
+                            };
+                        }
+                        reader.Close();
+                    }
+                }
+            }
+
+            return script;
+        }
         public bool TrySelect(Guid uuid, out ScriptModel script)
         {
             script = null;
@@ -198,6 +235,27 @@ namespace DaJet.Http.DataMappers
                     command.Parameters.AddWithValue("is_folder", script.IsFolder ? 1 : 0);
                     command.Parameters.AddWithValue("name", script.Name);
                     command.Parameters.AddWithValue("script", script.Script);
+
+                    result = command.ExecuteNonQuery();
+                }
+            }
+
+            return (result == 1);
+        }
+        public bool UpdateName(ScriptModel script)
+        {
+            int result;
+
+            using (SqliteConnection connection = new(_connectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = UPDATE_NAME_SCRIPT;
+
+                    command.Parameters.AddWithValue("uuid", script.Uuid.ToString());
+                    command.Parameters.AddWithValue("name", script.Name);
 
                     result = command.ExecuteNonQuery();
                 }

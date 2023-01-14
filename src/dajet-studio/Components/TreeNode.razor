@@ -1,4 +1,5 @@
-﻿@inject IDialogService DialogService;
+﻿@inject IJSRuntime JSRuntime;
+@inject IDialogService DialogService;
 
 <li style="white-space:nowrap; margin: 0px; padding: 0px 0px 0px 15px; @(Model.IsVisible ? "display: block;" : "display: none;")">
 
@@ -9,9 +10,27 @@
         </span>
     }
 
-    <span style="display: inline; margin: 0px; padding: 0px;" @oncontextmenu="OpenContextMenu" @oncontextmenu:preventDefault="true">
-        @(Model == null ? string.Empty : Model.Title)
-    </span>
+    @if (Model.CanBeEdited && Model.IsInEditMode)
+    {
+        <div class="tree-node-container">
+            
+            <input type="text" class="tree-node-input" @ref="TitleInput"
+               @bind-value="@Model.Title" @bind-value:event="oninput" @onkeyup="KeyPress" @onblur="LostFocus" />
+
+            <MudTooltip Text="Отменить редактирование">
+                <input type="button" value="✕" class="tree-node-cancel-button" @onclick="CancelEditMode">
+            </MudTooltip>
+
+        </div>
+    }
+    else
+    {
+        <span class="tree-node-span"
+          @ondblclick="DoubleClick" @ondblclick:preventDefault="true"
+          @oncontextmenu="OpenContextMenu" @oncontextmenu:preventDefault="true">
+            @(Model == null ? string.Empty : Model.Title)
+        </span>
+    }
 
     @if (Model != null && Model.Nodes != null && Model.Nodes.Count > 0)
     {

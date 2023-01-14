@@ -9,6 +9,7 @@ namespace DaJet.Studio.Pages
     {
         [Parameter] public Guid Uuid { get; set; } = Guid.Empty;
         protected ScriptModel Model { get; set; } = new ScriptModel();
+        protected string ScriptUrl { get; set; } = string.Empty;
         protected bool ScriptIsChanged { get; set; } = false;
         protected string ErrorText { get; set; } = string.Empty;
         protected string ResultText { get; set; } = string.Empty;
@@ -18,19 +19,16 @@ namespace DaJet.Studio.Pages
             if (Uuid != Guid.Empty)
             {
                 Model = await SelectScript(Uuid);
+                ScriptUrl = await SelectScriptUrl(Model.Uuid);
             }
             else
             {
                 Model.Uuid = Guid.NewGuid();
-                Model.Name = "NewScript";
+                Model.Name = "Скрипт 1QL";
                 Model.IsFolder = false;
                 Model.Owner = AppState.CurrentInfoBase;
+                ScriptUrl = Model.Name;
             }
-        }
-        protected void OnNameChanged(ChangeEventArgs args)
-        {
-            Model.Name = args.Value.ToString();
-            ScriptIsChanged = true;
         }
         protected void OnScriptChanged(ChangeEventArgs args)
         {
@@ -40,6 +38,31 @@ namespace DaJet.Studio.Pages
         protected void CloseScriptEditor()
         {
             Navigator.NavigateTo("/");
+        }
+        private async Task<string> SelectScriptUrl(Guid uuid)
+        {
+            try
+            {
+                HttpResponseMessage response = await Http.GetAsync($"/api/url/{uuid}");
+
+                string result = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return result;
+                }
+
+                ErrorText = response.ReasonPhrase
+                    + (string.IsNullOrEmpty(result)
+                    ? string.Empty
+                    : Environment.NewLine + result);
+            }
+            catch (Exception error)
+            {
+                ErrorText = error.Message;
+            }
+
+            return string.Empty;
         }
         private async Task<ScriptModel> SelectScript(Guid uuid)
         {

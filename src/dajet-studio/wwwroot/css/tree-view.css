@@ -1,0 +1,27 @@
+.tree-node-span {
+    display: inline;
+    margin: 0px;
+    padding: 1px 3px 1px 3px;
+}
+    .tree-node-span:hover {
+        background: #D3D3D3;
+    }
+
+.tree-node-container {
+    display: inline-block;
+    border-radius: 3px;
+    border: 1px solid black;
+    padding: 1px 3px 1px 3px;
+    width: min-content;
+}
+
+.tree-node-input {
+    outline: none;
+}
+
+.tree-node-cancel-button {
+    cursor: pointer;
+    border: none;
+    margin: 0px 0px 0px 1px;
+    background: none;
+}

@@ -57,6 +57,28 @@ namespace DaJet.Http.Controllers
             }
         }
 
+        [HttpGet("url/{uuid:guid}")] public ActionResult SelectScriptUrl([FromRoute] Guid uuid)
+        {
+            if (!_scripts.TrySelect(uuid, out ScriptModel script))
+            {
+                return NotFound();
+            }
+
+            string url = "/" + script.Name;
+            string database = script.Owner;
+
+            script = _scripts.SelectScript(script.Parent);
+
+            while (script != null)
+            {
+                url = "/" + script.Name + url;
+                script = _scripts.SelectScript(script.Parent);
+            }
+
+            url = "/api/" + database + url;
+
+            return Content(url);
+        }
         [HttpGet("{uuid:guid}")] public ActionResult SelectScript([FromRoute] Guid uuid)
         {
             if (!_scripts.TrySelect(uuid, out ScriptModel script))
@@ -104,7 +126,14 @@ namespace DaJet.Http.Controllers
             {
                 return Conflict();
             }
-
+            return Ok();
+        }
+        [HttpPut("name")] public ActionResult UpdateScriptName([FromBody] ScriptModel script)
+        {
+            if (!_scripts.UpdateName(script))
+            {
+                return Conflict();
+            }
             return Ok();
         }
         [HttpDelete("{uuid:guid}")] public ActionResult DeleteScript([FromRoute] Guid uuid)
