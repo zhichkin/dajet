@@ -17,6 +17,7 @@ namespace DaJet.Studio.Components
         public const string NODE_TYPE_ACCUMREGISTER = "РегистрНакопления";
         protected string FilterValue { get; set; } = string.Empty;
         protected List<TreeNodeModel> Nodes { get; set; } = new();
+        [Inject] private DbViewController DbViewController { get; set; }
         [Inject] private ApiTreeViewController ApiTreeViewController { get; set; }
         protected override async Task OnInitializedAsync()
         {
@@ -74,6 +75,8 @@ namespace DaJet.Studio.Components
 
             ConfigureApiTreeViewNode(in node, in model);
 
+            ConfigureDbViewNode(in node, in model);
+
             node.Nodes.Add(new TreeNodeModel()
             {
                 Tag = model,
@@ -94,6 +97,19 @@ namespace DaJet.Studio.Components
             ConfigureConfigurationTreeNode(in configuration);
 
             node.Nodes.Add(configuration);
+        }
+        private void ConfigureDbViewNode(in TreeNodeModel node, in InfoBaseModel model)
+        {
+            try
+            {
+                TreeNodeModel dbview = DbViewController.CreateRootNode(model);
+                dbview.Parent = node;
+                node.Nodes.Add(dbview);
+            }
+            catch (Exception error)
+            {
+                Snackbar.Add(error.Message, Severity.Error);
+            }
         }
         private void ConfigureApiTreeViewNode(in TreeNodeModel node, in InfoBaseModel model)
         {

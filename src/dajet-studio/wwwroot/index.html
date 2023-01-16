@@ -24,6 +24,16 @@
         }
     </script>
 
+    <script>
+        function BlazorFileDownload(fileName, fileUrl) {
+            var element = document.createElement("a");
+            element.href = fileUrl;
+            element.download = fileName ?? '';
+            element.click();
+            element.remove();
+        }
+    </script>
+
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
 </body>

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <RootNamespace>DaJet.DbViewGenerator</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>DaJet.DbViewGenerator</AssemblyName>
+    <Version>1.0.0</Version>
+    <Authors>Zhichkin</Authors>
+    <Copyright>Zhichkin © 2022</Copyright>
+    <Description>1C:Enterprise 8 database views generator for Microsoft SQL Server and PostgreSQL</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageId>$(AssemblyName)</PackageId>
+    <RepositoryUrl>https://github.com/zhichkin/dajet/tree/main/src/dajet-metadata</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\dajet-metadata\dajet-metadata.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -36,6 +36,7 @@ namespace DaJet.Studio
 
             builder.Services.AddMudServices();
             builder.Services.AddSingleton<AppState>();
+            builder.Services.AddSingleton<DbViewController>();
             builder.Services.AddSingleton<ApiTreeViewController>();
 
             await builder.Build().RunAsync();

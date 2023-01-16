@@ -9,7 +9,7 @@ namespace DaJet.Http.Server
 {
     public static class Program
     {
-        private static readonly string[] webapi = new string[] { "/api", "/md", "/mdex", "/1ql" };
+        private static readonly string[] webapi = new string[] { "/api", "/db", "/md", "/mdex", "/1ql" };
         public static void Main(string[] args)
         {
             WebApplicationOptions options = new()

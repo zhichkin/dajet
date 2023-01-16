@@ -1,0 +1,37 @@
+﻿@using DaJet.Studio.Model;
+
+<MudDialog OnBackdropClick="CloseDialog" DefaultFocus="DefaultFocus.Element" DisableSidePadding="true">
+
+    <DialogContent>
+
+        <MudContainer MaxWidth="MaxWidth.ExtraSmall" Class="mx-0 my-0">
+
+            <span Style="display:block; font-size:var(--mud-typography-default-size);">
+                @Model.Url
+            </span>
+
+            <MudTextField Label="Имя схемы БД" @bind-Value="SchemaName"
+                          T="string" Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Class="ml-2 mt-2" Style="font-size:var(--mud-typography-default-size);" />
+
+            <MudTooltip Text="Создать новую схему БД">
+                <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder" Color="Color.Success" Size="Size.Large" OnClick="CreateCommand" />
+            </MudTooltip>
+
+            <MudTooltip Text="Обновить список">
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Info" Size="Size.Large" OnClick="UpdateCommand" />
+            </MudTooltip>
+
+            <MudTooltip Text="Удалить схему БД">
+                <MudIconButton Icon="@Icons.Material.Filled.FolderOff" Color="Color.Error" Size="Size.Large" OnClick="DeleteCommand" />
+            </MudTooltip>
+
+            <MudTooltip Text="Отмена">
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Dark" Size="Size.Large" OnClick="CloseDialog" />
+            </MudTooltip>
+
+        </MudContainer>
+
+    </DialogContent>
+
+</MudDialog>
