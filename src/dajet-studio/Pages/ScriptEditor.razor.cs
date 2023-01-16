@@ -14,7 +14,7 @@ namespace DaJet.Studio.Pages
         protected string ErrorText { get; set; } = string.Empty;
         protected string ResultText { get; set; } = string.Empty;
         protected List<Dictionary<string, object>> ResultTable { get; set; }
-        protected override async Task OnInitializedAsync()
+        protected override async Task OnParametersSetAsync()
         {
             if (Uuid != Guid.Empty)
             {
@@ -29,6 +29,11 @@ namespace DaJet.Studio.Pages
                 Model.Owner = AppState.CurrentInfoBase;
                 ScriptUrl = Model.Name;
             }
+            
+            ErrorText = string.Empty;
+            ResultText = string.Empty;
+            ResultTable = null;
+            ScriptIsChanged = false;
         }
         protected void OnScriptChanged(ChangeEventArgs args)
         {

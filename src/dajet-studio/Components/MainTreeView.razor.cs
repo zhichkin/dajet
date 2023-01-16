@@ -9,12 +9,23 @@ namespace DaJet.Studio.Components
 {
     public partial class MainTreeView : ComponentBase
     {
-        public const string NODE_TYPE_CONFIGURATION = "Конфигурация";
-        public const string NODE_TYPE_EXTENSIONS = "Расширения";
-        public const string NODE_TYPE_CATALOG = "Справочник";
-        public const string NODE_TYPE_DOCUMENT = "Документ";
-        public const string NODE_TYPE_INFOREGISTER = "РегистрСведений";
-        public const string NODE_TYPE_ACCUMREGISTER = "РегистрНакопления";
+        #region "CONSTANTS"
+        private readonly Guid ENUMERATION_TYPE = new("f6a80749-5ad7-400b-8519-39dc5dff2542");
+        private readonly Guid SHARED_PROPERTY_TYPE = new("15794563-ccec-41f6-a83c-ec5f7b9a5bc1");
+        private readonly Guid NAMED_DATA_TYPE_TYPE = new("c045099e-13b9-4fb6-9d50-fca00202971e");
+        private const string NODE_TYPE_SERVICE = "Служебные";
+        private const string NODE_TYPE_SHARED_PROPERTY = "ОбщийРеквизит";
+        private const string NODE_TYPE_NAMED_DATA_TYPE = "ОпределяемыйТип";
+        private const string NODE_TYPE_CONFIGURATION = "Конфигурация";
+        private const string NODE_TYPE_EXTENSIONS = "Расширения";
+        private const string NODE_TYPE_PUBLICATION = "ПланОбмена";
+        private const string NODE_TYPE_ENUMERATION = "Перечисление";
+        private const string NODE_TYPE_CATALOG = "Справочник";
+        private const string NODE_TYPE_DOCUMENT = "Документ";
+        private const string NODE_TYPE_CHARACTERISTIC = "ПланВидовХарактеристик";
+        private const string NODE_TYPE_INFOREGISTER = "РегистрСведений";
+        private const string NODE_TYPE_ACCUMREGISTER = "РегистрНакопления";
+        #endregion
         protected string FilterValue { get; set; } = string.Empty;
         protected List<TreeNodeModel> Nodes { get; set; } = new();
         [Inject] private DbViewController DbViewController { get; set; }
@@ -36,6 +47,33 @@ namespace DaJet.Studio.Components
             catch (Exception error)
             {
                 //TODO: handle error
+            }
+        }
+
+        private void ConfigureDbViewNode(in TreeNodeModel node, in InfoBaseModel model)
+        {
+            try
+            {
+                TreeNodeModel dbview = DbViewController.CreateRootNode(model);
+                dbview.Parent = node;
+                node.Nodes.Add(dbview);
+            }
+            catch (Exception error)
+            {
+                Snackbar.Add(error.Message, Severity.Error);
+            }
+        }
+        private void ConfigureApiTreeViewNode(in TreeNodeModel node, in InfoBaseModel model)
+        {
+            try
+            {
+                TreeNodeModel api = ApiTreeViewController.CreateRootNode(model);
+                api.Parent = node;
+                node.Nodes.Add(api);
+            }
+            catch (Exception error)
+            {
+                Snackbar.Add(error.Message, Severity.Error);
             }
         }
 
@@ -65,63 +103,6 @@ namespace DaJet.Studio.Components
                     UseToggle = false,
                     Title = "Ошибка загрузки данных!"
                 });
-            }
-        }
-        public void ConfigureInfoBaseNode(in TreeNodeModel node, in InfoBaseModel model)
-        {
-            node.Tag = model;
-            node.Title = model.Name;
-            node.Url = $"/md/{model.Name}";
-
-            ConfigureApiTreeViewNode(in node, in model);
-
-            ConfigureDbViewNode(in node, in model);
-
-            node.Nodes.Add(new TreeNodeModel()
-            {
-                Tag = model,
-                Parent = node,
-                Url = $"/mdex/{model.Name}",
-                Title = NODE_TYPE_EXTENSIONS,
-                OpenNodeHandler = OpenExtensionsNodeHandler
-            });
-
-            TreeNodeModel configuration = new()
-            {
-                Tag = model,
-                Url = node.Url,
-                Parent = node,
-                Title = NODE_TYPE_CONFIGURATION
-            };
-
-            ConfigureConfigurationTreeNode(in configuration);
-
-            node.Nodes.Add(configuration);
-        }
-        private void ConfigureDbViewNode(in TreeNodeModel node, in InfoBaseModel model)
-        {
-            try
-            {
-                TreeNodeModel dbview = DbViewController.CreateRootNode(model);
-                dbview.Parent = node;
-                node.Nodes.Add(dbview);
-            }
-            catch (Exception error)
-            {
-                Snackbar.Add(error.Message, Severity.Error);
-            }
-        }
-        private void ConfigureApiTreeViewNode(in TreeNodeModel node, in InfoBaseModel model)
-        {
-            try
-            {
-                TreeNodeModel api = ApiTreeViewController.CreateRootNode(model);
-                api.Parent = node;
-                node.Nodes.Add(api);
-            }
-            catch (Exception error)
-            {
-                Snackbar.Add(error.Message, Severity.Error);
             }
         }
         private async Task OpenExtensionsNodeHandler(TreeNodeModel node)
@@ -157,8 +138,80 @@ namespace DaJet.Studio.Components
                 //TODO: show error
             }
         }
+        public void ConfigureInfoBaseNode(in TreeNodeModel node, in InfoBaseModel model)
+        {
+            node.Tag = model;
+            node.Title = model.Name;
+            node.Url = $"/md/{model.Name}";
+
+            ConfigureApiTreeViewNode(in node, in model);
+
+            ConfigureDbViewNode(in node, in model);
+
+            node.Nodes.Add(new TreeNodeModel()
+            {
+                Tag = model,
+                Parent = node,
+                Url = $"/mdex/{model.Name}",
+                Title = NODE_TYPE_EXTENSIONS,
+                OpenNodeHandler = OpenExtensionsNodeHandler
+            });
+
+            TreeNodeModel configuration = new()
+            {
+                Tag = model,
+                Url = node.Url,
+                Parent = node,
+                Title = NODE_TYPE_CONFIGURATION
+            };
+
+            ConfigureConfigurationTreeNode(in configuration);
+
+            node.Nodes.Add(configuration);
+        }
         public void ConfigureConfigurationTreeNode(in TreeNodeModel parent)
         {
+            TreeNodeModel service = new()
+            {
+                Parent = parent,
+                Tag = parent.Tag,
+                Title = NODE_TYPE_SERVICE,
+                Url = $"{parent.Url}"
+            };
+            service.Nodes.Add(new TreeNodeModel()
+            {
+                Parent = service,
+                Tag = parent.Tag,
+                Title = NODE_TYPE_SHARED_PROPERTY,
+                Url = $"{parent.Url}/{NODE_TYPE_SHARED_PROPERTY}",
+                OpenNodeHandler = OpenMetadataNodeHandler
+            });
+            service.Nodes.Add(new TreeNodeModel()
+            {
+                Parent = service,
+                Tag = parent.Tag,
+                Title = NODE_TYPE_NAMED_DATA_TYPE,
+                Url = $"{parent.Url}/{NODE_TYPE_NAMED_DATA_TYPE}",
+                OpenNodeHandler = OpenMetadataNodeHandler
+            });
+            parent.Nodes.Add(service);
+
+            parent.Nodes.Add(new TreeNodeModel()
+            {
+                Parent = parent,
+                Tag = parent.Tag,
+                Title = NODE_TYPE_PUBLICATION,
+                Url = $"{parent.Url}/{NODE_TYPE_PUBLICATION}",
+                OpenNodeHandler = OpenMetadataNodeHandler
+            });
+            parent.Nodes.Add(new TreeNodeModel()
+            {
+                Parent = parent,
+                Tag = parent.Tag,
+                Title = NODE_TYPE_ENUMERATION,
+                Url = $"{parent.Url}/{NODE_TYPE_ENUMERATION}",
+                OpenNodeHandler = OpenMetadataNodeHandler
+            });
             parent.Nodes.Add(new TreeNodeModel()
             {
                 Parent = parent,
@@ -173,6 +226,14 @@ namespace DaJet.Studio.Components
                 Tag = parent.Tag,
                 Title = NODE_TYPE_DOCUMENT,
                 Url = $"{parent.Url}/{NODE_TYPE_DOCUMENT}",
+                OpenNodeHandler = OpenMetadataNodeHandler
+            });
+            parent.Nodes.Add(new TreeNodeModel()
+            {
+                Parent = parent,
+                Tag = parent.Tag,
+                Title = NODE_TYPE_CHARACTERISTIC,
+                Url = $"{parent.Url}/{NODE_TYPE_CHARACTERISTIC}",
                 OpenNodeHandler = OpenMetadataNodeHandler
             });
             parent.Nodes.Add(new TreeNodeModel()
@@ -210,13 +271,21 @@ namespace DaJet.Studio.Components
 
                 foreach (MetadataItemModel item in list)
                 {
+                    bool toggle = true;
+
+                    if (item.Type == SHARED_PROPERTY_TYPE || item.Type == NAMED_DATA_TYPE_TYPE)
+                    {
+                        toggle = false;
+                    }
+
                     TreeNodeModel model = new()
                     {
                         Tag = item,
                         Parent = node,
                         Title = item.Name,
                         Url = $"{node.Url}/{item.Name}",
-                        OpenNodeHandler = OpenEntityNodeHandler
+                        UseToggle = toggle,
+                        OpenNodeHandler = (toggle ? OpenEntityNodeHandler : null)
                     };
 
                     node.Nodes.Add(model);
@@ -234,15 +303,27 @@ namespace DaJet.Studio.Components
                 return;
             }
 
+            if (node.Tag is not MetadataItemModel item)
+            {
+                return;
+            }
+
             try
             {
                 HttpResponseMessage response = await Http.GetAsync(node.Url);
 
                 string content = await response.Content.ReadAsStringAsync();
 
-                EntityModel entity = await response.Content.ReadFromJsonAsync<EntityModel>();
-
-                ConfigureEntityNode(in node, in entity);
+                if (item.Type == ENUMERATION_TYPE)
+                {
+                    EnumModel enumeration = await response.Content.ReadFromJsonAsync<EnumModel>();
+                    ConfigureEnumerationNode(in node, in enumeration);
+                }
+                else
+                {
+                    EntityModel entity = await response.Content.ReadFromJsonAsync<EntityModel>();
+                    ConfigureEntityNode(in node, in entity);
+                }
             }
             catch (Exception error)
             {
@@ -280,8 +361,24 @@ namespace DaJet.Studio.Components
                 node.Nodes.Add(model);
             }
         }
+        private void ConfigureEnumerationNode(in TreeNodeModel node, in EnumModel entity)
+        {
+            // TODO: node.Tag = entity; // Change MetadataItemModel to EntityModel ???
 
-        #region "Filter Tree View"
+            foreach (EnumValue value in entity.Values)
+            {
+                TreeNodeModel model = new()
+                {
+                    Tag = value,
+                    Parent = node,
+                    Title = value.Name,
+                    UseToggle = false
+                };
+                node.Nodes.Add(model);
+            }
+        }
+
+        #region "FILTER TREE VIEW"
         protected async Task FilterTreeView(string filter)
         {
             string database = AppState.CurrentInfoBase;

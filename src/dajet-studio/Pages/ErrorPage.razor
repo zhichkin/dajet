@@ -1,0 +1,19 @@
+﻿@page "/error-page"
+
+@inject AppState AppState;
+@inject NavigationManager Navigator;
+
+<div style="margin:5px;">
+
+    <div style="display:block;">
+        <span style="font-weight:bold;color:red">Ошибка!</span>
+        <MudTooltip Text="Закрыть">
+            <input type="button" value="✕" style="cursor:pointer;border:none;background:none;font-weight:bold;margin-left:5px;" @onclick="ClosePage">
+        </MudTooltip>
+    </div>
+
+    <div style="display:block;margin-top:5px;">
+        <span>@ErrorText</span>
+    </div>
+
+</div>

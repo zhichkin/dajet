@@ -25,4 +25,7 @@ namespace DaJet.Metadata.Services
         int DropViews();
         void DropView(in ApplicationObject metadata);
     }
+
+    // SQL Server: SELECT OBJECT_DEFINITION(OBJECT_ID(N'[dbo].[Перечисление.СтавкиНДС]', 'V'));
+    // PostgreSQL: SELECT pg_get_viewdef('public."Документ.Документ1"'::regclass, true);
 }

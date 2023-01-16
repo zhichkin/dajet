@@ -1,6 +1,7 @@
 ﻿using DaJet.Studio.Components;
 using DaJet.Studio.Model;
 using DaJet.Studio.Pages;
+using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using MudBlazor;
 using System.Net;
@@ -23,11 +24,13 @@ namespace DaJet.Studio.Controllers
         private HttpClient Http { get; set; }
         private IJSRuntime JSRuntime { get; set; }
         private AppState AppState { get; set; }
-        public DbViewController(HttpClient http, IJSRuntime js, AppState state)
+        private NavigationManager Navigator { get; set; }
+        public DbViewController(HttpClient http, IJSRuntime js, AppState state, NavigationManager navigator)
         {
             Http = http;
             JSRuntime = js;
             AppState = state;
+            Navigator = navigator;
         }
         public TreeNodeModel CreateRootNode(InfoBaseModel model)
         {
@@ -145,7 +148,7 @@ namespace DaJet.Studio.Controllers
 
             if (!success)
             {
-                //TODO: handle error
+                Navigator.NavigateTo("/error-page");
             }
         }
         private async Task OpenDbSchemaNodeHandler(TreeNodeModel node)
@@ -233,7 +236,7 @@ namespace DaJet.Studio.Controllers
             }
             else
             {
-                //TODO: handle error
+                Navigator.NavigateTo("/error-page");
             }
         }
 
@@ -248,11 +251,11 @@ namespace DaJet.Studio.Controllers
                     return true;
                 }
 
-                AppState.FooterText = await response.Content.ReadAsStringAsync();
+                AppState.LastErrorText = await response.Content.ReadAsStringAsync();
             }
             catch (Exception error)
             {
-                AppState.FooterText = error.Message;
+                AppState.LastErrorText = error.Message;
             }
 
             return false;
@@ -268,11 +271,11 @@ namespace DaJet.Studio.Controllers
                     return true;
                 }
 
-                AppState.FooterText = await response.Content.ReadAsStringAsync();
+                AppState.LastErrorText = await response.Content.ReadAsStringAsync();
             }
             catch (Exception error)
             {
-                AppState.FooterText = error.Message;
+                AppState.LastErrorText = error.Message;
             }
 
             return false;
@@ -299,7 +302,7 @@ namespace DaJet.Studio.Controllers
             }
             catch (Exception error)
             {
-                AppState.FooterText = error.Message;
+                AppState.LastErrorText = error.Message;
             }
         }
         private async Task<bool> CreateViews(TreeNodeModel node)
@@ -321,24 +324,17 @@ namespace DaJet.Studio.Controllers
                 string url = $"/db/view/{infobase.Name}";
                 CreateViewsRequest options = new() { Schema = schema };
                 HttpResponseMessage response = await Http.PostAsJsonAsync(url, options);
-
-                if (response.StatusCode == HttpStatusCode.Created)
-                {
-                    return true;
-                }
-
                 CreateViewsResponse result = await response.Content.ReadFromJsonAsync<CreateViewsResponse>();
-
-                foreach (string error in result.Errors)
+                if (result.Errors != null && result.Errors.Count > 0)
                 {
-                    //TODO: handle errors
+                    AppState.LastErrorText = string.Join(Environment.NewLine, result.Errors);
+                    return false;
                 }
-
-                //AppState.FooterText = await response.Content.ReadAsStringAsync();
+                return (response.StatusCode == HttpStatusCode.Created);
             }
             catch (Exception error)
             {
-                AppState.FooterText = error.Message;
+                AppState.LastErrorText = error.Message;
             }
 
             return false;
@@ -368,11 +364,11 @@ namespace DaJet.Studio.Controllers
                     return true;
                 }
 
-                AppState.FooterText = await response.Content.ReadAsStringAsync();
+                AppState.LastErrorText = await response.Content.ReadAsStringAsync();
             }
             catch (Exception error)
             {
-                AppState.FooterText = error.Message;
+                AppState.LastErrorText = error.Message;
             }
 
             return false;
