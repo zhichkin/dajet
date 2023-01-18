@@ -9,10 +9,8 @@ using DaJet.Metadata.Services;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
 using System.IO;
-using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -22,7 +20,25 @@ namespace DaJet.Metadata
     {
         #region "CONSTANTS"
 
-        private const string MS_SELECT_EXTENSIONS =
+        ///_ConfigVersion is the root file identifier
+        ///<see cref="ExtensionInfo.RootFile"/> and
+        ///<see cref="DecodeZippedInfo"/> method below
+        private const string MS_SELECT_EXTENSIONS_OLD =
+            "SELECT _IDRRef, _ConfigVersion, _ExtensionOrder, _ExtName, _UpdateTime, " +
+            "_ExtSynonym, _ExtVersion, _SafeMode, _SecurityProfileName, _Version " +
+            "FROM _ExtensionsInfo ORDER BY _ExtensionOrder;";
+
+        private const string PG_SELECT_EXTENSIONS_OLD =
+            "SELECT _idrref, _ConfigVersion, _extensionorder, CAST(_extname AS varchar), _updatetime, " +
+            "CAST(_extsynonym AS varchar), CAST(_extversion AS varchar), _safemode, CAST(_securityprofilename AS varchar), _version " +
+            "FROM _extensionsinfo ORDER BY _extensionorder;";
+
+        private const string EXTENSIONS_INFO_EXISTS = "SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '_extensionsinfo';";
+        
+        private const string IS_NEW_AGE_EXTENSIONS_SUPPORTED =
+            "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '_extensionsinfo' AND COLUMN_NAME = '_extensionzippedinfo';";
+
+        private const string MS_SELECT_EXTENSIONS_NEW =
             "SELECT _IDRRef, _ExtensionOrder, _ExtName, _UpdateTime, " +
             "_ExtensionUsePurpose, _ExtensionScope, _ExtensionZippedInfo, " +
             "_MasterNode, _UsedInDistributedInfoBase, _Version " +
@@ -30,7 +46,7 @@ namespace DaJet.Metadata
             "CASE WHEN SUBSTRING(_MasterNode, CAST(1.0 AS INT), CAST(34.0 AS INT)) = N'0:00000000000000000000000000000000' " +
             "THEN 0x01 ELSE 0x00 END, _ExtensionUsePurpose, _ExtensionScope, _ExtensionOrder;";
 
-        private const string PG_SELECT_EXTENSIONS =
+        private const string PG_SELECT_EXTENSIONS_NEW =
             "SELECT _idrref, _extensionorder, CAST(_extname AS varchar), _updatetime, " +
             "_extensionusepurpose, _extensionscope, _extensionzippedinfo, " +
             "CAST(_masternode AS varchar), _usedindistributedinfobase, _version " +
@@ -348,6 +364,10 @@ namespace DaJet.Metadata
 
         internal void Initialize()
         {
+            if (!IsNewAgeExtensionsSupported())
+            {
+                UseExtensions = false;
+            }
             InitializeRootFile();
             InitializeDbNameCache();
             InitializeMetadataCache(out _infoBase);
@@ -1290,6 +1310,11 @@ namespace DaJet.Metadata
 
         public List<ExtensionInfo> GetExtensions()
         {
+            if (!IsNewAgeExtensionsSupported())
+            {
+                return new List<ExtensionInfo>();
+            }
+
             if (_provider == DatabaseProvider.SqlServer)
             {
                 return MsGetExtensions();
@@ -1310,6 +1335,11 @@ namespace DaJet.Metadata
 
             return null;
         }
+        private bool IsNewAgeExtensionsSupported()
+        {
+            IQueryExecutor executor = CreateQueryExecutor();
+            return (executor.ExecuteScalar<int>(IS_NEW_AGE_EXTENSIONS_SUPPORTED, 10) == 1);
+        }
         private List<ExtensionInfo> MsGetExtensions()
         {
             List<ExtensionInfo> list = new();
@@ -1318,7 +1348,7 @@ namespace DaJet.Metadata
 
             IQueryExecutor executor = CreateQueryExecutor();
 
-            foreach (IDataReader reader in executor.ExecuteReader(MS_SELECT_EXTENSIONS, 10))
+            foreach (IDataReader reader in executor.ExecuteReader(MS_SELECT_EXTENSIONS_NEW, 10))
             {
                 zippedInfo = (byte[])reader.GetValue(6);
 
@@ -1351,7 +1381,7 @@ namespace DaJet.Metadata
 
             IQueryExecutor executor = CreateQueryExecutor();
 
-            foreach (IDataReader reader in executor.ExecuteReader(PG_SELECT_EXTENSIONS, 10))
+            foreach (IDataReader reader in executor.ExecuteReader(PG_SELECT_EXTENSIONS_NEW, 10))
             {
                 zippedInfo = (byte[])reader.GetValue(6);
 
