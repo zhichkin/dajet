@@ -24,13 +24,16 @@ namespace DaJet.Scripting
                     if (node is SelectStatement select)
                     {
                         VisitSelectStatement(select, script, result.Mapper);
-
+                        script.AppendLine(";");
+                    }
+                    else if (node is TableUnionOperator union)
+                    {
+                        VisitUnionOperator(union, script, result.Mapper);
                         script.AppendLine(";");
                     }
                     else if (node is DeleteStatement delete)
                     {
                         VisitDeleteStatement(delete, script, result.Mapper);
-
                         script.AppendLine(";");
                     }
                 }
@@ -75,6 +78,10 @@ namespace DaJet.Scripting
             if (cte.Expression is SelectStatement select)
             {
                 VisitSelectStatement(select, script, null!);
+            }
+            else if (cte.Expression is TableUnionOperator union)
+            {
+                VisitUnionOperator(union, script, null!);
             }
 
             script.AppendLine(")");
@@ -468,11 +475,46 @@ namespace DaJet.Scripting
         {
             script.Append("(");
 
-            VisitSelectStatement(subquery.QUERY, script, null!);
-            
+            if (subquery.Expression is SelectStatement select)
+            {
+                VisitSelectStatement(select, script, null!);
+            }
+            else if (subquery.Expression is TableUnionOperator union)
+            {
+                VisitUnionOperator(union, script, null!);
+            }
+
             script.Append(") AS " + subquery.Alias);
         }
+        private void VisitUnionOperator(TableUnionOperator union, StringBuilder script, EntityMap mapper)
+        {
+            if (union.Expression1 is SelectStatement select1)
+            {
+                VisitSelectStatement(select1, script, null!);
+            }
+            else if (union.Expression1 is TableUnionOperator union1)
+            {
+                VisitUnionOperator(union1, script, mapper);
+            }
 
+            if (union.Token == TokenType.UNION)
+            {
+                script.AppendLine().AppendLine("UNION");
+            }
+            else
+            {
+                script.AppendLine().AppendLine("UNION ALL");
+            }
+
+            if (union.Expression2 is SelectStatement select2)
+            {
+                VisitSelectStatement(select2, script, null!);
+            }
+            else if (union.Expression2 is TableUnionOperator union2)
+            {
+                VisitUnionOperator(union2, script, mapper);
+            }
+        }
         #endregion
 
         #region "WHERE AND ON CLAUSE"

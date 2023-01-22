@@ -13,6 +13,9 @@
             <MudSelectItem Value="@("PostgreSql")" />
         </MudSelect>
 
+        <MudCheckBox Label="Использовать расширения" @bind-Checked="@Model.UseExtensions"
+                     LabelPosition="LabelPosition.Start" Dense="true" />
+
         <MudTextField T="string" Label="Строка подключения" @bind-Value="@Model.ConnectionString"
                       Variant="Variant.Outlined" Margin="Margin.Dense" Lines="5"
                       HelperText="Строка подключения базы данных"
@@ -20,7 +23,7 @@
     </DialogContent>
 
     <DialogActions>
-        <MudButton OnClick="Submit" Color="Color.Success">Добавить</MudButton>
+        <MudButton OnClick="Submit" Color="Color.Success">Сохранить</MudButton>
         <MudButton OnClick="Cancel" Color="Color.Error">Отмена</MudButton>
     </DialogActions>
 

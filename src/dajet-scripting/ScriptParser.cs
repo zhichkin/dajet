@@ -118,14 +118,7 @@ namespace DaJet.Scripting
             }
         }
         #endregion
-
-        // TODO: UNION statement
-        //
-        // { <query_specification> | ( <query_expression> ) }
-        // { UNION [ ALL ]
-        // { <query_specification> | ( <query_expression> ) }
-        // [ ...n ] }
-
+        
         private SyntaxNode statement()
         {
             if (Match(TokenType.Comment))
@@ -143,7 +136,7 @@ namespace DaJet.Scripting
                     return statement_with_cte();
                 }
             }
-            else if (Match(TokenType.SELECT))
+            else if (Check(TokenType.SELECT))
             {
                 return select_statement();
             }
@@ -234,9 +227,9 @@ namespace DaJet.Scripting
                 root = node;
             }
 
-            if (Match(TokenType.SELECT))
+            if (Check(TokenType.SELECT))
             {
-                SelectStatement select = select_statement();
+                SelectStatement select = select_expression();
 
                 select.CTE = root;
 
@@ -285,7 +278,7 @@ namespace DaJet.Scripting
                 throw new FormatException("Open round bracket expected.");
             }
 
-            cte.Expression = select_definition(TokenType.SELECT); // !? TokenType.CTE
+            cte.Expression = select_statement();
 
             Skip(TokenType.Comment);
 
@@ -298,49 +291,7 @@ namespace DaJet.Scripting
 
             return cte;
         }
-        private SelectStatement select_definition(TokenType type)
-        {
-            SelectStatement select = new()
-            {
-                Token = type
-            };
-
-            if (!Match(TokenType.SELECT))
-            {
-                throw new FormatException("SELECT keyword expected.");
-            }
-
-            select_clause(in select);
-
-            if (!Match(TokenType.FROM))
-            {
-                throw new FormatException("FROM keyword expected.");
-            }
-            select.FROM = new FromClause() { Expression = from_clause() };
-
-            if (Match(TokenType.WHERE))
-            {
-                select.WHERE = new WhereClause() { Expression = where_clause() };
-            }
-
-            if (Match(TokenType.GROUP))
-            {
-                select.GROUP = group_clause();
-            }
-
-            if (Match(TokenType.HAVING))
-            {
-                select.HAVING = having_clause();
-            }
-
-            if (Match(TokenType.ORDER))
-            {
-                select.ORDER = order_clause();
-            }
-
-            return select;
-        }
-
+        
         #region "EXPRESSION"
         private SyntaxNode expression()
         {
@@ -671,53 +622,106 @@ namespace DaJet.Scripting
 
         #region "SELECT STATEMENT"
 
-        private SelectStatement select_statement()
+        private SyntaxNode select_statement()
         {
-            SelectStatement select = new() { Token = TokenType.SELECT };
+            return union();
+        }
+        private SyntaxNode union()
+        {
+            SyntaxNode node;
+
+            if (Match(TokenType.OpenRoundBracket))
+            {
+                node = select_expression();
+
+                if (!Match(TokenType.CloseRoundBracket))
+                {
+                    throw new FormatException("Close round bracket expected.");
+                }
+
+                if (node is SelectStatement select)
+                {
+                    select.IsExpression = true;
+                }
+            }
+            else
+            {
+                node = select_expression();
+            }
+
+            while (Match(TokenType.UNION))
+            {
+                Skip(TokenType.Comment);
+
+                TokenType _operator = Match(TokenType.ALL) ? TokenType.UNION_ALL : TokenType.UNION;
+
+                Skip(TokenType.Comment);
+
+                node = new TableUnionOperator()
+                {
+                    Token = _operator,
+                    Expression1 = node,
+                    Expression2 = union()
+                };
+            }
+
+            return node;
+        }
+        private SelectStatement select_expression()
+        {
+            if (!Match(TokenType.SELECT))
+            {
+                throw new FormatException("SELECT keyword expected.");
+            }
+
+            SelectStatement select = new();
 
             select_clause(in select);
 
-            while (!EndOfStream() && !Check(TokenType.EndOfStatement))
+            if (Match(TokenType.FROM))
             {
-                if (Match(TokenType.FROM))
-                {
-                    select.FROM = new FromClause() { Expression = from_clause() };
-                }
-                else if (Match(TokenType.WHERE))
-                {
-                    select.WHERE = new WhereClause() { Expression = where_clause() };
-                }
-                else if (Match(TokenType.GROUP))
-                {
-                    select.GROUP = group_clause();
-                }
-                else if (Match(TokenType.HAVING))
-                {
-                    select.HAVING = having_clause();
-                }
-                else if (Match(TokenType.ORDER))
-                {
-                    select.ORDER = order_clause();
-                }
-                else
-                {
-                    Ignore();
-                }
+                select.FROM = new FromClause() { Expression = from_clause() };
             }
 
-            if (!Match(TokenType.EndOfStatement))
+            if (Match(TokenType.WHERE))
             {
-                throw new FormatException("End of statement expected.");
+                select.WHERE = new WhereClause() { Expression = where_clause() };
+            }
+
+            if (Match(TokenType.GROUP))
+            {
+                select.GROUP = group_clause();
+            }
+
+            if (Match(TokenType.HAVING))
+            {
+                select.HAVING = having_clause();
+            }
+
+            if (Match(TokenType.ORDER))
+            {
+                select.ORDER = order_clause();
             }
 
             return select;
         }
-
-        #region "FROM CLAUSE"
-
-        private SyntaxNode from_clause()
+        private SubqueryExpression subquery()
         {
-            return join();
+            if (!Match(TokenType.OpenRoundBracket))
+            {
+                throw new FormatException("Open round bracket expected.");
+            }
+
+            SubqueryExpression subquery = new() { Expression = union() };
+
+            if (!Match(TokenType.CloseRoundBracket))
+            {
+                throw new FormatException("Close round bracket expected.");
+            }
+
+            subquery.Alias = alias();
+
+            return subquery;
         }
         private SyntaxNode join()
         {
@@ -750,6 +754,13 @@ namespace DaJet.Scripting
 
             return left;
         }
+        
+        #region "FROM CLAUSE"
+
+        private SyntaxNode from_clause()
+        {
+            return join();
+        }
         private TableSource table_source()
         {
             SyntaxNode expression = null!;
@@ -758,14 +769,14 @@ namespace DaJet.Scripting
             {
                 expression = identifier(TokenType.Table);
             }
-            else if (Match(TokenType.OpenRoundBracket))
+            else if (Check(TokenType.OpenRoundBracket))
             {
                 expression = subquery();
             }
 
             if (expression == null)
             {
-                throw new FormatException("Identifier or subquery expected.");
+                throw new FormatException("Identifier or Subquery expected.");
             }
 
             TableSource table = new() { Expression = expression };
@@ -796,58 +807,7 @@ namespace DaJet.Scripting
 
             return table;
         }
-        private SyntaxNode subquery()
-        {
-            if (!Match(TokenType.SELECT))
-            {
-                throw new FormatException("SELECT keyword expected.");
-            }
-
-            SelectStatement select = new() { Token = TokenType.SELECT };
-
-            select_clause(in select);
-
-            while (!EndOfStream() && !Check(TokenType.CloseRoundBracket))
-            {
-                if (Match(TokenType.FROM))
-                {
-                    select.FROM = new FromClause() { Expression = from_clause() };
-                }
-                else if (Match(TokenType.WHERE))
-                {
-                    select.WHERE = new WhereClause() { Expression = where_clause() };
-                }
-                else if (Match(TokenType.GROUP))
-                {
-                    select.GROUP = group_clause();
-                }
-                else if (Match(TokenType.HAVING))
-                {
-                    select.HAVING = having_clause();
-                }
-                else if (Match(TokenType.ORDER))
-                {
-                    select.ORDER = order_clause();
-                }
-                else
-                {
-                    Ignore();
-                }
-            }
-
-            if (!Match(TokenType.CloseRoundBracket))
-            {
-                throw new FormatException("End of subquery expected.");
-            }
-
-            return new SubqueryExpression()
-            {
-                Token = TokenType.SELECT,
-                QUERY = select,
-                Alias = alias()
-            };
-        }
-
+        
         #endregion
 
         #region "WHERE CLAUSE"
@@ -1126,12 +1086,12 @@ namespace DaJet.Scripting
 
         private DeleteStatement delete_statement()
         {
-            DeleteStatement delete = new();
-
             if (!Match(TokenType.DELETE))
             {
                 throw new FormatException("DELETE keyword expected.");
             }
+
+            DeleteStatement delete = new();
 
             if (Match(TokenType.FROM)) { /* do nothing - optional */ }
 

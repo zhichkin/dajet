@@ -56,30 +56,35 @@ namespace DaJet.Studio
         }
         protected async Task RegisterNewInfoBase(MouseEventArgs args)
         {
+            InfoBaseModel model = new();
             DialogOptions options = new() { CloseButton = true };
-            var dialog = DialogService.Show<InfoBaseDialog>("DaJet Studio", options);
+            DialogParameters parameters = new()
+            {
+                { "Model", model }
+            };
+            var dialog = DialogService.Show<InfoBaseDialog>("DaJet Studio", parameters, options);
             var result = await dialog.Result;
             if (result.Cancelled) { return; }
 
-            if (result.Data is not InfoBaseModel model)
+            if (result.Data is not InfoBaseModel entity)
             {
                 return;
             }
 
             try
             {
-                HttpResponseMessage response = await Http.PostAsJsonAsync("/md", model);
+                HttpResponseMessage response = await Http.PostAsJsonAsync("/md", entity);
 
                 if (response.StatusCode != HttpStatusCode.Created)
                 {
                     throw new Exception(response.ReasonPhrase); // No Content
                 }
 
-                InfoBaseList.Add(model.Name);
+                InfoBaseList.Add(entity.Name);
 
                 StateHasChanged();
 
-                Snackbar.Add($"База данных [{model.Name}] добавлена успешно.", Severity.Success);
+                Snackbar.Add($"База данных [{entity.Name}] добавлена успешно.", Severity.Success);
             }
             catch (Exception error)
             {

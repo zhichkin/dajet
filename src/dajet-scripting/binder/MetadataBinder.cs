@@ -199,9 +199,9 @@ namespace DaJet.Scripting
 
             foreach (SyntaxNode node in scope.Identifiers)
             {
-                if (node is SubqueryExpression query && query.Alias == tableAlias)
+                if (node is SubqueryExpression subquery && subquery.Alias == tableAlias)
                 {
-                    if (query.QUERY is SelectStatement select)
+                    if (subquery.Expression is SelectStatement select)
                     {
                         foreach (SyntaxNode item in select.SELECT) // Привязка через синоним вложенного запроса
                         {

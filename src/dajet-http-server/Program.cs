@@ -93,7 +93,7 @@ namespace DaJet.Http.Server
                 metadataService.Add(new InfoBaseOptions()
                 {
                     Key = entity.Name,
-                    UseExtensions = true,
+                    UseExtensions = entity.UseExtensions,
                     DatabaseProvider = provider,
                     ConnectionString = entity.ConnectionString
                 });

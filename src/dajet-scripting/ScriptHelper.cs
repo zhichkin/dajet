@@ -60,7 +60,9 @@ namespace DaJet.Scripting
             { "WHEN", TokenType.WHEN },
             { "THEN", TokenType.THEN },
             { "ELSE", TokenType.ELSE },
-            { "END", TokenType.END }
+            { "END", TokenType.END },
+            { "UNION", TokenType.UNION },
+            { "ALL", TokenType.ALL }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {
@@ -94,7 +96,9 @@ namespace DaJet.Scripting
             { "КОГДА", TokenType.WHEN },
             { "ТОГДА", TokenType.THEN },
             { "ИНАЧЕ", TokenType.ELSE },
-            { "КОНЕЦ", TokenType.END }
+            { "КОНЕЦ", TokenType.END },
+            { "ОБЪЕДИНИТЬ", TokenType.UNION },
+            { "ВСЕ", TokenType.ALL }
         };
         private static Dictionary<string, Type> _datatype_en = new()
         {

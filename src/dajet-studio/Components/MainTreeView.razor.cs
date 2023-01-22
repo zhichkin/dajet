@@ -1,8 +1,10 @@
 ﻿using DaJet.Studio.Controllers;
 using DaJet.Studio.Model;
+using DaJet.Studio.Pages;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using System.Globalization;
+using System.Net;
 using System.Net.Http.Json;
 
 namespace DaJet.Studio.Components
@@ -143,6 +145,7 @@ namespace DaJet.Studio.Components
             node.Tag = model;
             node.Title = model.Name;
             node.Url = $"/md/{model.Name}";
+            node.ContextMenuHandler = InfoBaseContextMenuHandler;
 
             ConfigureApiTreeViewNode(in node, in model);
 
@@ -253,7 +256,46 @@ namespace DaJet.Studio.Components
                 OpenNodeHandler = OpenMetadataNodeHandler
             });
         }
-        
+
+        private async Task InfoBaseContextMenuHandler(TreeNodeModel node, IDialogService dialogService)
+        {
+            if (node.Tag is not InfoBaseModel model)
+            {
+                return;
+            }
+
+            DialogParameters parameters = new()
+            {
+                { "Model", model }
+            };
+            DialogOptions options = new() { CloseButton = true };
+            var dialog = dialogService.Show<InfoBaseDialog>("DaJet Studio", parameters, options);
+            var result = await dialog.Result;
+            if (result.Cancelled) { return; }
+
+            if (result.Data is not InfoBaseModel entity)
+            {
+                return;
+            }
+
+            try
+            {
+                HttpResponseMessage response = await Http.PutAsJsonAsync("/md", entity);
+
+                if (response.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new Exception(response.ReasonPhrase);
+                }
+
+                StateHasChanged();
+
+                Snackbar.Add($"Свойства базы данных [{entity.Name}] обновлены успешно.", Severity.Success);
+            }
+            catch (Exception error)
+            {
+                Snackbar.Add(error.Message, Severity.Error);
+            }
+        }
         private async Task OpenMetadataNodeHandler(TreeNodeModel node)
         {
             if (node == null || node.Nodes.Count > 0)

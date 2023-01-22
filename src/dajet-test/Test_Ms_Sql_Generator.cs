@@ -53,6 +53,37 @@ namespace DaJet.Scripting.Test
                 }
             }
         }
+        private void PrepareScriptModel()
+        {
+            if (_model == null)
+            {
+                return;
+            }
+
+            ScopeBuilder builder = new();
+
+            if (!builder.TryBuild(in _model, out ScriptScope scope, out string error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            MetadataBinder binder = new();
+
+            if (!binder.TryBind(in scope, in _cache, out error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            ScriptTransformer transformer = new();
+
+            if (!transformer.TryTransform(_model, out error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+        }
         [TestMethod] public void Generate_Script()
         {
             filePath = "C:\\temp\\scripting-test\\destructive-read\\00-script.txt";
@@ -546,6 +577,98 @@ namespace DaJet.Scripting.Test
                 Console.WriteLine(error);
                 return;
             }
+
+            MsSqlGenerator generator = new();
+
+            if (!generator.TryGenerate(_model, out GeneratorResult result))
+            {
+                Console.WriteLine(result.Error);
+                return;
+            }
+
+            Console.WriteLine();
+            Console.WriteLine(filePath);
+            Console.WriteLine();
+            Console.WriteLine(result.Script);
+
+            ShowEntityMap(result.Mapper);
+        }
+        [TestMethod] public void Generate_Union()
+        {
+            filePath = "C:\\temp\\scripting-test\\union\\02-script.txt";
+
+            CreateScriptModel();
+
+            PrepareScriptModel();
+
+            MsSqlGenerator generator = new();
+
+            if (!generator.TryGenerate(_model, out GeneratorResult result))
+            {
+                Console.WriteLine(result.Error);
+                return;
+            }
+
+            Console.WriteLine();
+            Console.WriteLine(filePath);
+            Console.WriteLine();
+            Console.WriteLine(result.Script);
+
+            ShowEntityMap(result.Mapper);
+        }
+        [TestMethod] public void Generate_Union_Subquery()
+        {
+            filePath = "C:\\temp\\scripting-test\\union\\04-script.txt";
+
+            CreateScriptModel();
+
+            PrepareScriptModel();
+
+            MsSqlGenerator generator = new();
+
+            if (!generator.TryGenerate(_model, out GeneratorResult result))
+            {
+                Console.WriteLine(result.Error);
+                return;
+            }
+
+            Console.WriteLine();
+            Console.WriteLine(filePath);
+            Console.WriteLine();
+            Console.WriteLine(result.Script);
+
+            ShowEntityMap(result.Mapper);
+        }
+        [TestMethod] public void Generate_Union_Cte()
+        {
+            filePath = "C:\\temp\\scripting-test\\union\\05-script.txt";
+
+            CreateScriptModel();
+
+            PrepareScriptModel();
+
+            MsSqlGenerator generator = new();
+
+            if (!generator.TryGenerate(_model, out GeneratorResult result))
+            {
+                Console.WriteLine(result.Error);
+                return;
+            }
+
+            Console.WriteLine();
+            Console.WriteLine(filePath);
+            Console.WriteLine();
+            Console.WriteLine(result.Script);
+
+            ShowEntityMap(result.Mapper);
+        }
+        [TestMethod] public void Generate_Recursive_Cte()
+        {
+            filePath = "C:\\temp\\scripting-test\\union\\03-script.txt";
+
+            CreateScriptModel();
+
+            PrepareScriptModel();
 
             MsSqlGenerator generator = new();
 

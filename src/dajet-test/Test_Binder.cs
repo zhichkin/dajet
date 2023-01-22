@@ -53,6 +53,33 @@ namespace DaJet.Scripting.Test
                 }
             }
         }
+        private void BindMetadataToSyntaxTree()
+        {
+            CreateSyntaxTree();
+
+            if (_syntaxTree == null)
+            {
+                return;
+            }
+
+            ScopeBuilder builder = new();
+
+            if (!builder.TryBuild(in _syntaxTree, out ScriptScope scope, out string error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            MetadataBinder binder = new();
+
+            if (!binder.TryBind(in scope, in _cache, out error))
+            {
+                Console.WriteLine(error);
+                return;
+            }
+
+            ShowSyntaxNode(_syntaxTree, 0);
+        }
         private void ShowSyntaxNode(SyntaxNode node, int level)
         {
             if (node == null)
@@ -418,6 +445,16 @@ namespace DaJet.Scripting.Test
             }
 
             ShowSyntaxNode(_syntaxTree, 0);
+        }
+        [TestMethod] public void Bind_Metadata_Union()
+        {
+            filePath = "C:\\temp\\scripting-test\\union\\02-script.txt";
+            BindMetadataToSyntaxTree();
+        }
+        [TestMethod] public void Bind_Metadata_Recursive_Cte()
+        {
+            filePath = "C:\\temp\\scripting-test\\union\\03-script.txt";
+            BindMetadataToSyntaxTree();
         }
     }
 }

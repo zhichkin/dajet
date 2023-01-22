@@ -7,12 +7,12 @@ namespace DaJet.Http.DataMappers
     {
         private const string DATABASE_FILE_NAME = "dajet-http-server.db";
         private const string CREATE_INFOBASE_TABLE_SCRIPT = "CREATE TABLE IF NOT EXISTS " +
-            "infobases (name TEXT NOT NULL, description TEXT NOT NULL, provider TEXT NOT NULL, dbconnect TEXT NOT NULL, " +
+            "infobases (name TEXT NOT NULL, description TEXT NOT NULL, use_extensions INTEGER NOT NULL, provider TEXT NOT NULL, dbconnect TEXT NOT NULL, " +
             "PRIMARY KEY (name)) WITHOUT ROWID;";
-        private const string SELECT_ALL_SCRIPT = "SELECT name, description, provider, dbconnect FROM infobases ORDER BY name ASC;";
-        private const string SELECT_BY_NAME_SCRIPT = "SELECT name, description, provider, dbconnect FROM infobases WHERE name = @name;";
-        private const string INSERT_SCRIPT = "INSERT INTO infobases (name, description, provider, dbconnect) VALUES (@name, @description, @provider, @dbconnect);";
-        private const string UPDATE_SCRIPT = "UPDATE infobases SET description = @description, provider = @provider, dbconnect = @dbconnect WHERE name = @name;";
+        private const string SELECT_ALL_SCRIPT = "SELECT name, description, use_extensions, provider, dbconnect FROM infobases ORDER BY name ASC;";
+        private const string SELECT_BY_NAME_SCRIPT = "SELECT name, description, use_extensions, provider, dbconnect FROM infobases WHERE name = @name;";
+        private const string INSERT_SCRIPT = "INSERT INTO infobases (name, description, use_extensions, provider, dbconnect) VALUES (@name, @description, @use_extensions, @provider, @dbconnect);";
+        private const string UPDATE_SCRIPT = "UPDATE infobases SET description = @description, use_extensions = @use_extensions, provider = @provider, dbconnect = @dbconnect WHERE name = @name;";
         private const string DELETE_SCRIPT = "DELETE FROM infobases WHERE name = @name;";
 
         private readonly string _connectionString;
@@ -66,8 +66,9 @@ namespace DaJet.Http.DataMappers
                             {
                                 Name = reader.GetString(0),
                                 Description = reader.GetString(1),
-                                DatabaseProvider = reader.GetString(2),
-                                ConnectionString = reader.GetString(3)
+                                UseExtensions = (reader.GetInt64(2) == 1L),
+                                DatabaseProvider = reader.GetString(3),
+                                ConnectionString = reader.GetString(4)
                             };
                             list.Add(item);
                         }
@@ -100,8 +101,9 @@ namespace DaJet.Http.DataMappers
                             {
                                 Name = reader.GetString(0),
                                 Description = reader.GetString(1),
-                                DatabaseProvider = reader.GetString(2),
-                                ConnectionString = reader.GetString(3)
+                                UseExtensions = (reader.GetInt64(2) == 1L),
+                                DatabaseProvider = reader.GetString(3),
+                                ConnectionString = reader.GetString(4)
                             };
                         }
                         reader.Close();
@@ -125,6 +127,7 @@ namespace DaJet.Http.DataMappers
 
                     command.Parameters.AddWithValue("name", entity.Name);
                     command.Parameters.AddWithValue("description", entity.Description);
+                    command.Parameters.AddWithValue("use_extensions", entity.UseExtensions);
                     command.Parameters.AddWithValue("provider", entity.DatabaseProvider);
                     command.Parameters.AddWithValue("dbconnect", entity.ConnectionString);
 
@@ -148,6 +151,7 @@ namespace DaJet.Http.DataMappers
 
                     command.Parameters.AddWithValue("name", entity.Name);
                     command.Parameters.AddWithValue("description", entity.Description);
+                    command.Parameters.AddWithValue("use_extensions", entity.UseExtensions);
                     command.Parameters.AddWithValue("provider", entity.DatabaseProvider);
                     command.Parameters.AddWithValue("dbconnect", entity.ConnectionString);
 
