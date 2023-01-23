@@ -131,6 +131,8 @@ namespace DaJet.Scripting
 
             string propertyAlias = string.IsNullOrWhiteSpace(identifier.Alias) ? columnName : identifier.Alias;
 
+            bool cast_to_varchar = false;
+
             if (identifier.Tag is MetadataProperty property)
             {
                 PropertyMap propertyMap = null!;
@@ -232,7 +234,31 @@ namespace DaJet.Scripting
             }
             else if (identifier.Tag is Identifier column) /// bubbled up from subquery <see cref="MetadataBinder.BindColumn"/>
             {
-                string name = "\t" + (string.IsNullOrWhiteSpace(tableAlias) ? string.Empty : tableAlias + ".");
+                /// bubbled up from subquery <see cref="MetadataBinder.BindColumnToSelect(in SelectStatement, in Identifier)"/>
+
+                if (mapper != null && column.Tag is MetadataProperty source)
+                {
+                    // TODO: ??? VisitProjectionColumn(in columns, in column, in mapper);
+
+                    PropertyMap propertyMap = DataMapper.CreatePropertyMap(in source, propertyAlias);
+                    mapper.MapProperty(propertyMap).ToColumn(new ColumnMap()
+                    {
+                        Name = propertyAlias
+                    });
+
+                    if (source.Columns.Count > 0) // TODO: обработка свойства составного типа !!!
+                    {
+                        MetadataColumn field = source.Columns[0];
+
+                        if (field.TypeName == "varchar" || field.TypeName == "char" ||
+                            field.TypeName == "nvarchar" || field.TypeName == "nchar")
+                        {
+                            cast_to_varchar = true;
+                        }
+                    }
+                }
+
+                string name = (string.IsNullOrWhiteSpace(tableAlias) ? string.Empty : tableAlias + ".");
 
                 if (string.IsNullOrWhiteSpace(column.Alias))
                 {
@@ -243,12 +269,17 @@ namespace DaJet.Scripting
                     name += column.Alias;
                 }
 
+                if (cast_to_varchar)
+                {
+                    name = "CAST(" + name + " AS varchar)"; // text
+                }
+
                 if (!string.IsNullOrWhiteSpace(identifier.Alias))
                 {
                     name += " AS " + identifier.Alias;
                 }
 
-                columns.Add(name);
+                columns.Add("\t" + name);
             }
         }
         private void VisitProjectionFunction(in List<string> columns, in FunctionExpression function, in EntityMap mapper)

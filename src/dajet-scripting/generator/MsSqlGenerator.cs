@@ -209,6 +209,19 @@ namespace DaJet.Scripting
             }
             else if (identifier.Tag is Identifier column) /// bubbled up from subquery <see cref="MetadataBinder.BindColumn"/>
             {
+                /// bubbled up from subquery <see cref="MetadataBinder.BindColumnToSelect(in SelectStatement, in Identifier)"/>
+
+                if (mapper != null && column.Tag is MetadataProperty source)
+                {
+                    // TODO: ??? VisitProjectionColumn(in columns, in column, in mapper);
+
+                    PropertyMap propertyMap = DataMapper.CreatePropertyMap(in source, propertyAlias);
+                    mapper.MapProperty(propertyMap).ToColumn(new ColumnMap()
+                    {
+                        Name = propertyAlias
+                    });
+                }
+
                 string name = "\t" + (string.IsNullOrWhiteSpace(tableAlias) ? string.Empty : tableAlias + ".");
 
                 if (string.IsNullOrWhiteSpace(column.Alias))

@@ -246,12 +246,12 @@ namespace DaJet.Metadata.Test
             }
         }
 
-        public void Extension_DBNames()
+        [TestMethod] public void Extension_DBNames()
         {
             // Extension DBNames file: compound with _IDRRef field of _ExtensionsInfo table
-            string fileName = "DBNames-Ext-5246c6ec-5177-11ed-9cda-408d5c93cc8e";
+            string fileName = "DBNames-ext-ed96acf1-9b2c-11ed-9ce2-408d5c93cc8e";
 
-            using (ConfigFileReader reader = new(DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.Params, fileName))
+            using (ConfigFileReader reader = new(DatabaseProvider.PostgreSql, PG_CONNECTION_STRING, ConfigTables.Params, fileName))
             {
                 ConfigObject configObject = new ConfigFileParser().Parse(reader);
 

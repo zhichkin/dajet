@@ -1,31 +1,17 @@
-DECLARE @Код string = "PG-11";
+DECLARE @Код string = "MS-10"; -- корневая группа
 
-WITH test0 AS
+WITH RecursiveQuery AS
 (
-  SELECT Ссылка FROM Справочник.Пользователи
-),
-RecursiveQuery AS
-(
-    SELECT Ссылка AS Ref, Код, Наименование, Родитель --, 0 AS Уровень
-      FROM Справочник.Номенклатура
-     WHERE Код = @Код
+   SELECT Ссылка, Родитель, Код, Код AS КодРодителя, Наименование  --, 0 AS Уровень
+     FROM Справочник.Номенклатура
+  WHERE Код = @Код
 
-    UNION ALL
+   UNION ALL
 
-    SELECT e.Ссылка, e.Код, e.Наименование, e.Родитель --, r.Уровень
-      FROM Справочник.Номенклатура AS e
-    INNER JOIN RecursiveQuery AS r
-            ON e.Родитель = r.Ref
-),
-test1 AS
-(
-  SELECT Ref FROM RecursiveQuery AS i
-),
-test2 AS
-(
-  SELECT Ссылка FROM Справочник.Номенклатура
+   SELECT child.Ссылка, child.Родитель, child.Код, parent.Код, child.Наименование  --, parent.Уровень + 1
+     FROM Справочник.Номенклатура AS child
+   INNER JOIN RecursiveQuery AS parent ON parent.Ссылка = child.Родитель
 )
-
-  SELECT Ref AS Ссылка, Код, Наименование --, Уровень
-    FROM RecursiveQuery AS s
-ORDER BY Родитель;
+SELECT КодРодителя КАК Родитель, Код, Наименование, Ссылка --, Уровень
+  FROM RecursiveQuery
+ORDER BY Родитель, Код;

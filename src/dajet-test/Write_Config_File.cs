@@ -10,6 +10,7 @@ namespace DaJet.Metadata.Test
 {
     [TestClass] public class Write_Config_File
     {
+        private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;";
         private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
         [TestMethod] public void GetMetadataItemByName()
         {
@@ -32,9 +33,13 @@ namespace DaJet.Metadata.Test
         }
         [TestMethod] public void WriteDBNamesToFile()
         {
-            using (ConfigFileReader reader = new(DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.Params, ConfigFiles.DbNames))
+            //string fileName = ConfigFiles.DbNames;
+
+            string fileName = "DBNames-ext-ed96acf1-9b2c-11ed-9ce2-408d5c93cc8e";
+
+            using (ConfigFileReader reader = new(DatabaseProvider.PostgreSql, PG_CONNECTION_STRING, ConfigTables.Params, fileName))
             {
-                using (StreamWriter stream = new StreamWriter("C:\\temp\\DBNames.txt", false, Encoding.UTF8))
+                using (StreamWriter stream = new("C:\\temp\\DBNames.txt", false, Encoding.UTF8))
                 {
                     stream.Write(reader.Stream.ReadToEnd());
                 }
