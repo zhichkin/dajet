@@ -4,14 +4,14 @@ using DaJet.Http.Model;
 using DaJet.Metadata;
 using DaJet.Scripting;
 using Microsoft.AspNetCore.Mvc;
-using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
 
 namespace DaJet.Http.Controllers
 {
-    [ApiController][Route("api")]
+    [ApiController]
+    [Route("api")]
     public class ScriptController : ControllerBase
     {
         private readonly ScriptDataMapper _scripts = new();
@@ -21,9 +21,13 @@ namespace DaJet.Http.Controllers
         {
             _metadataService = metadataService;
         }
-        [HttpGet("select/{infobase}")] public ActionResult Select([FromRoute] string infobase)
+        [HttpGet("select/{infobase}")]
+        public ActionResult Select([FromRoute] string infobase)
         {
-            List<ScriptModel> list = _scripts.Select(infobase);
+            InfoBaseModel database = _mapper.Select(infobase);
+            if (database is null) { return NotFound(); }
+
+            List<ScriptModel> list = _scripts.Select(database.Uuid);
 
             foreach (ScriptModel parent in list)
             {
@@ -57,15 +61,18 @@ namespace DaJet.Http.Controllers
             }
         }
 
-        [HttpGet("url/{uuid:guid}")] public ActionResult SelectScriptUrl([FromRoute] Guid uuid)
+        [HttpGet("url/{uuid:guid}")]
+        public ActionResult SelectScriptUrl([FromRoute] Guid uuid)
         {
             if (!_scripts.TrySelect(uuid, out ScriptModel script))
             {
                 return NotFound();
             }
 
+            InfoBaseModel database = _mapper.Select(script.Owner);
+            if (database is null) { return NotFound(); }
+
             string url = "/" + script.Name;
-            string database = script.Owner;
 
             script = _scripts.SelectScript(script.Parent);
 
@@ -75,11 +82,12 @@ namespace DaJet.Http.Controllers
                 script = _scripts.SelectScript(script.Parent);
             }
 
-            url = "/api/" + database + url;
+            url = "/api/" + database.Name + url;
 
             return Content(url);
         }
-        [HttpGet("{uuid:guid}")] public ActionResult SelectScript([FromRoute] Guid uuid)
+        [HttpGet("{uuid:guid}")]
+        public ActionResult SelectScript([FromRoute] Guid uuid)
         {
             if (!_scripts.TrySelect(uuid, out ScriptModel script))
             {
@@ -96,19 +104,10 @@ namespace DaJet.Http.Controllers
 
             return Content(json);
         }
-        [HttpPost("")] public ActionResult InsertScript([FromBody] ScriptModel script)
+        [HttpPost("")]
+        public ActionResult InsertScript([FromBody] ScriptModel script)
         {
-            string parentName;
-
-            if (script.Parent == Guid.Empty)
-            {
-                parentName = string.Empty;
-            }
-            else if (_scripts.TrySelect(script.Parent, out ScriptModel parent))
-            {
-                parentName = $"/{parent.Name}";
-            }
-            else
+            if (script.Parent != Guid.Empty && !_scripts.TrySelect(script.Parent, out ScriptModel _))
             {
                 return NotFound();
             }
@@ -118,9 +117,10 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            return Created($"/{script.Owner}{parentName}/{script.Name}", $"{script.Uuid}");
+            return Created($"{script.Name}", $"{script.Uuid}");
         }
-        [HttpPut("")] public ActionResult UpdateScript([FromBody] ScriptModel script)
+        [HttpPut("")]
+        public ActionResult UpdateScript([FromBody] ScriptModel script)
         {
             if (!_scripts.Update(script))
             {
@@ -128,7 +128,8 @@ namespace DaJet.Http.Controllers
             }
             return Ok();
         }
-        [HttpPut("name")] public ActionResult UpdateScriptName([FromBody] ScriptModel script)
+        [HttpPut("name")]
+        public ActionResult UpdateScriptName([FromBody] ScriptModel script)
         {
             if (!_scripts.UpdateName(script))
             {
@@ -136,7 +137,8 @@ namespace DaJet.Http.Controllers
             }
             return Ok();
         }
-        [HttpDelete("{uuid:guid}")] public ActionResult DeleteScript([FromRoute] Guid uuid)
+        [HttpDelete("{uuid:guid}")]
+        public ActionResult DeleteScript([FromRoute] Guid uuid)
         {
             if (!_scripts.TrySelect(uuid, out ScriptModel script))
             {
@@ -173,44 +175,29 @@ namespace DaJet.Http.Controllers
             _scripts.Delete(script);
         }
 
-        [HttpPost("{infobase}/{**path}")] public async Task<ActionResult> ExecuteScript([FromRoute] string infobase, [FromRoute] string path)
+        [HttpPost("{infobase}/{**path}")]
+        public ActionResult ExecuteScript(
+            [FromRoute] string infobase, [FromRoute] string path, [FromBody] Dictionary<string, string> parameters = null)
         {
-            HttpRequest request = HttpContext.Request;
-            int contentLength = (int)request.ContentLength;
+            InfoBaseModel database = _mapper.Select(infobase);
+            if (database is null) { return NotFound(); }
 
-            byte[] buffer = new byte[contentLength];
-
-            int bytesRead = await request.Body.ReadAsync(buffer, 0, contentLength);
-
-            string content = Encoding.UTF8.GetString(buffer);
-
-            ScriptModel script = SelectScriptByPath(infobase, path);
-
-            if (script == null)
-            {
-                return NotFound();
-            }
+            ScriptModel script = SelectScriptByPath(database.Uuid, path);
+            if (script is null) { return NotFound(); }
 
             if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(script.Script))
             {
                 return BadRequest();
             }
 
-            InfoBaseModel record = _mapper.Select(infobase);
-
-            if (record == null)
-            {
-                return NotFound();
-            }
-
-            if (!_metadataService.TryGetMetadataCache(infobase, out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetMetadataCache(database.Uuid.ToString(), out MetadataCache cache, out string error))
             {
                 return BadRequest(error);
             }
 
             ScriptExecutor executor = new(cache);
 
-            //TODO: parse parameters from request body !!!
+            //TODO: parse parameters
 
             //if (parameters != null)
             //{
@@ -245,18 +232,17 @@ namespace DaJet.Http.Controllers
                 WriteIndented = true,
                 Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
             };
-
             string json = JsonSerializer.Serialize(result, options);
 
             return Content(json);
         }
-        private ScriptModel SelectScriptByPath(string infobase, string path)
+        private ScriptModel SelectScriptByPath(Guid database, string path)
         {
             string[] segments = path.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
             int counter = 0;
             ScriptModel current = null;
-            List<ScriptModel> list = _scripts.Select(infobase);
+            List<ScriptModel> list = _scripts.Select(database);
 
             foreach (string segment in segments)
             {

@@ -9,6 +9,7 @@ namespace DaJet.Http.Server
 {
     public static class Program
     {
+        public static string DATABASE_FILE_NAME = "dajet.db";
         private static readonly string[] webapi = new string[] { "/api", "/db", "/md", "/mdex", "/1ql" };
         public static void Main(string[] args)
         {
@@ -92,7 +93,7 @@ namespace DaJet.Http.Server
 
                 metadataService.Add(new InfoBaseOptions()
                 {
-                    Key = entity.Name,
+                    Key = entity.Uuid.ToString(),
                     UseExtensions = entity.UseExtensions,
                     DatabaseProvider = provider,
                     ConnectionString = entity.ConnectionString

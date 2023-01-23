@@ -10,7 +10,6 @@ namespace DaJet.Studio
 {
     public partial class MainLayout : LayoutComponentBase
     {
-        protected List<string> InfoBaseList { get; set; } = new();
         protected void NavigateToHomePage()
         {
             Navigator.NavigateTo("/");
@@ -25,7 +24,7 @@ namespace DaJet.Studio
             {
                 AppState.FooterText = "Загрузка списка баз данных...";
 
-                InfoBaseList.Clear();
+                AppState.DatabaseList.Clear();
 
                 HttpResponseMessage response = await Http.GetAsync("/md");
 
@@ -33,12 +32,12 @@ namespace DaJet.Studio
 
                 foreach (InfoBaseModel model in list)
                 {
-                    InfoBaseList.Add(model.Name);
+                    AppState.DatabaseList.Add(model);
                 }
 
                 if (list != null && list.Count > 0)
                 {
-                    AppState.CurrentInfoBase = list[0]?.Name;
+                    AppState.CurrentDatabase = list[0];
                 }
 
                 AppState.FooterText = string.Empty;
@@ -80,11 +79,11 @@ namespace DaJet.Studio
                     throw new Exception(response.ReasonPhrase); // No Content
                 }
 
-                InfoBaseList.Add(entity.Name);
+                AppState.DatabaseList.Add(entity);
 
                 StateHasChanged();
 
-                Snackbar.Add($"База данных [{entity.Name}] добавлена успешно.", Severity.Success);
+                Snackbar.Add($"База данных [{entity}] добавлена успешно.", Severity.Success);
             }
             catch (Exception error)
             {
@@ -93,25 +92,22 @@ namespace DaJet.Studio
         }
         protected async Task UnRegisterInfoBase(MouseEventArgs args)
         {
-            string database = AppState.CurrentInfoBase;
+            InfoBaseModel database = AppState.CurrentDatabase;
+            if (database is null) { return; }
 
             bool? result = await DialogService.ShowMessageBox(
                 "DaJet Studio",
                 $"Удалить базу данных [{database}] из списка ?",
                 yesText: "Удалить", cancelText: "Отмена");
-
-            if (result == null) { return; }
+            if (result is null) { return; }
 
             try
             {
-                HttpRequestMessage request = new HttpRequestMessage
+                HttpRequestMessage request = new()
                 {
                     Method = HttpMethod.Delete,
-                    RequestUri = new Uri("/md", UriKind.Relative),
-                    Content = JsonContent.Create(new InfoBaseModel()
-                    {
-                        Name = database
-                    })
+                    Content = JsonContent.Create(database),
+                    RequestUri = new Uri("/md", UriKind.Relative)
                 };
                 HttpResponseMessage response = await Http.SendAsync(request);
 
@@ -120,9 +116,9 @@ namespace DaJet.Studio
                     throw new Exception(response.ReasonPhrase);
                 }
 
-                InfoBaseList.Remove(database);
+                AppState.DatabaseList.Remove(database);
 
-                AppState.CurrentInfoBase = InfoBaseList.Count == 0 ? string.Empty : InfoBaseList[0];
+                AppState.CurrentDatabase = AppState.DatabaseList.Count == 0 ? null : AppState.DatabaseList[0];
 
                 StateHasChanged();
 

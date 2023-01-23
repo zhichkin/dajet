@@ -38,12 +38,12 @@ namespace DaJet.Http.Controllers
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetMetadataCache(infobase, out MetadataCache _, out string error))
+            if (!_metadataService.TryGetMetadataCache(record.Uuid.ToString(), out MetadataCache _, out string error))
             {
                 return BadRequest(error);
             }
 
-            if (!_metadataService.TryGetDbViewGenerator(infobase, out IDbViewGenerator generator, out error))
+            if (!_metadataService.TryGetDbViewGenerator(record.Uuid.ToString(), out IDbViewGenerator generator, out error))
             {
                 return BadRequest(error);
             }
@@ -100,12 +100,12 @@ namespace DaJet.Http.Controllers
                 }
             }
 
-            if (!_metadataService.TryGetMetadataCache(infobase, out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetMetadataCache(record.Uuid.ToString(), out MetadataCache cache, out string error))
             {
                 return BadRequest(error);
             }
 
-            if (!_metadataService.TryGetDbViewGenerator(infobase, out IDbViewGenerator generator, out error))
+            if (!_metadataService.TryGetDbViewGenerator(record.Uuid.ToString(), out IDbViewGenerator generator, out error))
             {
                 return BadRequest(error);
             }
@@ -186,7 +186,14 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            if (!_metadataService.TryGetMetadataCache(infobase, out MetadataCache cache, out string error))
+            InfoBaseModel record = _mapper.Select(infobase);
+
+            if (record == null)
+            {
+                return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
+            }
+
+            if (!_metadataService.TryGetMetadataCache(record.Uuid.ToString(), out MetadataCache cache, out string error))
             {
                 return NotFound(error);
             }
@@ -232,7 +239,7 @@ namespace DaJet.Http.Controllers
                 }
             }
 
-            if (!_metadataService.TryGetDbViewGenerator(infobase, out IDbViewGenerator generator, out error))
+            if (!_metadataService.TryGetDbViewGenerator(record.Uuid.ToString(), out IDbViewGenerator generator, out error))
             {
                 return BadRequest(error);
             }
@@ -308,12 +315,12 @@ namespace DaJet.Http.Controllers
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetMetadataCache(infobase, out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetMetadataCache(record.Uuid.ToString(), out MetadataCache cache, out string error))
             {
                 return BadRequest(error);
             }
 
-            if (!_metadataService.TryGetDbViewGenerator(infobase, out IDbViewGenerator generator, out error))
+            if (!_metadataService.TryGetDbViewGenerator(record.Uuid.ToString(), out IDbViewGenerator generator, out error))
             {
                 return BadRequest(error);
             }
@@ -368,7 +375,7 @@ namespace DaJet.Http.Controllers
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetMetadataCache(infobase, out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetMetadataCache(record.Uuid.ToString(), out MetadataCache cache, out string error))
             {
                 return NotFound(error);
             }
@@ -396,7 +403,7 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetDbViewGenerator(infobase, out IDbViewGenerator generator, out error))
+            if (!_metadataService.TryGetDbViewGenerator(record.Uuid.ToString(), out IDbViewGenerator generator, out error))
             {
                 return BadRequest(error);
             }
@@ -445,7 +452,7 @@ namespace DaJet.Http.Controllers
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetDbViewGenerator(infobase, out IDbViewGenerator generator, out string error))
+            if (!_metadataService.TryGetDbViewGenerator(record.Uuid.ToString(), out IDbViewGenerator generator, out string error))
             {
                 return BadRequest(error);
             }
@@ -488,7 +495,7 @@ namespace DaJet.Http.Controllers
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetMetadataCache(infobase, out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetMetadataCache(record.Uuid.ToString(), out MetadataCache cache, out string error))
             {
                 return NotFound(error);
             }
@@ -516,7 +523,7 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetDbViewGenerator(infobase, out IDbViewGenerator generator, out error))
+            if (!_metadataService.TryGetDbViewGenerator(record.Uuid.ToString(), out IDbViewGenerator generator, out error))
             {
                 return BadRequest(error);
             }

@@ -1,14 +1,15 @@
 ﻿using DaJet.Http.Model;
+using DaJet.Http.Server;
 using Microsoft.Data.Sqlite;
-using System;
 
 namespace DaJet.Http.DataMappers
 {
     public sealed class ScriptDataMapper
     {
-        private const string DATABASE_FILE_NAME = "dajet-http-server.db";
+        #region "SQL SCRIPTS"
         private const string CREATE_INFOBASE_TABLE_SCRIPT = "CREATE TABLE IF NOT EXISTS " +
-            "scripts (uuid TEXT NOT NULL, owner TEXT NOT NULL, parent TEXT NOT NULL, is_folder INTEGER NOT NULL, name TEXT NOT NULL, script TEXT NOT NULL, " +
+            "scripts (uuid TEXT NOT NULL, owner TEXT NOT NULL, parent TEXT NOT NULL, " +
+            "is_folder INTEGER NOT NULL, name TEXT NOT NULL, script TEXT NOT NULL, " +
             "PRIMARY KEY (uuid)) WITHOUT ROWID;";
         private const string SELECT_ROOT_SCRIPT = "SELECT uuid, owner, parent, is_folder, name FROM scripts WHERE owner = @owner AND parent = @parent ORDER BY is_folder ASC, name ASC;";
         private const string SELECT_NODE_SCRIPT = "SELECT uuid, owner, parent, is_folder, name FROM scripts WHERE parent = @parent ORDER BY is_folder ASC, name ASC;";
@@ -18,11 +19,12 @@ namespace DaJet.Http.DataMappers
         private const string UPDATE_SCRIPT = "UPDATE scripts SET owner = @owner, parent = @parent, is_folder = @is_folder, name = @name, script = @script WHERE uuid = @uuid;";
         private const string UPDATE_NAME_SCRIPT = "UPDATE scripts SET name = @name WHERE uuid = @uuid;";
         private const string DELETE_SCRIPT = "DELETE FROM scripts WHERE uuid = @uuid;";
+        #endregion
 
         private readonly string _connectionString;
         public ScriptDataMapper()
         {
-            string databaseFileFullPath = Path.Combine(AppContext.BaseDirectory, DATABASE_FILE_NAME);
+            string databaseFileFullPath = Path.Combine(AppContext.BaseDirectory, Program.DATABASE_FILE_NAME);
 
             _connectionString = new SqliteConnectionStringBuilder()
             {
@@ -35,7 +37,7 @@ namespace DaJet.Http.DataMappers
         }
         private void InitializeDatabase()
         {
-            using (SqliteConnection connection = new SqliteConnection(_connectionString))
+            using (SqliteConnection connection = new(_connectionString))
             {
                 connection.Open();
 
@@ -49,8 +51,7 @@ namespace DaJet.Http.DataMappers
         }
 
         #region "CRUD COMMANDS"
-
-        public List<ScriptModel> Select(string infobase)
+        public List<ScriptModel> Select(Guid database)
         {
             List<ScriptModel> list = new();
 
@@ -62,8 +63,8 @@ namespace DaJet.Http.DataMappers
                 {
                     command.CommandText = SELECT_ROOT_SCRIPT;
 
-                    command.Parameters.AddWithValue("owner", infobase);
-                    command.Parameters.AddWithValue("parent", Guid.Empty.ToString());
+                    command.Parameters.AddWithValue("owner", database.ToString().ToLower());
+                    command.Parameters.AddWithValue("parent", Guid.Empty.ToString().ToLower());
 
                     using (SqliteDataReader reader = command.ExecuteReader())
                     {
@@ -72,9 +73,9 @@ namespace DaJet.Http.DataMappers
                             ScriptModel item = new()
                             {
                                 Uuid = new Guid(reader.GetString(0)),
-                                Owner = reader.GetString(1),
+                                Owner = new Guid(reader.GetString(1)),
                                 Parent = new Guid(reader.GetString(2)),
-                                IsFolder = (reader.GetInt32(3) == 1),
+                                IsFolder = (reader.GetInt64(3) == 1L),
                                 Name = reader.GetString(4),
                                 Script = string.Empty
                             };
@@ -99,7 +100,7 @@ namespace DaJet.Http.DataMappers
                 {
                     command.CommandText = SELECT_NODE_SCRIPT;
 
-                    command.Parameters.AddWithValue("parent", parent.Uuid.ToString());
+                    command.Parameters.AddWithValue("parent", parent.Uuid.ToString().ToLower());
 
                     using (SqliteDataReader reader = command.ExecuteReader())
                     {
@@ -108,9 +109,9 @@ namespace DaJet.Http.DataMappers
                             ScriptModel item = new()
                             {
                                 Uuid = new Guid(reader.GetString(0)),
-                                Owner = reader.GetString(1),
+                                Owner = new Guid(reader.GetString(1)),
                                 Parent = new Guid(reader.GetString(2)),
-                                IsFolder = (reader.GetInt32(3) == 1),
+                                IsFolder = (reader.GetInt64(3) == 1L),
                                 Name = reader.GetString(4),
                                 Script = string.Empty
                             };
@@ -135,7 +136,7 @@ namespace DaJet.Http.DataMappers
                 {
                     command.CommandText = SELECT_INFO_SCRIPT;
 
-                    command.Parameters.AddWithValue("uuid", uuid.ToString());
+                    command.Parameters.AddWithValue("uuid", uuid.ToString().ToLower());
 
                     using (SqliteDataReader reader = command.ExecuteReader())
                     {
@@ -144,9 +145,9 @@ namespace DaJet.Http.DataMappers
                             script = new ScriptModel()
                             {
                                 Uuid = new Guid(reader.GetString(0)),
-                                Owner = reader.GetString(1),
+                                Owner = new Guid(reader.GetString(1)),
                                 Parent = new Guid(reader.GetString(2)),
-                                IsFolder = (reader.GetInt32(3) == 1),
+                                IsFolder = (reader.GetInt64(3) == 1L),
                                 Name = reader.GetString(4)
                             };
                         }
@@ -169,7 +170,7 @@ namespace DaJet.Http.DataMappers
                 {
                     command.CommandText = SELECT_SCRIPT;
 
-                    command.Parameters.AddWithValue("uuid", uuid.ToString());
+                    command.Parameters.AddWithValue("uuid", uuid.ToString().ToLower());
 
                     using (SqliteDataReader reader = command.ExecuteReader())
                     {
@@ -178,7 +179,7 @@ namespace DaJet.Http.DataMappers
                             script = new ScriptModel()
                             {
                                 Uuid = new Guid(reader.GetString(0)),
-                                Owner = reader.GetString(1),
+                                Owner = new Guid(reader.GetString(1)),
                                 Parent = new Guid(reader.GetString(2)),
                                 IsFolder = (reader.GetInt32(3) == 1),
                                 Name = reader.GetString(4),
@@ -204,10 +205,10 @@ namespace DaJet.Http.DataMappers
                 {
                     command.CommandText = INSERT_SCRIPT;
 
-                    command.Parameters.AddWithValue("uuid", script.Uuid.ToString());
-                    command.Parameters.AddWithValue("owner", script.Owner);
-                    command.Parameters.AddWithValue("parent", script.Parent.ToString());
-                    command.Parameters.AddWithValue("is_folder", script.IsFolder ? 1 : 0);
+                    command.Parameters.AddWithValue("uuid", script.Uuid.ToString().ToLower());
+                    command.Parameters.AddWithValue("owner", script.Owner.ToString().ToLower());
+                    command.Parameters.AddWithValue("parent", script.Parent.ToString().ToLower());
+                    command.Parameters.AddWithValue("is_folder", script.IsFolder ? 1L : 0L);
                     command.Parameters.AddWithValue("name", script.Name);
                     command.Parameters.AddWithValue("script", script.Script);
 
@@ -230,9 +231,9 @@ namespace DaJet.Http.DataMappers
                     command.CommandText = UPDATE_SCRIPT;
 
                     command.Parameters.AddWithValue("uuid", script.Uuid.ToString());
-                    command.Parameters.AddWithValue("owner", script.Owner);
+                    command.Parameters.AddWithValue("owner", script.Owner.ToString());
                     command.Parameters.AddWithValue("parent", script.Parent.ToString());
-                    command.Parameters.AddWithValue("is_folder", script.IsFolder ? 1 : 0);
+                    command.Parameters.AddWithValue("is_folder", script.IsFolder ? 1L : 0L);
                     command.Parameters.AddWithValue("name", script.Name);
                     command.Parameters.AddWithValue("script", script.Script);
 
@@ -254,7 +255,7 @@ namespace DaJet.Http.DataMappers
                 {
                     command.CommandText = UPDATE_NAME_SCRIPT;
 
-                    command.Parameters.AddWithValue("uuid", script.Uuid.ToString());
+                    command.Parameters.AddWithValue("uuid", script.Uuid.ToString().ToLower());
                     command.Parameters.AddWithValue("name", script.Name);
 
                     result = command.ExecuteNonQuery();
@@ -267,7 +268,7 @@ namespace DaJet.Http.DataMappers
         {
             int result;
 
-            using (SqliteConnection connection = new SqliteConnection(_connectionString))
+            using (SqliteConnection connection = new(_connectionString))
             {
                 connection.Open();
 
@@ -275,7 +276,7 @@ namespace DaJet.Http.DataMappers
                 {
                     command.CommandText = DELETE_SCRIPT;
 
-                    command.Parameters.AddWithValue("uuid", script.Uuid.ToString());
+                    command.Parameters.AddWithValue("uuid", script.Uuid.ToString().ToLower());
 
                     result = command.ExecuteNonQuery();
                 }
@@ -283,7 +284,6 @@ namespace DaJet.Http.DataMappers
 
             return (result > 0);
         }
-
         #endregion
     }
 }

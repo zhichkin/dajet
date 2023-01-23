@@ -143,7 +143,6 @@ namespace DaJet.Studio.Controllers
         {
             ScriptModel script = new()
             {
-                Uuid = Guid.NewGuid(),
                 Name = "NewFolder",
                 IsFolder = true
             };
@@ -154,7 +153,6 @@ namespace DaJet.Studio.Controllers
         {
             ScriptModel script = new()
             {
-                Uuid = Guid.NewGuid(),
                 Name = "NewScript",
                 IsFolder = false
             };
@@ -167,7 +165,7 @@ namespace DaJet.Studio.Controllers
 
             if (root == null || root.Tag is not InfoBaseModel infobase)
             {
-                return;
+                return; // owner database is not found
             }
 
             ScriptModel parent = node.Tag as ScriptModel;
@@ -179,7 +177,7 @@ namespace DaJet.Studio.Controllers
             }
             else
             {
-                script.Owner = infobase.Name;
+                script.Owner = infobase.Uuid;
                 script.Parent = Guid.Empty;
             }
 

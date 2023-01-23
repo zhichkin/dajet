@@ -33,7 +33,7 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataCache(query.DbName, out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetMetadataCache(record.Uuid.ToString(), out MetadataCache cache, out string error))
             {
                 return BadRequest(error);
             }
@@ -86,7 +86,7 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataCache(query.DbName, out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetMetadataCache(record.Uuid.ToString(), out MetadataCache cache, out string error))
             {
                 return BadRequest(error);
             }

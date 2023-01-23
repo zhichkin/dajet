@@ -31,7 +31,7 @@ namespace DaJet.Http.Controllers
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetDbViewGenerator(infobase, out IDbViewGenerator generator, out string error))
+            if (!_metadataService.TryGetDbViewGenerator(record.Uuid.ToString(), out IDbViewGenerator generator, out string error))
             {
                 return BadRequest(error);
             }
@@ -56,7 +56,7 @@ namespace DaJet.Http.Controllers
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetDbViewGenerator(infobase, out IDbViewGenerator generator, out string error))
+            if (!_metadataService.TryGetDbViewGenerator(record.Uuid.ToString(), out IDbViewGenerator generator, out string error))
             {
                 return BadRequest(error);
             }
@@ -83,7 +83,7 @@ namespace DaJet.Http.Controllers
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetDbViewGenerator(infobase, out IDbViewGenerator generator, out string error))
+            if (!_metadataService.TryGetDbViewGenerator(record.Uuid.ToString(), out IDbViewGenerator generator, out string error))
             {
                 return BadRequest(error);
             }

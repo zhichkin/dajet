@@ -17,11 +17,11 @@
         <MudToolBar Dense="true" DisableGutters="true" Class="px-3">
             
             <MudContainer MaxWidth="MaxWidth.ExtraSmall" Class="mx-0 px-0">
-                <MudSelect T="string" @bind-Value="AppState.CurrentInfoBase" Label="Текущая база данных"
+                <MudSelect T="InfoBaseModel" @bind-Value="AppState.CurrentDatabase" Label="Текущая база данных"
                            Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
-                    @foreach (string name in InfoBaseList)
+                    @foreach (InfoBaseModel model in AppState.DatabaseList)
                     {
-                        <MudSelectItem Value="name" />
+                        <MudSelectItem Value="model">@model.Name</MudSelectItem>
                     }
                 </MudSelect>
             </MudContainer>

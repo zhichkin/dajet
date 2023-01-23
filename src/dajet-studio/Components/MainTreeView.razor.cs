@@ -423,13 +423,13 @@ namespace DaJet.Studio.Components
         #region "FILTER TREE VIEW"
         protected async Task FilterTreeView(string filter)
         {
-            string database = AppState.CurrentInfoBase;
+            InfoBaseModel database = AppState.CurrentDatabase;
 
             TreeNodeModel target = null;
 
             foreach (TreeNodeModel node in Nodes)
             {
-                if (node.Title == database)
+                if (node.Title == database.Name)
                 {
                     target = node;
                     target.IsExpanded = true;

@@ -1,24 +1,36 @@
 ﻿using DaJet.Http.Model;
+using DaJet.Http.Server;
 using Microsoft.Data.Sqlite;
 
 namespace DaJet.Http.DataMappers
 {
     public sealed class InfoBaseDataMapper
     {
-        private const string DATABASE_FILE_NAME = "dajet-http-server.db";
+        #region "SQL SCRIPTS"
         private const string CREATE_INFOBASE_TABLE_SCRIPT = "CREATE TABLE IF NOT EXISTS " +
-            "infobases (name TEXT NOT NULL, description TEXT NOT NULL, use_extensions INTEGER NOT NULL, provider TEXT NOT NULL, dbconnect TEXT NOT NULL, " +
-            "PRIMARY KEY (name)) WITHOUT ROWID;";
-        private const string SELECT_ALL_SCRIPT = "SELECT name, description, use_extensions, provider, dbconnect FROM infobases ORDER BY name ASC;";
-        private const string SELECT_BY_NAME_SCRIPT = "SELECT name, description, use_extensions, provider, dbconnect FROM infobases WHERE name = @name;";
-        private const string INSERT_SCRIPT = "INSERT INTO infobases (name, description, use_extensions, provider, dbconnect) VALUES (@name, @description, @use_extensions, @provider, @dbconnect);";
-        private const string UPDATE_SCRIPT = "UPDATE infobases SET description = @description, use_extensions = @use_extensions, provider = @provider, dbconnect = @dbconnect WHERE name = @name;";
-        private const string DELETE_SCRIPT = "DELETE FROM infobases WHERE name = @name;";
+            "infobases (uuid TEXT NOT NULL, name TEXT NOT NULL UNIQUE, description TEXT NOT NULL, " +
+            "use_extensions INTEGER NOT NULL, provider TEXT NOT NULL, dbconnect TEXT NOT NULL, " +
+            "PRIMARY KEY (uuid)) WITHOUT ROWID;";
+        private const string SELECT_ALL_SCRIPT =
+            "SELECT uuid, name, description, use_extensions, provider, dbconnect FROM infobases ORDER BY name ASC;";
+        private const string SELECT_SCRIPT =
+            "SELECT uuid, name, description, use_extensions, provider, dbconnect FROM infobases WHERE uuid = @uuid;";
+        private const string SELECT_BY_NAME_SCRIPT =
+            "SELECT uuid, name, description, use_extensions, provider, dbconnect FROM infobases WHERE name = @name;";
+        private const string INSERT_SCRIPT =
+            "INSERT INTO infobases (uuid, name, description, use_extensions, provider, dbconnect) " +
+            "VALUES (@uuid, @name, @description, @use_extensions, @provider, @dbconnect);";
+        private const string UPDATE_SCRIPT =
+            "UPDATE infobases SET name = @name, description = @description, " +
+            "use_extensions = @use_extensions, provider = @provider, dbconnect = @dbconnect " +
+            "WHERE uuid = @uuid;";
+        private const string DELETE_SCRIPT = "DELETE FROM infobases WHERE uuid = @uuid;";
+        #endregion
 
         private readonly string _connectionString;
         public InfoBaseDataMapper()
         {
-            string databaseFileFullPath = Path.Combine(AppContext.BaseDirectory, DATABASE_FILE_NAME);
+            string databaseFileFullPath = Path.Combine(AppContext.BaseDirectory, Program.DATABASE_FILE_NAME);
 
             _connectionString = new SqliteConnectionStringBuilder()
             {
@@ -44,8 +56,7 @@ namespace DaJet.Http.DataMappers
             }
         }
 
-        #region "INFOBASE CRUD COMMANDS"
-
+        #region "CRUD COMMANDS"
         public List<InfoBaseModel> Select()
         {
             List<InfoBaseModel> list = new();
@@ -64,11 +75,12 @@ namespace DaJet.Http.DataMappers
                         {
                             InfoBaseModel item = new()
                             {
-                                Name = reader.GetString(0),
-                                Description = reader.GetString(1),
-                                UseExtensions = (reader.GetInt64(2) == 1L),
-                                DatabaseProvider = reader.GetString(3),
-                                ConnectionString = reader.GetString(4)
+                                Uuid = new Guid(reader.GetString(0)),
+                                Name = reader.GetString(1),
+                                Description = reader.GetString(2),
+                                UseExtensions = (reader.GetInt64(3) == 1L),
+                                DatabaseProvider = reader.GetString(4),
+                                ConnectionString = reader.GetString(5)
                             };
                             list.Add(item);
                         }
@@ -78,6 +90,41 @@ namespace DaJet.Http.DataMappers
             }
 
             return list;
+        }
+        public InfoBaseModel Select(Guid uuid)
+        {
+            InfoBaseModel entity = null;
+
+            using (SqliteConnection connection = new(_connectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = SELECT_SCRIPT;
+
+                    command.Parameters.AddWithValue("uuid", uuid.ToString().ToLower());
+
+                    using (SqliteDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            entity = new InfoBaseModel()
+                            {
+                                Uuid = new Guid(reader.GetString(0)),
+                                Name = reader.GetString(1),
+                                Description = reader.GetString(2),
+                                UseExtensions = (reader.GetInt64(3) == 1L),
+                                DatabaseProvider = reader.GetString(4),
+                                ConnectionString = reader.GetString(5)
+                            };
+                        }
+                        reader.Close();
+                    }
+                }
+            }
+
+            return entity;
         }
         public InfoBaseModel Select(string name)
         {
@@ -99,11 +146,12 @@ namespace DaJet.Http.DataMappers
                         {
                             entity = new InfoBaseModel()
                             {
-                                Name = reader.GetString(0),
-                                Description = reader.GetString(1),
-                                UseExtensions = (reader.GetInt64(2) == 1L),
-                                DatabaseProvider = reader.GetString(3),
-                                ConnectionString = reader.GetString(4)
+                                Uuid = new Guid(reader.GetString(0)),
+                                Name = reader.GetString(1),
+                                Description = reader.GetString(2),
+                                UseExtensions = (reader.GetInt64(3) == 1L),
+                                DatabaseProvider = reader.GetString(4),
+                                ConnectionString = reader.GetString(5)
                             };
                         }
                         reader.Close();
@@ -125,6 +173,7 @@ namespace DaJet.Http.DataMappers
                 {
                     command.CommandText = INSERT_SCRIPT;
 
+                    command.Parameters.AddWithValue("uuid", entity.Uuid.ToString().ToLower());
                     command.Parameters.AddWithValue("name", entity.Name);
                     command.Parameters.AddWithValue("description", entity.Description);
                     command.Parameters.AddWithValue("use_extensions", entity.UseExtensions);
@@ -149,6 +198,7 @@ namespace DaJet.Http.DataMappers
                 {
                     command.CommandText = UPDATE_SCRIPT;
 
+                    command.Parameters.AddWithValue("uuid", entity.Uuid.ToString().ToLower());
                     command.Parameters.AddWithValue("name", entity.Name);
                     command.Parameters.AddWithValue("description", entity.Description);
                     command.Parameters.AddWithValue("use_extensions", entity.UseExtensions);
@@ -165,7 +215,7 @@ namespace DaJet.Http.DataMappers
         {
             int result;
 
-            using (SqliteConnection connection = new SqliteConnection(_connectionString))
+            using (SqliteConnection connection = new(_connectionString))
             {
                 connection.Open();
 
@@ -173,7 +223,7 @@ namespace DaJet.Http.DataMappers
                 {
                     command.CommandText = DELETE_SCRIPT;
 
-                    command.Parameters.AddWithValue("name", entity.Name);
+                    command.Parameters.AddWithValue("uuid", entity.Uuid.ToString().ToLower());
 
                     result = command.ExecuteNonQuery();
                 }
@@ -181,7 +231,6 @@ namespace DaJet.Http.DataMappers
 
             return (result > 0);
         }
-
         #endregion
     }
 }

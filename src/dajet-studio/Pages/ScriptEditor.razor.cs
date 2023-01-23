@@ -9,6 +9,7 @@ namespace DaJet.Studio.Pages
     {
         [Parameter] public Guid Uuid { get; set; } = Guid.Empty;
         protected ScriptModel Model { get; set; } = new ScriptModel();
+        protected string DatabaseName { get; set; } = string.Empty;
         protected string ScriptUrl { get; set; } = string.Empty;
         protected bool ScriptIsChanged { get; set; } = false;
         protected string ErrorText { get; set; } = string.Empty;
@@ -23,13 +24,15 @@ namespace DaJet.Studio.Pages
             }
             else
             {
-                Model.Uuid = Guid.NewGuid();
                 Model.Name = "Скрипт 1QL";
                 Model.IsFolder = false;
-                Model.Owner = AppState.CurrentInfoBase;
+                Model.Owner = AppState.CurrentDatabase.Uuid;
                 ScriptUrl = Model.Name;
             }
-            
+
+            InfoBaseModel database = AppState.GetDatabase(Model.Owner);
+            DatabaseName = (database == null ? "База данных не определена" : database.Name);
+
             ErrorText = string.Empty;
             ResultText = string.Empty;
             ResultTable = null;
@@ -124,14 +127,16 @@ namespace DaJet.Studio.Pages
             ResultText = string.Empty;
             ResultTable = null;
 
-            QueryRequest request = new()
-            {
-                DbName = Model.Owner,
-                Script = Model.Script
-            };
-
             try
             {
+                InfoBaseModel database = AppState.GetDatabaseOrThrowException(Model.Owner);
+
+                QueryRequest request = new()
+                {
+                    DbName = database.Name,
+                    Script = Model.Script
+                };
+
                 HttpResponseMessage response = await Http.PostAsJsonAsync("/1ql/prepare", request);
 
                 if (!response.IsSuccessStatusCode)
@@ -168,14 +173,16 @@ namespace DaJet.Studio.Pages
             ResultText = string.Empty;
             ResultTable = null;
 
-            QueryRequest request = new()
-            {
-                DbName = Model.Owner,
-                Script = Model.Script
-            };
-
             try
             {
+                InfoBaseModel database = AppState.GetDatabaseOrThrowException(Model.Owner);
+
+                QueryRequest request = new()
+                {
+                    DbName = database.Name,
+                    Script = Model.Script
+                };
+
                 HttpResponseMessage response = await Http.PostAsJsonAsync("/1ql/execute", request);
 
                 string result = await response.Content.ReadAsStringAsync();
@@ -203,14 +210,16 @@ namespace DaJet.Studio.Pages
             ResultText = string.Empty;
             ResultTable = null;
 
-            QueryRequest request = new()
-            {
-                DbName = Model.Owner,
-                Script = Model.Script
-            };
-
             try
             {
+                InfoBaseModel database = AppState.GetDatabaseOrThrowException(Model.Owner);
+
+                QueryRequest request = new()
+                {
+                    DbName = database.Name,
+                    Script = Model.Script
+                };
+
                 HttpResponseMessage response = await Http.PostAsJsonAsync("/1ql/execute", request);
 
                 if (!response.IsSuccessStatusCode)
