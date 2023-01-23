@@ -7,6 +7,7 @@
             Token = TokenType.CTE;
         }
         public string Name { get; set; } = string.Empty;
+        public bool IsRecursive { get; set; } = false;
         public SyntaxNode Expression { get; set; } = null!;
         public List<Identifier> Columns { get; set; } = new();
         public CommonTableExpression Next { get; set; } = null!;

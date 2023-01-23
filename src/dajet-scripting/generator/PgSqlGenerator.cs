@@ -52,14 +52,28 @@ namespace DaJet.Scripting
 
         private void VisitCommonTables(CommonTableExpression cte, StringBuilder script)
         {
-            if (cte == null)
-            {
-                return;
-            }
+            if (cte == null) { return; }
 
             script.Append("WITH ");
 
+            if (HasRecursiveCte(cte))
+            {
+                script.Append("RECURSIVE ");
+            }
+
             VisitCommonTable(cte, script);
+        }
+        private bool HasRecursiveCte(CommonTableExpression cte)
+        {
+            if (cte.Next != null)
+            {
+                if (HasRecursiveCte(cte.Next))
+                {
+                    return true;
+                }
+            }
+
+            return cte.IsRecursive;
         }
         private void VisitCommonTable(CommonTableExpression cte, StringBuilder script)
         {
@@ -81,7 +95,9 @@ namespace DaJet.Scripting
             }
             else if (cte.Expression is TableUnionOperator union)
             {
+                _context = "CTE"; //TODO: убрать этот костыль
                 VisitUnionOperator(union, script, null!);
+                _context = null;
             }
 
             script.AppendLine(")");
@@ -130,7 +146,7 @@ namespace DaJet.Scripting
 
                     name += field.Name;
 
-                    if (mapper != null && // resulting SELECT clause only !
+                    if ((mapper != null || _context == "UNION") && // resulting SELECT or OUTPUT clause only ! + UNION ...
                         field.TypeName == "nvarchar" || field.TypeName == "varchar" ||
                         field.TypeName == "nchar" || field.TypeName == "char")
                     {
@@ -294,6 +310,8 @@ namespace DaJet.Scripting
 
         private void VisitSelectStatement(SelectStatement select, StringBuilder script, EntityMap mapper)
         {
+            if (select.IsExpression) { script.Append("("); } // can be used by UNION operator
+
             VisitCommonTables(select.CTE, script);
 
             VisitSelectClause(select, script, mapper);
@@ -321,6 +339,8 @@ namespace DaJet.Scripting
             }
 
             VisitTopExpression(select.TOP, script);
+
+            if (select.IsExpression) { script.Append(")"); } // can be used by UNION operator
         }
 
         #region "SELECT AND FROM CLAUSE"
@@ -486,20 +506,29 @@ namespace DaJet.Scripting
             }
             else if (subquery.Expression is TableUnionOperator union)
             {
+                _context = "SUBQUERY"; //TODO: убрать этот костыль
                 VisitUnionOperator(union, script, null!);
+                _context = null;
             }
 
             script.Append(") AS " + subquery.Alias);
         }
+
+        //TODO: убрать этот костыль:
+        //1. Нужен для конвертации mvarchar в varchar, если это самостоятельный SELECT + UNION
+        //2. Не нужен в подзапросах, конвертация происходит в результирующем SELECT главного запроса
+        private string _context = null;
         private void VisitUnionOperator(TableUnionOperator union, StringBuilder script, EntityMap mapper)
         {
             if (union.Expression1 is SelectStatement select1)
             {
-                VisitSelectStatement(select1, script, null!);
+                if (_context == null) { _context = "UNION"; } // TODO: убрать этот костыль, учитываем подзапрос
+                VisitSelectStatement(select1, script, mapper);
+                if (_context == "UNION") { _context = null; }
             }
             else if (union.Expression1 is TableUnionOperator union1)
             {
-                VisitUnionOperator(union1, script, mapper);
+                VisitUnionOperator(union1, script, null!); // TODO: remove - unreachable branch !?
             }
 
             if (union.Token == TokenType.UNION)
@@ -513,11 +542,13 @@ namespace DaJet.Scripting
 
             if (union.Expression2 is SelectStatement select2)
             {
+                if (_context == null) { _context = "UNION"; } // TODO: убрать этот костыль, учитываем подзапрос
                 VisitSelectStatement(select2, script, null!);
+                if (_context == "UNION") { _context = null; }
             }
             else if (union.Expression2 is TableUnionOperator union2)
             {
-                VisitUnionOperator(union2, script, mapper);
+                VisitUnionOperator(union2, script, null!);
             }
         }
         #endregion

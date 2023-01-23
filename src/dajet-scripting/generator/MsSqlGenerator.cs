@@ -287,6 +287,8 @@ namespace DaJet.Scripting
 
         private void VisitSelectStatement(SelectStatement select, StringBuilder script, EntityMap mapper)
         {
+            if (select.IsExpression) { script.Append("("); } // can be used by UNION operator
+
             VisitCommonTables(select.CTE, script);
 
             VisitSelectClause(select, script, mapper);
@@ -312,6 +314,8 @@ namespace DaJet.Scripting
             {
                 VisitOrderClause(select.ORDER, script);
             }
+
+            if (select.IsExpression) { script.Append(")"); } // can be used by UNION operator
         }
 
         #region "SELECT AND FROM CLAUSE"
@@ -490,11 +494,11 @@ namespace DaJet.Scripting
         {
             if (union.Expression1 is SelectStatement select1)
             {
-                VisitSelectStatement(select1, script, null!);
+                VisitSelectStatement(select1, script, mapper);
             }
             else if (union.Expression1 is TableUnionOperator union1)
             {
-                VisitUnionOperator(union1, script, mapper);
+                VisitUnionOperator(union1, script, null!);
             }
 
             if (union.Token == TokenType.UNION)
@@ -512,7 +516,7 @@ namespace DaJet.Scripting
             }
             else if (union.Expression2 is TableUnionOperator union2)
             {
-                VisitUnionOperator(union2, script, mapper);
+                VisitUnionOperator(union2, script, null!);
             }
         }
         #endregion

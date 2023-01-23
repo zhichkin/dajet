@@ -49,6 +49,10 @@ namespace DaJet.Scripting
             {
                 OpenScope(ScopeType.Node, node);
             }
+            else if (node is TableUnionOperator)
+            {
+                OpenScope(ScopeType.Node, node);
+            }
             else if (node is CommonTableExpression)
             {
                 OpenScope(ScopeType.Node, node);
@@ -86,6 +90,10 @@ namespace DaJet.Scripting
                 CloseScope(node);
             }
             else if (node is TableJoinOperator)
+            {
+                CloseScope(node);
+            }
+            else if (node is TableUnionOperator)
             {
                 CloseScope(node);
             }

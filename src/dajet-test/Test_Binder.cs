@@ -451,6 +451,16 @@ namespace DaJet.Scripting.Test
             filePath = "C:\\temp\\scripting-test\\union\\02-script.txt";
             BindMetadataToSyntaxTree();
         }
+        [TestMethod] public void Bind_Metadata_Union_Subquery()
+        {
+            filePath = "C:\\temp\\scripting-test\\union\\04-script.txt";
+            BindMetadataToSyntaxTree();
+        }
+        [TestMethod] public void Bind_Metadata_Union_Cte()
+        {
+            filePath = "C:\\temp\\scripting-test\\union\\05-script.txt";
+            BindMetadataToSyntaxTree();
+        }
         [TestMethod] public void Bind_Metadata_Recursive_Cte()
         {
             filePath = "C:\\temp\\scripting-test\\union\\03-script.txt";

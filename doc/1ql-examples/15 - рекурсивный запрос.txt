@@ -1,0 +1,31 @@
+DECLARE @Код string = "PG-11";
+
+WITH test0 AS
+(
+  SELECT Ссылка FROM Справочник.Пользователи
+),
+RecursiveQuery AS
+(
+    SELECT Ссылка AS Ref, Код, Наименование, Родитель --, 0 AS Уровень
+      FROM Справочник.Номенклатура
+     WHERE Код = @Код
+
+    UNION ALL
+
+    SELECT e.Ссылка, e.Код, e.Наименование, e.Родитель --, r.Уровень
+      FROM Справочник.Номенклатура AS e
+    INNER JOIN RecursiveQuery AS r
+            ON e.Родитель = r.Ref
+),
+test1 AS
+(
+  SELECT Ref FROM RecursiveQuery AS i
+),
+test2 AS
+(
+  SELECT Ссылка FROM Справочник.Номенклатура
+)
+
+  SELECT Ref AS Ссылка, Код, Наименование --, Уровень
+    FROM RecursiveQuery AS s
+ORDER BY Родитель;

@@ -157,6 +157,11 @@ namespace DaJet.Scripting
             {
                 identifier.Tag = owner; // bind CTE reference
 
+                if (IsRecursiveCte(in scope, in identifier))
+                {
+                    owner.IsRecursive = true; // NOTE: это нужно для генератора PG SQL
+                }
+
                 return; // successful binding
             }
 
@@ -169,6 +174,31 @@ namespace DaJet.Scripting
                     return; // successful binding
                 }
             }
+        }
+        private bool IsRecursiveCte(in ScriptScope scope, in Identifier identifier)
+        {
+            foreach (Identifier test in scope.Identifiers)
+            {
+                if (test == identifier)
+                {
+                    return true;
+                }
+            }
+
+            foreach (ScriptScope child in scope.Children)
+            {
+                if (child.Owner is CommonTableExpression)
+                {
+                    continue;
+                }
+
+                if (IsRecursiveCte(in child, in identifier))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
         
         private void BindColumns(in ScriptScope scope, in MetadataCache metadata)
@@ -223,12 +253,16 @@ namespace DaJet.Scripting
                                 {
                                     //identifier.Tag = column.Tag;     // Проброс свойства теряет информацию о синониме колонки
                                     //identifier.Alias = column.Alias; // Важно пробросить наверх синоним колонки
-                                    
+
                                     identifier.Tag = column; // bubble up identifier, entity property is in the Tag
                                     return; // successful binding
                                 }
                             }
                         }
+                    }
+                    else if (subquery.Expression is TableUnionOperator union && union.Expression1 is SelectStatement unionSelect)
+                    {
+                        BindColumnToSelect(in unionSelect, in identifier);
                     }
                 }
                 else if (node is Identifier table && table.Token == TokenType.Table) // Привязка колонки по имени таблицы (синониму),
@@ -261,16 +295,30 @@ namespace DaJet.Scripting
                                 }
                             }
                         }
-                        else if (table.Tag is CommonTableExpression cte && cte.Expression is SelectStatement select)
+                        else if (table.Tag is CommonTableExpression cte)
                         {
-                            BindColumnToSelect(in select, in identifier);
+                            if (cte.Expression is SelectStatement select)
+                            {
+                                BindColumnToSelect(in select, in identifier);
+                            }
+                            else if (cte.Expression is TableUnionOperator union && union.Expression1 is SelectStatement unionSelect)
+                            {
+                                BindColumnToSelect(in unionSelect, in identifier);
+                            }
                         }
                     }
                     else if (string.IsNullOrWhiteSpace(table.Alias) && table.Value == tableAlias)
                     {
-                        if (table.Tag is CommonTableExpression cte && cte.Expression is SelectStatement select)
+                        if (table.Tag is CommonTableExpression cte)
                         {
-                            BindColumnToSelect(in select, in identifier);
+                            if (cte.Expression is SelectStatement select)
+                            {
+                                BindColumnToSelect(in select, in identifier);
+                            }
+                            else if (cte.Expression is TableUnionOperator union && union.Expression1 is SelectStatement unionSelect)
+                            {
+                                BindColumnToSelect(in unionSelect, in identifier);
+                            }
                         }
                     }
                 }
