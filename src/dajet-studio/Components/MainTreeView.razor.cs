@@ -9,7 +9,7 @@ using System.Net.Http.Json;
 
 namespace DaJet.Studio.Components
 {
-    public partial class MainTreeView : ComponentBase
+    public partial class MainTreeView : ComponentBase, IDisposable
     {
         #region "CONSTANTS"
         private readonly Guid ENUMERATION_TYPE = new("f6a80749-5ad7-400b-8519-39dc5dff2542");
@@ -37,6 +37,13 @@ namespace DaJet.Studio.Components
             await IntializeInfoBaseList();
             
             AppState.RefreshInfoBaseCommand += Refresh;
+        }
+        public void Dispose()
+        {
+            if (AppState != null)
+            {
+                AppState.RefreshInfoBaseCommand -= Refresh;
+            }
         }
         private async void Refresh()
         {
@@ -264,14 +271,22 @@ namespace DaJet.Studio.Components
                 return;
             }
 
+            string _backupName = model.Name; // TODO: make full copy of the model
+
             DialogParameters parameters = new()
             {
-                { "Model", model }
+                { "Model", model },
+                { "TreeNode", node},
+                { "MainTreeView", this }
             };
             DialogOptions options = new() { CloseButton = true };
             var dialog = dialogService.Show<InfoBaseDialog>("DaJet Studio", parameters, options);
             var result = await dialog.Result;
-            if (result.Cancelled) { return; }
+            if (result.Cancelled)
+            {
+                model.Name = _backupName; // TODO: restore state of the model
+                return;
+            }
 
             if (result.Data is not InfoBaseModel entity)
             {
@@ -282,12 +297,22 @@ namespace DaJet.Studio.Components
             {
                 HttpResponseMessage response = await Http.PutAsJsonAsync("/md", entity);
 
-                if (response.StatusCode != HttpStatusCode.OK)
+                if (!response.IsSuccessStatusCode)
                 {
+                    model.Name = _backupName; // TODO: restore state of the model
                     throw new Exception(response.ReasonPhrase);
                 }
 
-                StateHasChanged();
+                node.Title = entity.Name; // change view
+                node.Nodes.Clear();
+                ConfigureInfoBaseNode(node, entity);
+
+                InfoBaseModel database = AppState.GetDatabase(entity.Uuid);
+                if (database != null)
+                {
+                    database.Name = entity.Name;
+                    AppState.CurrentDatabase = database; // notify MainLayout
+                }
 
                 Snackbar.Add($"Свойства базы данных [{entity.Name}] обновлены успешно.", Severity.Success);
             }

@@ -1,11 +1,18 @@
 ﻿using DaJet.Studio.Model;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace DaJet.Studio
 {
-    public sealed class AppState
+    public sealed class AppState : INotifyPropertyChanged
     {
+        private InfoBaseModel _database;
         public Action RefreshInfoBaseCommand;
-        public InfoBaseModel CurrentDatabase { get; set; }
+        public InfoBaseModel CurrentDatabase
+        {
+            get { return _database; }
+            set { ChangeState(ref _database, value); }
+        }
         public List<InfoBaseModel> DatabaseList { get; set; } = new();
         public InfoBaseModel GetDatabase(Guid uuid)
         {
@@ -41,5 +48,19 @@ namespace DaJet.Studio
             }
         }
         public event Action<string> AppErrorEventHandler;
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+        private void ChangeState<T>(ref T target, T value, [CallerMemberName] string propertyName = null)
+        {
+            if (value is InfoBaseModel && propertyName == nameof(CurrentDatabase))
+            {
+                target = value;
+                OnPropertyChanged(propertyName);
+            }
+        }
     }
 }

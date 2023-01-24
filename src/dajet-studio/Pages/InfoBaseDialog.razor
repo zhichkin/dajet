@@ -1,4 +1,7 @@
-﻿<MudDialog>
+﻿@inject HttpClient Http;
+@inject ISnackbar Snackbar;
+
+<MudDialog>
     
     <DialogContent>
         <MudTextField T="string" Label="Имя" @bind-Value="@Model.Name"
@@ -23,6 +26,9 @@
     </DialogContent>
 
     <DialogActions>
+        <MudTooltip Text="Обновить кэш метаданных на сервере">
+            <MudButton OnClick="Refresh" Color="Color.Info">Обновить кэш</MudButton>
+        </MudTooltip>
         <MudButton OnClick="Submit" Color="Color.Success">Сохранить</MudButton>
         <MudButton OnClick="Cancel" Color="Color.Error">Отмена</MudButton>
     </DialogActions>

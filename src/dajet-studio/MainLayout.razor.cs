@@ -3,12 +3,13 @@ using DaJet.Studio.Pages;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using MudBlazor;
+using System.ComponentModel;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace DaJet.Studio
 {
-    public partial class MainLayout : LayoutComponentBase
+    public partial class MainLayout : LayoutComponentBase, IDisposable
     {
         protected void NavigateToHomePage()
         {
@@ -16,7 +17,26 @@ namespace DaJet.Studio
         }
         protected override async Task OnInitializedAsync()
         {
+            if (AppState != null)
+            {
+                AppState.PropertyChanged += AppStateChangedHandler;
+            }
+
             await IntializeInfoBaseList();
+        }
+        public void Dispose()
+        {
+            if (AppState != null)
+            {
+                AppState.PropertyChanged -= AppStateChangedHandler;
+            }
+        }
+        private void AppStateChangedHandler(object sender, PropertyChangedEventArgs args)
+        {
+            if (args.PropertyName == nameof(AppState.CurrentDatabase))
+            {
+                StateHasChanged();
+            }
         }
         private async Task IntializeInfoBaseList()
         {
@@ -39,6 +59,10 @@ namespace DaJet.Studio
                 {
                     AppState.CurrentDatabase = list[0];
                 }
+                else
+                {
+                    AppState.CurrentDatabase = null;
+                }
 
                 AppState.FooterText = string.Empty;
             }
@@ -50,7 +74,7 @@ namespace DaJet.Studio
         protected async Task RefreshInfoBaseList(MouseEventArgs args)
         {
             await IntializeInfoBaseList();
-
+            //StateHasChanged();
             AppState.RefreshInfoBaseCommand?.Invoke();
         }
         protected async Task RegisterNewInfoBase(MouseEventArgs args)
@@ -79,11 +103,9 @@ namespace DaJet.Studio
                     throw new Exception(response.ReasonPhrase); // No Content
                 }
 
-                AppState.DatabaseList.Add(entity);
-
-                StateHasChanged();
-
                 Snackbar.Add($"База данных [{entity}] добавлена успешно.", Severity.Success);
+
+                await RefreshInfoBaseList(null);
             }
             catch (Exception error)
             {
@@ -116,13 +138,9 @@ namespace DaJet.Studio
                     throw new Exception(response.ReasonPhrase);
                 }
 
-                AppState.DatabaseList.Remove(database);
-
-                AppState.CurrentDatabase = AppState.DatabaseList.Count == 0 ? null : AppState.DatabaseList[0];
-
-                StateHasChanged();
-
                 Snackbar.Add($"База данных [{database}] удалена успешно.", Severity.Info);
+
+                await RefreshInfoBaseList(null);
             }
             catch (Exception error)
             {
