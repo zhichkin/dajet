@@ -1,6 +1,7 @@
 ﻿using DaJet.Data;
 using DaJet.Http.DataMappers;
 using DaJet.Http.Model;
+using DaJet.Json;
 using DaJet.Metadata;
 using DaJet.Scripting;
 using Microsoft.AspNetCore.Mvc;
@@ -176,8 +177,7 @@ namespace DaJet.Http.Controllers
         }
 
         [HttpPost("{infobase}/{**path}")]
-        public ActionResult ExecuteScript(
-            [FromRoute] string infobase, [FromRoute] string path, [FromBody] Dictionary<string, string> parameters = null)
+        public async Task<ActionResult> ExecuteScript([FromRoute] string infobase, [FromRoute] string path)
         {
             InfoBaseModel database = _mapper.Select(infobase);
             if (database is null) { return NotFound(); }
@@ -197,15 +197,15 @@ namespace DaJet.Http.Controllers
 
             ScriptExecutor executor = new(cache);
 
-            //TODO: parse parameters
+            Dictionary<string, object> parameters = await ParseScriptParametersFromBody();
 
-            //if (parameters != null)
-            //{
-            //    foreach (var parameter in parameters)
-            //    {
-            //        executor.Parameters.Add(parameter.Key, parameter.Value);
-            //    }
-            //}
+            if (parameters != null)
+            {
+                foreach (var parameter in parameters)
+                {
+                    executor.Parameters.Add(parameter.Key, parameter.Value);
+                }
+            }
 
             List<Dictionary<string, object>> result = new();
             try
@@ -271,6 +271,22 @@ namespace DaJet.Http.Controllers
             }
 
             return null; // not found
+        }
+        private async Task<Dictionary<string, object>> ParseScriptParametersFromBody()
+        {
+            HttpRequest request = HttpContext.Request;
+
+            if (request.ContentLength == 0)
+            {
+                return null;
+            }
+
+            JsonSerializerOptions options = new()
+            {
+                Converters = { new ScriptParametersJsonConverter() }
+            };
+
+            return await JsonSerializer.DeserializeAsync<Dictionary<string, object>>(request.Body, options);
         }
     }
 }

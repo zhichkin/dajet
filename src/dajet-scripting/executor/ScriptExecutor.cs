@@ -4,6 +4,9 @@ using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 using System.Data;
 using System.Globalization;
+using System.Reflection.Metadata;
+using System.Reflection;
+using System.Data.Common;
 
 namespace DaJet.Scripting
 {
@@ -75,17 +78,19 @@ namespace DaJet.Scripting
         }
         private void ConfigureParameters(in ScriptModel model)
         {
+            // configure parameters for database provider
             foreach (SyntaxNode node in model.Statements)
             {
                 if (node is DeclareStatement declare)
                 {
                     if (declare.Initializer is not ScalarExpression scalar)
                     {
-                        continue;
+                        //TODO: set default value ???
+                        continue; // it is expected to be set from the parameters provided by the caller
                     }
 
                     object value = null!;
-                    string name = declare.Name.Substring(1); // remove leading @ or &
+                    string name = declare.Name[1..]; // remove leading @ or &
                     string literal = scalar.Literal;
 
                     if (!Parameters.TryGetValue(name, out _))
@@ -164,6 +169,21 @@ namespace DaJet.Scripting
                 }
             }
 
+            // remove unnecessary parameters
+            List<string> keys_to_remove = new();
+            foreach (var key in Parameters.Keys)
+            {
+                if (!DeclareStatementExists(in model, key))
+                {
+                    keys_to_remove.Add(key);
+                }
+            }
+            foreach (string key in keys_to_remove)
+            {
+                Parameters.Remove(key);
+            }
+
+            // format parameter values
             foreach (var parameter in Parameters)
             {
                 if (parameter.Value is Guid uuid)
@@ -177,35 +197,14 @@ namespace DaJet.Scripting
                         Parameters[parameter.Key] = new byte[] { Convert.ToByte(boolean) };
                     }
                 }
+                else if (parameter.Value is DateTime dateTime)
+                {
+                    Parameters[parameter.Key] = dateTime.AddYears(_cache.InfoBase.YearOffset);
+                }
                 else if (parameter.Value is Entity entity)
                 {
                     Parameters[parameter.Key] = SQLHelper.GetSqlUuid(entity.Identity);
                 }
-
-                if (DeclareStatementExists(in model, parameter.Key))
-                {
-                    continue;
-                }
-
-                if (parameter.Value == null)
-                {
-                    continue; // TODO TokenType.NULL
-                }
-
-                Type parameterType = parameter.Value.GetType();
-
-                DeclareStatement declare = new()
-                {
-                    Name = "@" + parameter.Key,
-                    Type = ScriptHelper.GetDataTypeLiteral(parameterType),
-                    Initializer = new ScalarExpression()
-                    {
-                        Token = ScriptHelper.GetDataTypeToken(parameterType),
-                        Literal = parameter.Value.ToString()!
-                    }
-                };
-
-                model.Statements.Insert(0, declare);
             }
         }
         private bool DeclareStatementExists(in ScriptModel model, string name)
