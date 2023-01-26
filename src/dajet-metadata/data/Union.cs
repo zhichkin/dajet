@@ -1,16 +1,17 @@
 ﻿using System;
+using System.Text.Json.Serialization;
 
 namespace DaJet.Data
 {
     public enum UnionTag : byte
     {
         // TODO: byte[] Binary _B 0x06 ???
-        Empty    = 0x01, // _TYPE
-        Boolean  = 0x02, // _L
-        Numeric  = 0x03, // _N
-        DateTime = 0x04, // _T
-        String   = 0x05, // _S
-        Entity   = 0x08  // [_TRef] _RRef
+        Undefined = 0x01, // _TYPE
+        Boolean   = 0x02, // _L
+        Numeric   = 0x03, // _N
+        DateTime  = 0x04, // _T
+        String    = 0x05, // _S
+        Entity    = 0x08  // [_TRef] _RRef
     }
     public sealed class BadUnionAccessException : Exception
     {
@@ -24,10 +25,10 @@ namespace DaJet.Data
     public abstract class Union
     {
         private readonly UnionTag _tag;
-        public static readonly Union Empty = new CaseEmpty();
+        public static readonly Union Undefined = new CaseUndefined();
         protected Union(UnionTag tag) { _tag = tag; }
         public UnionTag Tag { get { return _tag; } }
-        public bool IsEmpty { get { return _tag == UnionTag.Empty; } }
+        [JsonIgnore] public bool IsUndefined { get { return _tag == UnionTag.Undefined; } }
         public abstract object Value { get; }
         public abstract bool GetBoolean();
         public abstract decimal GetNumeric();
@@ -36,36 +37,36 @@ namespace DaJet.Data
         public abstract Entity GetEntityRef();
         public override string ToString()
         {
-            return IsEmpty ? "Неопределено" : (Value == null ? "NULL" : Value.ToString()!);
+            return IsUndefined ? "Неопределено" : (Value == null ? "NULL" : Value.ToString()!);
         }
         public static implicit operator Union(bool value) => new CaseBoolean(value);
         public static implicit operator Union(decimal value) => new CaseNumeric(value);
         public static implicit operator Union(DateTime value) => new CaseDateTime(value);
         public static implicit operator Union(string value) => new CaseString(value);
         public static implicit operator Union(Entity value) => new CaseEntity(value);
-        public sealed class CaseEmpty : Union
+        public sealed class CaseUndefined : Union
         {
-            public CaseEmpty() : base(UnionTag.Empty) { }
+            public CaseUndefined() : base(UnionTag.Undefined) { }
             public override object Value { get { return null!; } }
             public override bool GetBoolean()
             {
-                throw new BadUnionAccessException(typeof(bool), typeof(CaseEmpty));
+                throw new BadUnionAccessException(typeof(bool), typeof(CaseUndefined));
             }
             public override decimal GetNumeric()
             {
-                throw new BadUnionAccessException(typeof(decimal), typeof(CaseEmpty));
+                throw new BadUnionAccessException(typeof(decimal), typeof(CaseUndefined));
             }
             public override DateTime GetDateTime()
             {
-                throw new BadUnionAccessException(typeof(DateTime), typeof(CaseEmpty));
+                throw new BadUnionAccessException(typeof(DateTime), typeof(CaseUndefined));
             }
             public override string GetString()
             {
-                throw new BadUnionAccessException(typeof(string), typeof(CaseEmpty));
+                throw new BadUnionAccessException(typeof(string), typeof(CaseUndefined));
             }
             public override Entity GetEntityRef()
             {
-                throw new BadUnionAccessException(typeof(Entity), typeof(CaseEmpty));
+                throw new BadUnionAccessException(typeof(Entity), typeof(CaseUndefined));
             }
         }
         public sealed class CaseBoolean : Union

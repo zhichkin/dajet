@@ -279,7 +279,7 @@ namespace DaJet.Scripting
                     .MapProperty(new PropertyMap()
                     {
                         Name = expression.Alias,
-                        Type = typeof(decimal) // TODO: infer type from parameters
+                        Type = typeof(decimal) // TODO: infer type from THEN expression
                     })
                     .ToColumn(new ColumnMap()
                     {

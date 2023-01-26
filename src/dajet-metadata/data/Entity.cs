@@ -1,10 +1,11 @@
 ﻿using System;
+using System.Text.Json.Serialization;
 
 namespace DaJet.Data
 {
     public readonly struct Entity
     {
-        public static readonly Entity Empty = new();
+        public static readonly Entity Undefined = new();
         public static Entity Parse(string value)
         {
             string[] parts = value.TrimStart('{').TrimEnd('}').Split(':', StringSplitOptions.RemoveEmptyEntries);
@@ -21,7 +22,7 @@ namespace DaJet.Data
         }
         public static bool TryParse(string value, out Entity entity)
         {
-            entity = Entity.Empty;
+            entity = Entity.Undefined;
 
             string[] parts = value.TrimStart('{').TrimEnd('}')
                 .Split(':', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
@@ -51,7 +52,8 @@ namespace DaJet.Data
         }
         public int TypeCode { get; } = 0;
         public Guid Identity { get; } = Guid.Empty;
-        public bool IsEmpty { get { return Identity == Guid.Empty; } }
+        [JsonIgnore] public bool IsEmpty { get { return Identity == Guid.Empty; } } // TypeCode > 0 && Identity == Guid.Empty
+        [JsonIgnore] public bool IsUndefined { get { return this == Undefined; } } // TypeCode == 0 && Identity == Guid.Empty
         public override string ToString()
         {
             return $"{{{TypeCode}:{Identity}}}";

@@ -856,7 +856,7 @@ namespace DaJet.Scripting.Test
     public sealed class NodeInfo
     {
         public string NodeCode { get; set; } = string.Empty;
-        public Entity NodeRef { get; set; } = Entity.Empty;
+        public Entity NodeRef { get; set; } = Entity.Undefined;
         public bool UseKafka { get; set; } = false;
         public bool UseRabbitMQ { get; set; } = false;
         public override string ToString()

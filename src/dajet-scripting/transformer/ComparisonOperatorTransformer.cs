@@ -8,16 +8,16 @@ namespace DaJet.Scripting
     {
         public SyntaxNode Transform(in ComparisonOperator comparison)
         {
-            // TODO:
+            // DONE:
             // 1. Ссылка = @Ссылка
             // 2. Ссылка1 = Ссылка2 (составные типы)
-            // 3. Ссылка ССЫЛКА Справочник.Номенклатура
-            // 4. ТИПЗНАЧЕНИЯ(Ссылка) = ТИП(Справочник.Номенклатура) = <column> IS <type>
+            // 3. Ссылка ССЫЛКА Справочник.Номенклатура = <column> IS [NOT] <type>
+            // 4. ТИПЗНАЧЕНИЯ(Ссылка) = ТИП(Справочник.Номенклатура) = <column> IS [NOT] <type>
+            // 5. <column> IS [NOT] NULL
 
             if (comparison.Token == TokenType.IS)
             {
-                TransformColumnIsType(in comparison);
-                return null; // transform existing node without replacing it
+                return TransformColumnIsType(in comparison);
             }
 
             if (comparison.Expression1 is Identifier identifier1 &&
@@ -26,24 +26,76 @@ namespace DaJet.Scripting
                 if (IsColumnColumn(identifier1, identifier2))
                 {
                     return Transform(comparison, identifier1, identifier2);
-                    //return TransformColumnColumn(comparison, identifier1, identifier2);
                 }
                 else if (IsColumnVariable(identifier1, identifier2))
                 {
                     return Transform(comparison, identifier1, identifier2);
-                    //return TransformColumnVariable(comparison, identifier1, identifier2);
                 }
                 else if (IsVariableColumn(identifier1, identifier2))
                 {
                     return Transform(comparison, identifier1, identifier2);
-                    //return TransformColumnVariable(comparison, identifier2, identifier1);
                 }
             }
 
-            return null!; // no transformation is needed
+            return null; // no transformation is needed
         }
 
         #region "<union type> == <union type>"
+        private bool IsSimpleIsNullOperator(SyntaxNode left, SyntaxNode right)
+        {
+            return IsScalarColumn(left) && IsNullScalar(right);
+        }
+        private bool IsNullScalar(SyntaxNode node)
+        {
+            return (node is ScalarExpression scalar
+                && scalar.Token == TokenType.NULL);
+        }
+        private bool IsScalarColumn(SyntaxNode node)
+        {
+            return (node is Identifier identifier
+                && identifier.Token == TokenType.Column
+                && identifier.Tag is MetadataProperty property
+                && property.Columns.Count == 1);
+        }
+        private bool IsUnionColumn(SyntaxNode node, out Identifier column)
+        {
+            column = null;
+
+            if (node is not Identifier identifier)
+            {
+                return false;
+            }
+
+            if (identifier.Token == TokenType.Column &&
+                identifier.Tag is MetadataProperty property &&
+                property.Columns.Count > 1)
+            {
+                column = identifier;
+            }
+
+            return (column != null);
+        }
+        private bool IsTypeIdentifier(SyntaxNode node, out Identifier type)
+        {
+            type = null;
+
+            if (node is not Identifier identifier)
+            {
+                return false;
+            }
+
+            if (identifier.Token != TokenType.Type)
+            {
+                return false;
+            }
+
+            if (identifier.Tag is Type || identifier.Tag is Entity)
+            {
+                type = identifier;
+            }
+
+            return (type != null);
+        }
         private bool IsColumnColumn(Identifier identifier1, Identifier identifier2)
         {
             return (identifier1.Token == TokenType.Column &&
@@ -151,6 +203,11 @@ namespace DaJet.Scripting
                 {
                     return CreateUnion(property);
                 }
+            }
+
+            if (identifier.Token == TokenType.Type)
+            {
+                return ConvertTypeToUnion(identifier);
             }
 
             return null!;
@@ -270,6 +327,52 @@ namespace DaJet.Scripting
 
             return union;
         }
+        private object[] ConvertTypeToUnion(Identifier identifier)
+        {
+            object[] union = new object[((int)ColumnPurpose.Identity) + 1];
+
+            int tag = (int)ColumnPurpose.Tag; // адрес значения поля _TYPE
+            int code = (int)ColumnPurpose.TypeCode; // адрес значения поля _TRef
+
+            if (identifier.Tag is Type type)
+            {
+                if (type == typeof(Union)) // undefined
+                {
+                    union[tag] = (int)ColumnPurpose.Tag;
+                }
+                else if (type == typeof(bool)) // boolean
+                {
+                    union[tag] = (int)ColumnPurpose.Boolean;
+                }
+                else if (type == typeof(decimal)) // number
+                {
+                    union[tag] = (int)ColumnPurpose.Numeric;
+                }
+                else if (type == typeof(DateTime)) // datetime
+                {
+                    union[tag] = (int)ColumnPurpose.DateTime;
+                }
+                else if (type == typeof(string)) // string
+                {
+                    union[tag] = (int)ColumnPurpose.String;
+                }
+                else
+                {
+                    throw new FormatException($"Unknown type identifier: {identifier.Value}");
+                }
+            }
+            else if (identifier.Tag is Entity entity)
+            {
+                union[tag] = (int)ColumnPurpose.Identity; // 0x08 - значение поля _TYPE
+                union[code] = entity.TypeCode; // integer - значение поля _TRef
+            }
+            else
+            {
+                throw new FormatException($"Unknown type identifier: {identifier.Value}");
+            }
+            
+            return union;
+        }
 
         private ComparisonOperator CreateComparisonOperator(TokenType type, Identifier column1, Identifier column2, int tag, object[] union1, object[] union2)
         {
@@ -335,74 +438,69 @@ namespace DaJet.Scripting
 
         #region "<column> IS <type>"
 
-        private void TransformColumnIsType(in ComparisonOperator comparison)
+        private MetadataColumn GetColumnToCompareToNull(MetadataProperty property)
         {
-            SyntaxNode expression = comparison.Expression2;
-
-            bool negate = false;
-
-            while (expression is UnaryOperator unary)
+            for (int i = 0; i < property.Columns.Count; i++)
             {
-                expression = unary.Expression;
-                if (!negate) { negate = true; }
-            }
-
-            if (expression is ScalarExpression scalar)
-            {
-                if (scalar.Token == TokenType.NULL)
+                if (property.Columns[i].Purpose == ColumnPurpose.Tag)
                 {
-                    return; // TODO: compare NULL to union type
-                }
-                else
-                {
-                    throw new FormatException($"IS operator: right operand is invalid.");
+                    return property.Columns[i];
                 }
             }
 
-            if (expression is not Identifier identifier)
+            for (int i = 0; i < property.Columns.Count; i++)
             {
-                throw new FormatException($"IS operator: right operand is invalid.");
+                if (property.Columns[i].Purpose == ColumnPurpose.TypeCode)
+                {
+                    return property.Columns[i];
+                }
+            }
+
+            return property.Columns[0];
+        }
+        private SyntaxNode TransformColumnIsType(in ComparisonOperator comparison)
+        {
+            TokenType _operator;
+            SyntaxNode leftOperand = comparison.Expression1;
+            SyntaxNode rigthOperand = comparison.Expression2;
+
+            if (rigthOperand is UnaryOperator unary)
+            {
+                _operator = TokenType.NotEquals;
+                rigthOperand = unary.Expression;
+            }
+            else
+            {
+                _operator = TokenType.Equals;
+            }
+
+            if (IsSimpleIsNullOperator(leftOperand, rigthOperand))
+            {
+                return null; // no transformation is needed
+            }
+
+            if (!IsUnionColumn(leftOperand, out Identifier column))
+            {
+                throw new FormatException($"IS operator: left operand must be the union type column.");
+            }
+
+            if (IsNullScalar(rigthOperand)) // _Fld_TYPE IS [NOT] NULL
+            {
+                if (column.Tag is MetadataProperty property)
+                {
+                    column.Tag = GetColumnToCompareToNull(property);
+                }
+                return null;
+            }
+
+            if (!IsTypeIdentifier(rigthOperand, out Identifier identifier))
+            {
+                throw new FormatException($"IS operator: right operand is not valid type identifier.");
             }
             
-            if (identifier.Tag is not Entity entity)
-            {
-                throw new FormatException($"IS operator: right operand is invalid.");
-            }
+            comparison.Token = _operator;
 
-            //
-
-            if (comparison.Expression1 is not Identifier column)
-            {
-                throw new FormatException($"IS operator: left operand is invalid.");
-            }
-
-            if (column.Token != TokenType.Column)
-            {
-                throw new FormatException($"IS operator: left operand is invalid.");
-            }
-
-            if (column.Tag is not MetadataProperty property)
-            {
-                throw new FormatException($"IS operator: left operand is invalid.");
-            }
-
-            //
-
-            comparison.Token = (negate ? TokenType.NotEquals : TokenType.Equals);
-
-            foreach (MetadataColumn field in property.Columns)
-            {
-                if (field.Purpose == ColumnPurpose.TypeCode)
-                {
-                    column.Tag = field; break;
-                }
-            }
-
-            comparison.Expression2 = new ScalarExpression()
-            {
-                Token = TokenType.Number,
-                Literal = DbUtilities.GetBinaryLiteral(ColumnPurpose.TypeCode, entity.TypeCode)
-            };
+            return Transform(comparison, column, identifier);
         }
 
         #endregion

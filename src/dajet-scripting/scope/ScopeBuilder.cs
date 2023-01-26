@@ -5,7 +5,7 @@ namespace DaJet.Scripting
 {
     public sealed class ScopeBuilder : IScriptVisitor
     {
-        private ScriptScope _scope = null!;
+        private ScriptScope _scope = null!; // root scope owned by ScriptModel
         private ScriptScope _current = null!;
         public bool TryBuild(in ScriptModel model, out ScriptScope scope, out string error)
         {

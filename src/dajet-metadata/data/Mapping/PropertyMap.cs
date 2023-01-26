@@ -84,7 +84,7 @@ namespace DaJet.Data.Mapping
 
             if (reader.IsDBNull(ordinal))
             {
-                return Union.Empty;
+                return Union.Undefined;
             }
 
             byte tag = ((byte[])reader.GetValue(ordinal))[0]; // _TYPE binary(1)
@@ -93,32 +93,32 @@ namespace DaJet.Data.Mapping
 
             if (tag == 1) // Неопределено
             {
-                return Union.Empty;
+                return Union.Undefined;
             }
             else if (tag == 2) // Булево
             {
                 value = GetBoolean(in reader);
-                return (value == null ? Union.Empty : new Union.CaseBoolean((bool)value));
+                return (value == null ? Union.Undefined : new Union.CaseBoolean((bool)value));
             }
             else if (tag == 3) // Число
             {
                 value = GetNumeric(in reader);
-                return (value == null ? Union.Empty : new Union.CaseNumeric((decimal)value));
+                return (value == null ? Union.Undefined : new Union.CaseNumeric((decimal)value));
             }
             else if (tag == 4) // Дата
             {
                 value = GetDateTime(in reader);
-                return (value == null ? Union.Empty : new Union.CaseDateTime((DateTime)value));
+                return (value == null ? Union.Undefined : new Union.CaseDateTime((DateTime)value));
             }
             else if (tag == 5) // Строка
             {
                 value = GetString(in reader);
-                return (value == null ? Union.Empty : new Union.CaseString((string)value));
+                return (value == null ? Union.Undefined : new Union.CaseString((string)value));
             }
             else if (tag == 8) // Ссылка
             {
                 value = GetEntityRef(in reader);
-                return (value == null ? Union.Empty : new Union.CaseEntity((Entity)value));
+                return (value == null ? Union.Undefined : new Union.CaseEntity((Entity)value));
             }
 
             throw new InvalidOperationException($"Invalid union tag value of {tag}");

@@ -120,7 +120,7 @@ namespace DaJet.Data.Provider.Test
 
                                 if (value is Union union)
                                 {
-                                    value = (union.IsEmpty ? "Неопределено" : union.Value);
+                                    value = (union.IsUndefined ? "Неопределено" : union.Value);
                                 }
 
                                 Console.WriteLine($"| {name} = {value} [{type}] {typeName}");
@@ -322,11 +322,11 @@ namespace DaJet.Data.Provider.Test
 
     internal sealed class Product
     {
-        public Entity Ссылка { get; set; } = Entity.Empty;
+        public Entity Ссылка { get; set; } = Entity.Undefined;
         public string Код { get; set; } = string.Empty;
         public string Наименование { get; set; } = string.Empty;
         public bool ПометкаУдаления { get; set; }
-        public Entity Валюта { get; set; } = Entity.Empty;
-        public Union СоставнойТип { get; set; } = Union.Empty;
+        public Entity Валюта { get; set; } = Entity.Undefined;
+        public Union СоставнойТип { get; set; } = Union.Undefined;
     }
 }

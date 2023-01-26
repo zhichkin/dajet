@@ -13,7 +13,7 @@ namespace DaJet.Scripting
 
             try
             {
-                BindMetadataTypes(in scope, in metadata);
+                BindDataTypes(in scope, in metadata);
 
                 BindCommonTables(in scope, in metadata);
 
@@ -33,7 +33,7 @@ namespace DaJet.Scripting
             throw new InvalidOperationException(message);
         }
 
-        private void BindMetadataTypes(in ScriptScope scope, in MetadataCache metadata)
+        private void BindDataTypes(in ScriptScope scope, in MetadataCache metadata)
         {
             ScriptScope root = scope.Root;
 
@@ -54,11 +54,18 @@ namespace DaJet.Scripting
                     continue;
                 }
 
-                MetadataObject table = metadata.GetMetadataObject(identifier.Value);
-
-                if (table is ApplicationObject entity)
+                if (ScriptHelper.IsDataType(identifier.Value, out Type type))
                 {
-                    identifier.Tag = new Entity(entity.TypeCode, Guid.Empty);
+                    identifier.Tag = type; // bool, decimal, DateTime, string, Union == Undefined
+                }
+                else
+                {
+                    MetadataObject table = metadata.GetMetadataObject(identifier.Value);
+
+                    if (table is ApplicationObject entity)
+                    {
+                        identifier.Tag = new Entity(entity.TypeCode, Guid.Empty);
+                    }
                 }
 
                 if (identifier.Tag == null)

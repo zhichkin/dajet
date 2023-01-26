@@ -111,7 +111,8 @@ namespace DaJet.Scripting
             { "datetime", typeof(DateTime) },
             { "string", typeof(string) },
             { "binary", typeof(byte[]) },
-            { "entity", typeof(Entity) }
+            { "entity", typeof(Entity) },
+            { "undefined", typeof(Union) }
         };
         private static Dictionary<string, Type> _datatype_ru = new()
         {
@@ -121,7 +122,8 @@ namespace DaJet.Scripting
             { "ДатаВремя", typeof(DateTime) },
             { "Строка", typeof(string) },
             { "ДвоичныеДанные", typeof(byte[]) },
-            { "Ссылка", typeof(Entity) }
+            { "Ссылка", typeof(Entity) },
+            { "Неопределено", typeof(Union) }
         };
         private static Dictionary<Type, TokenType> _datatype_token = new()
         {
@@ -176,7 +178,7 @@ namespace DaJet.Scripting
             {
                 return true;
             }
-            return _datatype_en.TryGetValue(identifier, out type!);
+            return _datatype_en.TryGetValue(identifier.ToLower(), out type!);
         }
         public static TokenType GetDataTypeToken(Type type)
         {
