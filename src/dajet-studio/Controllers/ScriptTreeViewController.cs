@@ -237,6 +237,18 @@ namespace DaJet.Studio.Controllers
             if (success)
             {
                 script.Name = node.Title;
+
+                if (node.Parent is not null)
+                {
+                    if (node.Parent.Tag is InfoBaseModel infobase)
+                    {
+                        node.Url = $"/api/{infobase.Name}/{script.Name}";
+                    }
+                    else
+                    {
+                        node.Url = $"{node.Parent.Url}/{script.Name}";
+                    }
+                }
             }
             else
             {

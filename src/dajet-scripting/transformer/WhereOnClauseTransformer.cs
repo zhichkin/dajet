@@ -31,6 +31,18 @@ namespace DaJet.Scripting
                     }
                 }
             }
+            else if (node is WhenExpression clause3)
+            {
+                if (clause3.WHEN is ComparisonOperator comparison3)
+                {
+                    SyntaxNode node3 = _transformer.Transform(in comparison3);
+
+                    if (node3 != null)
+                    {
+                        clause3.WHEN = node3;
+                    }
+                }
+            }
         }
         public void SayGoodbye(SyntaxNode node)
         {

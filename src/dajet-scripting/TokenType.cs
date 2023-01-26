@@ -15,9 +15,9 @@
         OVER, PARTITION, RANGE, BETWEEN, UNBOUNDED, PRECEDING, CURRENT, FOLLOWING,
         CASE, WHEN, THEN, ELSE, END,
 
-        Identifier, Table, Column, Variable, TemporaryTable, Star,
+        Identifier, Type, Table, Column, Variable, TemporaryTable, Star,
 
-        NULL, Uuid, Boolean, Number, DateTime, String, Binary, Entity,
+        IS, NULL, ISNULL, Uuid, Boolean, Number, DateTime, String, Binary, Entity,
 
         Equals, NotEquals, Less, Greater, LessOrEquals, GreaterOrEquals,
         

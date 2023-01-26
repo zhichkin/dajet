@@ -62,7 +62,9 @@ namespace DaJet.Scripting
             { "ELSE", TokenType.ELSE },
             { "END", TokenType.END },
             { "UNION", TokenType.UNION },
-            { "ALL", TokenType.ALL }
+            { "ALL", TokenType.ALL },
+            { "IS", TokenType.IS },
+            { "NULL", TokenType.NULL }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {
@@ -98,7 +100,8 @@ namespace DaJet.Scripting
             { "ИНАЧЕ", TokenType.ELSE },
             { "КОНЕЦ", TokenType.END },
             { "ОБЪЕДИНИТЬ", TokenType.UNION },
-            { "ВСЕ", TokenType.ALL }
+            { "ВСЕ", TokenType.ALL },
+            { "ЕСТЬ", TokenType.IS }
         };
         private static Dictionary<string, Type> _datatype_en = new()
         {
@@ -148,7 +151,8 @@ namespace DaJet.Scripting
             { "MAX", TokenType.MAX },
             { "MIN", TokenType.MIN },
             { "AVG", TokenType.AVG },
-            { "COUNT", TokenType.COUNT }
+            { "COUNT", TokenType.COUNT },
+            { "ISNULL", TokenType.ISNULL }
         };
         private static Dictionary<string, TokenType> _function_ru = new()
         {
@@ -280,13 +284,14 @@ namespace DaJet.Scripting
 
         internal static string GetComparisonLiteral(TokenType token)
         {
-            if (token == TokenType.Equals) { return "="; }
+            if (token == TokenType.IS) { return "IS"; }
+            else if (token == TokenType.Equals) { return "="; }
             else if (token == TokenType.NotEquals) { return "<>"; }
             else if (token == TokenType.Less) { return "<"; }
             else if (token == TokenType.LessOrEquals) { return "<="; }
             else if (token == TokenType.Greater) { return ">"; }
             else if (token == TokenType.GreaterOrEquals) { return ">="; }
-
+            
             return token.ToString();
         }
         internal static string GetColumnPurposePostfix(ColumnPurpose purpose)

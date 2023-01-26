@@ -301,7 +301,7 @@ namespace DaJet.Scripting
         {
             SyntaxNode left = addition();
 
-            while (Match(TokenType.Comment,
+            while (Match(TokenType.Comment, TokenType.IS,
                 TokenType.Equals, TokenType.NotEquals,
                 TokenType.Greater, TokenType.GreaterOrEquals,
                 TokenType.Less, TokenType.LessOrEquals))
@@ -321,9 +321,41 @@ namespace DaJet.Scripting
                     Expression1 = left,
                     Expression2 = right
                 };
+
+                if (_operator == TokenType.IS)
+                {
+                    check_is_expression(in left);
+                }
             }
 
             return left;
+        }
+        private void check_is_expression(in SyntaxNode node)
+        {
+            if (node is not ComparisonOperator comparison) { return; }
+
+            SyntaxNode expression = comparison.Expression2;
+
+            while (expression is UnaryOperator unary)
+            {
+                expression = unary.Expression;
+            }
+
+            if (expression is ScalarExpression scalar)
+            {
+                if (scalar.Token != TokenType.NULL)
+                {
+                    throw new FormatException($"IS operator: NULL token expected.");
+                }
+            }
+            else if (expression is Identifier identifier)
+            {
+                identifier.Token = TokenType.Type;
+            }
+            else
+            {
+                throw new FormatException($"IS operator: type identifier expected.");
+            }
         }
         private SyntaxNode addition()
         {
@@ -377,7 +409,7 @@ namespace DaJet.Scripting
         }
         private SyntaxNode unary()
         {
-            if (Match(TokenType.Minus))
+            if (Match(TokenType.Minus, TokenType.NOT))
             {
                 TokenType _operator = Previous().Type;
 

@@ -12,6 +12,7 @@ namespace DaJet.Scripting
 
             Transformers.Add(typeof(OnClause), transformer1);
             Transformers.Add(typeof(WhereClause), transformer1);
+            Transformers.Add(typeof(WhenExpression), transformer1);
             Transformers.Add(typeof(BooleanUnaryOperator), transformer2);
             Transformers.Add(typeof(BooleanBinaryOperator), transformer2);
             Transformers.Add(typeof(BooleanGroupExpression), transformer2);

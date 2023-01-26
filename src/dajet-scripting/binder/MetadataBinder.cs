@@ -13,6 +13,8 @@ namespace DaJet.Scripting
 
             try
             {
+                BindMetadataTypes(in scope, in metadata);
+
                 BindCommonTables(in scope, in metadata);
 
                 BindSchemaTables(in scope, in metadata);
@@ -31,6 +33,40 @@ namespace DaJet.Scripting
             throw new InvalidOperationException(message);
         }
 
+        private void BindMetadataTypes(in ScriptScope scope, in MetadataCache metadata)
+        {
+            ScriptScope root = scope.Root;
+
+            if (root.Owner is not ScriptModel)
+            {
+                throw new InvalidOperationException("Root scope is not found");
+            }
+
+            foreach (SyntaxNode node in root.Identifiers)
+            {
+                if (node is not Identifier identifier)
+                {
+                    continue;
+                }
+
+                if (identifier.Token != TokenType.Type)
+                {
+                    continue;
+                }
+
+                MetadataObject table = metadata.GetMetadataObject(identifier.Value);
+
+                if (table is ApplicationObject entity)
+                {
+                    identifier.Tag = new Entity(entity.TypeCode, Guid.Empty);
+                }
+
+                if (identifier.Tag == null)
+                {
+                    ThrowBindingException(identifier);
+                }
+            }
+        }
         private void BindCommonTables(in ScriptScope scope, in MetadataCache metadata)
         {
             foreach (ScriptScope child in scope.Children)

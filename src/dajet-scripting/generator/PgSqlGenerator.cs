@@ -133,6 +133,8 @@ namespace DaJet.Scripting
 
             bool cast_to_varchar = false;
 
+            //TODO: analyse ScalarExpression !!!
+
             if (identifier.Tag is MetadataProperty property)
             {
                 PropertyMap propertyMap = null!;
@@ -236,6 +238,7 @@ namespace DaJet.Scripting
             {
                 /// bubbled up from subquery <see cref="MetadataBinder.BindColumnToSelect(in SelectStatement, in Identifier)"/>
 
+                //TODO: get MetadataProperty recursively, following the Tag property !!!
                 if (mapper != null && column.Tag is MetadataProperty source)
                 {
                     // TODO: ??? VisitProjectionColumn(in columns, in column, in mapper);
@@ -665,9 +668,9 @@ namespace DaJet.Scripting
             {
                 VisitIdentifier(identifier, script);
             }
-            else if (expression is ScalarExpression scalar1)
+            else if (expression is ScalarExpression scalar)
             {
-                VisitScalarExpression(scalar1, script);
+                VisitScalarExpression(scalar, script);
             }
             else if (expression is UnaryOperator unary)
             {
@@ -696,7 +699,7 @@ namespace DaJet.Scripting
         }
         private void VisitUnaryOperator(UnaryOperator unary, StringBuilder script)
         {
-            script.Append("-");
+            script.Append(unary.Token == TokenType.Minus ? "-" : "NOT ");
             VisitExpression(unary.Expression, script);
         }
         private void VisitAdditionOperator(AdditionOperator addition, StringBuilder script)
@@ -736,7 +739,14 @@ namespace DaJet.Scripting
 
         private void VisitFunctionExpression(FunctionExpression function, StringBuilder script)
         {
-            script.Append(function.Name);
+            if (function.Token == TokenType.ISNULL)
+            {
+                script.Append("COALESCE");
+            }
+            else
+            {
+                script.Append(function.Name);
+            }
 
             script.Append("(");
 

@@ -125,7 +125,14 @@ namespace DaJet.Scripting
         }
         private void JoinScope(SyntaxNode node)
         {
-            if (_current != null)
+            if (node.Token == TokenType.Type)
+            {
+                if (_scope != null)
+                {
+                    _scope.Identifiers.Add(node);
+                }
+            }
+            else if (_current != null)
             {
                 _current.Identifiers.Add(node);
             }

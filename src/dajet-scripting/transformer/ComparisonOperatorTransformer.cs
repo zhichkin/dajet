@@ -12,7 +12,13 @@ namespace DaJet.Scripting
             // 1. Ссылка = @Ссылка
             // 2. Ссылка1 = Ссылка2 (составные типы)
             // 3. Ссылка ССЫЛКА Справочник.Номенклатура
-            // 4. ТИПЗНАЧЕНИЯ(Ссылка) = ТИП(Справочник.Номенклатура)
+            // 4. ТИПЗНАЧЕНИЯ(Ссылка) = ТИП(Справочник.Номенклатура) = <column> IS <type>
+
+            if (comparison.Token == TokenType.IS)
+            {
+                TransformColumnIsType(in comparison);
+                return null; // transform existing node without replacing it
+            }
 
             if (comparison.Expression1 is Identifier identifier1 &&
                 comparison.Expression2 is Identifier identifier2)
@@ -37,6 +43,7 @@ namespace DaJet.Scripting
             return null!; // no transformation is needed
         }
 
+        #region "<union type> == <union type>"
         private bool IsColumnColumn(Identifier identifier1, Identifier identifier2)
         {
             return (identifier1.Token == TokenType.Column &&
@@ -323,5 +330,81 @@ namespace DaJet.Scripting
 
             throw new InvalidCastException(message);
         }
+
+        #endregion
+
+        #region "<column> IS <type>"
+
+        private void TransformColumnIsType(in ComparisonOperator comparison)
+        {
+            SyntaxNode expression = comparison.Expression2;
+
+            bool negate = false;
+
+            while (expression is UnaryOperator unary)
+            {
+                expression = unary.Expression;
+                if (!negate) { negate = true; }
+            }
+
+            if (expression is ScalarExpression scalar)
+            {
+                if (scalar.Token == TokenType.NULL)
+                {
+                    return; // TODO: compare NULL to union type
+                }
+                else
+                {
+                    throw new FormatException($"IS operator: right operand is invalid.");
+                }
+            }
+
+            if (expression is not Identifier identifier)
+            {
+                throw new FormatException($"IS operator: right operand is invalid.");
+            }
+            
+            if (identifier.Tag is not Entity entity)
+            {
+                throw new FormatException($"IS operator: right operand is invalid.");
+            }
+
+            //
+
+            if (comparison.Expression1 is not Identifier column)
+            {
+                throw new FormatException($"IS operator: left operand is invalid.");
+            }
+
+            if (column.Token != TokenType.Column)
+            {
+                throw new FormatException($"IS operator: left operand is invalid.");
+            }
+
+            if (column.Tag is not MetadataProperty property)
+            {
+                throw new FormatException($"IS operator: left operand is invalid.");
+            }
+
+            //
+
+            comparison.Token = (negate ? TokenType.NotEquals : TokenType.Equals);
+
+            foreach (MetadataColumn field in property.Columns)
+            {
+                if (field.Purpose == ColumnPurpose.TypeCode)
+                {
+                    column.Tag = field; break;
+                }
+            }
+
+            comparison.Expression2 = new ScalarExpression()
+            {
+                Token = TokenType.Number,
+                Literal = DbUtilities.GetBinaryLiteral(ColumnPurpose.TypeCode, entity.TypeCode)
+            };
+        }
+
+        #endregion
     }
 }
