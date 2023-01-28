@@ -176,10 +176,21 @@ namespace DaJet.Data.Mapping
             {
                 return Convert.ToDecimal(DbUtilities.GetInt32((byte[])reader.GetValue(ordinal)));
             }
-            else
+
+            try
             {
                 return reader.GetDecimal(ordinal);
             }
+            catch
+            {
+                return new decimal(reader.GetInt32(ordinal));
+            }
+
+            //reader.GetFieldType(ordinal) == typeof(int)
+            //if (reader.GetDataTypeName(ordinal) == "int")
+            //{
+            //    //TODO: convert numbers to decimal - SQL Server
+            //}
         }
         private object GetDateTime(in IDataReader reader)
         {

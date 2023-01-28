@@ -422,9 +422,9 @@ namespace DaJet.Scripting
                 };
             }
 
-            return primary();
+            return terminal();
         }
-        private SyntaxNode primary()
+        private SyntaxNode terminal()
         {
             Skip(TokenType.Comment);
 
@@ -440,13 +440,10 @@ namespace DaJet.Scripting
             {
                 return identifier(TokenType.Variable);
             }
-            else if (Match(TokenType.Boolean, TokenType.Number, TokenType.DateTime, TokenType.String, TokenType.Binary, TokenType.NULL))
+            else if (Match(TokenType.Boolean, TokenType.Number, TokenType.DateTime,
+                TokenType.String, TokenType.Binary, TokenType.NULL, TokenType.Entity))
             {
-                return new ScalarExpression()
-                {
-                    Token = Previous().Type,
-                    Literal = Previous().Lexeme
-                };
+                return scalar();
             }
             else if (Match(TokenType.OpenRoundBracket))
             {
@@ -466,7 +463,34 @@ namespace DaJet.Scripting
 
             Ignore();
 
-            throw new FormatException($"Unknown primary expression: {Previous()}");
+            throw new FormatException($"Unknown expression: {Previous()}");
+        }
+        private SyntaxNode scalar()
+        {
+            ScalarExpression scalar = new()
+            {
+                Token = Previous().Type,
+                Literal = Previous().Lexeme
+            };
+
+            if (scalar.Token == TokenType.String && scalar.Literal.Length < 10)
+            {
+                int start = 1;
+                int length = scalar.Literal.Length - 2;
+
+                string value = scalar.Literal.Trim().Substring(start, length); // remove leading and trailing ' and "
+
+                if (Guid.TryParse(value, out Guid uuid))
+                {
+                    scalar.Token = TokenType.Uuid;
+                }
+                else if (DateTime.TryParse(value, out DateTime datetime))
+                {
+                    scalar.Token = TokenType.DateTime;
+                }
+            }
+
+            return scalar;
         }
         private SyntaxNode case_expression()
         {
@@ -1012,7 +1036,7 @@ namespace DaJet.Scripting
 
             Skip(TokenType.Comment);
 
-            select.SELECT.Add(expression());
+            select.SELECT.Add(column());
 
             Skip(TokenType.Comment);
 
@@ -1020,7 +1044,7 @@ namespace DaJet.Scripting
             {
                 Skip(TokenType.Comment);
 
-                select.SELECT.Add(expression());
+                select.SELECT.Add(column());
 
                 Skip(TokenType.Comment);
             }
@@ -1109,6 +1133,17 @@ namespace DaJet.Scripting
 
             return string.Empty;
         }
+        private ColumnExpression column()
+        {
+            ColumnExpression column = new()
+            {
+                Expression = expression()
+            };
+            
+            column.Alias = alias();
+
+            return column;
+        }
 
         #endregion
 
@@ -1157,11 +1192,17 @@ namespace DaJet.Scripting
 
                 if (token.Type == TokenType.Star)
                 {
-                    output.Expressions.Add(star());
+                    output.Expressions.Add(new ColumnExpression()
+                    {
+                        Expression = star()
+                    });
                 }
                 else if (token.Type == TokenType.Identifier)
                 {
-                    output.Expressions.Add(identifier(TokenType.Column));
+                    output.Expressions.Add(new ColumnExpression()
+                    {
+                        Expression = identifier(TokenType.Column)
+                    });
                 }
             }
 

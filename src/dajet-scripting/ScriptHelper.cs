@@ -235,6 +235,15 @@ namespace DaJet.Scripting
         {
             return IsAlpha(character) || IsNumeric(character);
         }
+        internal static bool IsHexAlpha(char character)
+        {
+            return (character >= 'A' && character <= 'F')
+                || (character >= 'a' && character <= 'f');
+        }
+        internal static bool IsHexadecimal(char character)
+        {
+            return IsNumeric(character) || IsHexAlpha(character);
+        }
 
         internal static bool IsFunction(string identifier, out TokenType token)
         {

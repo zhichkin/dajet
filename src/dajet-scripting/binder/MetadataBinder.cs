@@ -276,9 +276,9 @@ namespace DaJet.Scripting
                 {
                     if (subquery.Expression is SelectStatement select)
                     {
-                        foreach (SyntaxNode item in select.SELECT) // Привязка через синоним вложенного запроса
+                        foreach (ColumnExpression item in select.SELECT) // Привязка через синоним вложенного запроса
                         {
-                            if (item is Identifier column && column.Token == TokenType.Column)
+                            if (item.Expression is Identifier column && column.Token == TokenType.Column)
                             {
                                 if (string.IsNullOrWhiteSpace(column.Alias))
                                 {
@@ -391,9 +391,9 @@ namespace DaJet.Scripting
         {
             ScriptHelper.GetColumnNames(identifier.Value, out string _, out string columnName);
 
-            foreach (SyntaxNode item in select.SELECT)
+            foreach (ColumnExpression item in select.SELECT)
             {
-                if (item is Identifier column && column.Token == TokenType.Column)
+                if (item.Expression is Identifier column && column.Token == TokenType.Column)
                 {
                     if (string.IsNullOrWhiteSpace(column.Alias)) // Привязка по имени колонки
                     {
@@ -404,28 +404,39 @@ namespace DaJet.Scripting
                                 identifier.Tag = column.Tag;
                             }
 
-                            return; // Используем уже существующую привязку
+                            return; // successful binding: Используем уже существующую привязку
                         }
                     }
                     else if (column.Alias == columnName) // Привязка по синониму колонки
                     {
-                        //identifier.Tag = column.Tag;     // Проброс свойства теряет информацию о синониме колонки
-                        //identifier.Alias = column.Alias; // Важно пробросить наверх синоним колонки
-
                         identifier.Tag = column; // bubble up identifier, entity property is in the Tag
 
                         return; // successful binding
                     }
                 }
-                else if (item is FunctionExpression function)
+                else if (item.Expression is FunctionExpression function)
                 {
-                    identifier.Tag = function;
-                    return; // successful binding
+                    if (function.Alias == columnName)
+                    {
+                        identifier.Tag = function;
+                        return; // successful binding
+                    }
                 }
-                else if (item is CaseExpression _case)
+                else if (item.Expression is CaseExpression _case)
                 {
-                    identifier.Tag = _case;
-                    return; // successful binding
+                    if (_case.Alias == columnName)
+                    {
+                        identifier.Tag = _case;
+                        return; // successful binding
+                    }
+                }
+                else if (item.Expression is ScalarExpression scalar)
+                {
+                    if (item.Alias == columnName)
+                    {
+                        identifier.Tag = item;
+                        return; // successful binding
+                    }
                 }
             }
         }

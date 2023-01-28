@@ -8,6 +8,7 @@ namespace DaJet.Scripting
 {
     public sealed class MsSqlGenerator : ISqlGenerator
     {
+        private readonly TypeInferencer _inferencer = new();
         public int YearOffset { get; set; } = 0;
         public bool TryGenerate(in ScriptModel model, out GeneratorResult result)
         {
@@ -87,35 +88,70 @@ namespace DaJet.Scripting
             script.AppendLine(")");
         }
 
-        private void VisitProjectionClause(List<SyntaxNode> projection, StringBuilder script, EntityMap mapper)
+        private void VisitProjectionClause(List<ColumnExpression> projection, StringBuilder script, EntityMap mapper)
         {
             List<string> columns = new();
 
-            foreach (SyntaxNode node in projection)
+            foreach (ColumnExpression column in projection)
             {
-                if (node is Identifier identifier)
+                if (column.Expression is Identifier identifier)
                 {
                     VisitProjectionColumn(in columns, in identifier, in mapper);
                 }
-                else if (node is FunctionExpression function)
+                else if (column.Expression is FunctionExpression function)
                 {
                     VisitProjectionFunction(in columns, in function, in mapper);
                 }
-                else if (node is CaseExpression expression)
+                else if (column.Expression is CaseExpression expression)
                 {
                     VisitProjectionCase(in columns, in expression, in mapper);
+                }
+                else
+                {
+                    VisitColumnExpression(in column, in columns, in mapper);
                 }
             }
 
             script.AppendJoin("," + Environment.NewLine, columns).AppendLine();
         }
+        private void VisitColumnExpression(in ColumnExpression column, in List<string> columns, in EntityMap mapper)
+        {
+            if (mapper != null)
+            {
+                mapper.MapProperty(new PropertyMap()
+                {
+                    Name = column.Alias,
+                    Type = _inferencer.InferOrDefault(column)
+                })
+                    .ToColumn(new ColumnMap()
+                    {
+                        Name = column.Alias
+                    });
+            }
+
+            StringBuilder script = new("\t");
+            
+            VisitExpression(column.Expression, script);
+
+            if (!string.IsNullOrWhiteSpace(column.Alias))
+            {
+                script.Append(" AS ").Append(column.Alias);
+            }
+
+            columns.Add(script.ToString());
+        }
         private void VisitProjectionColumn(in List<string> columns, in Identifier identifier, in EntityMap mapper)
         {
+            //TODO: mapper can be null if the code is called from:
+            // - VisitOrderClause
+            // - VisitCommonTable
+            // - VisitSubqueryExpression
+            // - VisitUnionOperator
+            //TODO: remove this call from VisitOrderClause procedure !!!
+
             ScriptHelper.GetColumnNames(identifier.Value, out string tableAlias, out string columnName);
 
             string propertyAlias = string.IsNullOrWhiteSpace(identifier.Alias) ? columnName : identifier.Alias;
-
-            //TODO: analyse ScalarExpression !!!
 
             if (identifier.Tag is MetadataProperty property)
             {
@@ -163,14 +199,14 @@ namespace DaJet.Scripting
                     columns.Add(name);
                 }
             }
-            else if (identifier.Tag is CaseExpression)
+            else if (identifier.Tag is CaseExpression expression)
             {
                 if (mapper != null)
                 {
                     mapper.MapProperty(new PropertyMap()
                     {
                         Name = columnName,
-                        Type = typeof(decimal) // TODO: infer type from expression
+                        Type = _inferencer.InferOrDefault(expression)
                     })
                         .ToColumn(new ColumnMap()
                         {
@@ -186,14 +222,14 @@ namespace DaJet.Scripting
                     columns.Add("\t" + identifier.Value);
                 }
             }
-            else if (identifier.Tag is FunctionExpression)
+            else if (identifier.Tag is FunctionExpression function)
             {
                 if (mapper != null)
                 {
                     mapper.MapProperty(new PropertyMap()
                     {
                         Name = columnName,
-                        Type = typeof(decimal) // TODO: infer type from function parameters
+                        Type = _inferencer.InferOrDefault(function)
                     })
                         .ToColumn(new ColumnMap()
                         {
@@ -209,15 +245,13 @@ namespace DaJet.Scripting
                     columns.Add("\t" + identifier.Value);
                 }
             }
-            else if (identifier.Tag is Identifier column) /// bubbled up from subquery <see cref="MetadataBinder.BindColumn"/>
+            else if (identifier.Tag is Identifier parent) /// bubbled up from subquery <see cref="MetadataBinder.BindColumn"/>
             {
                 /// bubbled up from subquery <see cref="MetadataBinder.BindColumnToSelect(in SelectStatement, in Identifier)"/>
 
                 //TODO: get MetadataProperty recursively, following the Tag property !!!
-                if (mapper != null && column.Tag is MetadataProperty source)
+                if (mapper != null && parent.Tag is MetadataProperty source)
                 {
-                    // TODO: ??? VisitProjectionColumn(in columns, in column, in mapper);
-
                     PropertyMap propertyMap = DataMapper.CreatePropertyMap(in source, propertyAlias);
                     mapper.MapProperty(propertyMap).ToColumn(new ColumnMap()
                     {
@@ -227,13 +261,13 @@ namespace DaJet.Scripting
 
                 string name = "\t" + (string.IsNullOrWhiteSpace(tableAlias) ? string.Empty : tableAlias + ".");
 
-                if (string.IsNullOrWhiteSpace(column.Alias))
+                if (string.IsNullOrWhiteSpace(parent.Alias))
                 {
                     name += identifier.Value;
                 }
                 else
                 {
-                    name += column.Alias;
+                    name += parent.Alias;
                 }
 
                 if (!string.IsNullOrWhiteSpace(identifier.Alias))
@@ -242,6 +276,31 @@ namespace DaJet.Scripting
                 }
 
                 columns.Add(name);
+            }
+            else if (identifier.Tag is ColumnExpression column)
+            {
+                // the identifier input parameter is a derived column from the source table
+
+                if (mapper != null)
+                {
+                    mapper.MapProperty(new PropertyMap()
+                    {
+                        Name = propertyAlias,
+                        Type = _inferencer.InferOrDefault(column)
+                    })
+                        .ToColumn(new ColumnMap()
+                        {
+                            Name = propertyAlias
+                        });
+                }
+                if (mapper != null)
+                {
+                    columns.Add("\t" + identifier.Value + " AS " + propertyAlias);
+                }
+                else
+                {
+                    columns.Add("\t" + identifier.Value);
+                }
             }
         }
         private void VisitProjectionFunction(in List<string> columns, in FunctionExpression function, in EntityMap mapper)
@@ -252,7 +311,7 @@ namespace DaJet.Scripting
                     .MapProperty(new PropertyMap()
                     {
                         Name = function.Alias,
-                        Type = typeof(decimal) // TODO: infer type from parameters
+                        Type = _inferencer.InferOrDefault(function)
                     })
                     .ToColumn(new ColumnMap()
                     {
@@ -279,7 +338,7 @@ namespace DaJet.Scripting
                     .MapProperty(new PropertyMap()
                     {
                         Name = expression.Alias,
-                        Type = typeof(decimal) // TODO: infer type from THEN expression
+                        Type = _inferencer.InferOrDefault(expression)
                     })
                     .ToColumn(new ColumnMap()
                     {
@@ -300,7 +359,6 @@ namespace DaJet.Scripting
         }
 
         #region "SELECT STATEMENT"
-
         private void VisitSelectStatement(SelectStatement select, StringBuilder script, EntityMap mapper)
         {
             if (select.IsExpression) { script.Append("("); } // can be used by UNION operator
@@ -309,7 +367,10 @@ namespace DaJet.Scripting
 
             VisitSelectClause(select, script, mapper);
 
-            VisitFromClause(select.FROM, script);
+            if (select.FROM != null) // optional
+            {
+                VisitFromClause(select.FROM, script);
+            }
 
             if (select.WHERE != null) // optional
             {
@@ -335,7 +396,6 @@ namespace DaJet.Scripting
         }
 
         #region "SELECT AND FROM CLAUSE"
-
         private void VisitSelectClause(SelectStatement select, StringBuilder script, EntityMap mapper)
         {
             script.Append("SELECT");
@@ -555,7 +615,7 @@ namespace DaJet.Scripting
         {
             script.AppendLine().AppendLine("GROUP BY");
 
-            VisitProjectionClause(node.Expressions, script, null!);
+            VisitExpressions(node.Expressions, script);
         }
         private void VisitHavingClause(HavingClause node, StringBuilder script)
         {
@@ -611,7 +671,43 @@ namespace DaJet.Scripting
 
             VisitExpression(node.Expression2, script);
         }
-        
+
+        private void SeparateExpression(StringBuilder script, in string separator, ref bool first)
+        {
+            if (first)
+            {
+                first = false;
+            }
+            else
+            {
+                script.Append(separator);
+            }
+        }
+        private void VisitExpressions(List<SyntaxNode> expressions, StringBuilder script)
+        {
+            bool first = true;
+            string separator = "," + Environment.NewLine;
+
+            foreach (SyntaxNode node in expressions)
+            {
+                SeparateExpression(script, in separator, ref first);
+
+                if (node is Identifier identifier)
+                {
+                    VisitIdentifier(identifier, script);
+                }
+                else if (node is FunctionExpression function)
+                {
+                    VisitFunctionExpression(function, script);
+                }
+                else if (node is CaseExpression expression)
+                {
+                    VisitCaseExpression(expression, script);
+                }
+            }
+
+            script.AppendLine();
+        }
         private void VisitExpression(SyntaxNode expression, StringBuilder script)
         {
             if (expression is Identifier identifier)
@@ -754,7 +850,7 @@ namespace DaJet.Scripting
         {
             script.AppendLine().AppendLine("PARTITION BY");
 
-            VisitProjectionClause(function.OVER.Partition, script, null!);
+            VisitExpressions(function.OVER.Partition, script);
         }
         private void VisitWindowFrame(WindowFrame frame, StringBuilder script)
         {
@@ -824,7 +920,7 @@ namespace DaJet.Scripting
                 }
                 else
                 {
-                    // this should be metadata binding error !
+                    //TODO: this should be metadata binding error !
                     name = identifier.Value;
                 }
             }
@@ -836,16 +932,25 @@ namespace DaJet.Scripting
             {
                 name = identifier.Value;
             }
-            else if (identifier.Tag is Identifier column) /// bubbled up from subquery <see cref="MetadataBinder.BindColumn"/>
+            else if (identifier.Tag is ScalarExpression)
             {
-                if (string.IsNullOrWhiteSpace(column.Alias))
+                name = identifier.Value;
+            }
+            else if (identifier.Tag is Identifier parent) /// bubbled up from subquery <see cref="MetadataBinder.BindColumn"/>
+            {
+                if (string.IsNullOrWhiteSpace(parent.Alias))
                 {
-                    VisitColumnIdentifier(column, script);
+                    VisitColumnIdentifier(parent, script);
                 }
                 else
                 {
-                    name += column.Alias;
+                    name += parent.Alias;
                 }
+            }
+            else if (identifier.Tag is ColumnExpression column)
+            {
+                // the identifier input parameter is a derived column from the source table
+                name = identifier.Value;
             }
 
             script.Append(name);

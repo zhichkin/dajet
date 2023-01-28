@@ -8,3 +8,5 @@ namespace DaJet.Scripting
         void SayGoodbye(SyntaxNode node);
     }
 }
+
+//TODO: make SayHello and SayGoodbye cancelable !!!

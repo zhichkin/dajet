@@ -222,7 +222,14 @@ namespace DaJet.Scripting
                 }
                 else if (ScriptHelper.IsNumeric(_char))
                 {
-                    Number();
+                    if (_char == '0' && CheckNext('x'))
+                    {
+                        Binary();
+                    }
+                    else
+                    {
+                        Number();
+                    }
                 }
                 else if (_char == '@' || _char == '&')
                 {
@@ -283,6 +290,10 @@ namespace DaJet.Scripting
             }
 
             return (char)next;
+        }
+        private bool CheckNext(char expected)
+        {
+            return (PeekNext() == expected);
         }
         private void AddToken(TokenType token)
         {
@@ -445,6 +456,27 @@ namespace DaJet.Scripting
 
             AddToken(TokenType.Number);
         }
+        private void Binary()
+        {
+            _start = _position;
+            _lexeme.Append(_char);
+
+            if (!Consume('x'))
+            {
+                throw new Exception(GetErrorText("Unexpected character"));
+            }
+
+            _lexeme.Append(_char);
+
+            while (ScriptHelper.IsHexadecimal(PeekNext()) && Consume())
+            {
+                // read hex literal
+                _lexeme.Append(_char);
+            }
+
+            AddToken(TokenType.Binary);
+        }
+
         private void Entity()
         {
             _start = _position;
