@@ -44,10 +44,10 @@ namespace DaJet.Metadata.Parsers
                 // то в таком случае описание типов будет содержать только примитивные типы данных.
                 Configurator.ConfigureDataTypeSet(in _cache, in target, in references);
 
-                //TODO: add setting to MetadataCache to resolve references optionally !?
-                List<MetadataItem> list = _cache.ResolveReferences(in references);
-
-                target.References.AddRange(list);
+                //REFACTORING(29.01.2023)
+                //THINK: add setting to MetadataCache to resolve references optionally !?
+                //List<MetadataItem> list = _cache.ResolveReferences(in references);
+                //target.References.AddRange(list);
             }
         }
         private void ParseDataTypeSet(in ConfigFileReader source, in DataTypeSet target, in List<Guid> references)
@@ -186,7 +186,7 @@ namespace DaJet.Metadata.Parsers
             {
                 target.IsValueStorage = true; // Не может быть составным типом !
             }
-            else if (type == SingleTypes.Uniqueidentifier) // УникальныйИдентификатор - binary(16)
+            else if (type == SingleTypes.UniqueIdentifier) // УникальныйИдентификатор - binary(16)
             {
                 target.IsUuid = true; // Не может быть составным типом !
             }

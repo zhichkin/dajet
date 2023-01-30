@@ -3,7 +3,7 @@
     public sealed class CaseExpression : SyntaxNode
     {
         public CaseExpression() { Token = TokenType.CASE; }
-        public List<SyntaxNode> CASE { get; set; } = new();
+        public List<WhenExpression> CASE { get; set; } = new();
         public SyntaxNode ELSE { get; set; } = null!;
         public string Alias { get; set; } = string.Empty;
     }

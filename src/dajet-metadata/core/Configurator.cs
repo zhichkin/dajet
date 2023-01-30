@@ -119,7 +119,7 @@ namespace DaJet.Metadata.Core
 
                 if (identifier == Guid.Empty ||
                     identifier == SingleTypes.ValueStorage ||
-                    identifier == SingleTypes.Uniqueidentifier)
+                    identifier == SingleTypes.UniqueIdentifier)
                 {
                     continue;
                 }
@@ -710,10 +710,11 @@ namespace DaJet.Metadata.Core
                 type = MetadataTypes.Characteristic;
             }
 
-            if (type != Guid.Empty)
-            {
-                property.PropertyType.References.Add(new MetadataItem(type, metadata.Uuid, metadata.Name));
-            }
+            //REFACTORING(29.01.2023)
+            //if (type != Guid.Empty)
+            //{
+            //    property.PropertyType.References.Add(new MetadataItem(type, metadata.Uuid, metadata.Name));
+            //}
 
             property.Columns.Add(new MetadataColumn()
             {
@@ -755,15 +756,16 @@ namespace DaJet.Metadata.Core
             };
             property.PropertyType.CanBeReference = true;
 
-            foreach (Guid owner in owners)
-            {
-                MetadataItem item = cache.GetCatalogOwner(owner);
-                
-                if (item != MetadataItem.Empty)
-                {
-                    property.PropertyType.References.Add(item);
-                }
-            }
+            //REFACTORING(29.01.2023)
+            //foreach (Guid owner in owners)
+            //{
+            //    MetadataItem item = cache.GetCatalogOwner(owner);
+
+            //    if (item != MetadataItem.Empty)
+            //    {
+            //        property.PropertyType.References.Add(item);
+            //    }
+            //}
 
             if (owners.Count == 1) // Single type value
             {
@@ -1186,15 +1188,16 @@ namespace DaJet.Metadata.Core
                 DbName = "_Recorder"
             };
 
-            foreach (Guid recorder in recorders)
-            {
-                MetadataItem item = cache.GetRegisterRecorder(recorder);
+            //REFACTORING(29.01.2023)
+            //foreach (Guid recorder in recorders)
+            //{
+            //    MetadataItem item = cache.GetRegisterRecorder(recorder);
 
-                if (item != MetadataItem.Empty)
-                {
-                    property.PropertyType.References.Add(item);
-                }
-            }
+            //    if (item != MetadataItem.Empty)
+            //    {
+            //        property.PropertyType.References.Add(item);
+            //    }
+            //}
 
             MetadataColumn field = new()
             {
@@ -1787,7 +1790,7 @@ namespace DaJet.Metadata.Core
 
             property.PropertyType.CanBeReference = true;
             property.PropertyType.Reference = Guid.Empty;
-            property.PropertyType.References.Add(new MetadataItem(ReferenceTypes.Publication, Guid.Empty, "ПланОбменаСсылка"));
+            //REFACTORING (29.01.2023) property.PropertyType.References.Add(new MetadataItem(ReferenceTypes.Publication, Guid.Empty, "ПланОбменаСсылка"));
 
             property.Columns.Add(new MetadataColumn()
             {

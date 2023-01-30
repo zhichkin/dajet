@@ -58,6 +58,11 @@ namespace DaJet.Data.Mapping
                 return -1;
             }
 
+            if (column.Ordinal > -1)
+            {
+                return column.Ordinal;
+            }
+
             return reader.GetOrdinal(string.IsNullOrEmpty(column.Alias) ? column.Name : column.Alias);
         }
         private object GetSingleValue(in IDataReader reader)
@@ -68,7 +73,7 @@ namespace DaJet.Data.Mapping
             else if (Type == typeof(DateTime)) { return GetDateTime(in reader); }
             else if (Type == typeof(string)) { return GetString(in reader); }
             else if (Type == typeof(byte[])) { return GetBinary(in reader); }
-            else if (Type == typeof(Entity)) { return GetEntityRef(in reader); }
+            else if (Type == typeof(Entity)) { return GetEntity(in reader); }
 
             throw new NotSupportedException($"Unsupported data type: {Type}");
         }
@@ -79,7 +84,7 @@ namespace DaJet.Data.Mapping
             if (ordinal == -1)
             {
                 // Union value without _TYPE discriminator field
-                return GetEntityRef(in reader);
+                return GetEntity(in reader);
             }
 
             if (reader.IsDBNull(ordinal))
@@ -115,9 +120,14 @@ namespace DaJet.Data.Mapping
                 value = GetString(in reader);
                 return (value == null ? Union.Undefined : new Union.CaseString((string)value));
             }
+            else if (tag == 6) // ДвоичныеДанные
+            {
+                value = GetBinary(in reader);
+                return (value == null ? Union.Undefined : new Union.CaseBinary((byte[])value));
+            }
             else if (tag == 8) // Ссылка
             {
-                value = GetEntityRef(in reader);
+                value = GetEntity(in reader);
                 return (value == null ? Union.Undefined : new Union.CaseEntity((Entity)value));
             }
 
@@ -216,7 +226,7 @@ namespace DaJet.Data.Mapping
         }
         private object GetBinary(in IDataReader reader)
         {
-            int ordinal = GetOrdinal(in reader, ColumnPurpose.Default, out _); // single value type only
+            int ordinal = GetOrdinal(in reader, ColumnPurpose.Binary, out _);
 
             if (reader.IsDBNull(ordinal))
             {
@@ -225,7 +235,7 @@ namespace DaJet.Data.Mapping
 
             return ((byte[])reader.GetValue(ordinal));
         }
-        private object GetEntityRef(in IDataReader reader)
+        private object GetEntity(in IDataReader reader)
         {
             int ordinal = GetOrdinal(in reader, ColumnPurpose.Identity, out _);
 

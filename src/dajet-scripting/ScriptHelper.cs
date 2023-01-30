@@ -207,6 +207,22 @@ namespace DaJet.Scripting
 
             return (test == "null");
         }
+        internal static bool IsTrueLiteral(string literal)
+        {
+            if (string.IsNullOrWhiteSpace(literal))
+            {
+                return false;
+            }
+            return ("true" == literal.ToLowerInvariant());
+        }
+        internal static bool IsFalseLiteral(string literal)
+        {
+            if (string.IsNullOrWhiteSpace(literal))
+            {
+                return false;
+            }
+            return ("false" == literal.ToLowerInvariant());
+        }
         internal static bool IsBooleanLiteral(string identifier)
         {
             if (string.IsNullOrWhiteSpace(identifier))

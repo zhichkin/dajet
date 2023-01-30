@@ -48,7 +48,7 @@ namespace DaJet.Metadata.Model
                     _flags = DataTypeFlags.UniqueIdentifier;
                     TypeCode = 0;
                     Reference = Guid.Empty;
-                    References.Clear();
+                    //REFACTORING(29.01.2023) References.Clear();
                 }
                 else if (IsUuid)
                 {
@@ -56,6 +56,7 @@ namespace DaJet.Metadata.Model
                 }
             }
         }
+        public bool CanBeUuid { get { return Identifiers.Contains(SingleTypes.UniqueIdentifier); } }
         ///<summary>Типом значения свойства является byte[8] - версия данных, timestamp, rowversion. Не поддерживает составной тип данных.</summary>
         public bool IsBinary
         {
@@ -67,7 +68,7 @@ namespace DaJet.Metadata.Model
                     _flags = DataTypeFlags.Binary;
                     TypeCode = 0;
                     Reference = Guid.Empty;
-                    References.Clear();
+                    //REFACTORING(29.01.2023) References.Clear();
                 }
                 else if (IsBinary)
                 {
@@ -86,7 +87,7 @@ namespace DaJet.Metadata.Model
                     _flags = DataTypeFlags.ValueStorage;
                     TypeCode = 0;
                     Reference = Guid.Empty;
-                    References.Clear();
+                    //REFACTORING(29.01.2023) References.Clear();
                 }
                 else if (IsValueStorage)
                 {
@@ -94,6 +95,7 @@ namespace DaJet.Metadata.Model
                 }
             }
         }
+        public bool CanBeValueStorage { get { return Identifiers.Contains(SingleTypes.ValueStorage); } }
 
         ///<summary>Типом значения свойства может быть "Булево" (поддерживает составной тип данных)</summary>
         public bool CanBeBoolean
@@ -251,7 +253,7 @@ namespace DaJet.Metadata.Model
         ///<br>Функция для обработки идентификаторов: <see cref="Configurator.ConfigureDataTypeSet(in MetadataCache, in DataTypeSet, in List{Guid})"/></br>
         ///</summary>
         public List<Guid> Identifiers { get; set; } = new();
-
+        
         ///<summary>
         ///Список ссылочных типов данных объекта "ОписаниеТипов".
         ///<br><b>Назначение использования:</b></br>
@@ -259,7 +261,8 @@ namespace DaJet.Metadata.Model
         ///<br>2. Анализ логических связей между объектами метаданных.</br>
         ///<br>Список заполняется функцией <see cref="MetadataCache.ResolveReferences(in List{Guid})"/></br>
         ///</summary>
-        public List<MetadataItem> References { get; } = new();
+        //THINK !?
+        //REFACTORING(29.01.2023) public List<MetadataItem> References { get; } = new();
 
         ///<summary>
         ///Применяет описание типов определяемого типа или характеристики к свойству объекта метаданных.
@@ -281,8 +284,10 @@ namespace DaJet.Metadata.Model
             
             TypeCode = source.TypeCode;
             Reference = source.Reference;
-            References.Clear();
-            References.AddRange(source.References);
+
+            //REFACTORING(29.01.2023)
+            //References.Clear();
+            //References.AddRange(source.References);
         }
 
         ///<summary>Проверяет является ли свойство составным типом данных</summary>
@@ -361,6 +366,7 @@ namespace DaJet.Metadata.Model
 
             return string.Join(';', description);
         }
+        
         /// <summary>
         /// Объединяет два описания типов, отдавая приоритет входящему параметру <b>source</b>.
         /// </summary>
@@ -388,7 +394,7 @@ namespace DaJet.Metadata.Model
                 _flags = source._flags;
                 TypeCode = 0;
                 Reference = Guid.Empty;
-                References.Clear();
+                //REFACTORING(29.01.2023) References.Clear();
                 return;
             }
 
@@ -421,18 +427,21 @@ namespace DaJet.Metadata.Model
             if (source.CanBeReference)
             {
                 //TODO: merge references of two data type sets
+                // use source.Identifiers ...
                 CanBeReference = source.CanBeReference;
-                References.AddRange(source.References);
-                if (References.Count > 0)
-                {
-                    TypeCode = 0;
-                    Reference = Guid.Empty;
-                }
-                else
-                {
-                    TypeCode = source.TypeCode;
-                    Reference = source.Reference;
-                }
+                
+                //REFACTORING(29.01.2023)
+                //References.AddRange(source.References);
+                //if (References.Count > 0)
+                //{
+                //    TypeCode = 0;
+                //    Reference = Guid.Empty;
+                //}
+                //else
+                //{
+                //    TypeCode = source.TypeCode;
+                //    Reference = source.Reference;
+                //}
             }
         }
     }

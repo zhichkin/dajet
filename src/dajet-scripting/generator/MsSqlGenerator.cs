@@ -3,6 +3,7 @@ using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 using System.Text;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace DaJet.Scripting
 {
@@ -307,16 +308,21 @@ namespace DaJet.Scripting
         {
             if (mapper != null)
             {
-                mapper
-                    .MapProperty(new PropertyMap()
-                    {
-                        Name = function.Alias,
-                        Type = _inferencer.InferOrDefault(function)
-                    })
-                    .ToColumn(new ColumnMap()
-                    {
-                        Name = function.Alias
-                    });
+                PropertyMap map = new()
+                {
+                    Name = function.Alias,
+                    Type = _inferencer.InferOrDefault(function)
+                };
+
+                if (_inferencer.DataType is not null)
+                {
+                    map.TypeCode = _inferencer.DataType.TypeCode;
+                }
+
+                mapper.MapProperty(map).ToColumn(new ColumnMap()
+                {
+                    Name = function.Alias
+                });
             }
 
             StringBuilder script = new("\t");
@@ -334,16 +340,21 @@ namespace DaJet.Scripting
         {
             if (mapper != null)
             {
-                mapper
-                    .MapProperty(new PropertyMap()
-                    {
-                        Name = expression.Alias,
-                        Type = _inferencer.InferOrDefault(expression)
-                    })
-                    .ToColumn(new ColumnMap()
-                    {
-                        Name = expression.Alias
-                    });
+                PropertyMap map = new()
+                {
+                    Name = expression.Alias,
+                    Type = _inferencer.InferOrDefault(expression)
+                };
+
+                if (_inferencer.DataType is not null)
+                {
+                    map.TypeCode = _inferencer.DataType.TypeCode;
+                }
+
+                mapper.MapProperty(map).ToColumn(new ColumnMap()
+                {
+                    Name = expression.Alias
+                });
             }
 
             StringBuilder script = new("\t");
@@ -873,11 +884,11 @@ namespace DaJet.Scripting
 
         private void VisitCaseExpression(CaseExpression expression, StringBuilder script)
         {
-            script.AppendLine("CASE");
+            script.Append("CASE");
 
             foreach (WhenExpression when in expression.CASE)
             {
-                script.Append("WHEN ");
+                script.Append(" WHEN ");
                 VisitExpression(when.WHEN, script);
                 script.Append(" THEN ");
                 VisitExpression(when.THEN, script);
@@ -968,7 +979,21 @@ namespace DaJet.Scripting
         }
         private void VisitScalarExpression(ScalarExpression scalar, StringBuilder script)
         {
-            script.Append(scalar.Literal);
+            if (scalar.Token == TokenType.Boolean)
+            {
+                if (ScriptHelper.IsTrueLiteral(scalar.Literal))
+                {
+                    script.Append("0x01");
+                }
+                else
+                {
+                    script.Append("0x00");
+                }
+            }
+            else
+            {
+                script.Append(scalar.Literal);
+            }
         }
 
         #endregion

@@ -61,7 +61,7 @@ namespace DaJet.Metadata
         private readonly string _connectionString;
         private readonly DatabaseProvider _provider;
         private readonly MetadataObjectParserFactory _parsers;
-
+        
         #region "PRIVATE CACHE VALUES"
 
         ///<summary>Корневой файл конфигурации из файла "root" таблицы "Config"</summary>
@@ -1014,9 +1014,9 @@ namespace DaJet.Metadata
             {
                 return new MetadataItem(SingleTypes.ValueStorage, Guid.Empty, "ХранилищеЗначения");
             }
-            else if (reference == SingleTypes.Uniqueidentifier)
+            else if (reference == SingleTypes.UniqueIdentifier)
             {
-                return new MetadataItem(SingleTypes.Uniqueidentifier, Guid.Empty, "УникальныйИдентификатор");
+                return new MetadataItem(SingleTypes.UniqueIdentifier, Guid.Empty, "УникальныйИдентификатор");
             }
             else if (reference == ReferenceTypes.AnyReference)
             {

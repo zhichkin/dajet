@@ -25,7 +25,7 @@ namespace DaJet.Metadata.Core
             }
 
             if (Type == SingleTypes.ValueStorage) { return "ХранилищеЗначения"; }
-            if (Type == SingleTypes.Uniqueidentifier) { return "УникальныйИдентификатор"; }
+            if (Type == SingleTypes.UniqueIdentifier) { return "УникальныйИдентификатор"; }
             if (Type == ReferenceTypes.AnyReference) { return "ЛюбаяСсылка"; }
             if (Type == ReferenceTypes.Catalog) { return "СправочникСсылка"; }
             if (Type == ReferenceTypes.Document) { return "ДокументСсылка"; }

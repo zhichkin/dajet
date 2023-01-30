@@ -1,0 +1,42 @@
+exec sp_executesql N'SELECT
+
+-- _TYPE
+CASE WHEN (T1._Description = @P1) THEN 0x05 -- РеквизитСтрока
+     WHEN (T1._Description = @P2) THEN 0x06 -- РеквизитUuid
+     WHEN (T1._Description = @P3) THEN 0x06 -- РеквизитХранилище
+     WHEN (T1._Description = @P4) THEN 0x06 -- РеквизитВерсияДанных
+                                  ELSE 0x05 END, -- Наименование
+
+-- тип 0x05 РеквизитСтрока
+CASE WHEN (T1._Description = @P5)  THEN T1._Fld1073
+     WHEN (T1._Description = @P6)  THEN @P7
+     WHEN (T1._Description = @P8)  THEN @P9
+     WHEN (T1._Description = @P10) THEN @P11
+                                   ELSE T1._Description END,
+
+-- тип 0x06 : РеквизитUuid,РеквизитХранилище,РеквизитВерсияДанных
+CASE WHEN (T1._Description = @P12) THEN @P13
+     WHEN (T1._Description = @P14) THEN T1._Fld1204
+     WHEN (T1._Description = @P15) THEN T1._Fld1206
+     WHEN (T1._Description = @P16) THEN T1._Version
+                                   ELSE @P17 END,
+
+-- дополнительное поле-флаг для уточнения типа binary
+CASE WHEN (T1._Description = @P18) THEN -@P19     -- -1 _Fld1073 РеквизитСтрока
+     WHEN (T1._Description = @P20) THEN  @P21     --  0 _Fld1204 РеквизитUuid
+     WHEN (T1._Description = @P22) THEN  @P23     --  1 _Fld1206 РеквизитХранилище
+     WHEN (T1._Description = @P24) THEN  @P25     --  2 _Version РеквизитВерсияДанных
+                                   ELSE -@P26 END -- -1
+
+FROM dbo._Reference1072 T1',N'
+@P1 nvarchar(4000), @P2 nvarchar(4000), @P3 nvarchar(4000), @P4 nvarchar(4000), @P5 nvarchar(4000),
+@P6 nvarchar(4000), @P7 nvarchar(4000), @P8 nvarchar(4000), @P9 nvarchar(4000), @P10 nvarchar(4000),
+@P11 nvarchar(4000), @P12 nvarchar(4000), @P13 varbinary(8000), @P14 nvarchar(4000), @P15 nvarchar(4000),
+@P16 nvarchar(4000), @P17 varbinary(8000), @P18 nvarchar(4000), @P19 numeric(10), @P20 nvarchar(4000),
+@P21 numeric(10), @P22 nvarchar(4000), @P23 numeric(10), @P24 nvarchar(4000),
+
+@P25 numeric(10),@P26 numeric(10)',N'РеквизитСтрока',N'РеквизитUuid',N'РеквизитХранилище',
+N'РеквизитВерсияДанных', N'РеквизитСтрока',N'РеквизитUuid',N'',N'РеквизитХранилище',N'',
+N'РеквизитВерсияДанных',N'',N'РеквизитСтрока',0x,N'РеквизитUuid',N'РеквизитХранилище',
+N'РеквизитВерсияДанных',0x,N'РеквизитСтрока',1,N'РеквизитUuid',0,N'РеквизитХранилище',1,
+N'РеквизитВерсияДанных',2,1

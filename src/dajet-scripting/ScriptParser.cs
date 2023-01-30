@@ -480,11 +480,11 @@ namespace DaJet.Scripting
 
                 string value = scalar.Literal.Trim().Substring(start, length); // remove leading and trailing ' and "
 
-                if (Guid.TryParse(value, out Guid uuid))
+                if (Guid.TryParse(value, out Guid _))
                 {
                     scalar.Token = TokenType.Uuid;
                 }
-                else if (DateTime.TryParse(value, out DateTime datetime))
+                else if (DateTime.TryParse(value, out DateTime _))
                 {
                     scalar.Token = TokenType.DateTime;
                 }
@@ -515,7 +515,7 @@ namespace DaJet.Scripting
 
             return node;
         }
-        private SyntaxNode when_expression()
+        private WhenExpression when_expression()
         {
             WhenExpression node = new()
             {

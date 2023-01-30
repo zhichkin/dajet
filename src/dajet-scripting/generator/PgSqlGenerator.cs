@@ -78,6 +78,8 @@ namespace DaJet.Scripting
         }
         private void VisitCommonTable(CommonTableExpression cte, StringBuilder script)
         {
+            _context = "CTE"; //TODO: убрать этот костыль !!!
+
             if (cte.Next != null)
             {
                 VisitCommonTable(cte.Next, script);
@@ -96,12 +98,12 @@ namespace DaJet.Scripting
             }
             else if (cte.Expression is TableUnionOperator union)
             {
-                _context = "CTE"; //TODO: убрать этот костыль
                 VisitUnionOperator(union, script, null!);
-                _context = null;
             }
 
             script.AppendLine(")");
+
+            _context = null;
         }
 
         private void VisitProjectionClause(List<ColumnExpression> projection, StringBuilder script, EntityMap mapper)
@@ -343,16 +345,21 @@ namespace DaJet.Scripting
         {
             if (mapper != null)
             {
-                mapper
-                    .MapProperty(new PropertyMap()
-                    {
-                        Name = function.Alias,
-                        Type = _inferencer.InferOrDefault(function)
-                    })
-                    .ToColumn(new ColumnMap()
-                    {
-                        Name = function.Alias
-                    });
+                PropertyMap map = new()
+                {
+                    Name = function.Alias,
+                    Type = _inferencer.InferOrDefault(function)
+                };
+
+                if (_inferencer.DataType is not null)
+                {
+                    map.TypeCode = _inferencer.DataType.TypeCode;
+                }
+
+                mapper.MapProperty(map).ToColumn(new ColumnMap()
+                {
+                    Name = function.Alias
+                });
             }
 
             StringBuilder script = new("\t");
@@ -370,16 +377,21 @@ namespace DaJet.Scripting
         {
             if (mapper != null)
             {
-                mapper
-                    .MapProperty(new PropertyMap()
-                    {
-                        Name = expression.Alias,
-                        Type = _inferencer.InferOrDefault(expression)
-                    })
-                    .ToColumn(new ColumnMap()
-                    {
-                        Name = expression.Alias
-                    });
+                PropertyMap map = new()
+                {
+                    Name = expression.Alias,
+                    Type = _inferencer.InferOrDefault(expression)
+                };
+
+                if (_inferencer.DataType is not null)
+                {
+                    map.TypeCode = _inferencer.DataType.TypeCode;
+                }
+
+                mapper.MapProperty(map).ToColumn(new ColumnMap()
+                {
+                    Name = expression.Alias
+                });
             }
 
             StringBuilder script = new("\t");
@@ -927,11 +939,11 @@ namespace DaJet.Scripting
 
         private void VisitCaseExpression(CaseExpression expression, StringBuilder script)
         {
-            script.AppendLine("CASE");
+            script.Append("CASE");
 
             foreach (WhenExpression when in expression.CASE)
             {
-                script.Append("WHEN ");
+                script.Append(" WHEN ");
                 VisitExpression(when.WHEN, script);
                 script.Append(" THEN ");
                 VisitExpression(when.THEN, script);
@@ -968,14 +980,28 @@ namespace DaJet.Scripting
             }
             else if (identifier.Tag is MetadataProperty property) // single type properties
             {
+                MetadataColumn column = property.Columns[0];
+
                 if (property.Columns.Count == 1)
                 {
-                    name += property.Columns[0].Name;
+                    name += column.Name;
                 }
                 else
                 {
                     // this should be metadata binding error !
                     name = identifier.Value;
+                }
+
+                if (column.TypeName == "nchar" || column.TypeName == "char" ||
+                    column.TypeName == "nvarchar" || column.TypeName == "varchar")
+                {
+                    if (_context != null)
+                    {
+                        if (_context != "CTE")
+                        {
+                            name = "CAST(" + name + " AS varchar)"; // text
+                        }
+                    }
                 }
             }
             else if (identifier.Tag is CaseExpression)
@@ -1001,7 +1027,7 @@ namespace DaJet.Scripting
                     name += parent.Alias;
                 }
             }
-            else if (identifier.Tag is ColumnExpression column)
+            else if (identifier.Tag is ColumnExpression)
             {
                 // the identifier input parameter is a derived column from the source table
                 name = identifier.Value;
