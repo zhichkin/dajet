@@ -5,6 +5,6 @@
         public string Name { get; set; } = string.Empty;
         public string Alias { get; set; } = string.Empty;
         public List<SyntaxNode> Parameters { get; set; } = new();
-        public OverClause OVER { get; set; } = null!;
+        public OverClause OVER { get; set; }
     }
 }

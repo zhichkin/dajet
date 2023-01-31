@@ -2,9 +2,6 @@
 {
     public sealed class StarExpression : SyntaxNode
     {
-        public StarExpression()
-        {
-            Token = TokenType.Star;
-        }
+        public StarExpression() { Token = TokenType.Star; }
     }
 }

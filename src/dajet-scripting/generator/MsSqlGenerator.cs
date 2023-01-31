@@ -374,7 +374,7 @@ namespace DaJet.Scripting
         {
             if (select.IsExpression) { script.Append("("); } // can be used by UNION operator
 
-            VisitCommonTables(select.CTE, script);
+            VisitCommonTables(select.CommonTables, script);
 
             VisitSelectClause(select, script, mapper);
 
@@ -1004,7 +1004,7 @@ namespace DaJet.Scripting
 
         private void VisitDeleteStatement(DeleteStatement delete, StringBuilder script, EntityMap mapper)
         {
-            VisitCommonTables(delete.CTE, script);
+            VisitCommonTables(delete.CommonTables, script);
 
             script.Append("DELETE ");
 

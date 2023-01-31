@@ -2,12 +2,9 @@
 {
     public sealed class DeclareStatement : SyntaxNode
     {
-        public DeclareStatement()
-        {
-            Token = TokenType.DECLARE;
-        }
+        public DeclareStatement() { Token = TokenType.DECLARE; }
         public string Name { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty;
-        public SyntaxNode Initializer { get; set; } = null!;
+        public TypeIdentifier Type { get; set; }
+        public SyntaxNode Initializer { get; set; }
     }
 }

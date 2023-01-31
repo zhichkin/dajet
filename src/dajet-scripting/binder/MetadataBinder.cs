@@ -13,10 +13,8 @@ namespace DaJet.Scripting
 
             try
             {
-                BindDataTypes(in scope, in metadata);
-
+                BindScriptScope(in scope, in metadata);
                 BindCommonTables(in scope, in metadata);
-
                 BindSchemaTables(in scope, in metadata);
             }
             catch (Exception exception)
@@ -33,13 +31,13 @@ namespace DaJet.Scripting
             throw new InvalidOperationException(message);
         }
 
-        private void BindDataTypes(in ScriptScope scope, in MetadataCache metadata)
+        private void BindScriptScope(in ScriptScope scope, in MetadataCache metadata)
         {
             ScriptScope root = scope.Root;
 
             if (root.Owner is not ScriptModel)
             {
-                throw new InvalidOperationException("Root scope is not found");
+                throw new InvalidOperationException("Root scope is missing");
             }
 
             foreach (SyntaxNode node in root.Identifiers)
@@ -74,31 +72,83 @@ namespace DaJet.Scripting
                 }
             }
         }
-        private void BindCommonTables(in ScriptScope scope, in MetadataCache metadata)
+        private void BindVariables(in ScriptScope scope, in MetadataCache metadata)
         {
-            foreach (ScriptScope child in scope.Children)
+            foreach (SyntaxNode node in scope.Identifiers)
             {
-                BindCommonTables(in child, in metadata);
-            }
-
-            if (scope.Owner is not CommonTableExpression)
-            {
-                return;
-            }
-
-            foreach (ScriptScope child in scope.Children)
-            {
-                if (child.Owner is CommonTableExpression)
+                if (node is not Identifier identifier)
                 {
                     continue;
                 }
 
-                BindTables(in child, in metadata);
+                if (identifier.Token != TokenType.Variable)
+                {
+                    continue;
+                }
 
-                BindColumns(in child, in metadata);
-
-                BindVariables(in child, in metadata);
+                BindVariable(in scope, in identifier, in metadata);
             }
+        }
+        private void BindVariable(in ScriptScope scope, in Identifier identifier, in MetadataCache metadata)
+        {
+            ScriptScope root = scope.Root;
+
+            if (root.Owner is not ScriptModel script)
+            {
+                throw new InvalidOperationException("Root scope is not found");
+            }
+
+            foreach (SyntaxNode node in script.Statements)
+            {
+                if (node is DeclareStatement declare)
+                {
+                    if (declare.Name.Substring(1) == identifier.Value.Substring(1)) // remove leading @ or &
+                    {
+                        if (ScriptHelper.IsDataType(declare.Type, out Type type))
+                        {
+                            if (type == typeof(Entity))
+                            {
+                                if (declare.Initializer is ScalarExpression scalar)
+                                {
+                                    identifier.Tag = Entity.Parse(scalar.Literal);
+                                }
+                            }
+                            else
+                            {
+                                identifier.Tag = type;
+                            }
+                        }
+                        else
+                        {
+                            MetadataObject table = metadata.GetMetadataObject(declare.Type);
+
+                            if (table is ApplicationObject entity)
+                            {
+                                identifier.Tag = new Entity(entity.TypeCode, Guid.Empty);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (identifier.Tag == null)
+            {
+                ThrowBindingException(identifier);
+            }
+        }
+        private void BindCommonTables(in ScriptScope scope, in MetadataCache metadata)
+        {
+            foreach (ScriptScope child in scope.Children)
+            {
+                if (child.Owner is CommonTableExpression)
+                {
+                    BindCommonTables(in child, in metadata);
+                }
+            }
+            BindTables(in scope, in metadata);
+            BindColumns(in scope, in metadata);
+            BindVariables(in scope, in metadata);
         }
         private void BindSchemaTables(in ScriptScope scope, in MetadataCache metadata)
         {
@@ -468,72 +518,6 @@ namespace DaJet.Scripting
                         }
                     }
                 }
-            }
-        }
-
-        private void BindVariables(in ScriptScope scope, in MetadataCache metadata)
-        {
-            foreach (SyntaxNode node in scope.Identifiers)
-            {
-                if (node is not Identifier identifier)
-                {
-                    continue;
-                }
-
-                if (identifier.Token != TokenType.Variable)
-                {
-                    continue;
-                }
-
-                BindVariable(in scope, in identifier, in metadata);
-            }
-        }
-        private void BindVariable(in ScriptScope scope, in Identifier identifier, in MetadataCache metadata)
-        {
-            ScriptScope root = scope.Root;
-
-            if (root.Owner is not ScriptModel script)
-            {
-                throw new InvalidOperationException("Root scope is not found");
-            }
-
-            foreach (SyntaxNode node in script.Statements)
-            {
-                if (node is DeclareStatement declare)
-                {
-                    if (declare.Name.Substring(1) == identifier.Value.Substring(1)) // remove leading @ or &
-                    {
-                        if (ScriptHelper.IsDataType(declare.Type, out Type type))
-                        {
-                            if (type == typeof(Entity))
-                            {
-                                if (declare.Initializer is ScalarExpression scalar)
-                                {
-                                    identifier.Tag = Entity.Parse(scalar.Literal);
-                                }
-                            }
-                            else
-                            {
-                                identifier.Tag = type;
-                            }
-                        }
-                        else
-                        {
-                            MetadataObject table = metadata.GetMetadataObject(declare.Type);
-
-                            if (table is ApplicationObject entity)
-                            {
-                                identifier.Tag = new Entity(entity.TypeCode, Guid.Empty);
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-
-            if (identifier.Tag == null)
-            {
-                ThrowBindingException(identifier);
             }
         }
     }

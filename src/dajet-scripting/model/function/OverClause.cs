@@ -4,10 +4,10 @@
     {
         public OverClause() { Token = TokenType.OVER; }
         public List<SyntaxNode> Partition { get; set; } = new(); // optional
-        public OrderClause Order { get; set; } = null!; // optional
+        public OrderClause Order { get; set; } // optional
         public TokenType FrameType { get; set; } = TokenType.ROWS; // ROWS | RANGE
-        public WindowFrame Preceding { get; set; } = null!; // optional
-        public WindowFrame Following { get; set; } = null!; // optional
+        public WindowFrame Preceding { get; set; } // optional
+        public WindowFrame Following { get; set; } // optional
     }
     public sealed class WindowFrame : SyntaxNode
     {

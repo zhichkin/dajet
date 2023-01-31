@@ -12,8 +12,8 @@ namespace DaJet.Scripting
             Parent = parent;
         }
         public ScopeType Type { get; set; } = ScopeType.Global;
-        public SyntaxNode Owner { get; set; } = null!;
-        public ScriptScope Parent { get; set; } = null!;
+        public SyntaxNode Owner { get; set; }
+        public ScriptScope Parent { get; set; }
         public List<ScriptScope> Children { get; } = new();
         public List<SyntaxNode> Identifiers { get; } = new();
         public ScriptScope Root
@@ -52,7 +52,7 @@ namespace DaJet.Scripting
         }
         public ScriptScope Descendant<TOwner>() where TOwner : SyntaxNode
         {
-            return null!; // TODO
+            return null; // TODO
         }
         public override string ToString()
         {

@@ -30,7 +30,8 @@
     </div>
 
     <div class="script-editor-script">
-        <textarea @oninput="OnScriptChanged" style="border: 1px solid black; padding: 3px; white-space: nowrap;" rows="10">
+        <textarea rows="10" @oninput="OnScriptChanged"
+                  style="border: 1px solid black; padding: 3px; white-space: nowrap; font-family: monospace">
             @Model.Script
         </textarea>
     </div>

@@ -2,6 +2,6 @@
 {
     public sealed class UnaryOperator : SyntaxNode
     {
-        public SyntaxNode Expression { get; set; } = null!;
+        public SyntaxNode Expression { get; set; }
     }
 }

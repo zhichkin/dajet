@@ -2,10 +2,7 @@
 {
     public sealed class FromClause : SyntaxNode
     {
-        public FromClause()
-        {
-            Token = TokenType.FROM;
-        }
+        public FromClause() { Token = TokenType.FROM; }
         public SyntaxNode Expression { get; set; }
     }
 }

@@ -2,10 +2,7 @@
 {
     public sealed class WhereClause : SyntaxNode
     {
-        public WhereClause()
-        {
-            Token = TokenType.WHERE;
-        }
+        public WhereClause() { Token = TokenType.WHERE; }
         public SyntaxNode Expression { get; set; }
     }
 }

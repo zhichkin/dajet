@@ -2,10 +2,7 @@
 {
     public sealed class OnClause : SyntaxNode
     {
-        public OnClause()
-        {
-            Token = TokenType.ON;
-        }
+        public OnClause() { Token = TokenType.ON; }
         public SyntaxNode Expression { get; set; }
     }
 }

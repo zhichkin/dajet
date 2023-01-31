@@ -5,11 +5,11 @@ namespace DaJet.Scripting
 {
     public sealed class ScopeBuilder : IScriptVisitor
     {
-        private ScriptScope _scope = null!; // root scope owned by ScriptModel
-        private ScriptScope _current = null!;
+        private ScriptScope _scope = null; // root scope owned by ScriptModel
+        private ScriptScope _current = null;
         public bool TryBuild(in ScriptModel model, out ScriptScope scope, out string error)
         {
-            scope = null!;
+            scope = null;
             error = string.Empty;
 
             try
@@ -17,7 +17,7 @@ namespace DaJet.Scripting
                 ScriptWalker.Walk(model, this);
 
                 scope = _scope;
-                _scope = null!;
+                _scope = null;
             }
             catch (Exception exception)
             {
@@ -28,79 +28,31 @@ namespace DaJet.Scripting
         }
         public void SayHello(SyntaxNode node)
         {
-            if (node == null)
-            {
-                return;
-            }
+            if (node == null) { return; }
 
-            if (node is ScriptModel)
-            {
-                OpenScope(ScopeType.Global, node);
-            }
-            else if (node is SelectStatement)
-            {
-                OpenScope(ScopeType.Root, node);
-            }
-            else if (node is DeleteStatement)
-            {
-                OpenScope(ScopeType.Root, node);
-            }
-            else if (node is TableJoinOperator)
-            {
-                OpenScope(ScopeType.Node, node);
-            }
-            else if (node is TableUnionOperator)
-            {
-                OpenScope(ScopeType.Node, node);
-            }
-            else if (node is CommonTableExpression)
-            {
-                OpenScope(ScopeType.Node, node);
-            }
-            else if (node is SubqueryExpression)
-            {
-                JoinScope(node);
-            }
-            else if (node is Identifier)
-            {
-                JoinScope(node);
-            }
-            else if (node is DeclareStatement)
-            {
-                JoinScope(node);
-            }
+            if (node is ScriptModel) { OpenScope(ScopeType.Global, node); }
+            else if (node is DeclareStatement) { JoinScope(node); }
+            else if (node is SelectStatement) { OpenScope(ScopeType.Root, node); }
+            else if (node is CommonTableExpression) { OpenScope(ScopeType.Node, node); }
+            else if (node is SelectExpression) { OpenScope(ScopeType.Root, node); }
+            else if (node is TableExpression) { OpenScope(ScopeType.Node, node); }
+            else if (node is TableJoinOperator) { OpenScope(ScopeType.Node, node); }
+            else if (node is TableUnionOperator) { OpenScope(ScopeType.Node, node); }
+            else if (node is TableReference) { JoinScope(node); }
+            else if (node is ColumnReference) { JoinScope(node); }
+            else if (node is TypeIdentifier) { JoinScope(node); }
         }
         public void SayGoodbye(SyntaxNode node)
         {
-            if (node == null)
-            {
-                return;
-            }
+            if (node == null) { return; }
             
-            if (node is ScriptModel)
-            {
-                CloseScope(node);
-            }
-            else if (node is SelectStatement)
-            {
-                CloseScope(node);
-            }
-            else if (node is DeleteStatement)
-            {
-                CloseScope(node);
-            }
-            else if (node is TableJoinOperator)
-            {
-                CloseScope(node);
-            }
-            else if (node is TableUnionOperator)
-            {
-                CloseScope(node);
-            }
-            else if (node is CommonTableExpression)
-            {
-                CloseScope(node);
-            }
+            if (node is ScriptModel) { CloseScope(); }
+            else if (node is SelectStatement) { CloseScope(); }
+            else if (node is CommonTableExpression) { CloseScope(); }
+            else if (node is SelectExpression) { CloseScope(); }
+            else if (node is TableExpression) { CloseScope(); }
+            else if (node is TableJoinOperator) { CloseScope(); }
+            else if (node is TableUnionOperator) { CloseScope(); }
         }
         private void OpenScope(ScopeType type, SyntaxNode owner)
         {
@@ -116,25 +68,25 @@ namespace DaJet.Scripting
                 _current = scope;
             }
         }
-        private void CloseScope(SyntaxNode node)
-        {
-            if (_current != null)
-            {
-                _current = _current.Parent;
-            }
-        }
         private void JoinScope(SyntaxNode node)
         {
             if (node.Token == TokenType.Type)
             {
                 if (_scope != null)
                 {
-                    _scope.Identifiers.Add(node);
+                    _scope.Identifiers.Add(node); // root scope
                 }
             }
             else if (_current != null)
             {
                 _current.Identifiers.Add(node);
+            }
+        }
+        private void CloseScope()
+        {
+            if (_current != null)
+            {
+                _current = _current.Parent;
             }
         }
     }
