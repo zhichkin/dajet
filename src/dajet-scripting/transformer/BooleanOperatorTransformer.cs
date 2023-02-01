@@ -7,7 +7,7 @@ namespace DaJet.Scripting
         private readonly ComparisonOperatorTransformer _transformer = new();
         public void SayHello(SyntaxNode node)
         {
-            if (node is BooleanUnaryOperator @unary)
+            if (node is UnaryOperator @unary)
             {
                 if (@unary.Expression is ComparisonOperator comparison0)
                 {
@@ -19,7 +19,7 @@ namespace DaJet.Scripting
                     }
                 }
             }
-            else if (node is BooleanBinaryOperator @binary)
+            else if (node is BinaryOperator @binary)
             {
                 if (@binary.Expression1 is ComparisonOperator comparison1)
                 {
@@ -41,7 +41,7 @@ namespace DaJet.Scripting
                     }
                 }
             }
-            else if (node is BooleanGroupExpression @group)
+            else if (node is GroupOperator @group)
             {
                 if (@group.Expression is ComparisonOperator comparison3)
                 {

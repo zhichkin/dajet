@@ -4,9 +4,6 @@ using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 using System.Data;
 using System.Globalization;
-using System.Reflection.Metadata;
-using System.Reflection;
-using System.Data.Common;
 
 namespace DaJet.Scripting
 {
@@ -95,7 +92,7 @@ namespace DaJet.Scripting
 
                     if (!Parameters.TryGetValue(name, out _))
                     {
-                        if (ScriptHelper.IsDataType(declare.Type, out Type type))
+                        if (ScriptHelper.IsDataType(declare.Type.Identifier, out Type type))
                         {
                             if (type == typeof(bool))
                             {
@@ -146,7 +143,7 @@ namespace DaJet.Scripting
                             // Case 1. DECLARE @product Справочник.Номенклатура = {50:9a1984dc-3084-11ed-9cd7-408d5c93cc8e};
                             // Case 2. DECLARE @product Справочник.Номенклатура = "9a1984dc-3084-11ed-9cd7-408d5c93cc8e";
                             
-                            MetadataObject table = _cache.GetMetadataObject(declare.Type);
+                            MetadataObject table = _cache.GetMetadataObject(declare.Type.Identifier);
 
                             if (table is ApplicationObject entity)
                             {
@@ -178,6 +175,7 @@ namespace DaJet.Scripting
                     keys_to_remove.Add(key);
                 }
             }
+
             foreach (string key in keys_to_remove)
             {
                 Parameters.Remove(key);

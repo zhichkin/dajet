@@ -51,7 +51,7 @@ namespace DaJet.Scripting
 
                 if (IsSyntaxNode(propertyType))
                 {
-                    Visit((value as SyntaxNode)!, in visitor);
+                    Visit((value as SyntaxNode), in visitor);
                 }
                 else if (IsSyntaxNodeList(propertyType))
                 {
@@ -59,7 +59,7 @@ namespace DaJet.Scripting
                     {
                         for (int i = 0; i < list.Count; i++)
                         {
-                            Visit((list[i] as SyntaxNode)!, in visitor);
+                            Visit((list[i] as SyntaxNode), in visitor);
                         }
                     }
                 }

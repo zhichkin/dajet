@@ -20,21 +20,17 @@ namespace DaJet.Scripting
                 return TransformColumnIsType(in comparison);
             }
 
-            if (comparison.Expression1 is Identifier identifier1 &&
-                comparison.Expression2 is Identifier identifier2)
+            if (IsColumnColumn(comparison.Expression1, comparison.Expression2))
             {
-                if (IsColumnColumn(identifier1, identifier2))
-                {
-                    return Transform(comparison, identifier1, identifier2);
-                }
-                else if (IsColumnVariable(identifier1, identifier2))
-                {
-                    return Transform(comparison, identifier1, identifier2);
-                }
-                else if (IsVariableColumn(identifier1, identifier2))
-                {
-                    return Transform(comparison, identifier1, identifier2);
-                }
+                return Transform(comparison, comparison.Expression1, comparison.Expression2);
+            }
+            else if (IsColumnVariable(comparison.Expression1, comparison.Expression2))
+            {
+                return Transform(comparison, comparison.Expression1, comparison.Expression2);
+            }
+            else if (IsVariableColumn(comparison.Expression1, comparison.Expression2))
+            {
+                return Transform(comparison, comparison.Expression1, comparison.Expression2);
             }
 
             return null; // no transformation is needed
@@ -47,26 +43,19 @@ namespace DaJet.Scripting
         }
         private bool IsNullScalar(SyntaxNode node)
         {
-            return (node is ScalarExpression scalar
-                && scalar.Token == TokenType.NULL);
+            return (node is ScalarExpression scalar && scalar.Token == TokenType.NULL);
         }
         private bool IsScalarColumn(SyntaxNode node)
         {
-            return (node is Identifier identifier
-                && identifier.Token == TokenType.Column
-                && identifier.Tag is MetadataProperty property
+            return (node is ColumnReference column
+                && column.Tag is MetadataProperty property
                 && property.Columns.Count == 1);
         }
-        private bool IsUnionColumn(SyntaxNode node, out Identifier column)
+        private bool IsUnionColumn(SyntaxNode node, out ColumnReference column)
         {
             column = null;
 
-            if (node is not Identifier identifier)
-            {
-                return false;
-            }
-
-            if (identifier.Token == TokenType.Column &&
+            if (node is ColumnReference identifier &&
                 identifier.Tag is MetadataProperty property &&
                 property.Columns.Count > 1)
             {
@@ -75,16 +64,11 @@ namespace DaJet.Scripting
 
             return (column != null);
         }
-        private bool IsTypeIdentifier(SyntaxNode node, out Identifier type)
+        private bool IsTypeIdentifier(SyntaxNode node, out TypeIdentifier type)
         {
             type = null;
 
-            if (node is not Identifier identifier)
-            {
-                return false;
-            }
-
-            if (identifier.Token != TokenType.Type)
+            if (node is not TypeIdentifier identifier)
             {
                 return false;
             }
@@ -96,37 +80,37 @@ namespace DaJet.Scripting
 
             return (type != null);
         }
-        private bool IsColumnColumn(Identifier identifier1, Identifier identifier2)
+        private bool IsColumnColumn(SyntaxNode node1, SyntaxNode node2)
         {
-            return (identifier1.Token == TokenType.Column &&
-                    identifier2.Token == TokenType.Column &&
-                    identifier1.Tag is MetadataProperty property1 &&
-                    identifier2.Tag is MetadataProperty property2 &&
+            return (node1 is ColumnReference column1 &&
+                    node2 is ColumnReference column2 &&
+                    column1.Tag is MetadataProperty property1 &&
+                    column2.Tag is MetadataProperty property2 &&
                     (property1.Columns.Count > 1 || property2.Columns.Count > 1));
         }
-        private bool IsColumnVariable(Identifier identifier1, Identifier identifier2)
+        private bool IsColumnVariable(SyntaxNode node1, SyntaxNode node2)
         {
-            return (identifier1.Token == TokenType.Column &&
-                    identifier1.Tag is MetadataProperty property &&
-                    property.Columns.Count > 1 &&
-                    identifier2.Token == TokenType.Variable);
+            return (node1 is ColumnReference column &&
+                node2 is VariableReference &&
+                column.Tag is MetadataProperty property &&
+                property.Columns.Count > 1);
         }
-        private bool IsVariableColumn(Identifier identifier1, Identifier identifier2)
+        private bool IsVariableColumn(SyntaxNode node1, SyntaxNode node2)
         {
-            return (identifier1.Token == TokenType.Variable &&
-                    identifier2.Token == TokenType.Column &&
-                    identifier2.Tag is MetadataProperty property &&
-                    property.Columns.Count > 1);
+            return (node1 is VariableReference variable &&
+                node2 is ColumnReference &&
+                variable.Tag is MetadataProperty property &&
+                property.Columns.Count > 1);
         }
 
-        private BooleanGroupExpression Transform(ComparisonOperator comparison, Identifier identifier1, Identifier identifier2)
+        private GroupOperator Transform(ComparisonOperator comparison, SyntaxNode node1, SyntaxNode node2)
         {
             int tag = (int)ColumnPurpose.Tag;
             int tref = (int)ColumnPurpose.TypeCode;
             int rref = (int)ColumnPurpose.Identity;
 
-            object[] union1 = CreateUnion(identifier1);
-            object[] union2 = CreateUnion(identifier2);
+            object[] union1 = CreateUnion(node1);
+            object[] union2 = CreateUnion(node2);
 
             if (union1[tag] is int tag1 && union2[tag] is int tag2)
             {
@@ -137,7 +121,7 @@ namespace DaJet.Scripting
                 }
                 else
                 {
-                    ThrowUnableToCompareException(identifier1, identifier2);
+                    ThrowUnableToCompareException(node1, node2);
                 }
             }
 
@@ -150,11 +134,11 @@ namespace DaJet.Scripting
                 }
                 else
                 {
-                    ThrowUnableToCompareException(identifier1, identifier2);
+                    ThrowUnableToCompareException(node1, node2);
                 }
             }
 
-            BooleanGroupExpression group = new();
+            GroupOperator group = new();
 
             for (int type = tag; type <= rref; type++)
             {
@@ -162,15 +146,15 @@ namespace DaJet.Scripting
                 {
                     if (group.Expression == null)
                     {
-                        group.Expression = CreateComparisonOperator(comparison.Token, identifier1, identifier2, type, union1, union2);
+                        group.Expression = CreateComparisonOperator(comparison.Token, node1, node2, type, union1, union2);
                     }
                     else
                     {
-                        group.Expression = new BooleanBinaryOperator()
+                        group.Expression = new BinaryOperator()
                         {
                             Token = TokenType.AND,
                             Expression1 = group.Expression,
-                            Expression2 = CreateComparisonOperator(comparison.Token, identifier1, identifier2, type, union1, union2)
+                            Expression2 = CreateComparisonOperator(comparison.Token, node1, node2, type, union1, union2)
                         };
                     }
                 }
@@ -184,15 +168,20 @@ namespace DaJet.Scripting
             return group;
         }
 
-        private object[] CreateUnion(Identifier identifier)
+        private object[] CreateUnion(SyntaxNode node)
         {
-            if (identifier.Token == TokenType.Variable)
+            if (node is VariableReference variable)
             {
-                return ConvertVariableToUnion(identifier);
+                return ConvertVariableToUnion(variable);
+            }
+            
+            if (node is TypeIdentifier type)
+            {
+                return ConvertTypeToUnion(type);
             }
 
-            if (identifier.Token == TokenType.Column &&
-                identifier.Tag is MetadataProperty property &&
+            if (node is ColumnReference column &&
+                column.Tag is MetadataProperty property &&
                 property.Columns.Count > 0)
             {
                 if (property.Columns.Count == 1)
@@ -204,13 +193,8 @@ namespace DaJet.Scripting
                     return CreateUnion(property);
                 }
             }
-
-            if (identifier.Token == TokenType.Type)
-            {
-                return ConvertTypeToUnion(identifier);
-            }
-
-            return null!;
+            
+            return null;
         }
         private object[] CreateUnion(MetadataProperty property)
         {
@@ -286,7 +270,7 @@ namespace DaJet.Scripting
 
             return union;
         }
-        private object[] ConvertVariableToUnion(Identifier variable)
+        private object[] ConvertVariableToUnion(VariableReference variable)
         {
             object[] union = new object[((int)ColumnPurpose.Identity) + 1];
 
@@ -327,7 +311,7 @@ namespace DaJet.Scripting
 
             return union;
         }
-        private object[] ConvertTypeToUnion(Identifier identifier)
+        private object[] ConvertTypeToUnion(TypeIdentifier identifier)
         {
             object[] union = new object[((int)ColumnPurpose.Identity) + 1];
 
@@ -358,7 +342,7 @@ namespace DaJet.Scripting
                 }
                 else
                 {
-                    throw new FormatException($"Unknown type identifier: {identifier.Value}");
+                    throw new FormatException($"Unknown type identifier: {identifier.Identifier}");
                 }
             }
             else if (identifier.Tag is Entity entity)
@@ -368,13 +352,13 @@ namespace DaJet.Scripting
             }
             else
             {
-                throw new FormatException($"Unknown type identifier: {identifier.Value}");
+                throw new FormatException($"Unknown type identifier: {identifier.Identifier}");
             }
             
             return union;
         }
 
-        private ComparisonOperator CreateComparisonOperator(TokenType type, Identifier column1, Identifier column2, int tag, object[] union1, object[] union2)
+        private ComparisonOperator CreateComparisonOperator(TokenType type, SyntaxNode column1, SyntaxNode column2, int tag, object[] union1, object[] union2)
         {
             ComparisonOperator comparison = new()
             {
@@ -391,14 +375,7 @@ namespace DaJet.Scripting
             }
             else
             {
-                comparison.Expression1 = new Identifier()
-                {
-                    Tag = union1[tag],
-                    Token = column1.Token,
-                    Value = column1.Value,
-                    Alias = column1.Alias
-                };
-                
+                comparison.Expression1 = CreateColumnReference(in column1, union1[tag]);
             }
 
             if (union2[tag] is int value2)
@@ -411,27 +388,28 @@ namespace DaJet.Scripting
             }
             else
             {
-                comparison.Expression2 = new Identifier()
-                {
-                    Tag = union2[tag],
-                    Token = column2.Token,
-                    Value = column2.Value,
-                    Alias = column2.Alias
-                };
-
+                comparison.Expression2 = CreateColumnReference(in column2, union2[tag]);
             }
 
             return comparison;
         }
-
-        private void ThrowUnableToCompareException(Identifier identifier1, Identifier identifier2)
+        private ColumnReference CreateColumnReference(in SyntaxNode node, object tag)
         {
-            string message = "Unable to compare "
-                + "[" + identifier1.Token + ": " + identifier1.Value + "]"
-                + " and "
-                + "[" + identifier2.Token + ": " + identifier2.Value + "]";
+            if (node is not ColumnReference source)
+            {
+                return null;
+            }
 
-            throw new InvalidCastException(message);
+            return new ColumnReference()
+            {
+                Tag = tag,
+                Identifier = source.Identifier
+            };
+        }
+
+        private void ThrowUnableToCompareException(SyntaxNode node1, SyntaxNode node2)
+        {
+            throw new InvalidCastException($"Unable to compare [{node1}] and [{node2}]");
         }
 
         #endregion
@@ -479,7 +457,7 @@ namespace DaJet.Scripting
                 return null; // no transformation is needed
             }
 
-            if (!IsUnionColumn(leftOperand, out Identifier column))
+            if (!IsUnionColumn(leftOperand, out ColumnReference column))
             {
                 throw new FormatException($"IS operator: left operand must be the union type column.");
             }
@@ -493,7 +471,7 @@ namespace DaJet.Scripting
                 return null;
             }
 
-            if (!IsTypeIdentifier(rigthOperand, out Identifier identifier))
+            if (!IsTypeIdentifier(rigthOperand, out TypeIdentifier identifier))
             {
                 throw new FormatException($"IS operator: right operand is not valid type identifier.");
             }

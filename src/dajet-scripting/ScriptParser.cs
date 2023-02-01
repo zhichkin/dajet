@@ -218,7 +218,7 @@ namespace DaJet.Scripting
             {
                 return new SelectStatement()
                 {
-                    Select = select_statement(),
+                    Select = union(),
                     CommonTables = root
                 };
             }
@@ -246,10 +246,10 @@ namespace DaJet.Scripting
 
             Skip(TokenType.Comment);
 
-            if (Match(TokenType.OpenRoundBracket))
-            {
-                // TODO: parse cte column identifiers
-            }
+            //if (Match(TokenType.OpenRoundBracket))
+            //{
+            //    // TODO: parse cte column identifiers
+            //}
 
             if (!Match(TokenType.AS))
             {
@@ -263,7 +263,7 @@ namespace DaJet.Scripting
                 throw new FormatException("Open round bracket expected.");
             }
 
-            cte.Expression = select();
+            cte.Expression = union();
 
             Skip(TokenType.Comment);
 
@@ -280,7 +280,10 @@ namespace DaJet.Scripting
         #region "SELECT STATEMENT"
         private SyntaxNode select_statement()
         {
-            return union();
+            return new SelectStatement()
+            {
+                Select = union()
+            };
         }
         private SyntaxNode union()
         {
@@ -510,7 +513,7 @@ namespace DaJet.Scripting
             {
                 SyntaxNode right = and();
 
-                left = new BooleanBinaryOperator()
+                left = new BinaryOperator()
                 {
                     Token = TokenType.OR,
                     Expression1 = left,
@@ -528,7 +531,7 @@ namespace DaJet.Scripting
             {
                 SyntaxNode right = not();
 
-                left = new BooleanBinaryOperator()
+                left = new BinaryOperator()
                 {
                     Token = TokenType.AND,
                     Expression1 = left,
@@ -544,7 +547,7 @@ namespace DaJet.Scripting
             {
                 SyntaxNode unary = not();
 
-                return new BooleanUnaryOperator()
+                return new UnaryOperator()
                 {
                     Token = TokenType.NOT,
                     Expression = unary
@@ -563,14 +566,19 @@ namespace DaJet.Scripting
 
             GroupClause group = new();
 
-            while (Match(TokenType.Identifier, TokenType.Comma, TokenType.Comment))
-            {
-                ScriptToken token = Previous();
+            Skip(TokenType.Comment);
 
-                if (token.Type == TokenType.Identifier)
-                {
-                    group.Expressions.Add(expression());
-                }
+            group.Expressions.Add(expression());
+
+            Skip(TokenType.Comment);
+
+            while (Match(TokenType.Comma))
+            {
+                Skip(TokenType.Comment);
+
+                group.Expressions.Add(expression());
+
+                Skip(TokenType.Comment);
             }
 
             return group;
@@ -584,27 +592,19 @@ namespace DaJet.Scripting
 
             OrderClause order = new();
 
-            while (Match(TokenType.Identifier, TokenType.Comma, TokenType.Comment))
+            Skip(TokenType.Comment);
+
+            order.Expressions.Add(order_expression());
+
+            Skip(TokenType.Comment);
+
+            while (Match(TokenType.Comma))
             {
-                ScriptToken token = Previous();
+                Skip(TokenType.Comment);
+                
+                order.Expressions.Add(order_expression());
 
-                if (token.Type == TokenType.Identifier)
-                {
-                    SyntaxNode column = expression();
-
-                    TokenType sort_order = TokenType.ASC;
-
-                    if (Match(TokenType.ASC, TokenType.DESC))
-                    {
-                        sort_order = Previous().Type;
-                    }
-
-                    order.Expressions.Add(new OrderExpression()
-                    {
-                        Token = sort_order,
-                        Expression = column
-                    });
-                }
+                Skip(TokenType.Comment);
             }
 
             if (Match(TokenType.OFFSET))
@@ -638,6 +638,23 @@ namespace DaJet.Scripting
             }
 
             return order;
+        }
+        private OrderExpression order_expression()
+        {
+            SyntaxNode column = expression();
+
+            TokenType sort_order = TokenType.ASC;
+
+            if (Match(TokenType.ASC, TokenType.DESC))
+            {
+                sort_order = Previous().Type;
+            }
+
+            return new OrderExpression()
+            {
+                Token = sort_order,
+                Expression = column
+            };
         }
         #endregion
 
@@ -688,7 +705,7 @@ namespace DaJet.Scripting
         {
             if (Match(TokenType.NOT))
             {
-                BooleanUnaryOperator unary = new()
+                UnaryOperator unary = new()
                 {
                     Token = TokenType.NOT
                 };
@@ -1004,14 +1021,11 @@ namespace DaJet.Scripting
 
             List<SyntaxNode> expressions = new();
 
-            while (Match(TokenType.Identifier, TokenType.Comma, TokenType.Comment))
-            {
-                ScriptToken token = Previous();
+            expressions.Add(expression());
 
-                if (token.Type == TokenType.Identifier)
-                {
-                    expressions.Add(expression());
-                }
+            while (Match(TokenType.Comma))
+            {
+                expressions.Add(expression());
             }
 
             return expressions;

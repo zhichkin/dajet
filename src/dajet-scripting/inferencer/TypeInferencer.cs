@@ -97,9 +97,13 @@ namespace DaJet.Scripting
             {
                 Visit(in column, in union);
             }
-            else if (node is Identifier identifier)
+            else if (node is ColumnReference identifier)
             {
                 Visit(in identifier, in union);
+            }
+            else if (node is VariableReference variable)
+            {
+                Visit(in variable, in union);
             }
             else if (node is ScalarExpression scalar)
             {
@@ -185,18 +189,7 @@ namespace DaJet.Scripting
                 // do nothing
             }
         }
-        private void Visit(in Identifier identifier, in DataTypeSet union)
-        {
-            if (identifier.Token == TokenType.Column)
-            {
-                VisitColumn(in identifier, in union);
-            }
-            else if (identifier.Token == TokenType.Variable)
-            {
-                VisitVariable(in identifier, in union);
-            }
-        }
-        private void VisitColumn(in Identifier identifier, in DataTypeSet union)
+        private void Visit(in ColumnReference identifier, in DataTypeSet union)
         {
             if (identifier.Tag is MetadataProperty property)
             {
@@ -207,7 +200,7 @@ namespace DaJet.Scripting
                 VisitSyntaxNode(in node, in union);
             }
         }
-        private void VisitVariable(in Identifier identifier, in DataTypeSet union)
+        private void Visit(in VariableReference identifier, in DataTypeSet union)
         {
             if (identifier.Tag is Entity entity)
             {

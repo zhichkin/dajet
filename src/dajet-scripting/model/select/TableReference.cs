@@ -6,5 +6,9 @@
         public object Tag { get; set; }
         public string Alias { get; set; } = string.Empty;
         public string Identifier { get; set; } = string.Empty;
+        public override string ToString()
+        {
+            return $"[{Token}:{Identifier}]";
+        }
     }
 }

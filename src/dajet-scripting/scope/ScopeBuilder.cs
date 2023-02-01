@@ -34,8 +34,8 @@ namespace DaJet.Scripting
             else if (node is DeclareStatement) { JoinScope(node); }
             else if (node is SelectStatement) { OpenScope(ScopeType.Root, node); }
             else if (node is CommonTableExpression) { OpenScope(ScopeType.Node, node); }
-            else if (node is SelectExpression) { OpenScope(ScopeType.Root, node); }
             else if (node is TableExpression) { OpenScope(ScopeType.Node, node); }
+            else if (node is SelectExpression) { OpenScope(ScopeType.Node, node); }
             else if (node is TableJoinOperator) { OpenScope(ScopeType.Node, node); }
             else if (node is TableUnionOperator) { OpenScope(ScopeType.Node, node); }
             else if (node is TableReference) { JoinScope(node); }

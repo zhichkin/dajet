@@ -13,9 +13,9 @@ namespace DaJet.Scripting
             Transformers.Add(typeof(OnClause), transformer1);
             Transformers.Add(typeof(WhereClause), transformer1);
             Transformers.Add(typeof(WhenExpression), transformer1);
-            Transformers.Add(typeof(BooleanUnaryOperator), transformer2);
-            Transformers.Add(typeof(BooleanBinaryOperator), transformer2);
-            Transformers.Add(typeof(BooleanGroupExpression), transformer2);
+            Transformers.Add(typeof(UnaryOperator), transformer2);
+            Transformers.Add(typeof(BinaryOperator), transformer2);
+            Transformers.Add(typeof(GroupOperator), transformer2);
         }
         public Dictionary<Type, IScriptVisitor> Transformers = new();
         public bool TryTransform(in SyntaxNode tree, out string error)
