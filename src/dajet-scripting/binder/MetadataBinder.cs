@@ -1,5 +1,4 @@
 ﻿using DaJet.Data;
-using DaJet.Data.Mapping;
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
@@ -188,25 +187,21 @@ namespace DaJet.Scripting
         }
         private void BindTable(in ScriptScope scope, in TableReference table, in MetadataCache metadata)
         {
-            ScriptScope context = scope.Ancestor<CommonTableExpression>();
-
             // 1. bind table in current scope
 
-            if (context is null) // result context
-            {
-                BindTableScoped(in scope, in table);
-            }
-            else // common table context
-            {
-                BindTableScoped(in scope, in table);
-            }
+            BindTableScoped(in scope, in table);
+
             if (table.Tag is not null) { return; } // successful binding
 
             // 2. failed to bind in current scope - bind to common table
 
+            ScriptScope context = scope.Ancestor<CommonTableExpression>();
+
             if (context is null) // result context
             {
-                BindCommonTable(scope.Root, in table);
+                context = scope.Ancestor<SelectStatement>();
+
+                BindCommonTable(context, in table);
             }
             else // common table context
             {
@@ -242,16 +237,17 @@ namespace DaJet.Scripting
                     }
                 }
                 
-                foreach (SyntaxNode identifier in child.Identifiers)
-                {
-                    if (identifier is TableReference reference)
-                    {
-                        if (table.Identifier == reference.Alias)
-                        {
-                            table.Tag = reference; return; // successfull binding
-                        }
-                    }
-                }
+                //TODO: remove ?
+                //foreach (SyntaxNode identifier in child.Identifiers)
+                //{
+                //    if (identifier is TableReference reference)
+                //    {
+                //        if (table.Identifier == reference.Alias)
+                //        {
+                //            table.Tag = reference; return; // successfull binding
+                //        }
+                //    }
+                //}
 
                 BindTableScoped(in child, in table); // go down the scope tree
             }
@@ -334,9 +330,9 @@ namespace DaJet.Scripting
 
             ScriptScope context = scope.Ancestor<CommonTableExpression>();
 
-            if (context is null)
+            if (context is null) // general result context
             {
-                context = scope.Root; // general result context
+                context = scope.Ancestor<SelectStatement>(); 
             }
 
             if (TryGetCommonTable(context, in identifier, out table))
@@ -438,10 +434,6 @@ namespace DaJet.Scripting
             else if (source is TableExpression derived)
             {
                 BindColumn(in derived, in identifier, in column);
-            }
-            else if (source is TableReference reference)
-            {
-                // TODO: recursively get source table from tag ???
             }
         }
         private void BindColumn(in TableExpression table, in string identifier, in ColumnReference column)

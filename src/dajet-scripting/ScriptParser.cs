@@ -401,7 +401,7 @@ namespace DaJet.Scripting
                     Token = _operator,
                     Expression1 = left,
                     Expression2 = right,
-                    ON = on_clause()
+                    On = on_clause()
                 };
             }
 
@@ -468,28 +468,15 @@ namespace DaJet.Scripting
                 return;
             }
 
-            if (Match(TokenType.Number))
-            {
-                select.Top = new ScalarExpression()
-                {
-                    Token = TokenType.Number,
-                    Literal = Previous().Lexeme
-                };
-                return;
-            }
-
             if (!Match(TokenType.OpenRoundBracket))
             {
                 throw new FormatException($"Open round bracket expected.");
             }
 
-            if (Match(TokenType.Variable))
+            select.Top = new TopClause()
             {
-                select.Top = new VariableReference()
-                {
-                    Identifier = Previous().Lexeme
-                };
-            }
+                Expression = expression()
+            };
 
             if (!Match(TokenType.CloseRoundBracket))
             {
@@ -956,7 +943,7 @@ namespace DaJet.Scripting
 
             if (Match(TokenType.OVER))
             {
-                function.OVER = over_clause();
+                function.Over = over_clause();
             }
 
             return function;

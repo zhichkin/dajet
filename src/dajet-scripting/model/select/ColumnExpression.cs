@@ -3,7 +3,6 @@
     public sealed class ColumnExpression : SyntaxNode
     {
         public ColumnExpression() { Token = TokenType.Column; }
-        public object Tag { get; set; }
         public string Alias { get; set; } = string.Empty;
         public SyntaxNode Expression { get; set; }
     }

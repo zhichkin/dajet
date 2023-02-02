@@ -48,7 +48,7 @@ namespace DaJet.Scripting
                 owner = scope?.Owner;
             }
 
-            return null!;
+            return null;
         }
         public ScriptScope Descendant<TOwner>() where TOwner : SyntaxNode
         {

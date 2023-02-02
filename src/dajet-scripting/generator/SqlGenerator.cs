@@ -1,6 +1,6 @@
 ﻿using DaJet.Data.Mapping;
-using DaJet.Metadata.Model;
 using DaJet.Metadata;
+using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 using System.Text;
 
@@ -24,19 +24,14 @@ namespace DaJet.Scripting
                 {
                     if (node is SelectStatement select)
                     {
-                        VisitSelectStatement(select, script, result.Mapper);
-                        script.AppendLine(";");
-                    }
-                    else if (node is TableUnionOperator union)
-                    {
-                        VisitUnionOperator(union, script, result.Mapper);
-                        script.AppendLine(";");
+                        Visit(in select, in script);
+                        ConfigureDataMapper(in select, result.Mapper);
                     }
                     else if (node is DeleteStatement delete)
                     {
-                        VisitDeleteStatement(delete, script, result.Mapper);
-                        script.AppendLine(";");
+                        //TODO: VisitDeleteStatement(delete, script, result.Mapper);
                     }
+                    script.AppendLine(";");
                 }
 
                 result.Script = script.ToString();
@@ -51,487 +46,115 @@ namespace DaJet.Scripting
             return result.Success;
         }
 
-        private void VisitCommonTables(CommonTableExpression cte, StringBuilder script)
+        private void ConfigureDataMapper(in SelectStatement statement, in EntityMap mapper)
         {
-            if (cte == null)
-            {
-                return;
-            }
-
-            script.Append("WITH ");
-
-            VisitCommonTable(cte, script);
-        }
-        private void VisitCommonTable(CommonTableExpression cte, StringBuilder script)
-        {
-            if (cte.Next != null)
-            {
-                VisitCommonTable(cte.Next, script);
-            }
-
-            if (cte.Next != null)
-            {
-                script.Append(", ");
-            }
-
-            script.AppendLine($"{cte.Name} AS").Append("(");
-
-            if (cte.Expression is SelectStatement select)
-            {
-                VisitSelectStatement(select, script, null!);
-            }
-            else if (cte.Expression is TableUnionOperator union)
-            {
-                VisitUnionOperator(union, script, null!);
-            }
-
-            script.AppendLine(")");
+            // projection
         }
 
-        private void VisitProjectionClause(List<ColumnExpression> projection, StringBuilder script, EntityMap mapper)
+        private void Visit(in SelectStatement statement, in StringBuilder script)
         {
-            List<string> columns = new();
-
-            foreach (ColumnExpression column in projection)
+            if (statement.CommonTables is not null)
             {
-                if (column.Expression is ColumnReference identifier)
-                {
-                    VisitProjectionColumn(in columns, in column, in mapper);
-                }
-                else if (column.Expression is FunctionExpression function)
-                {
-                    VisitProjectionFunction(in columns, in function, in mapper);
-                }
-                else if (column.Expression is CaseExpression expression)
-                {
-                    VisitProjectionCase(in columns, in expression, in mapper);
-                }
-                else
-                {
-                    VisitColumnExpression(in column, in columns, in mapper);
-                }
+                script.Append("WITH ");
+                Visit(statement.CommonTables, in script);
             }
-
-            script.AppendJoin("," + Environment.NewLine, columns).AppendLine();
-        }
-        private void VisitColumnExpression(in ColumnExpression column, in List<string> columns, in EntityMap mapper)
-        {
-            if (mapper != null)
-            {
-                mapper.MapProperty(new PropertyMap()
-                {
-                    Name = column.Alias,
-                    Type = _inferencer.InferOrDefault(column)
-                })
-                    .ToColumn(new ColumnMap()
-                    {
-                        Name = column.Alias
-                    });
-            }
-
-            StringBuilder script = new("\t");
-
-            VisitExpression(column.Expression, script);
-
-            if (!string.IsNullOrWhiteSpace(column.Alias))
-            {
-                script.Append(" AS ").Append(column.Alias);
-            }
-
-            columns.Add(script.ToString());
-        }
-        private void VisitProjectionColumn(in List<string> columns, in ColumnExpression identifier, in EntityMap mapper)
-        {
-            //TODO: mapper can be null if the code is called from:
-            // - VisitOrderClause
-            // - VisitCommonTable
-            // - VisitSubqueryExpression
-            // - VisitUnionOperator
-            //TODO: remove this call from VisitOrderClause procedure !!!
-
-            if (identifier.Expression is not ColumnReference reference)
-            {
-                return;
-            }
-
-            ScriptHelper.GetColumnIdentifiers(reference.Identifier, out string tableAlias, out string columnName);
-            string propertyAlias = string.IsNullOrWhiteSpace(identifier.Alias) ? columnName : identifier.Alias;
-
-            if (identifier.Tag is MetadataProperty property)
-            {
-                PropertyMap propertyMap = null!;
-                if (mapper != null)
-                {
-                    propertyMap = DataMapper.CreatePropertyMap(in property, propertyAlias);
-                    _ = mapper.MapProperty(propertyMap);
-                }
-
-                foreach (MetadataColumn field in property.Columns)
-                {
-                    string name = "\t" + (string.IsNullOrWhiteSpace(tableAlias) ? string.Empty : tableAlias + ".");
-
-                    name += field.Name;
-
-                    if (propertyMap == null) // subquery select statement
-                    {
-
-                        if (!string.IsNullOrWhiteSpace(identifier.Alias))
-                        {
-                            name += " AS " + identifier.Alias;
-
-                            if (property.Columns.Count > 1)
-                            {
-                                name += ScriptHelper.GetColumnPurposePostfix(field.Purpose);
-                            }
-                        }
-                    }
-                    else // root select statement
-                    {
-                        string alias = propertyAlias;
-
-                        if (property.Columns.Count > 1)
-                        {
-                            alias += ScriptHelper.GetColumnPurposePostfix(field.Purpose);
-                        }
-
-                        name += " AS " + alias;
-
-                        ColumnMap columnMap = DataMapper.CreateColumnMap(in field, alias);
-                        propertyMap.ToColumn(columnMap);
-                    }
-
-                    columns.Add(name);
-                }
-            }
-            else if (identifier.Tag is CaseExpression expression)
-            {
-                if (mapper != null)
-                {
-                    mapper.MapProperty(new PropertyMap()
-                    {
-                        Name = columnName,
-                        Type = _inferencer.InferOrDefault(expression)
-                    })
-                        .ToColumn(new ColumnMap()
-                        {
-                            Name = columnName
-                        });
-                }
-                if (mapper != null)
-                {
-                    columns.Add("\t" + reference.Identifier + " AS " + columnName);
-                }
-                else
-                {
-                    columns.Add("\t" + reference.Identifier);
-                }
-            }
-            else if (identifier.Tag is FunctionExpression function)
-            {
-                if (mapper != null)
-                {
-                    mapper.MapProperty(new PropertyMap()
-                    {
-                        Name = columnName,
-                        Type = _inferencer.InferOrDefault(function)
-                    })
-                        .ToColumn(new ColumnMap()
-                        {
-                            Name = columnName
-                        });
-                }
-                if (mapper != null)
-                {
-                    columns.Add("\t" + reference.Identifier + " AS " + columnName);
-                }
-                else
-                {
-                    columns.Add("\t" + reference.Identifier);
-                }
-            }
-            else if (identifier.Tag is ColumnExpression parent) /// bubbled up from subquery <see cref="MetadataBinder.BindColumn"/>
-            {
-                /// bubbled up from subquery <see cref="MetadataBinder.BindColumnToSelect(in SelectExpression, in ColumnReference)"/>
-
-                //TODO: get MetadataProperty recursively, following the Tag property !!!
-                if (mapper != null && parent.Tag is MetadataProperty source)
-                {
-                    PropertyMap propertyMap = DataMapper.CreatePropertyMap(in source, propertyAlias);
-                    mapper.MapProperty(propertyMap).ToColumn(new ColumnMap()
-                    {
-                        Name = propertyAlias
-                    });
-                }
-
-                string name = "\t" + (string.IsNullOrWhiteSpace(tableAlias) ? string.Empty : tableAlias + ".");
-
-                if (string.IsNullOrWhiteSpace(parent.Alias))
-                {
-                    name += reference.Identifier;
-                }
-                else
-                {
-                    name += parent.Alias;
-                }
-
-                if (!string.IsNullOrWhiteSpace(identifier.Alias))
-                {
-                    name += " AS " + identifier.Alias;
-                }
-
-                columns.Add(name);
-            }
-            else if (identifier.Tag is ColumnExpression column)
-            {
-                // the identifier input parameter is a derived column from the source table
-
-                if (mapper != null)
-                {
-                    mapper.MapProperty(new PropertyMap()
-                    {
-                        Name = propertyAlias,
-                        Type = _inferencer.InferOrDefault(column)
-                    })
-                        .ToColumn(new ColumnMap()
-                        {
-                            Name = propertyAlias
-                        });
-                }
-                if (mapper != null)
-                {
-                    columns.Add("\t" + reference.Identifier + " AS " + propertyAlias);
-                }
-                else
-                {
-                    columns.Add("\t" + reference.Identifier);
-                }
-            }
-        }
-        private void VisitProjectionFunction(in List<string> columns, in FunctionExpression function, in EntityMap mapper)
-        {
-            if (mapper != null)
-            {
-                PropertyMap map = new()
-                {
-                    Name = function.Alias,
-                    Type = _inferencer.InferOrDefault(function)
-                };
-
-                if (_inferencer.DataType is not null)
-                {
-                    map.TypeCode = _inferencer.DataType.TypeCode;
-                }
-
-                mapper.MapProperty(map).ToColumn(new ColumnMap()
-                {
-                    Name = function.Alias
-                });
-            }
-
-            StringBuilder script = new("\t");
-
-            VisitFunctionExpression(function, script);
-
-            if (!string.IsNullOrWhiteSpace(function.Alias))
-            {
-                script.Append(" AS ").Append(function.Alias);
-            }
-
-            columns.Add(script.ToString());
-        }
-        private void VisitProjectionCase(in List<string> columns, in CaseExpression expression, in EntityMap mapper)
-        {
-            if (mapper != null)
-            {
-                PropertyMap map = new()
-                {
-                    Name = expression.Alias,
-                    Type = _inferencer.InferOrDefault(expression)
-                };
-
-                if (_inferencer.DataType is not null)
-                {
-                    map.TypeCode = _inferencer.DataType.TypeCode;
-                }
-
-                mapper.MapProperty(map).ToColumn(new ColumnMap()
-                {
-                    Name = expression.Alias
-                });
-            }
-
-            StringBuilder script = new("\t");
-
-            VisitCaseExpression(expression, script);
-
-            if (!string.IsNullOrWhiteSpace(expression.Alias))
-            {
-                script.Append(" AS ").Append(expression.Alias);
-            }
-
-            columns.Add(script.ToString());
+            Visit(statement.Select, in script);
         }
 
-        #region "SELECT STATEMENT"
-        private void VisitSelectStatement(SelectStatement statement, StringBuilder script, EntityMap mapper)
+        private void Visit(in SyntaxNode expression, in StringBuilder script)
         {
-            VisitCommonTables(statement.CommonTables, script);
-
-            if (statement.Select is SelectExpression select)
+            if (expression is GroupOperator group)
             {
-
-                VisitSelectClause(select, script, mapper);
-
-                if (select.From != null) // optional
-                {
-                    VisitFromClause(select.From, script);
-                }
-
-                if (select.Where != null) // optional
-                {
-                    VisitWhereClause(select.Where, script);
-                }
-
-                if (select.Group != null) // optional
-                {
-                    VisitGroupClause(select.Group, script);
-                }
-
-                if (select.Having != null) // optional
-                {
-                    VisitHavingClause(select.Having, script);
-                }
-
-                if (select.Order != null) // optional
-                {
-                    VisitOrderClause(select.Order, script);
-                }
+                Visit(in group, in script);
+            }
+            else if (expression is UnaryOperator unary)
+            {
+                Visit(in unary, in script);
+            }
+            else if (expression is BinaryOperator binary)
+            {
+                Visit(in binary, in script);
+            }
+            else if (expression is AdditionOperator addition)
+            {
+                Visit(in addition, in script);
+            }
+            else if (expression is MultiplyOperator multiply)
+            {
+                Visit(in multiply, in script);
+            }
+            else if (expression is ComparisonOperator comparison)
+            {
+                Visit(in comparison, in script);
+            }
+            else if (expression is CaseExpression case_when)
+            {
+                Visit(in case_when, in script);
+            }
+            else if (expression is ScalarExpression scalar)
+            {
+                Visit(in scalar, in script);
+            }
+            else if (expression is VariableReference variable)
+            {
+                Visit(in variable, in script);
+            }
+            else if (expression is SelectExpression select)
+            {
+                Visit(in select, in script);
+            }
+            else if (expression is TableJoinOperator join)
+            {
+                Visit(in join, in script);
+            }
+            else if (expression is TableUnionOperator union)
+            {
+                Visit(in union, in script);
+            }
+            else if (expression is TableExpression derived)
+            {
+                Visit(in derived, in script);
+            }
+            else if (expression is TableReference table)
+            {
+                Visit(in table, in script);
+            }
+            else if (expression is ColumnReference column)
+            {
+                Visit(in column, in script);
+            }
+            else if (expression is FunctionExpression function)
+            {
+                Visit(in function, in script);
             }
         }
-
-        #region "SELECT AND FROM CLAUSE"
-        private void VisitSelectClause(SelectExpression select, StringBuilder script, EntityMap mapper)
+        private void Visit(in ColumnExpression node, in StringBuilder script)
         {
-            script.Append("SELECT");
+            Visit(node.Expression, in script);
 
-            VisitTopExpression(select.Top, script);
-
-            script.AppendLine();
-
-            VisitProjectionClause(select.Select, script, mapper);
-        }
-        private void VisitTopExpression(SyntaxNode top, StringBuilder script)
-        {
-            if (top == null) // optional
+            if (!string.IsNullOrEmpty(node.Alias))
             {
-                return;
-            }
-
-            script.Append(" TOP ");
-
-            if (top is ScalarExpression scalar && scalar.Token == TokenType.Number)
-            {
-                VisitScalarExpression(scalar, script);
-            }
-            else if (top is VariableReference variable)
-            {
-                script.Append("(");
-                VisitIdentifier(variable, script);
-                script.Append(")");
+                script.Append(" AS ").Append(node.Alias);
             }
         }
-        private void VisitFromClause(FromClause from, StringBuilder script)
+        private void Visit(in TableReference node, in StringBuilder script)
         {
-            script.Append("FROM ");
-
-            VisitTableSource(from.Expression, script);
-        }
-        private void VisitTableSource(SyntaxNode node, StringBuilder script)
-        {
-            if (node is TableJoinOperator join)
+            if (node.Tag is ApplicationObject entity)
             {
-                VisitJoinOperator(join, script);
+                script.Append(entity.TableName);
             }
-            else if (node is TableReference identifier)
+            else if (node.Tag is TableExpression table)
             {
-                VisitTableIdentifier(null, identifier, script);
+                script.Append(table.Alias);
             }
-            else if (node is TableExpression table)
+            else if (node.Tag is CommonTableExpression cte)
             {
-                VisitTableExpression(table, script);
-            }
-        }
-        private void VisitOrderClause(OrderClause order, StringBuilder script)
-        {
-            script.AppendLine().AppendLine("ORDER BY");
-
-            List<string> result = new();
-            List<string> columns = new();
-
-            foreach (OrderExpression expression in order.Expressions)
-            {
-                if (expression.Expression is not ColumnExpression identifier)
-                {
-                    continue;
-                }
-
-                columns.Clear();
-
-                VisitProjectionColumn(in columns, in identifier, null!);
-
-                for (int i = 0; i < columns.Count; i++)
-                {
-                    if (expression.Token == TokenType.DESC)
-                    {
-                        result.Add(columns[i] + " DESC");
-                    }
-                    else
-                    {
-                        result.Add(columns[i] + " ASC");
-                    }
-                }
+                script.Append(cte.Name);
             }
 
-            script.AppendJoin("," + Environment.NewLine, result).AppendLine();
-
-            if (order.Offset != null) // optional
+            if (!string.IsNullOrWhiteSpace(node.Alias))
             {
-                script.Append("OFFSET ");
-                VisitExpression(order.Offset, script);
-                script.AppendLine(" ROWS");
-
-                if (order.Fetch != null)
-                {
-                    script.Append("FETCH NEXT ");
-                    VisitExpression(order.Fetch, script);
-                    script.AppendLine(" ROWS ONLY");
-                }
-            }
-        }
-
-        private void VisitTableIdentifier(TableSource table, TableReference identifier, StringBuilder script)
-        {
-            string tableName = string.Empty;
-
-            if (identifier.Tag is ApplicationObject entity)
-            {
-                tableName = entity.TableName;
-            }
-            else if (identifier.Tag is CommonTableExpression cte)
-            {
-                tableName = cte.Name;
-            }
-
-            if (string.IsNullOrWhiteSpace(tableName))
-            {
-                return;
-            }
-
-            script.Append(tableName);
-
-            if (!string.IsNullOrWhiteSpace(identifier.Alias))
-            {
-                script.Append(" AS ").Append(identifier.Alias);
+                script.Append(" AS ").Append(node.Alias);
             }
 
             //if (table.Hints.Count > 0)
@@ -552,42 +175,44 @@ namespace DaJet.Scripting
             //    script.Append(hints.ToString()).Append(")");
             //}
         }
-        private void VisitJoinOperator(TableJoinOperator join, StringBuilder script)
+        private void Visit(in ColumnReference node, in StringBuilder script)
         {
-            VisitTableSource(join.Expression1, script);
-
-            script.AppendLine().Append(join.Token.ToString()).Append(" JOIN ");
-
-            VisitTableSource(join.Expression2, script);
-
-            VisitOnClause(join.ON, script);
+            if (node.Tag is MetadataColumn column)
+            {
+                script.Append(column.Name);
+            }
+            else if (node.Tag is MetadataProperty property)
+            {
+                script.Append(property.Columns[0].Name);
+            }
+            else if (node.Tag is ColumnExpression parent)
+            {
+                script.Append(node.Identifier);
+            }
         }
-        private void VisitTableExpression(TableExpression table, StringBuilder script)
+        private void Visit(in TableExpression table, in StringBuilder script)
         {
             script.Append("(");
-
-            if (table.Expression is SelectStatement select)
-            {
-                VisitSelectStatement(select, script, null!);
-            }
-            else if (table.Expression is TableUnionOperator union)
-            {
-                VisitUnionOperator(union, script, null!);
-            }
-
+            Visit(table.Expression, in script);
             script.Append(") AS " + table.Alias);
         }
-        private void VisitUnionOperator(TableUnionOperator union, StringBuilder script, EntityMap mapper)
+        private void Visit(in TableJoinOperator join, in StringBuilder script)
         {
-            if (union.Expression1 is SelectStatement select1)
+            Visit(join.Expression1, in script);
+            script.AppendLine().Append(join.Token.ToString()).Append(" JOIN ");
+            Visit(join.Expression2, in script);
+            Visit(join.On, in script);
+        }
+        private void Visit(in TableUnionOperator union, in StringBuilder script)
+        {
+            if (union.Expression1 is SelectExpression select1)
             {
-                VisitSelectStatement(select1, script, mapper);
+                Visit(in select1, in script);
             }
             else if (union.Expression1 is TableUnionOperator union1)
             {
-                VisitUnionOperator(union1, script, null!);
+                Visit(in union1, in script);
             }
-
             if (union.Token == TokenType.UNION)
             {
                 script.AppendLine().AppendLine("UNION");
@@ -596,274 +221,302 @@ namespace DaJet.Scripting
             {
                 script.AppendLine().AppendLine("UNION ALL");
             }
-
-            if (union.Expression2 is SelectStatement select2)
+            if (union.Expression2 is SelectExpression select2)
             {
-                VisitSelectStatement(select2, script, null!);
+                Visit(in select2, in script);
             }
             else if (union.Expression2 is TableUnionOperator union2)
             {
-                VisitUnionOperator(union2, script, null!);
+                Visit(in union2, in script);
             }
         }
-        #endregion
-
-        #region "WHERE AND ON CLAUSE"
-
-        private void VisitOnClause(OnClause node, StringBuilder script)
+        private void Visit(in CommonTableExpression cte, in StringBuilder script)
         {
-            script.AppendLine().Append("ON ");
+            if (cte.Next is not null)
+            {
+                Visit(cte.Next, in script);
+            }
 
-            VisitBooleanExpression(node.Expression, script);
+            if (cte.Next is not null) { script.Append(", "); }
+            script.AppendLine($"{cte.Name} AS ").Append("(");
+            Visit(cte.Expression, in script);
+            script.AppendLine(")");
         }
-        private void VisitWhereClause(WhereClause node, StringBuilder script)
+        private void Visit(in SelectExpression select, in StringBuilder script)
+        {
+            script.Append("SELECT");
+
+            if (select.Top is not null)
+            {
+                Visit(select.Top, in script);
+            }
+            script.AppendLine();
+
+            for (int i = 0; i < select.Select.Count; i++)
+            {
+                if (i > 0) { script.Append(", "); }
+                Visit(select.Select[i], in script);
+            }
+
+            if (select.From is not null) { Visit(select.From, in script); }
+            if (select.Where is not null) { Visit(select.Where, in script); }
+            if (select.Group is not null) { Visit(select.Group, in script); }
+            if (select.Having is not null) { Visit(select.Having, in script); }
+            if (select.Order is not null) { Visit(select.Order, in script); }
+        }
+        private void Visit(in TopClause node, in StringBuilder script)
+        {
+            script.Append(" TOP ").Append("(");
+            Visit(node.Expression, in script);
+            script.Append(")");
+        }
+        private void Visit(in FromClause node, in StringBuilder script)
+        {
+            script.Append("FROM ");
+            Visit(node.Expression, in script);
+        }
+        private void Visit(in WhereClause node, in StringBuilder script)
         {
             script.AppendLine().Append("WHERE ");
-
-            VisitBooleanExpression(node.Expression, script);
+            Visit(node.Expression, in script);
         }
-        private void VisitGroupClause(GroupClause node, StringBuilder script)
+        private void Visit(in GroupClause node, in StringBuilder script)
         {
+            if (node is null || node.Expressions is null || node.Expressions.Count == 0)
+            {
+                return;
+            }
+
             script.AppendLine().AppendLine("GROUP BY");
 
-            VisitExpressions(node.Expressions, script);
+            string separator = "," + Environment.NewLine;
+            
+            for (int i = 0; i < node.Expressions.Count; i++)
+            {
+                if (i > 0) { script.Append(separator); }
+                Visit(node.Expressions[i], in script);
+            }
+            script.AppendLine();
         }
-        private void VisitHavingClause(HavingClause node, StringBuilder script)
+        private void Visit(in HavingClause node, in StringBuilder script)
         {
             script.Append("HAVING ");
-
-            VisitBooleanExpression(node.Expression, script);
+            Visit(node.Expression, in script);
         }
-
-        private void VisitBooleanExpression(SyntaxNode node, StringBuilder script)
+        private void Visit(in OnClause node, in StringBuilder script)
         {
-            if (node is ComparisonOperator comparison)
-            {
-                VisitComparisonOperator(comparison, script);
-            }
-            else if (node is UnaryOperator unary)
-            {
-                VisitBooleanUnaryOperator(unary, script);
-            }
-            else if (node is BinaryOperator binary)
-            {
-                VisitBooleanBinaryOperator(binary, script);
-            }
-            else if (node is GroupOperator group)
-            {
-                script.Append("(");
-                VisitExpression(group.Expression, script); // VisitBooleanExpression(group.Expression, script);
-                script.Append(")");
-            }
-            else if (node is CaseExpression _case)
-            {
-                VisitExpression(_case, script);
-            }
+            script.AppendLine().Append("ON ");
+            Visit(node.Expression, in script);
         }
-        private void VisitBooleanUnaryOperator(UnaryOperator node, StringBuilder script)
+        private void Visit(in OrderClause node, in StringBuilder script)
         {
-            script.Append("NOT ");
+            script.AppendLine().AppendLine("ORDER BY");
 
-            VisitBooleanExpression(node.Expression, script);
-        }
-        private void VisitBooleanBinaryOperator(BinaryOperator node, StringBuilder script)
-        {
-            VisitBooleanExpression(node.Expression1, script);
+            OrderExpression order;
 
-            script.AppendLine().Append(node.Token.ToString()).Append(" ");
+            string separator = ", ";
 
-            VisitBooleanExpression(node.Expression2, script);
-        }
-        private void VisitComparisonOperator(ComparisonOperator node, StringBuilder script)
-        {
-            VisitExpression(node.Expression1, script);
-
-            script.Append(" ").Append(ScriptHelper.GetComparisonLiteral(node.Token)).Append(" ");
-
-            VisitExpression(node.Expression2, script);
-        }
-
-        private void SeparateExpression(StringBuilder script, in string separator, ref bool first)
-        {
-            if (first)
+            for (int i = 0; i < node.Expressions.Count; i++)
             {
-                first = false;
-            }
-            else
-            {
-                script.Append(separator);
-            }
-        }
-        private void VisitExpressions(List<SyntaxNode> expressions, StringBuilder script)
-        {
-            bool first = true;
-            string separator = "," + Environment.NewLine;
+                order = node.Expressions[i];
 
-            foreach (SyntaxNode node in expressions)
-            {
-                SeparateExpression(script, in separator, ref first);
+                if (i > 0) { script.Append(separator); }
 
-                if (node is ColumnReference identifier)
+                Visit(order.Expression, in script);
+
+                if (order.Token == TokenType.DESC)
                 {
-                    VisitIdentifier(identifier, script);
+                    script.Append(" DESC");
                 }
-                else if (node is FunctionExpression function)
+                else
                 {
-                    VisitFunctionExpression(function, script);
-                }
-                else if (node is CaseExpression expression)
-                {
-                    VisitCaseExpression(expression, script);
+                    script.Append(" ASC"); // default
                 }
             }
 
             script.AppendLine();
-        }
-        private void VisitExpression(SyntaxNode expression, StringBuilder script)
-        {
-            if (expression is ColumnReference identifier)
-            {
-                VisitIdentifier(identifier, script);
-            }
-            else if (expression is ScalarExpression scalar)
-            {
-                VisitScalarExpression(scalar, script);
-            }
-            else if (expression is UnaryOperator unary)
-            {
-                VisitUnaryOperator(unary, script);
-            }
-            else if (expression is AdditionOperator addition)
-            {
-                VisitAdditionOperator(addition, script);
-            }
-            else if (expression is MultiplyOperator multiply)
-            {
-                VisitMultiplyOperator(multiply, script);
-            }
-            else if (expression is FunctionExpression function)
-            {
-                VisitFunctionExpression(function, script);
-            }
-            else if (expression is CaseExpression case_when)
-            {
-                VisitCaseExpression(case_when, script);
-            }
-            else
-            {
-                VisitBooleanExpression(expression, script);
-            }
-        }
-        private void VisitUnaryOperator(UnaryOperator unary, StringBuilder script)
-        {
-            script.Append(unary.Token == TokenType.Minus ? "-" : "NOT ");
-            VisitExpression(unary.Expression, script);
-        }
-        private void VisitAdditionOperator(AdditionOperator addition, StringBuilder script)
-        {
-            VisitExpression(addition.Expression1, script);
 
-            if (addition.Token == TokenType.Plus)
+            if (node.Offset is not null)
+            {
+                script.Append("OFFSET ");
+                Visit(node.Offset, in script);
+                script.AppendLine(" ROWS");
+
+                if (node.Fetch is not null)
+                {
+                    script.Append("FETCH NEXT ");
+                    Visit(node.Fetch, in script);
+                    script.AppendLine(" ROWS ONLY");
+                }
+            }
+        }
+        private void Visit(in GroupOperator node, in StringBuilder script)
+        {
+            script.Append("(");
+            Visit(node.Expression, in script);
+            script.Append(")");
+        }
+        private void Visit(in UnaryOperator node, in StringBuilder script)
+        {
+            script.Append(node.Token == TokenType.Minus ? "-" : "NOT ");
+            Visit(node.Expression, in script);
+        }
+        private void Visit(in BinaryOperator node, in StringBuilder script)
+        {
+            Visit(node.Expression1, in script);
+            script.AppendLine().Append(node.Token.ToString()).Append(" ");
+            Visit(node.Expression2, in script);
+        }
+        private void Visit(in AdditionOperator node, in StringBuilder script)
+        {
+            Visit(node.Expression1, in script);
+            if (node.Token == TokenType.Plus)
             {
                 script.Append(" + ");
             }
-            else if (addition.Token == TokenType.Minus)
+            else if (node.Token == TokenType.Minus)
             {
                 script.Append(" - ");
             }
-
-            VisitExpression(addition.Expression2, script);
+            Visit(node.Expression2, in script);
         }
-        private void VisitMultiplyOperator(MultiplyOperator multiply, StringBuilder script)
+        private void Visit(in MultiplyOperator node, in StringBuilder script)
         {
-            VisitExpression(multiply.Expression1, script);
-
-            if (multiply.Token == TokenType.Star)
+            Visit(node.Expression1, in script);
+            if (node.Token == TokenType.Star)
             {
                 script.Append(" * ");
             }
-            else if (multiply.Token == TokenType.Divide)
+            else if (node.Token == TokenType.Divide)
             {
                 script.Append(" / ");
             }
-            else if (multiply.Token == TokenType.Modulo)
+            else if (node.Token == TokenType.Modulo)
             {
                 script.Append(" % ");
             }
-
-            VisitExpression(multiply.Expression2, script);
+            Visit(node.Expression2, in script);
+        }
+        private void Visit(in ComparisonOperator node, in StringBuilder script)
+        {
+            Visit(node.Expression1, in script);
+            script.Append(" ").Append(ScriptHelper.GetComparisonLiteral(node.Token)).Append(" ");
+            Visit(node.Expression2, in script);
+        }
+        private void Visit(in CaseExpression node, in StringBuilder script)
+        {
+            script.Append("CASE");
+            foreach (WhenExpression when in node.CASE)
+            {
+                script.Append(" WHEN ");
+                Visit(when.WHEN, in script);
+                script.Append(" THEN ");
+                Visit(when.THEN, in script);
+            }
+            if (node.ELSE is not null)
+            {
+                script.Append(" ELSE ");
+                Visit(node.ELSE, in script);
+            }
+            script.Append(" END");
+        }
+        private void Visit(in ScalarExpression node, in StringBuilder script)
+        {
+            if (node.Token == TokenType.Boolean)
+            {
+                if (ScriptHelper.IsTrueLiteral(node.Literal))
+                {
+                    script.Append("0x01");
+                }
+                else
+                {
+                    script.Append("0x00");
+                }
+            }
+            else
+            {
+                script.Append(node.Literal);
+            }
+        }
+        private void Visit(in VariableReference node, in StringBuilder script)
+        {
+            string name = node.Identifier;
+            
+            if (node.Identifier.StartsWith('&'))
+            {
+                name = name.Replace('&', '@');
+            }
+            
+            script.Append(name);
         }
 
-        private void VisitFunctionExpression(FunctionExpression function, StringBuilder script)
+        private void Visit(in FunctionExpression function, in StringBuilder script)
         {
-            script.Append(function.Name);
+            script.Append(function.Name).Append("(");
 
-            script.Append("(");
+            SyntaxNode expression;
 
             for (int i = 0; i < function.Parameters.Count; i++)
             {
-                SyntaxNode expression = function.Parameters[i];
-
-                if (i > 0)
-                {
-                    script.Append(", ");
-                }
-
-                VisitExpression(expression, script);
+                expression = function.Parameters[i];
+                if (i > 0) { script.Append(", "); }
+                Visit(in expression, in script);
             }
 
             script.Append(")");
 
-            if (function.OVER != null)
+            if (function.Over is not null)
             {
                 script.Append(" ");
-                VisitOverClause(function, script);
+                VisitOverClause(in function, in script);
             }
         }
-        private void VisitOverClause(FunctionExpression function, StringBuilder script)
+        private void VisitOverClause(in FunctionExpression function, in StringBuilder script)
         {
-            script.Append("OVER");
-            script.Append("(");
-
-            if (function.OVER.Partition.Count > 0)
+            script.Append("OVER").Append("(");
+            if (function.Over.Partition.Count > 0)
             {
-                VisitPartitionClause(function, script);
+                VisitPartitionClause(in function, in script);
             }
-
-            if (function.OVER.Order != null)
+            if (function.Over.Order is not null)
             {
-                VisitOrderClause(function.OVER.Order, script);
+                Visit(function.Over.Order, in script);
             }
-
-            if (function.OVER.Preceding != null || function.OVER.Following != null)
+            if (function.Over.Preceding is not null || function.Over.Following is not null)
             {
-                script.Append(function.OVER.FrameType.ToString()).Append(" ");
+                script.Append(function.Over.FrameType.ToString()).Append(" ");
 
-                if (function.OVER.Preceding != null && function.OVER.Following != null)
+                if (function.Over.Preceding is not null && function.Over.Following is not null)
                 {
                     script.Append("BETWEEN").Append(" ");
 
-                    VisitWindowFrame(function.OVER.Preceding, script);
+                    VisitWindowFrame(function.Over.Preceding, in script);
 
                     script.Append(" AND ");
 
-                    VisitWindowFrame(function.OVER.Following, script);
+                    VisitWindowFrame(function.Over.Following, in script);
                 }
-                else if (function.OVER.Preceding != null)
+                else if (function.Over.Preceding is not null)
                 {
-                    VisitWindowFrame(function.OVER.Preceding, script);
+                    VisitWindowFrame(function.Over.Preceding, in script);
                 }
             }
-
             script.Append(")");
         }
-        private void VisitPartitionClause(FunctionExpression function, StringBuilder script)
+        private void VisitPartitionClause(in FunctionExpression function, in StringBuilder script)
         {
             script.AppendLine().AppendLine("PARTITION BY");
 
-            VisitExpressions(function.OVER.Partition, script);
+            SyntaxNode expression;
+
+            for (int i = 0; i < function.Over.Partition.Count; i++)
+            {
+                expression = function.Over.Partition[i];
+                if (i > 0) { script.Append(", "); }
+                Visit(in expression, in script);
+            }
         }
-        private void VisitWindowFrame(WindowFrame frame, StringBuilder script)
+        private void VisitWindowFrame(in WindowFrame frame, in StringBuilder script)
         {
             if (frame.Extent == -1)
             {
@@ -882,133 +535,14 @@ namespace DaJet.Scripting
             }
         }
 
-        private void VisitCaseExpression(CaseExpression expression, StringBuilder script)
-        {
-            script.Append("CASE");
-
-            foreach (WhenExpression when in expression.CASE)
-            {
-                script.Append(" WHEN ");
-                VisitExpression(when.WHEN, script);
-                script.Append(" THEN ");
-                VisitExpression(when.THEN, script);
-            }
-
-            if (expression.ELSE != null)
-            {
-                script.Append(" ELSE ");
-                VisitExpression(expression.ELSE, script);
-            }
-
-            script.Append(" END");
-        }
-        private void VisitIdentifier(SyntaxNode identifier, StringBuilder script)
-        {
-            if (identifier is ColumnReference column)
-            {
-                VisitColumnIdentifier(column, script);
-            }
-            else if (identifier is VariableReference variable)
-            {
-                VisitVariableIdentifier(variable, script);
-            }
-        }
-        private void VisitColumnIdentifier(ColumnReference identifier, StringBuilder script)
-        {
-            ScriptHelper.GetColumnIdentifiers(identifier.Identifier, out string tableAlias, out string columnName);
-
-            string name = string.IsNullOrWhiteSpace(tableAlias) ? string.Empty : tableAlias + ".";
-
-            if (identifier.Tag is MetadataColumn field) // union type properties
-            {
-                name += field.Name;
-            }
-            else if (identifier.Tag is MetadataProperty property) // single type properties
-            {
-                if (property.Columns.Count == 1)
-                {
-                    name += property.Columns[0].Name;
-                }
-                else
-                {
-                    //TODO: this should be metadata binding error !
-                    name = identifier.Identifier;
-                }
-            }
-            else if (identifier.Tag is CaseExpression)
-            {
-                name = identifier.Identifier;
-            }
-            else if (identifier.Tag is FunctionExpression)
-            {
-                name = identifier.Identifier;
-            }
-            else if (identifier.Tag is ScalarExpression)
-            {
-                name = identifier.Identifier;
-            }
-            else if (identifier.Tag is ColumnExpression parent) /// bubbled up from subquery <see cref="MetadataBinder.BindColumn"/>
-            {
-                if (string.IsNullOrWhiteSpace(parent.Alias))
-                {
-                    VisitColumnIdentifier(parent.Expression as ColumnReference, script);
-                }
-                else
-                {
-                    name += parent.Alias;
-                }
-            }
-            else if (identifier.Tag is ColumnExpression column)
-            {
-                // the identifier input parameter is a derived column from the source table
-                name = identifier.Identifier;
-            }
-
-            script.Append(name);
-        }
-        private void VisitVariableIdentifier(VariableReference identifier, StringBuilder script)
-        {
-            string name = identifier.Identifier;
-
-            if (identifier.Identifier.StartsWith('&'))
-            {
-                name = name.Replace('&', '@');
-            }
-
-            script.Append(name);
-        }
-        private void VisitScalarExpression(ScalarExpression scalar, StringBuilder script)
-        {
-            if (scalar.Token == TokenType.Boolean)
-            {
-                if (ScriptHelper.IsTrueLiteral(scalar.Literal))
-                {
-                    script.Append("0x01");
-                }
-                else
-                {
-                    script.Append("0x00");
-                }
-            }
-            else
-            {
-                script.Append(scalar.Literal);
-            }
-        }
-
-        #endregion
-
-        #endregion
-
         #region "DELETE STATEMENT"
-
         private void VisitDeleteStatement(DeleteStatement delete, StringBuilder script, EntityMap mapper)
         {
-            VisitCommonTables(delete.CommonTables, script);
+            Visit(delete.CommonTables, script);
 
             script.Append("DELETE ");
 
-            VisitTableSource(delete.TARGET, script);
+            Visit(delete.TARGET, script);
 
             if (delete.OUTPUT != null) // optional
             {
@@ -1017,21 +551,25 @@ namespace DaJet.Scripting
 
             if (delete.FROM != null) // optional
             {
-                VisitFromClause(delete.FROM, script);
+                Visit(delete.FROM, script);
             }
 
             if (delete.WHERE != null) // optional
             {
-                VisitWhereClause(delete.WHERE, script);
+                Visit(delete.WHERE, script);
             }
         }
         private void VisitOutputClause(OutputClause output, StringBuilder script, EntityMap mapper)
         {
             script.AppendLine().AppendLine("OUTPUT");
 
-            VisitProjectionClause(output.Expressions, script, mapper);
-        }
+            for (int i = 0; i < output.Expressions.Count; i++)
+            {
+                if (i > 0) { script.Append(", "); }
 
+                Visit(output.Expressions[i], in script);
+            }
+        }
         #endregion
     }
 }
