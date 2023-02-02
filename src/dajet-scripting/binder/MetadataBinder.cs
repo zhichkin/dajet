@@ -1,4 +1,5 @@
 ﻿using DaJet.Data;
+using DaJet.Data.Mapping;
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
@@ -26,7 +27,7 @@ namespace DaJet.Scripting
         }
         private void ThrowBindingException(TokenType token, string identifier)
         {
-            string message = $"Failed to bind [{token}:{identifier}]";
+            string message = $"Failed to bind [{token}: {identifier}]";
 
             throw new InvalidOperationException(message);
         }
@@ -151,7 +152,7 @@ namespace DaJet.Scripting
             }
 
             BindTables(in scope, in metadata);
-            BindColumns(in scope, in metadata);
+            BindColumns(in scope);
             BindVariables(in scope, in metadata);
         }
         private void BindResultScope(in ScriptScope scope, in MetadataCache metadata)
@@ -171,7 +172,7 @@ namespace DaJet.Scripting
             }
 
             BindTables(in scope, in metadata);
-            BindColumns(in scope, in metadata);
+            BindColumns(in scope);
             BindVariables(in scope, in metadata);
         }
 
@@ -223,7 +224,7 @@ namespace DaJet.Scripting
             {
                 if (child.Owner is SelectExpression)
                 {
-                    continue; // select expression scope is closed inside
+                    continue; // select expression scope is closed from outside
                 }
 
                 if (child.Owner is TableExpression derived)
@@ -294,225 +295,216 @@ namespace DaJet.Scripting
                 ThrowBindingException(table.Token, table.Identifier);
             }
         }
-        
-        private void BindColumns(in ScriptScope scope, in MetadataCache metadata)
+
+        private void BindColumns(in ScriptScope scope)
         {
-            return;
+            foreach (ScriptScope child in scope.Children)
+            {
+                BindColumns(in child);
+            }
 
             foreach (SyntaxNode node in scope.Identifiers)
             {
-                if (node is ColumnReference identifier)
+                if (node is ColumnReference column)
                 {
-                    BindColumn(in scope, in identifier, in metadata);
-
-                    if (identifier.Tag == null)
-                    {
-                        ThrowBindingException(identifier.Token, identifier.Identifier);
-                    }
+                    BindColumn(in scope, in column);
                 }
             }
         }
-        private void BindColumn(in ScriptScope scope, in ColumnReference identifier, in MetadataCache metadata)
+        private void BindColumn(in ScriptScope scope, in ColumnReference column)
         {
-            ScriptHelper.GetColumnNames(identifier.Identifier, out string tableAlias, out string columnName);
+            ScriptHelper.GetColumnIdentifiers(column.Identifier, out string tableAlias, out string columnName);
 
-            foreach (SyntaxNode node in scope.Identifiers)
+            if (!TryGetSourceTable(in scope, in tableAlias, out object table))
             {
-                if (node is TableExpression subquery && subquery.Alias == tableAlias)
-                {
-                    if (subquery.Expression is SelectExpression select)
-                    {
-                        foreach (ColumnExpression item in select.Select) // Привязка через синоним вложенного запроса
-                        {
-                            if (item.Expression is ColumnReference column)
-                            {
-                                if (string.IsNullOrWhiteSpace(item.Alias))
-                                {
-                                    if (ScriptHelper.GetColumnName(column.Identifier) == columnName) // Привязка по имени колонки
-                                    {
-                                        if (column.Tag != null)
-                                        {
-                                            identifier.Tag = column.Tag;
-                                        }
-
-                                        return; // use already existing binding
-                                    }
-                                }
-                                else if (item.Alias == columnName) // Привязка по синониму колонки
-                                {
-                                    //identifier.Tag = column.Tag;     // Проброс свойства теряет информацию о синониме колонки
-                                    //identifier.Alias = column.Alias; // Важно пробросить наверх синоним колонки
-
-                                    identifier.Tag = column; // bubble up identifier, entity property is in the Tag
-                                    return; // successful binding
-                                }
-                            }
-                        }
-                    }
-                    else if (subquery.Expression is TableUnionOperator union && union.Expression1 is SelectExpression unionSelect)
-                    {
-                        BindColumnToSelect(in unionSelect, in identifier);
-                    }
-                }
-                else if (node is TableReference table) // Привязка колонки по имени таблицы (синониму),
-                {                                      // находящейся в текущей области видимости
-                    if (!string.IsNullOrWhiteSpace(tableAlias) &&
-                        (tableAlias.ToLowerInvariant() == "deleted" || tableAlias.ToLowerInvariant() == "inserted"))
-                    {
-                        BindColumnToOutput(in scope, in identifier, in metadata);
-                    }
-                    else if (table.Alias == tableAlias || string.IsNullOrWhiteSpace(tableAlias))
-                    {
-                        string alias = string.IsNullOrWhiteSpace(table.Alias) ? table.Identifier : table.Alias;
-
-                        if (table.Tag is ApplicationObject entity)
-                        {
-                            foreach (MetadataProperty property in entity.Properties)
-                            {
-                                if (property.Name == columnName)
-                                {
-                                    List<string> fields = new();
-
-                                    foreach (MetadataColumn field in property.Columns)
-                                    {
-                                        fields.Add(field.Name);
-                                    }
-
-                                    identifier.Tag = property;
-
-                                    return; // successful binding
-                                }
-                            }
-                        }
-                        else if (table.Tag is CommonTableExpression cte)
-                        {
-                            if (cte.Expression is SelectExpression select)
-                            {
-                                BindColumnToSelect(in select, in identifier);
-                            }
-                            else if (cte.Expression is TableUnionOperator union && union.Expression1 is SelectExpression unionSelect)
-                            {
-                                BindColumnToSelect(in unionSelect, in identifier);
-                            }
-                        }
-                    }
-                    else if (string.IsNullOrWhiteSpace(table.Alias) && table.Identifier == tableAlias)
-                    {
-                        if (table.Tag is CommonTableExpression cte)
-                        {
-                            if (cte.Expression is SelectExpression select)
-                            {
-                                BindColumnToSelect(in select, in identifier);
-                            }
-                            else if (cte.Expression is TableUnionOperator union && union.Expression1 is SelectExpression unionSelect)
-                            {
-                                BindColumnToSelect(in unionSelect, in identifier);
-                            }
-                        }
-                    }
-                }
+                ThrowBindingException(column.Token, column.Identifier);
             }
 
-            if (identifier.Tag != null)
+            BindColumn(in table, in columnName, in column);
+
+            if (column.Tag is null)
             {
-                return; // successful binding
+                ThrowBindingException(column.Token, column.Identifier);
+            }
+        }
+
+        private bool TryGetSourceTable(in ScriptScope scope, in string identifier, out object table)
+        {
+            // check if this is common table first
+
+            ScriptScope context = scope.Ancestor<CommonTableExpression>();
+
+            if (context is null)
+            {
+                context = scope.Root; // general result context
+            }
+
+            if (TryGetCommonTable(context, in identifier, out table))
+            {
+                return true;
+            }
+
+            // search in the current scope 
+
+            return TryGetTableScoped(in scope, in identifier, out table);
+        }
+        private bool TryGetCommonTable(in ScriptScope scope, in string identifier, out object table)
+        {
+            table = null;
+
+            if (scope.Owner is CommonTableExpression common && common.Name == identifier)
+            {
+                table = common; return true; // success
             }
 
             foreach (ScriptScope child in scope.Children)
             {
-                if (child.Type == ScopeType.Root)
+                if (TryGetCommonTable(in child, in identifier, out table))
                 {
-                    continue;
-                }
-
-                BindColumn(in child, in identifier, in metadata);
-
-                if (identifier.Tag != null)
-                {
-                    return; // successful binding
+                    return true; // success
                 }
             }
+
+            return false; // not found
         }
-        private void BindColumnToSelect(in SelectExpression select, in ColumnReference identifier)
+        private bool TryGetTableScoped(in ScriptScope scope, in string identifier, out object table)
         {
-            ScriptHelper.GetColumnNames(identifier.Identifier, out string _, out string columnName);
+            table = null;
 
-            foreach (ColumnExpression item in select.Select)
+            // search in the current scope first
+
+            foreach (SyntaxNode node in scope.Identifiers)
             {
-                if (item.Expression is ColumnReference column)
+                if (node is TableReference reference)
                 {
-                    if (string.IsNullOrWhiteSpace(item.Alias)) // Привязка по имени колонки
+                    if (string.IsNullOrEmpty(identifier)) // identifier is not provided - take first available table
                     {
-                        if (ScriptHelper.GetColumnName(column.Identifier) == columnName)
-                        {
-                            if (column.Tag != null)
-                            {
-                                identifier.Tag = column.Tag;
-                            }
+                        table = reference.Tag; return true; // success
+                    }
 
-                            return; // successful binding: Используем уже существующую привязку
+                    if (string.IsNullOrEmpty(reference.Alias)) // table has no alias
+                    {
+                        if (reference.Identifier == identifier) // match by table identifier
+                        {
+                            table = reference.Tag; return true; // success
                         }
                     }
-                    else if (item.Alias == columnName) // Привязка по синониму колонки
+                    else if (reference.Alias == identifier) // match by table alias
                     {
-                        identifier.Tag = column; // bubble up identifier, entity property is in the Tag
-
-                        return; // successful binding
-                    }
-                }
-                else if (item.Expression is FunctionExpression function)
-                {
-                    if (function.Alias == columnName)
-                    {
-                        identifier.Tag = function;
-                        return; // successful binding
-                    }
-                }
-                else if (item.Expression is CaseExpression _case)
-                {
-                    if (_case.Alias == columnName)
-                    {
-                        identifier.Tag = _case;
-                        return; // successful binding
-                    }
-                }
-                else if (item.Expression is ScalarExpression scalar)
-                {
-                    if (item.Alias == columnName)
-                    {
-                        identifier.Tag = item;
-                        return; // successful binding
+                        table = reference.Tag; return true; // success
                     }
                 }
             }
-        }
-        private void BindColumnToOutput(in ScriptScope scope, in ColumnReference identifier, in MetadataCache metadata)
-        {
-            ScriptHelper.GetColumnNames(identifier.Identifier, out string tableAlias, out string _);
 
-            if (tableAlias.ToLowerInvariant() == "deleted")
+            // continue to search down the scope tree
+
+            foreach (ScriptScope child in scope.Children)
             {
-                ScriptScope ancestor = scope.Ancestor<DeleteStatement>();
-
-                if (ancestor.Owner is DeleteStatement delete)
+                if (child.Owner is SelectExpression ||
+                    child.Owner is TableUnionOperator ||
+                    child.Owner is CommonTableExpression) // common table is searched first (see TryGetSourceTable)
                 {
-                    if (delete.TARGET != null)
-                    {
-                        if (delete.TARGET.Expression is TableReference table)
-                        {
-                            if (table.Tag is CommonTableExpression cte)
-                            {
-                                if (cte.Expression is SelectExpression select)
-                                {
-                                    BindColumnToSelect(in select, in identifier);
-                                }
-                            }
-                            else if (table.Tag is ApplicationObject entity)
-                            {
-                                // TODO
-                            }
-                        }
-                    }
+                    continue; // the scope is closed from outside
+                }
+
+                if (child.Owner is TableExpression derived && derived.Alias == identifier)
+                {
+                    table = derived; return true; // success
+                }
+
+                // go recursively down the scope tree
+
+                if (TryGetTableScoped(in child, in identifier, out table))
+                {
+                    return true; // success
+                }
+            }
+
+            // not found
+
+            return false;
+        }
+
+        private void BindColumn(in object source, in string identifier, in ColumnReference column)
+        {
+            if (source is CommonTableExpression common)
+            {
+                BindColumn(in common, in identifier, in column);
+            }
+            else if (source is ApplicationObject entity)
+            {
+                BindColumn(in entity, in identifier, in column);
+            }
+            else if (source is TableExpression derived)
+            {
+                BindColumn(in derived, in identifier, in column);
+            }
+            else if (source is TableReference reference)
+            {
+                // TODO: recursively get source table from tag ???
+            }
+        }
+        private void BindColumn(in TableExpression table, in string identifier, in ColumnReference column)
+        {
+            if (table.Expression is SelectExpression select)
+            {
+                BindColumn(in select, in identifier, in column);
+            }
+            else if (table.Expression is TableUnionOperator union)
+            {
+                BindColumn(in union, in identifier, in column);
+            }
+        }
+        private void BindColumn(in TableUnionOperator union, in string identifier, in ColumnReference column)
+        {
+            if (union.Expression1 is SelectExpression select1)
+            {
+                BindColumn(in select1, in identifier, in column);
+            }
+            else if (union.Expression2 is SelectExpression select2)
+            {
+                BindColumn(in select2, in identifier, in column);
+            }
+        }
+        private void BindColumn(in CommonTableExpression table, in string identifier, in ColumnReference column)
+        {
+            if (table.Expression is SelectExpression select)
+            {
+                BindColumn(in select, in identifier, in column);
+            }
+            else if (table.Expression is TableUnionOperator union)
+            {
+                BindColumn(in union, in identifier, in column);
+            }
+        }
+        private void BindColumn(in SelectExpression table, in string identifier, in ColumnReference column)
+        {
+            string columnName = string.Empty;
+
+            foreach (ColumnExpression expression in table.Select)
+            {
+                if (!string.IsNullOrEmpty(expression.Alias))
+                {
+                    columnName = expression.Alias;
+                }
+                else if (expression.Expression is ColumnReference reference)
+                {
+                    ScriptHelper.GetColumnIdentifiers(reference.Identifier, out string _, out columnName);
+                }
+
+                if (columnName == identifier)
+                {
+                    column.Tag = expression; return;
+                }
+            }
+        }
+        private void BindColumn(in ApplicationObject entity, in string identifier, in ColumnReference column)
+        {
+            foreach (MetadataProperty property in entity.Properties)
+            {
+                if (property.Name == identifier)
+                {
+                    column.Tag = property; return;
                 }
             }
         }

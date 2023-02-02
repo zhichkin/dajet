@@ -154,7 +154,7 @@ namespace DaJet.Scripting
                 return;
             }
 
-            ScriptHelper.GetColumnNames(reference.Identifier, out string tableAlias, out string columnName);
+            ScriptHelper.GetColumnIdentifiers(reference.Identifier, out string tableAlias, out string columnName);
             string propertyAlias = string.IsNullOrWhiteSpace(identifier.Alias) ? columnName : identifier.Alias;
 
             if (identifier.Tag is MetadataProperty property)
@@ -915,7 +915,7 @@ namespace DaJet.Scripting
         }
         private void VisitColumnIdentifier(ColumnReference identifier, StringBuilder script)
         {
-            ScriptHelper.GetColumnNames(identifier.Identifier, out string tableAlias, out string columnName);
+            ScriptHelper.GetColumnIdentifiers(identifier.Identifier, out string tableAlias, out string columnName);
 
             string name = string.IsNullOrWhiteSpace(tableAlias) ? string.Empty : tableAlias + ".";
 

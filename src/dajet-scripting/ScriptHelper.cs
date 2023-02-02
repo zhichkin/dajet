@@ -270,7 +270,7 @@ namespace DaJet.Scripting
             return _function_en.TryGetValue(identifier.ToUpperInvariant(), out token);
         }
 
-        internal static void GetColumnNames(string identifier, out string tableAlias, out string columnName)
+        internal static void GetColumnIdentifiers(string identifier, out string tableAlias, out string columnName)
         {
             string[] names = identifier.Split('.', StringSplitOptions.RemoveEmptyEntries);
 
@@ -289,26 +289,7 @@ namespace DaJet.Scripting
                 tableAlias = names[0];
             }
         }
-        internal static string GetColumnName(string identifier)
-        {
-            string[] names = identifier.Split('.', StringSplitOptions.RemoveEmptyEntries);
-
-            //string tableAlias = string.Empty;
-            string columnName = string.Empty;
-
-            if (names.Length > 1)
-            {
-                //tableAlias = names[0];
-                columnName = names[1];
-            }
-            else
-            {
-                columnName = names[0];
-            }
-
-            return columnName;
-        }
-
+        
         internal static string GetComparisonLiteral(TokenType token)
         {
             if (token == TokenType.IS) { return "IS"; }

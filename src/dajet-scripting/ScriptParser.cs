@@ -908,8 +908,6 @@ namespace DaJet.Scripting
                 throw new FormatException($"END keyword expected.");
             }
 
-            node.Alias = alias();
-
             return node;
         }
         private WhenExpression when_expression()
@@ -960,8 +958,6 @@ namespace DaJet.Scripting
             {
                 function.OVER = over_clause();
             }
-
-            function.Alias = alias();
 
             return function;
         }

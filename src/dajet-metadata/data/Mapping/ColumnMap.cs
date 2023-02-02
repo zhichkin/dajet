@@ -23,6 +23,7 @@
         #endregion
         public int Ordinal { get; set; } = -1; // ordinal position of column in IDataReader (may be undefined)
         public string Name { get; set; } = string.Empty; // name of column to get ordinal position in IDataReader
+        public string Type { get; set; } = string.Empty; // data type of column
         public string Alias { get; set; } = string.Empty; // alias, if not empty, is used instead of the name
         public ColumnPurpose Purpose { get; set; } = ColumnPurpose.Default; // ordinary column to store single value of the defined DbType
     }
