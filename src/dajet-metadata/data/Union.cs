@@ -5,14 +5,16 @@ namespace DaJet.Data
 {
     public enum UnionTag : byte
     {
-        Undefined = 0x01, // _TYPE
+        Undefined = 0x00,
+        Tag       = 0x01, // _TYPE
         Boolean   = 0x02, // _L
         Numeric   = 0x03, // _N
         DateTime  = 0x04, // _T
         String    = 0x05, // _S
         Binary    = 0x06, // _B
-        Unknown   = 0x07, // ???
-        Entity    = 0x08  // [_TRef] _RRef
+        Uuid      = 0x07, // _U ??? TODO ???
+        Entity    = 0x08, // [_TRef] _RRef
+        Version   = 0x09  // database version byte[8]
     }
     public sealed class BadUnionAccessException : Exception
     {

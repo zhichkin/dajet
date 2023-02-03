@@ -1,4 +1,5 @@
-﻿using DaJet.Data.Mapping;
+﻿using DaJet.Data;
+using DaJet.Data.Mapping;
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
@@ -25,13 +26,13 @@ namespace DaJet.Scripting
                     if (node is SelectStatement select)
                     {
                         Visit(in select, in script);
+                        script.Append(";");
                         ConfigureDataMapper(in select, result.Mapper);
                     }
                     else if (node is DeleteStatement delete)
                     {
                         //TODO: VisitDeleteStatement(delete, script, result.Mapper);
                     }
-                    script.AppendLine(";");
                 }
 
                 result.Script = script.ToString();
@@ -45,20 +46,32 @@ namespace DaJet.Scripting
 
             return result.Success;
         }
-
+        
         private void ConfigureDataMapper(in SelectStatement statement, in EntityMap mapper)
         {
-            // projection
-        }
-
-        private void Visit(in SelectStatement statement, in StringBuilder script)
-        {
-            if (statement.CommonTables is not null)
+            if (statement.Select is SelectExpression projection)
             {
-                script.Append("WITH ");
-                Visit(statement.CommonTables, in script);
+                foreach (ColumnExpression column in projection.Select)
+                {
+                    if (column.Expression is ColumnReference reference)
+                    {
+                        
+                    }
+
+                    UnionType union = _inferencer.InferDataType(column);
+
+                    if (union.IsEntity)
+                    {
+
+                    }
+
+                    // build entity map
+                }
             }
-            Visit(statement.Select, in script);
+            //else if (statement.Select is TableUnionOperator union && union.Expression1)
+            //{
+            //    select = union.Expression1 as SelectStatement;
+            //}
         }
 
         private void Visit(in SyntaxNode expression, in StringBuilder script)
@@ -128,31 +141,28 @@ namespace DaJet.Scripting
                 Visit(in function, in script);
             }
         }
-        private void Visit(in ColumnExpression node, in StringBuilder script)
+        private void Visit(in SelectStatement statement, in StringBuilder script)
         {
-            Visit(node.Expression, in script);
-
-            if (!string.IsNullOrEmpty(node.Alias))
+            if (statement.CommonTables is not null)
             {
-                script.Append(" AS ").Append(node.Alias);
+                script.Append("WITH ");
+                Visit(statement.CommonTables, in script);
             }
+            Visit(statement.Select, in script);
         }
+
         private void Visit(in TableReference node, in StringBuilder script)
         {
             if (node.Tag is ApplicationObject entity)
             {
                 script.Append(entity.TableName);
             }
-            else if (node.Tag is TableExpression table)
+            else if (node.Tag is TableExpression || node.Tag is CommonTableExpression)
             {
-                script.Append(table.Alias);
-            }
-            else if (node.Tag is CommonTableExpression cte)
-            {
-                script.Append(cte.Name);
+                script.Append(node.Identifier);
             }
 
-            if (!string.IsNullOrWhiteSpace(node.Alias))
+            if (!string.IsNullOrEmpty(node.Alias))
             {
                 script.Append(" AS ").Append(node.Alias);
             }
@@ -177,17 +187,33 @@ namespace DaJet.Scripting
         }
         private void Visit(in ColumnReference node, in StringBuilder script)
         {
-            if (node.Tag is MetadataColumn column)
+            ScriptHelper.GetColumnIdentifiers(node.Identifier, out string tableAlias, out string columnName);
+
+            if (!string.IsNullOrEmpty(tableAlias))
+            {
+                script.Append($"{tableAlias}.");
+            }
+
+            if (node.Tag is ColumnExpression)
+            {
+                script.Append(columnName);
+            }
+            else if (node.Tag is MetadataColumn column)
             {
                 script.Append(column.Name);
             }
             else if (node.Tag is MetadataProperty property)
             {
-                script.Append(property.Columns[0].Name);
+                script.Append(property.Columns[0].Name); // TODO: create database columns
             }
-            else if (node.Tag is ColumnExpression parent)
+        }
+        private void Visit(in ColumnExpression node, in StringBuilder script)
+        {
+            Visit(node.Expression, in script);
+
+            if (!string.IsNullOrEmpty(node.Alias))
             {
-                script.Append(node.Identifier);
+                script.Append(" AS ").Append(node.Alias);
             }
         }
         private void Visit(in TableExpression table, in StringBuilder script)
@@ -254,7 +280,7 @@ namespace DaJet.Scripting
 
             for (int i = 0; i < select.Select.Count; i++)
             {
-                if (i > 0) { script.Append(", "); }
+                if (i > 0) { script.Append("," + Environment.NewLine); }
                 Visit(select.Select[i], in script);
             }
 
@@ -272,7 +298,7 @@ namespace DaJet.Scripting
         }
         private void Visit(in FromClause node, in StringBuilder script)
         {
-            script.Append("FROM ");
+            script.AppendLine().Append("FROM ");
             Visit(node.Expression, in script);
         }
         private void Visit(in WhereClause node, in StringBuilder script)

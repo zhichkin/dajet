@@ -152,7 +152,7 @@ namespace DaJet.Data.Provider
                 DeclareStatement declare = new()
                 {
                     Name = "@" + parameter.ParameterName,
-                    Type = ScriptHelper.GetDataTypeLiteral(parameterType),
+                    Type = new TypeIdentifier() { Identifier = ScriptHelper.GetDataTypeLiteral(parameterType) },
                     Initializer = new ScalarExpression()
                     {
                         Token = ScriptHelper.GetDataTypeToken(parameterType),

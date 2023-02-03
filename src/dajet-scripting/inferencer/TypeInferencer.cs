@@ -1,5 +1,4 @@
 ﻿using DaJet.Data;
-using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 
@@ -7,22 +6,55 @@ namespace DaJet.Scripting
 {
     public sealed class TypeInferencer
     {
-        private DataTypeSet _union;
-        public DataTypeSet DataType { get { return _union; } }
-        public Type InferOrDefault(in SyntaxNode node)
+        public UnionType InferDataType(in SyntaxNode node)
         {
-            DataTypeSet union = new();
+            UnionType union = new();
 
-            VisitSyntaxNode(in node, in union);
+            Visit(in node, ref union);
 
-            _union = union;
+            //if (union is not null)
+            //{
+            //    return MapToType(in union) ?? typeof(decimal);
+            //}
 
-            if (union is not null)
+            return union;
+        }
+        private Type MapToType(in UnionType union)
+        {
+            if (union.IsUnion)
             {
-                return MapToType(in union) ?? typeof(decimal);
+                return typeof(Union);
+            }
+            else if (union.IsBoolean)
+            {
+                return typeof(bool);
+            }
+            else if (union.IsNumeric)
+            {
+                return typeof(decimal);
+            }
+            else if (union.IsDateTime)
+            {
+                return typeof(DateTime);
+            }
+            else if (union.IsString)
+            {
+                return typeof(string);
+            }
+            else if (union.IsUuid)
+            {
+                return typeof(Guid);
+            }
+            else if (union.IsBinary)
+            {
+                return typeof(byte[]);
+            }
+            else if (union.IsEntity)
+            {
+                return typeof(Entity);
             }
 
-            return typeof(decimal);
+            return null;
         }
         public object GetDefaultValue(in Type type)
         {
@@ -50,138 +82,99 @@ namespace DaJet.Scripting
             {
                 return Entity.Undefined;
             }
-
-            return null;
-        }
-        private Type MapToType(in DataTypeSet union)
-        {
-            //TODO: type addition is not supported yet
-            //if (union.IsMultipleType)
-            //{
-            //    return typeof(Union);
-            //}
-            if (union.CanBeBoolean)
+            else if (type == typeof(Guid))
             {
-                return typeof(bool);
-            }
-            else if (union.CanBeNumeric)
-            {
-                return typeof(decimal);
-            }
-            else if (union.CanBeDateTime)
-            {
-                return typeof(DateTime);
-            }
-            else if (union.CanBeString)
-            {
-                return typeof(string);
-            }
-            else if (union.CanBeUuid)
-            {
-                return typeof(Guid);
-            }
-            else if (union.CanBeValueStorage)
-            {
-                return typeof(byte[]);
-            }
-            else if (union.CanBeReference)
-            {
-                return typeof(Entity);
+                return Guid.Empty;
             }
 
             return null;
         }
-        private void VisitSyntaxNode(in SyntaxNode node, in DataTypeSet union)
+        private void Visit(in SyntaxNode node, ref UnionType union)
         {
             if (node is ColumnExpression column)
             {
-                Visit(in column, in union);
+                Visit(in column, ref union);
             }
             else if (node is ColumnReference identifier)
             {
-                Visit(in identifier, in union);
+                Visit(in identifier, ref union);
             }
             else if (node is VariableReference variable)
             {
-                Visit(in variable, in union);
+                Visit(in variable, ref union);
             }
             else if (node is ScalarExpression scalar)
             {
-                Visit(in scalar, in union);
+                Visit(in scalar, ref union);
             }
             else if (node is FunctionExpression function)
             {
-                Visit(in function, in union);
+                Visit(in function, ref union);
             }
             else if (node is CaseExpression _case)
             {
-                Visit(in _case, in union);
+                Visit(in _case, ref union);
             }
             else if (node is WhenExpression when)
             {
-                Visit(in when, in union);
+                Visit(in when, ref union);
             }
         }
-        private void Visit(in ColumnExpression column, in DataTypeSet union)
+        private void Visit(in ColumnExpression column, ref UnionType union)
         {
-            VisitSyntaxNode(column.Expression, in union);
+            Visit(column.Expression, ref union);
         }
-        private void Visit(in FunctionExpression function, in DataTypeSet union)
+        private void Visit(in FunctionExpression function, ref UnionType union)
         {
             foreach (SyntaxNode parameter in function.Parameters)
             {
-                VisitSyntaxNode(in parameter, in union);
+                Visit(in parameter, ref union);
             }
         }
-        private void Visit(in CaseExpression node, in DataTypeSet union)
+        private void Visit(in CaseExpression node, ref UnionType union)
         {
             foreach(WhenExpression when in node.CASE)
             {
-                VisitSyntaxNode(when, in union);
+                Visit(when, ref union);
             }
-            VisitSyntaxNode(node.ELSE, in union);
+            Visit(node.ELSE, ref union);
         }
-        private void Visit(in WhenExpression when, in DataTypeSet union)
+        private void Visit(in WhenExpression when, ref UnionType union)
         {
-            VisitSyntaxNode(when.THEN, in union);
+            Visit(when.THEN, ref union);
         }
-        private void Visit(in ScalarExpression scalar, in DataTypeSet union)
+        private void Visit(in ScalarExpression scalar, ref UnionType union)
         {
             if (scalar.Token == TokenType.Boolean)
             {
-                union.CanBeBoolean = true;
+                union.IsBoolean = true;
             }
             else if (scalar.Token == TokenType.Number)
             {
-                union.CanBeNumeric = true;
+                union.IsNumeric = true;
             }
             else if (scalar.Token == TokenType.DateTime)
             {
-                union.CanBeDateTime = true;
+                union.IsDateTime = true;
             }
             else if (scalar.Token == TokenType.String)
             {
-                union.CanBeString = true;
+                union.IsString = true;
             }
             else if (scalar.Token == TokenType.Binary)
             {
-                //TODO: union.Flags |= DataTypeFlags.Binary;
-                union.Identifiers.Add(SingleTypes.ValueStorage);
+                union.IsBinary = true;
             }
             else if (scalar.Token == TokenType.Uuid)
             {
-                //TODO: union.Flags |= DataTypeFlags.Binary;
-                union.Identifiers.Add(SingleTypes.UniqueIdentifier);
+                union.IsUuid = true;
             }
             else if (scalar.Token == TokenType.Entity)
             {
-                //TODO: add type code to some list !!!
-
                 if (Entity.TryParse(scalar.Literal, out Entity entity))
                 {
+                    union.IsEntity = true;
                     union.TypeCode = entity.TypeCode;
-                    union.Reference = entity.Identity;
-                    union.CanBeReference = true;
                 }
             }
             else if (scalar.Token == TokenType.NULL)
@@ -189,25 +182,23 @@ namespace DaJet.Scripting
                 // do nothing
             }
         }
-        private void Visit(in ColumnReference identifier, in DataTypeSet union)
+        private void Visit(in ColumnReference identifier, ref UnionType union)
         {
             if (identifier.Tag is MetadataProperty property)
             {
-                Visit(in property, in union);
+                Visit(in property, ref union);
             }
             else if (identifier.Tag is SyntaxNode node)
             {
-                VisitSyntaxNode(in node, in union);
+                Visit(in node, ref union);
             }
         }
-        private void Visit(in VariableReference identifier, in DataTypeSet union)
+        private void Visit(in VariableReference identifier, ref UnionType union)
         {
             if (identifier.Tag is Entity entity)
             {
-                //TODO: add type code to some list !!!
+                union.IsEntity = true;
                 union.TypeCode = entity.TypeCode;
-                union.Reference = entity.Identity;
-                union.CanBeReference = true;
                 return;
             }
 
@@ -218,48 +209,39 @@ namespace DaJet.Scripting
 
             if (type == typeof(Guid))
             {
-                //TODO: union.Flags |= DataTypeFlags.Binary;
-                union.Identifiers.Add(SingleTypes.UniqueIdentifier);
+                union.IsUuid = true;
             }
             else if (type == typeof(bool))
             {
-                union.CanBeBoolean = true;
+                union.IsBoolean = true;
             }
             else if (type == typeof(decimal))
             {
-                union.CanBeNumeric = true;
+                union.IsNumeric = true;
             }
             else if (type == typeof(DateTime))
             {
-                union.CanBeDateTime = true;
+                union.IsDateTime = true;
             }
             else if (type == typeof(string))
             {
-                union.CanBeString = true;
+                union.IsString = true;
             }
             else if (type == typeof(byte[]))
             {
-                //TODO: union.Flags |= DataTypeFlags.Binary;
-                union.Identifiers.Add(SingleTypes.ValueStorage);
+                union.IsBinary = true;
             }
         }
-        private void Visit(in MetadataProperty property, in DataTypeSet union)
+        private void Visit(in MetadataProperty property, ref UnionType union)
         {
-            union.CanBeBoolean = property.PropertyType.CanBeBoolean;
-            union.CanBeNumeric = property.PropertyType.CanBeNumeric;
-            union.CanBeDateTime = property.PropertyType.CanBeDateTime;
-            union.CanBeString = property.PropertyType.CanBeString;
-            union.CanBeReference = property.PropertyType.CanBeReference;
-            union.TypeCode = property.PropertyType.TypeCode;
-            union.Reference = property.PropertyType.Reference;
+            union.Merge(property.PropertyType.GetUnionType());
 
-            if (property.PropertyType.CanBeUuid)
+            foreach (MetadataColumn column in property.Columns)
             {
-                union.Identifiers.Add(SingleTypes.UniqueIdentifier);
-            }
-            else if (property.PropertyType.CanBeValueStorage)
-            {
-                union.Identifiers.Add(SingleTypes.ValueStorage);
+                if (column.Purpose == ColumnPurpose.Tag)
+                {
+                    union.HasTag = true; break;
+                }
             }
         }
     }

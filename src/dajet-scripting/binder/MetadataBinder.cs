@@ -236,18 +236,6 @@ namespace DaJet.Scripting
                         table.Tag = common; return; // successful binding
                     }
                 }
-                
-                //TODO: remove ?
-                //foreach (SyntaxNode identifier in child.Identifiers)
-                //{
-                //    if (identifier is TableReference reference)
-                //    {
-                //        if (table.Identifier == reference.Alias)
-                //        {
-                //            table.Tag = reference; return; // successfull binding
-                //        }
-                //    }
-                //}
 
                 BindTableScoped(in child, in table); // go down the scope tree
             }
