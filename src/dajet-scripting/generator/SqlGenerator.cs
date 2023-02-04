@@ -51,9 +51,7 @@ namespace DaJet.Scripting
             {
                 foreach (ColumnExpression column in projection.Select)
                 {
-                    PropertyMap map = DataMapper.CreatePropertyMap(column);
-                    
-                    mapper.Properties.Add(map);
+                    DataMapper.Map(in column, in mapper);
                 }
             }
             else if (statement.Select is TableUnionOperator union)
@@ -181,28 +179,47 @@ namespace DaJet.Scripting
                 script.Append($"{tableAlias}.");
             }
 
-            if (node.Tag is ColumnExpression)
+            if (node.Tag is MetadataProperty source)
             {
-                script.Append(columnName);
+                Visit(in source, in script);
             }
-            else if (node.Tag is MetadataColumn column)
+            else if (node.Tag is ColumnExpression parent)
             {
-                script.Append(column.Name);
+                Visit(in parent, in script);
+
+                if (!string.IsNullOrEmpty(parent.Alias))
+                {
+                    script.Append(" AS ").Append(parent.Alias);
+                }
             }
-            else if (node.Tag is MetadataProperty property)
+            //else if (node.Tag is MetadataColumn column)
+            //{
+            //    //TODO: script.Append(column.Name);
+            //}
+        }
+        protected virtual void Visit(in MetadataProperty property, in StringBuilder script)
+        {
+            if (property.Columns.Count == 1)
             {
-                //TODO: create database columns !!!
                 script.Append(property.Columns[0].Name);
+            }
+            else
+            {
+                List<MetadataColumn> columns = property.Columns
+                    .OrderBy((column) => { return column.Purpose; })
+                    .ToList();
+
+                for (int i = 0; i < columns.Count; i++)
+                {
+                    MetadataColumn column = columns[i];
+                    if (i > 0) { script.Append(", "); }
+                    script.Append(column.Name);
+                }
             }
         }
         protected virtual void Visit(in ColumnExpression node, in StringBuilder script)
         {
             Visit(node.Expression, in script);
-
-            if (!string.IsNullOrEmpty(node.Alias))
-            {
-                script.Append(" AS ").Append(node.Alias);
-            }
         }
         protected virtual void Visit(in TableExpression node, in StringBuilder script)
         {

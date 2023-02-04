@@ -12,28 +12,8 @@ namespace DaJet.Data.Mapping
         public UnionType DataType { get; } = new();
         public Type Type { get { return UnionType.MapToType(DataType); } }
         public Dictionary<UnionTag, ColumnMap> Columns { get; } = new();
-        public void ToColumn(ColumnMap column)
-        {
-            if (column == null)
-            {
-                throw new ArgumentNullException(nameof(column));
-            }
-
-            if (column.Type == UnionTag.Undefined)
-            {
-                throw new ArgumentException("Undefined column type", nameof(column));
-            }
-
-            Columns.Add(column.Type, column);
-        }
-        public void ToColumns(List<ColumnMap> columns)
-        {
-            foreach (ColumnMap column in columns)
-            {
-                ToColumn(column);
-            }
-        }
-
+        public override string ToString() { return $"{Name} {DataType}"; }
+        
         #region "GET VALUE FROM DATA READER"
 
         public object GetValue(in IDataReader reader)
@@ -55,16 +35,18 @@ namespace DaJet.Data.Mapping
         {
             if (Columns.Count == 1)
             {
-                column = Columns[0];
+                // TODO !?
 
-                if (column.Ordinal == -1)
-                {
-                    tag = column.Type;
-                }
-                else
-                {
-                    return column.Ordinal;
-                }
+                //column = Columns[tag];
+
+                //if (column.Ordinal == -1)
+                //{
+                //    return reader.GetOrdinal(string.IsNullOrEmpty(column.Alias) ? column.Name : column.Alias);
+                //}
+                //else
+                //{
+                //    return column.Ordinal;
+                //}
             }
 
             if (!Columns.TryGetValue(tag, out column) || column == null)
@@ -235,7 +217,7 @@ namespace DaJet.Data.Mapping
         }
         private object GetString(in IDataReader reader)
         {
-            int ordinal = GetOrdinal(in reader, UnionTag.DateTime, out _);
+            int ordinal = GetOrdinal(in reader, UnionTag.String, out _);
 
             if (reader.IsDBNull(ordinal))
             {

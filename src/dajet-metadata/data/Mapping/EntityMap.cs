@@ -7,16 +7,31 @@ namespace DaJet.Data.Mapping
 {
     public sealed class EntityMap
     {
+        private int ordinal = -1;
         public EntityMap() { }
         public int YearOffset { get; set; } = 0;
         public List<PropertyMap> Properties { get; } = new();
-        public PropertyMap MapProperty(PropertyMap property)
+        public void Map(in string name, in UnionType type)
         {
-            property.YearOffset = YearOffset;
+            PropertyMap property = new()
+            {
+                Name = name,
+                YearOffset = YearOffset
+            };
+            property.DataType.Merge(type);
+
+            List<UnionTag> columns = type.ToList();
+
+            for (int i = 0; i < columns.Count; i++)
+            {
+                property.Columns.Add(columns[i], new ColumnMap()
+                {
+                    Type = columns[i],
+                    Ordinal = ++ordinal
+                });
+            }
 
             Properties.Add(property);
-            
-            return property;
         }
         public void Map(in IDbCommand command)
         {

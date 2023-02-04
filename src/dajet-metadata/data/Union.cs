@@ -5,7 +5,7 @@ namespace DaJet.Data
 {
     public enum UnionTag : byte
     {
-        TypeCode  = 0xFF, // entity type code database column
+        TypeCode  = 0xFF, // TRef entity type code database column
         Undefined = 0x00,
         Tag       = 0x01, // TYPE
         Boolean   = 0x02, // L

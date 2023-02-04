@@ -1,11 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace DaJet.Data
 {
-    public struct UnionType
+    public sealed class UnionType
     {
         private uint _flags = uint.MinValue;
+        private int _typeCode = -1;
         public UnionType() { }
         private void SetBit(int position, bool value)
         {
@@ -15,12 +17,16 @@ namespace DaJet.Data
         {
             return (_flags & (1U << position)) == (1U << position);
         }
-        public void Merge(UnionType union)
+        public void Merge(in UnionType union)
         {
             _flags |= union._flags;
             TypeCode = union.TypeCode;
         }
-        private int _typeCode = -1;
+        public void Clear()
+        {
+            _flags = uint.MinValue;
+            _typeCode = -1;
+        }
         public int TypeCode
         {
             get { return _typeCode; }
@@ -182,6 +188,30 @@ namespace DaJet.Data
             }
 
             return null;
+        }
+        public List<UnionTag> ToList()
+        {
+            List<UnionTag> tags = new();
+
+            if (UseTag) { tags.Add(UnionTag.Tag); }
+            if (IsBoolean) { tags.Add(UnionTag.Boolean); }
+            if (IsNumeric) { tags.Add(UnionTag.Numeric); }
+            if (IsDateTime) { tags.Add(UnionTag.DateTime); }
+            if (IsString) { tags.Add(UnionTag.String); }
+            if (IsBinary) { tags.Add(UnionTag.Binary); }
+            if (IsEntity)
+            {
+                if (TypeCode == 0)
+                {
+                    tags.Add(UnionTag.TypeCode);
+                }
+                tags.Add(UnionTag.Entity);
+            }
+            if (IsUuid) { tags.Add(UnionTag.Uuid); }
+            if (IsVersion) { tags.Add(UnionTag.Version); }
+            if (IsInteger) { tags.Add(UnionTag.Integer); }
+
+            return tags;
         }
     }
 }
