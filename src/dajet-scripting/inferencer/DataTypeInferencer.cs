@@ -4,92 +4,17 @@ using DaJet.Scripting.Model;
 
 namespace DaJet.Scripting
 {
-    public sealed class TypeInferencer
+    public static class DataTypeInferencer
     {
-        public UnionType InferDataType(in SyntaxNode node)
+        public static UnionType Infer(in SyntaxNode node)
         {
             UnionType union = new();
 
             Visit(in node, ref union);
 
-            //if (union is not null)
-            //{
-            //    return MapToType(in union) ?? typeof(decimal);
-            //}
-
             return union;
         }
-        private Type MapToType(in UnionType union)
-        {
-            if (union.IsUnion)
-            {
-                return typeof(Union);
-            }
-            else if (union.IsBoolean)
-            {
-                return typeof(bool);
-            }
-            else if (union.IsNumeric)
-            {
-                return typeof(decimal);
-            }
-            else if (union.IsDateTime)
-            {
-                return typeof(DateTime);
-            }
-            else if (union.IsString)
-            {
-                return typeof(string);
-            }
-            else if (union.IsUuid)
-            {
-                return typeof(Guid);
-            }
-            else if (union.IsBinary)
-            {
-                return typeof(byte[]);
-            }
-            else if (union.IsEntity)
-            {
-                return typeof(Entity);
-            }
-
-            return null;
-        }
-        public object GetDefaultValue(in Type type)
-        {
-            if (type == typeof(bool))
-            {
-                return false;
-            }
-            else if (type == typeof(decimal))
-            {
-                return 0.0M;
-            }
-            else if (type == typeof(DateTime))
-            {
-                return new DateTime(1, 1, 1);
-            }
-            else if (type == typeof(string))
-            {
-                return string.Empty;
-            }
-            else if (type == typeof(byte[]))
-            {
-                return Array.Empty<byte>();
-            }
-            else if (type == typeof(Entity))
-            {
-                return Entity.Undefined;
-            }
-            else if (type == typeof(Guid))
-            {
-                return Guid.Empty;
-            }
-
-            return null;
-        }
-        private void Visit(in SyntaxNode node, ref UnionType union)
+        private static void Visit(in SyntaxNode node, ref UnionType union)
         {
             if (node is ColumnExpression column)
             {
@@ -120,18 +45,18 @@ namespace DaJet.Scripting
                 Visit(in when, ref union);
             }
         }
-        private void Visit(in ColumnExpression column, ref UnionType union)
+        private static void Visit(in ColumnExpression column, ref UnionType union)
         {
             Visit(column.Expression, ref union);
         }
-        private void Visit(in FunctionExpression function, ref UnionType union)
+        private static void Visit(in FunctionExpression function, ref UnionType union)
         {
             foreach (SyntaxNode parameter in function.Parameters)
             {
                 Visit(in parameter, ref union);
             }
         }
-        private void Visit(in CaseExpression node, ref UnionType union)
+        private static void Visit(in CaseExpression node, ref UnionType union)
         {
             foreach(WhenExpression when in node.CASE)
             {
@@ -139,11 +64,11 @@ namespace DaJet.Scripting
             }
             Visit(node.ELSE, ref union);
         }
-        private void Visit(in WhenExpression when, ref UnionType union)
+        private static void Visit(in WhenExpression when, ref UnionType union)
         {
             Visit(when.THEN, ref union);
         }
-        private void Visit(in ScalarExpression scalar, ref UnionType union)
+        private static void Visit(in ScalarExpression scalar, ref UnionType union)
         {
             if (scalar.Token == TokenType.Boolean)
             {
@@ -177,12 +102,20 @@ namespace DaJet.Scripting
                     union.TypeCode = entity.TypeCode;
                 }
             }
+            else if (scalar.Token == TokenType.Version)
+            {
+                union.IsVersion = true;
+            }
+            else if (scalar.Token == TokenType.Integer)
+            {
+                union.IsInteger = true;
+            }
             else if (scalar.Token == TokenType.NULL)
             {
-                // do nothing
+                union = new UnionType(); // undefined
             }
         }
-        private void Visit(in ColumnReference identifier, ref UnionType union)
+        private static void Visit(in ColumnReference identifier, ref UnionType union)
         {
             if (identifier.Tag is MetadataProperty property)
             {
@@ -193,7 +126,7 @@ namespace DaJet.Scripting
                 Visit(in node, ref union);
             }
         }
-        private void Visit(in VariableReference identifier, ref UnionType union)
+        private static void Visit(in VariableReference identifier, ref UnionType union)
         {
             if (identifier.Tag is Entity entity)
             {
@@ -231,18 +164,18 @@ namespace DaJet.Scripting
             {
                 union.IsBinary = true;
             }
-        }
-        private void Visit(in MetadataProperty property, ref UnionType union)
-        {
-            union.Merge(property.PropertyType.GetUnionType());
-
-            foreach (MetadataColumn column in property.Columns)
+            else if (type == typeof(ulong))
             {
-                if (column.Purpose == ColumnPurpose.Tag)
-                {
-                    union.HasTag = true; break;
-                }
+                union.IsVersion = true;
             }
+            else if (type == typeof(int))
+            {
+                union.IsInteger = true;
+            }
+        }
+        private static void Visit(in MetadataProperty property, ref UnionType union)
+        {
+            union.Merge(DataMapper.GetUnionType(in property));
         }
     }
 }

@@ -28,7 +28,7 @@ namespace DaJet.Data.Mapping
 
             foreach (PropertyMap property in Properties)
             {
-                entity.Add(property.Name, property.GetValue(in reader)!);
+                entity.Add(property.Name, property.GetValue(in reader));
             }
 
             return entity;

@@ -449,26 +449,19 @@ namespace DaJet.Metadata.Model
         public UnionType GetUnionType()
         {
             UnionType union = new();
-
+            
             if (IsUuid) { union.IsUuid = true; }
             else if (IsBinary) { union.IsVersion = true; }
             else if (IsValueStorage) { union.IsBinary = true; }
             else
             {
-                int count = 0;
-                if (CanBeBoolean) { union.IsBoolean = true; count++; }
-                if (CanBeNumeric) { union.IsNumeric = true; count++; }
-                if (CanBeDateTime) { union.IsDateTime = true; count++; }
-                if (CanBeString) { union.IsString = true; count++; }
-                if (CanBeReference)
-                {
-                    count++;
-                    union.IsEntity = true;
-                    union.TypeCode = TypeCode;
-                }
-                //TODO: Регистратор ??? union.HasTag = (count > 1 || CanBeReference && TypeCode == 0);
+                union.IsBoolean = CanBeBoolean;
+                union.IsNumeric = CanBeNumeric;
+                union.IsDateTime = CanBeDateTime;
+                union.IsString = CanBeString;
+                union.IsEntity = CanBeReference;
+                union.TypeCode = TypeCode;
             }
-
             return union;
         }
     }

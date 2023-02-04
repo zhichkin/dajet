@@ -1,5 +1,4 @@
-﻿using DaJet.Data;
-using DaJet.Data.Mapping;
+﻿using DaJet.Data.Mapping;
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
@@ -9,7 +8,6 @@ namespace DaJet.Scripting
 {
     public abstract class SqlGenerator : ISqlGenerator
     {
-        private readonly TypeInferencer _inferencer = new();
         public int YearOffset { get; set; } = 0;
         public bool TryGenerate(in ScriptModel model, out GeneratorResult result)
         {
@@ -27,6 +25,7 @@ namespace DaJet.Scripting
                     {
                         Visit(in select, in script);
                         script.Append(";");
+
                         ConfigureDataMapper(in select, result.Mapper);
                     }
                     else if (node is DeleteStatement delete)
@@ -46,32 +45,21 @@ namespace DaJet.Scripting
 
             return result.Success;
         }
-        
         private void ConfigureDataMapper(in SelectStatement statement, in EntityMap mapper)
         {
             if (statement.Select is SelectExpression projection)
             {
                 foreach (ColumnExpression column in projection.Select)
                 {
-                    if (column.Expression is ColumnReference reference)
-                    {
-                        
-                    }
-
-                    UnionType union = _inferencer.InferDataType(column);
-
-                    if (union.IsEntity)
-                    {
-
-                    }
-
-                    // build entity map
+                    PropertyMap map = DataMapper.CreatePropertyMap(column);
+                    
+                    mapper.Properties.Add(map);
                 }
             }
-            //else if (statement.Select is TableUnionOperator union && union.Expression1)
-            //{
-            //    select = union.Expression1 as SelectStatement;
-            //}
+            else if (statement.Select is TableUnionOperator union)
+            {
+                //TODO: select = union.Expression1/2 as SelectStatement;
+            }
         }
 
         private void Visit(in SyntaxNode expression, in StringBuilder script)
@@ -141,17 +129,16 @@ namespace DaJet.Scripting
                 Visit(in function, in script);
             }
         }
-        private void Visit(in SelectStatement statement, in StringBuilder script)
+        protected virtual void Visit(in SelectStatement node, in StringBuilder script)
         {
-            if (statement.CommonTables is not null)
+            if (node.CommonTables is not null)
             {
                 script.Append("WITH ");
-                Visit(statement.CommonTables, in script);
+                Visit(node.CommonTables, in script);
             }
-            Visit(statement.Select, in script);
+            Visit(node.Select, in script);
         }
-
-        private void Visit(in TableReference node, in StringBuilder script)
+        protected virtual void Visit(in TableReference node, in StringBuilder script)
         {
             if (node.Tag is ApplicationObject entity)
             {
@@ -185,7 +172,7 @@ namespace DaJet.Scripting
             //    script.Append(hints.ToString()).Append(")");
             //}
         }
-        private void Visit(in ColumnReference node, in StringBuilder script)
+        protected virtual void Visit(in ColumnReference node, in StringBuilder script)
         {
             ScriptHelper.GetColumnIdentifiers(node.Identifier, out string tableAlias, out string columnName);
 
@@ -204,10 +191,11 @@ namespace DaJet.Scripting
             }
             else if (node.Tag is MetadataProperty property)
             {
-                script.Append(property.Columns[0].Name); // TODO: create database columns
+                //TODO: create database columns !!!
+                script.Append(property.Columns[0].Name);
             }
         }
-        private void Visit(in ColumnExpression node, in StringBuilder script)
+        protected virtual void Visit(in ColumnExpression node, in StringBuilder script)
         {
             Visit(node.Expression, in script);
 
@@ -216,30 +204,30 @@ namespace DaJet.Scripting
                 script.Append(" AS ").Append(node.Alias);
             }
         }
-        private void Visit(in TableExpression table, in StringBuilder script)
+        protected virtual void Visit(in TableExpression node, in StringBuilder script)
         {
             script.Append("(");
-            Visit(table.Expression, in script);
-            script.Append(") AS " + table.Alias);
+            Visit(node.Expression, in script);
+            script.Append(") AS " + node.Alias);
         }
-        private void Visit(in TableJoinOperator join, in StringBuilder script)
+        protected virtual void Visit(in TableJoinOperator node, in StringBuilder script)
         {
-            Visit(join.Expression1, in script);
-            script.AppendLine().Append(join.Token.ToString()).Append(" JOIN ");
-            Visit(join.Expression2, in script);
-            Visit(join.On, in script);
+            Visit(node.Expression1, in script);
+            script.AppendLine().Append(node.Token.ToString()).Append(" JOIN ");
+            Visit(node.Expression2, in script);
+            Visit(node.On, in script);
         }
-        private void Visit(in TableUnionOperator union, in StringBuilder script)
+        protected virtual void Visit(in TableUnionOperator node, in StringBuilder script)
         {
-            if (union.Expression1 is SelectExpression select1)
+            if (node.Expression1 is SelectExpression select1)
             {
                 Visit(in select1, in script);
             }
-            else if (union.Expression1 is TableUnionOperator union1)
+            else if (node.Expression1 is TableUnionOperator union1)
             {
                 Visit(in union1, in script);
             }
-            if (union.Token == TokenType.UNION)
+            if (node.Token == TokenType.UNION)
             {
                 script.AppendLine().AppendLine("UNION");
             }
@@ -247,66 +235,66 @@ namespace DaJet.Scripting
             {
                 script.AppendLine().AppendLine("UNION ALL");
             }
-            if (union.Expression2 is SelectExpression select2)
+            if (node.Expression2 is SelectExpression select2)
             {
                 Visit(in select2, in script);
             }
-            else if (union.Expression2 is TableUnionOperator union2)
+            else if (node.Expression2 is TableUnionOperator union2)
             {
                 Visit(in union2, in script);
             }
         }
-        private void Visit(in CommonTableExpression cte, in StringBuilder script)
+        protected virtual void Visit(in CommonTableExpression node, in StringBuilder script)
         {
-            if (cte.Next is not null)
+            if (node.Next is not null)
             {
-                Visit(cte.Next, in script);
+                Visit(node.Next, in script);
             }
-
-            if (cte.Next is not null) { script.Append(", "); }
-            script.AppendLine($"{cte.Name} AS ").Append("(");
-            Visit(cte.Expression, in script);
+            if (node.Next is not null) { script.Append(", "); }
+            script.AppendLine($"{node.Name} AS ").Append("(");
+            Visit(node.Expression, in script);
             script.AppendLine(")");
         }
-        private void Visit(in SelectExpression select, in StringBuilder script)
+        protected virtual void Visit(in SelectExpression node, in StringBuilder script)
         {
             script.Append("SELECT");
 
-            if (select.Top is not null)
+            if (node.Top is not null)
             {
-                Visit(select.Top, in script);
+                Visit(node.Top, in script);
             }
             script.AppendLine();
 
-            for (int i = 0; i < select.Select.Count; i++)
+            for (int i = 0; i < node.Select.Count; i++)
             {
                 if (i > 0) { script.Append("," + Environment.NewLine); }
-                Visit(select.Select[i], in script);
+
+                Visit(node.Select[i], in script);
             }
 
-            if (select.From is not null) { Visit(select.From, in script); }
-            if (select.Where is not null) { Visit(select.Where, in script); }
-            if (select.Group is not null) { Visit(select.Group, in script); }
-            if (select.Having is not null) { Visit(select.Having, in script); }
-            if (select.Order is not null) { Visit(select.Order, in script); }
+            if (node.From is not null) { Visit(node.From, in script); }
+            if (node.Where is not null) { Visit(node.Where, in script); }
+            if (node.Group is not null) { Visit(node.Group, in script); }
+            if (node.Having is not null) { Visit(node.Having, in script); }
+            if (node.Order is not null) { Visit(node.Order, in script); }
         }
-        private void Visit(in TopClause node, in StringBuilder script)
+        protected virtual void Visit(in TopClause node, in StringBuilder script)
         {
             script.Append(" TOP ").Append("(");
             Visit(node.Expression, in script);
             script.Append(")");
         }
-        private void Visit(in FromClause node, in StringBuilder script)
+        protected virtual void Visit(in FromClause node, in StringBuilder script)
         {
             script.AppendLine().Append("FROM ");
             Visit(node.Expression, in script);
         }
-        private void Visit(in WhereClause node, in StringBuilder script)
+        protected virtual void Visit(in WhereClause node, in StringBuilder script)
         {
             script.AppendLine().Append("WHERE ");
             Visit(node.Expression, in script);
         }
-        private void Visit(in GroupClause node, in StringBuilder script)
+        protected virtual void Visit(in GroupClause node, in StringBuilder script)
         {
             if (node is null || node.Expressions is null || node.Expressions.Count == 0)
             {
@@ -324,17 +312,17 @@ namespace DaJet.Scripting
             }
             script.AppendLine();
         }
-        private void Visit(in HavingClause node, in StringBuilder script)
+        protected virtual void Visit(in HavingClause node, in StringBuilder script)
         {
             script.Append("HAVING ");
             Visit(node.Expression, in script);
         }
-        private void Visit(in OnClause node, in StringBuilder script)
+        protected virtual void Visit(in OnClause node, in StringBuilder script)
         {
             script.AppendLine().Append("ON ");
             Visit(node.Expression, in script);
         }
-        private void Visit(in OrderClause node, in StringBuilder script)
+        protected virtual void Visit(in OrderClause node, in StringBuilder script)
         {
             script.AppendLine().AppendLine("ORDER BY");
 
@@ -376,24 +364,24 @@ namespace DaJet.Scripting
                 }
             }
         }
-        private void Visit(in GroupOperator node, in StringBuilder script)
+        protected virtual void Visit(in GroupOperator node, in StringBuilder script)
         {
             script.Append("(");
             Visit(node.Expression, in script);
             script.Append(")");
         }
-        private void Visit(in UnaryOperator node, in StringBuilder script)
+        protected virtual void Visit(in UnaryOperator node, in StringBuilder script)
         {
             script.Append(node.Token == TokenType.Minus ? "-" : "NOT ");
             Visit(node.Expression, in script);
         }
-        private void Visit(in BinaryOperator node, in StringBuilder script)
+        protected virtual void Visit(in BinaryOperator node, in StringBuilder script)
         {
             Visit(node.Expression1, in script);
             script.AppendLine().Append(node.Token.ToString()).Append(" ");
             Visit(node.Expression2, in script);
         }
-        private void Visit(in AdditionOperator node, in StringBuilder script)
+        protected virtual void Visit(in AdditionOperator node, in StringBuilder script)
         {
             Visit(node.Expression1, in script);
             if (node.Token == TokenType.Plus)
@@ -406,7 +394,7 @@ namespace DaJet.Scripting
             }
             Visit(node.Expression2, in script);
         }
-        private void Visit(in MultiplyOperator node, in StringBuilder script)
+        protected virtual void Visit(in MultiplyOperator node, in StringBuilder script)
         {
             Visit(node.Expression1, in script);
             if (node.Token == TokenType.Star)
@@ -423,13 +411,13 @@ namespace DaJet.Scripting
             }
             Visit(node.Expression2, in script);
         }
-        private void Visit(in ComparisonOperator node, in StringBuilder script)
+        protected virtual void Visit(in ComparisonOperator node, in StringBuilder script)
         {
             Visit(node.Expression1, in script);
             script.Append(" ").Append(ScriptHelper.GetComparisonLiteral(node.Token)).Append(" ");
             Visit(node.Expression2, in script);
         }
-        private void Visit(in CaseExpression node, in StringBuilder script)
+        protected virtual void Visit(in CaseExpression node, in StringBuilder script)
         {
             script.Append("CASE");
             foreach (WhenExpression when in node.CASE)
@@ -446,7 +434,7 @@ namespace DaJet.Scripting
             }
             script.Append(" END");
         }
-        private void Visit(in ScalarExpression node, in StringBuilder script)
+        protected virtual void Visit(in ScalarExpression node, in StringBuilder script)
         {
             if (node.Token == TokenType.Boolean)
             {
@@ -464,7 +452,7 @@ namespace DaJet.Scripting
                 script.Append(node.Literal);
             }
         }
-        private void Visit(in VariableReference node, in StringBuilder script)
+        protected virtual void Visit(in VariableReference node, in StringBuilder script)
         {
             string name = node.Identifier;
             
@@ -475,92 +463,90 @@ namespace DaJet.Scripting
             
             script.Append(name);
         }
-
-        private void Visit(in FunctionExpression function, in StringBuilder script)
+        protected virtual void Visit(in FunctionExpression node, in StringBuilder script)
         {
-            script.Append(function.Name).Append("(");
+            script.Append(node.Name).Append("(");
 
             SyntaxNode expression;
 
-            for (int i = 0; i < function.Parameters.Count; i++)
+            for (int i = 0; i < node.Parameters.Count; i++)
             {
-                expression = function.Parameters[i];
+                expression = node.Parameters[i];
                 if (i > 0) { script.Append(", "); }
                 Visit(in expression, in script);
             }
 
             script.Append(")");
 
-            if (function.Over is not null)
+            if (node.Over is not null)
             {
                 script.Append(" ");
-                VisitOverClause(in function, in script);
+                Visit(node.Over, in script);
             }
         }
-        private void VisitOverClause(in FunctionExpression function, in StringBuilder script)
+        protected virtual void Visit(in OverClause node, in StringBuilder script)
         {
             script.Append("OVER").Append("(");
-            if (function.Over.Partition.Count > 0)
-            {
-                VisitPartitionClause(in function, in script);
-            }
-            if (function.Over.Order is not null)
-            {
-                Visit(function.Over.Order, in script);
-            }
-            if (function.Over.Preceding is not null || function.Over.Following is not null)
-            {
-                script.Append(function.Over.FrameType.ToString()).Append(" ");
 
-                if (function.Over.Preceding is not null && function.Over.Following is not null)
+            if (node.Partition is not null)
+            {
+                Visit(node.Partition, in script);
+            }
+            if (node.Order is not null)
+            {
+                Visit(node.Order, in script);
+            }
+            if (node.Preceding is not null || node.Following is not null)
+            {
+                script.Append(node.FrameType.ToString()).Append(" ");
+
+                if (node.Preceding is not null && node.Following is not null)
                 {
                     script.Append("BETWEEN").Append(" ");
 
-                    VisitWindowFrame(function.Over.Preceding, in script);
+                    Visit(node.Preceding, in script);
 
                     script.Append(" AND ");
 
-                    VisitWindowFrame(function.Over.Following, in script);
+                    Visit(node.Following, in script);
                 }
-                else if (function.Over.Preceding is not null)
+                else if (node.Preceding is not null)
                 {
-                    VisitWindowFrame(function.Over.Preceding, in script);
+                    Visit(node.Preceding, in script);
                 }
             }
             script.Append(")");
         }
-        private void VisitPartitionClause(in FunctionExpression function, in StringBuilder script)
+        protected virtual void Visit(in WindowFrame node, in StringBuilder script)
+        {
+            if (node.Extent == -1)
+            {
+                script.Append("UNBOUNDED ").Append(node.Token.ToString());
+            }
+            else if (node.Extent == 0)
+            {
+                script.Append("CURRENT ROW");
+            }
+            else if (node.Extent > 0)
+            {
+                script
+                    .Append(node.Extent.ToString())
+                    .Append(" ")
+                    .Append(node.Token.ToString());
+            }
+        }
+        protected virtual void Visit(in PartitionClause node, in StringBuilder script)
         {
             script.AppendLine().AppendLine("PARTITION BY");
-
             SyntaxNode expression;
-
-            for (int i = 0; i < function.Over.Partition.Count; i++)
+            for (int i = 0; i < node.Columns.Count; i++)
             {
-                expression = function.Over.Partition[i];
+                expression = node.Columns[i];
                 if (i > 0) { script.Append(", "); }
                 Visit(in expression, in script);
             }
         }
-        private void VisitWindowFrame(in WindowFrame frame, in StringBuilder script)
-        {
-            if (frame.Extent == -1)
-            {
-                script.Append("UNBOUNDED ").Append(frame.Token.ToString());
-            }
-            else if (frame.Extent == 0)
-            {
-                script.Append("CURRENT ROW");
-            }
-            else if (frame.Extent > 0)
-            {
-                script
-                    .Append(frame.Extent.ToString())
-                    .Append(" ")
-                    .Append(frame.Token.ToString());
-            }
-        }
-
+        
         #region "DELETE STATEMENT"
         private void VisitDeleteStatement(DeleteStatement delete, StringBuilder script, EntityMap mapper)
         {

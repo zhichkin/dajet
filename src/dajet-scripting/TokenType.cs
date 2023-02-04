@@ -17,7 +17,7 @@
 
         Identifier, Type, Table, Column, Variable, TemporaryTable, Star,
 
-        IS, NULL, ISNULL, Uuid, Boolean, Number, DateTime, String, Binary, Entity,
+        IS, NULL, ISNULL, Boolean, Number, DateTime, String, Binary, Uuid, Entity, Version, Integer,
 
         Equals, NotEquals, Less, Greater, LessOrEquals, GreaterOrEquals,
 

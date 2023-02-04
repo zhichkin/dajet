@@ -995,23 +995,23 @@ namespace DaJet.Scripting
 
             return over;
         }
-        private List<SyntaxNode> partition()
+        private PartitionClause partition()
         {
             if (!Match(TokenType.BY))
             {
                 throw new FormatException("BY keyword expected.");
             }
 
-            List<SyntaxNode> expressions = new();
+            PartitionClause clause = new();
 
-            expressions.Add(expression());
+            clause.Columns.Add(expression());
 
             while (Match(TokenType.Comma))
             {
-                expressions.Add(expression());
+                clause.Columns.Add(expression());
             }
 
-            return expressions;
+            return clause;
         }
         private WindowFrame window_frame(TokenType token)
         {

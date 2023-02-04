@@ -1,4 +1,7 @@
-﻿namespace DaJet.Data
+﻿using System;
+using System.Text;
+
+namespace DaJet.Data
 {
     public struct UnionType
     {
@@ -6,11 +9,11 @@
         public UnionType() { }
         private void SetBit(int position, bool value)
         {
-            if (value) { _flags |= 1U << position; } else { _flags &= ~(1U << position); }
+            if (value) { _flags |= (1U << position); } else { _flags &= ~(1U << position); }
         }
         private bool IsBitSet(int position)
         {
-            return (_flags & (1U << position)) == 1U << position;
+            return (_flags & (1U << position)) == (1U << position);
         }
         public void Merge(UnionType union)
         {
@@ -39,9 +42,10 @@
                     }
                     else
                     {
-                        // ignore
+                        // ignore - 0 is a final state
                     }
                 }
+                // -1 value is ignored
             }
         }
         public bool IsUnion
@@ -49,18 +53,20 @@
             get
             {
                 int count = 0;
-                if (IsUuid) { count++; }     // _B
-                if (IsVersion) { count++; }  // _B
-                if (IsBoolean) { count++; }  // _L
-                if (IsNumeric) { count++; }  // _N
-                if (IsDateTime) { count++; } // _T
-                if (IsString) { count++; }   // _S
-                if (IsBinary) { count++; }   // _B
-                if (IsEntity) { count++; }   // _TRef + _RRef
-                return (count > 1 || IsEntity && TypeCode == 0); // _TYPE
+                if (IsBoolean) { count++; }  // L
+                if (IsNumeric) { count++; }  // N
+                if (IsDateTime) { count++; } // T
+                if (IsString) { count++; }   // S
+                if (IsBinary) { count++; }   // B
+                if (IsUuid) { count++; }     // U
+                if (IsEntity) { count++; }   // # _TRef + _RRef
+                if (IsVersion) { count++; }  // B
+                if (IsInteger) { count++; }  // I
+                return (count > 1 || IsEntity && TypeCode == 0); // TYPE
             }
         }
-        public bool HasTag { get { return IsBitSet((int)UnionTag.Tag); } set { SetBit((int)UnionTag.Tag, value); } }
+        public bool IsUndefined { get { return (_flags == uint.MinValue); } }
+        public bool UseTag { get { return IsBitSet((int)UnionTag.Tag); } set { SetBit((int)UnionTag.Tag, value); } }
         public bool IsBoolean { get { return IsBitSet((int)UnionTag.Boolean); } set { SetBit((int)UnionTag.Boolean, value); } }
         public bool IsNumeric { get { return IsBitSet((int)UnionTag.Numeric); } set { SetBit((int)UnionTag.Numeric, value); } }
         public bool IsDateTime { get { return IsBitSet((int)UnionTag.DateTime); } set { SetBit((int)UnionTag.DateTime, value); } }
@@ -69,5 +75,113 @@
         public bool IsUuid { get { return IsBitSet((int)UnionTag.Uuid); } set { SetBit((int)UnionTag.Uuid, value); } }
         public bool IsEntity { get { return IsBitSet((int)UnionTag.Entity); } set { SetBit((int)UnionTag.Entity, value); } }
         public bool IsVersion { get { return IsBitSet((int)UnionTag.Version); } set { SetBit((int)UnionTag.Version, value); } }
+        public bool IsInteger { get { return IsBitSet((int)UnionTag.Integer); } set { SetBit((int)UnionTag.Integer, value); } }
+        public override string ToString()
+        {
+            if (IsUndefined) { return "{ Undefined }"; }
+
+            StringBuilder value = new("{ ");
+
+            if (UseTag) { value.Append(" Tag"); }
+            if (IsBoolean) { value.Append(" Boolean"); }
+            if (IsNumeric) { value.Append(" Numeric"); }
+            if (IsDateTime) { value.Append(" DateTime"); }
+            if (IsString) { value.Append(" String"); }
+            if (IsBinary) { value.Append(" Binary"); }
+            if (IsUuid) { value.Append(" Uuid"); }
+            if (IsEntity) { value.Append(" Entity"); }
+            if (IsVersion) { value.Append(" Version"); }
+            if (IsInteger) { value.Append(" Integer"); }
+
+            value.Append(" }");
+
+            return value.ToString();
+        }
+        public static Type MapToType(in UnionType union)
+        {
+            if (union.IsUnion)
+            {
+                return typeof(Union);
+            }
+            else if (union.IsBoolean)
+            {
+                return typeof(bool);
+            }
+            else if (union.IsNumeric)
+            {
+                return typeof(decimal);
+            }
+            else if (union.IsDateTime)
+            {
+                return typeof(DateTime);
+            }
+            else if (union.IsString)
+            {
+                return typeof(string);
+            }
+            else if (union.IsBinary)
+            {
+                return typeof(byte[]);
+            }
+            else if (union.IsUuid)
+            {
+                return typeof(Guid);
+            }
+            else if (union.IsEntity)
+            {
+                return typeof(Entity);
+            }
+            else if (union.IsVersion)
+            {
+                return typeof(ulong);
+            }
+            else if (union.IsInteger)
+            {
+                return typeof(int);
+            }
+
+            return null;
+        }
+        public static object GetDefaultValue(in Type type)
+        {
+            if (type == typeof(bool))
+            {
+                return false;
+            }
+            else if (type == typeof(decimal))
+            {
+                return 0.00M;
+            }
+            else if (type == typeof(DateTime))
+            {
+                return new DateTime(1, 1, 1);
+            }
+            else if (type == typeof(string))
+            {
+                return string.Empty;
+            }
+            else if (type == typeof(byte[]))
+            {
+                return Array.Empty<byte>();
+            }
+            else if (type == typeof(Guid))
+            {
+                return Guid.Empty;
+            }
+            else if (type == typeof(Entity))
+            {
+                return Entity.Undefined;
+            }
+            else if (type == typeof(ulong))
+            {
+                return 0UL;
+            }
+            else if (type == typeof(int))
+            {
+                return 0;
+            }
+
+            return null;
+        }
     }
 }

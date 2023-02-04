@@ -9,9 +9,15 @@ namespace DaJet.Data
         {
             byte[] value = new byte[4];
             bytes.CopyTo(value, 0);
-            // If the system architecture is little-endian (that is, little end first), reverse the byte array.
             if (BitConverter.IsLittleEndian) Array.Reverse(value);
             return BitConverter.ToInt32(value, 0);
+        }
+        public static ulong GetUInt64(byte[] bytes)
+        {
+            byte[] value = new byte[8];
+            bytes.CopyTo(value, 0);
+            if (BitConverter.IsLittleEndian) Array.Reverse(value);
+            return BitConverter.ToUInt64(value, 0);
         }
         public static byte[] GetByteArray(int value)
         {

@@ -5,16 +5,18 @@ namespace DaJet.Data
 {
     public enum UnionTag : byte
     {
+        TypeCode  = 0xFF, // entity type code database column
         Undefined = 0x00,
-        Tag       = 0x01, // _TYPE
-        Boolean   = 0x02, // _L
-        Numeric   = 0x03, // _N
-        DateTime  = 0x04, // _T
-        String    = 0x05, // _S
-        Binary    = 0x06, // _B
-        Uuid      = 0x07, // _U ??? TODO ???
-        Entity    = 0x08, // [_TRef] _RRef
-        Version   = 0x09  // database version byte[8]
+        Tag       = 0x01, // TYPE
+        Boolean   = 0x02, // L
+        Numeric   = 0x03, // N
+        DateTime  = 0x04, // T
+        String    = 0x05, // S
+        Binary    = 0x06, // B
+        Uuid      = 0x07, // U
+        Entity    = 0x08, // # [_TRef] _RRef
+        Version   = 0x09, // V database version byte[8]
+        Integer   = 0x0A  // I
     }
     public sealed class BadUnionAccessException : Exception
     {
@@ -33,51 +35,61 @@ namespace DaJet.Data
         {
             if (tag == UnionTag.Boolean)
             {
-                return typeof(bool);
+                return typeof(bool); // L
             }
             else if (tag == UnionTag.Numeric)
             {
-                return typeof(decimal);
+                return typeof(decimal); // N
             }
             else if (tag == UnionTag.DateTime)
             {
-                return typeof(DateTime);
+                return typeof(DateTime); // T
             }
             else if (tag == UnionTag.String)
             {
-                return typeof(string);
+                return typeof(string); // S
             }
             else if (tag == UnionTag.Binary)
             {
-                return typeof(byte[]);
+                return typeof(byte[]); // B
+            }
+            else if (tag == UnionTag.Uuid)
+            {
+                return typeof(Guid); // U
             }
             else if (tag == UnionTag.Entity)
             {
-                return typeof(Entity);
+                return typeof(Entity); // #
             }
 
             return null; // UnionTag.Undefined
         }
         protected Union(UnionTag tag) { _tag = tag; }
-        public UnionTag Tag { get { return _tag; } }
         [JsonIgnore] public bool IsUndefined { get { return _tag == UnionTag.Undefined; } }
+        public UnionTag Tag { get { return _tag; } } // TYPE
         public abstract object Value { get; }
-        public abstract bool GetBoolean();
-        public abstract decimal GetNumeric();
-        public abstract DateTime GetDateTime();
-        public abstract string GetString();
-        public abstract byte[] GetBinary();
-        public abstract Entity GetEntity();
+        public abstract bool GetBoolean(); // L
+        public abstract decimal GetNumeric(); // N
+        public abstract DateTime GetDateTime(); // T
+        public abstract string GetString(); // S
+        public abstract byte[] GetBinary(); // B
+        public abstract Guid GetUuid(); // U
+        public abstract Entity GetEntity(); // #
+        public abstract ulong GetVersion(); // V
+        public abstract int GetInteger(); // I
         public override string ToString()
         {
-            return IsUndefined ? "Неопределено" : (Value == null ? "NULL" : Value.ToString()!);
+            return IsUndefined ? "Неопределено" : (Value == null ? "NULL" : Value.ToString());
         }
         public static implicit operator Union(bool value) => new CaseBoolean(value);
         public static implicit operator Union(decimal value) => new CaseNumeric(value);
         public static implicit operator Union(DateTime value) => new CaseDateTime(value);
         public static implicit operator Union(string value) => new CaseString(value);
         public static implicit operator Union(byte[] value) => new CaseBinary(value);
+        public static implicit operator Union(Guid value) => new CaseUuid(value);
         public static implicit operator Union(Entity value) => new CaseEntity(value);
+        public static implicit operator Union(ulong value) => new CaseVersion(value);
+        public static implicit operator Union(int value) => new CaseInteger(value);
         public sealed class CaseUndefined : Union
         {
             public CaseUndefined() : base(UnionTag.Undefined) { }
@@ -102,9 +114,21 @@ namespace DaJet.Data
             {
                 throw new BadUnionAccessException(typeof(byte[]), typeof(CaseUndefined));
             }
+            public override Guid GetUuid()
+            {
+                throw new BadUnionAccessException(typeof(Guid), typeof(CaseUndefined));
+            }
             public override Entity GetEntity()
             {
                 throw new BadUnionAccessException(typeof(Entity), typeof(CaseUndefined));
+            }
+            public override ulong GetVersion()
+            {
+                throw new BadUnionAccessException(typeof(ulong), typeof(CaseUndefined));
+            }
+            public override int GetInteger()
+            {
+                throw new BadUnionAccessException(typeof(int), typeof(CaseUndefined));
             }
         }
         public sealed class CaseBoolean : Union
@@ -132,9 +156,21 @@ namespace DaJet.Data
             {
                 throw new BadUnionAccessException(typeof(byte[]), typeof(CaseBoolean));
             }
+            public override Guid GetUuid()
+            {
+                throw new BadUnionAccessException(typeof(Guid), typeof(CaseBoolean));
+            }
             public override Entity GetEntity()
             {
                 throw new BadUnionAccessException(typeof(Entity), typeof(CaseBoolean));
+            }
+            public override ulong GetVersion()
+            {
+                throw new BadUnionAccessException(typeof(ulong), typeof(CaseBoolean));
+            }
+            public override int GetInteger()
+            {
+                throw new BadUnionAccessException(typeof(int), typeof(CaseBoolean));
             }
         }
         public sealed class CaseNumeric : Union
@@ -162,9 +198,21 @@ namespace DaJet.Data
             {
                 throw new BadUnionAccessException(typeof(byte[]), typeof(CaseNumeric));
             }
+            public override Guid GetUuid()
+            {
+                throw new BadUnionAccessException(typeof(Guid), typeof(CaseNumeric));
+            }
             public override Entity GetEntity()
             {
                 throw new BadUnionAccessException(typeof(Entity), typeof(CaseNumeric));
+            }
+            public override ulong GetVersion()
+            {
+                throw new BadUnionAccessException(typeof(ulong), typeof(CaseNumeric));
+            }
+            public override int GetInteger()
+            {
+                throw new BadUnionAccessException(typeof(int), typeof(CaseInteger));
             }
         }
         public sealed class CaseDateTime : Union
@@ -192,9 +240,21 @@ namespace DaJet.Data
             {
                 throw new BadUnionAccessException(typeof(byte[]), typeof(CaseDateTime));
             }
+            public override Guid GetUuid()
+            {
+                throw new BadUnionAccessException(typeof(Guid), typeof(CaseDateTime));
+            }
             public override Entity GetEntity()
             {
                 throw new BadUnionAccessException(typeof(Entity), typeof(CaseDateTime));
+            }
+            public override ulong GetVersion()
+            {
+                throw new BadUnionAccessException(typeof(ulong), typeof(CaseDateTime));
+            }
+            public override int GetInteger()
+            {
+                throw new BadUnionAccessException(typeof(int), typeof(CaseDateTime));
             }
         }
         public sealed class CaseString : Union
@@ -222,9 +282,21 @@ namespace DaJet.Data
             {
                 throw new BadUnionAccessException(typeof(byte[]), typeof(CaseString));
             }
+            public override Guid GetUuid()
+            {
+                throw new BadUnionAccessException(typeof(Guid), typeof(CaseString));
+            }
             public override Entity GetEntity()
             {
                 throw new BadUnionAccessException(typeof(Entity), typeof(CaseString));
+            }
+            public override ulong GetVersion()
+            {
+                throw new BadUnionAccessException(typeof(ulong), typeof(CaseString));
+            }
+            public override int GetInteger()
+            {
+                throw new BadUnionAccessException(typeof(int), typeof(CaseString));
             }
         }
         public sealed class CaseBinary : Union
@@ -246,15 +318,69 @@ namespace DaJet.Data
             }
             public override string GetString()
             {
-                throw new BadUnionAccessException(typeof(byte[]), typeof(CaseBinary)); ;
+                throw new BadUnionAccessException(typeof(string), typeof(CaseBinary)); ;
             }
             public override byte[] GetBinary()
             {
                 return _value;
             }
+            public override Guid GetUuid()
+            {
+                throw new BadUnionAccessException(typeof(Guid), typeof(CaseBinary));
+            }
             public override Entity GetEntity()
             {
                 throw new BadUnionAccessException(typeof(Entity), typeof(CaseBinary));
+            }
+            public override ulong GetVersion()
+            {
+                throw new BadUnionAccessException(typeof(ulong), typeof(CaseBinary));
+            }
+            public override int GetInteger()
+            {
+                throw new BadUnionAccessException(typeof(int), typeof(CaseBinary));
+            }
+        }
+        public sealed class CaseUuid : Union
+        {
+            private readonly Guid _value;
+            public CaseUuid(Guid value) : base(UnionTag.Uuid) { _value = value; }
+            public override object Value { get { return _value; } }
+            public override bool GetBoolean()
+            {
+                throw new BadUnionAccessException(typeof(bool), typeof(CaseUuid));
+            }
+            public override decimal GetNumeric()
+            {
+                throw new BadUnionAccessException(typeof(decimal), typeof(CaseUuid));
+            }
+            public override DateTime GetDateTime()
+            {
+                throw new BadUnionAccessException(typeof(DateTime), typeof(CaseUuid));
+            }
+            public override string GetString()
+            {
+                throw new BadUnionAccessException(typeof(string), typeof(CaseUuid)); ;
+            }
+            public override byte[] GetBinary()
+            {
+                throw new BadUnionAccessException(typeof(byte[]), typeof(CaseUuid));
+            }
+            public override Guid GetUuid()
+            {
+                return _value;
+            }
+            public override Entity GetEntity()
+            {
+                throw new BadUnionAccessException(typeof(Entity), typeof(CaseUuid));
+            }
+            public override ulong GetVersion()
+            {
+                throw new BadUnionAccessException(typeof(ulong), typeof(CaseUuid));
+            }
+            public override int GetInteger()
+            {
+                throw new BadUnionAccessException(typeof(int), typeof(CaseUuid));
             }
         }
         public sealed class CaseEntity : Union
@@ -282,7 +408,103 @@ namespace DaJet.Data
             {
                 throw new BadUnionAccessException(typeof(byte[]), typeof(CaseEntity));
             }
+            public override Guid GetUuid()
+            {
+                throw new BadUnionAccessException(typeof(Guid), typeof(CaseEntity));
+            }
             public override Entity GetEntity()
+            {
+                return _value;
+            }
+            public override ulong GetVersion()
+            {
+                throw new BadUnionAccessException(typeof(ulong), typeof(CaseEntity));
+            }
+            public override int GetInteger()
+            {
+                throw new BadUnionAccessException(typeof(int), typeof(CaseEntity));
+            }
+        }
+        public sealed class CaseVersion : Union
+        {
+            private readonly ulong _value;
+            public CaseVersion(ulong value) : base(UnionTag.Version) { _value = value; }
+            public override object Value { get { return _value; } }
+            public override bool GetBoolean()
+            {
+                throw new BadUnionAccessException(typeof(bool), typeof(CaseVersion));
+            }
+            public override decimal GetNumeric()
+            {
+                throw new BadUnionAccessException(typeof(decimal), typeof(CaseVersion));
+            }
+            public override DateTime GetDateTime()
+            {
+                throw new BadUnionAccessException(typeof(DateTime), typeof(CaseVersion));
+            }
+            public override string GetString()
+            {
+                throw new BadUnionAccessException(typeof(string), typeof(CaseVersion));
+            }
+            public override byte[] GetBinary()
+            {
+                throw new BadUnionAccessException(typeof(byte[]), typeof(CaseVersion));
+            }
+            public override Guid GetUuid()
+            {
+                throw new BadUnionAccessException(typeof(Guid), typeof(CaseVersion));
+            }
+            public override Entity GetEntity()
+            {
+                throw new BadUnionAccessException(typeof(Entity), typeof(CaseVersion));
+            }
+            public override ulong GetVersion()
+            {
+                return _value;
+            }
+            public override int GetInteger()
+            {
+                throw new BadUnionAccessException(typeof(int), typeof(CaseVersion));
+            }
+        }
+        public sealed class CaseInteger : Union
+        {
+            private readonly int _value;
+            public CaseInteger(int value) : base(UnionTag.Integer) { _value = value; }
+            public override object Value { get { return _value; } }
+            public override bool GetBoolean()
+            {
+                throw new BadUnionAccessException(typeof(bool), typeof(CaseInteger));
+            }
+            public override decimal GetNumeric()
+            {
+                throw new BadUnionAccessException(typeof(decimal), typeof(CaseInteger));
+            }
+            public override DateTime GetDateTime()
+            {
+                throw new BadUnionAccessException(typeof(DateTime), typeof(CaseInteger));
+            }
+            public override string GetString()
+            {
+                throw new BadUnionAccessException(typeof(string), typeof(CaseInteger));
+            }
+            public override byte[] GetBinary()
+            {
+                throw new BadUnionAccessException(typeof(byte[]), typeof(CaseInteger));
+            }
+            public override Guid GetUuid()
+            {
+                throw new BadUnionAccessException(typeof(Guid), typeof(CaseInteger));
+            }
+            public override Entity GetEntity()
+            {
+                throw new BadUnionAccessException(typeof(Entity), typeof(CaseInteger));
+            }
+            public override ulong GetVersion()
+            {
+                throw new BadUnionAccessException(typeof(ulong), typeof(CaseInteger));
+            }
+            public override int GetInteger()
             {
                 return _value;
             }

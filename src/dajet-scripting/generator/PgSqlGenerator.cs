@@ -2,6 +2,11 @@
 {
     public sealed class PgSqlGenerator : SqlGenerator
     {
+        //protected override void Visit(in SelectStatement statement, in StringBuilder script)
+        //{
+        //    base.Visit(statement, script);
+        //}
+
         //private readonly TypeInferencer _inferencer = new();
         //public int YearOffset { get; set; } = 0;
         //public bool TryGenerate(in ScriptModel model, out GeneratorResult result)

@@ -1,11 +1,29 @@
 ﻿using DaJet.Data;
 using DaJet.Data.Mapping;
 using DaJet.Metadata.Model;
+using DaJet.Scripting.Model;
+using System.Xml.Linq;
 
 namespace DaJet.Scripting
 {
-    internal static class DataMapper
+    public static class DataMapper
     {
+        public static UnionType GetUnionType(in MetadataProperty property)
+        {
+            UnionType union = property.PropertyType.GetUnionType();
+
+            foreach (MetadataColumn column in property.Columns)
+            {
+                if (column.Purpose == ColumnPurpose.Tag)
+                {
+                    union.UseTag = true;
+                    
+                    break;
+                }
+            }
+
+            return union;
+        }
         public static PropertyMap CreatePropertyMap(in MetadataProperty property, string alias)
         {
             PropertyMap map = new()
@@ -13,42 +31,11 @@ namespace DaJet.Scripting
                 Name = alias
             };
 
-            DataTypeSet type = property.PropertyType;
+            UnionType union = GetUnionType(in property);
 
-            if (type.IsUuid)
-            {
-                map.Type = typeof(Guid);
-            }
-            else if (type.IsBinary || type.IsValueStorage)
-            {
-                map.Type = typeof(byte[]);
-            }
-            else if (type.IsMultipleType)
-            {
-                map.Type = typeof(Union);
-                map.TypeCode = type.TypeCode;
-            }
-            else if (type.CanBeBoolean)
-            {
-                map.Type = typeof(bool);
-            }
-            else if (type.CanBeNumeric)
-            {
-                map.Type = typeof(decimal);
-            }
-            else if (type.CanBeDateTime)
-            {
-                map.Type = typeof(DateTime);
-            }
-            else if (type.CanBeString)
-            {
-                map.Type = typeof(string);
-            }
-            else if (type.CanBeReference)
-            {
-                map.Type = typeof(Entity);
-                map.TypeCode = type.TypeCode;
-            }
+            map.DataType.Merge(union);
+
+
 
             return map;
         }
@@ -58,10 +45,112 @@ namespace DaJet.Scripting
             {
                 Name = field.Name,
                 Alias = alias,
-                Purpose = (ColumnPurpose)(int)field.Purpose
+                Type = (UnionTag)(int)field.Purpose
             };
 
             return map;
+        }
+
+        public static ColumnMap CreateColumnMap(UnionTag tag, string name)
+        {
+            ColumnMap column = new()
+            {
+                Type = tag,
+                Name = name
+            };
+
+            return column;
+        }
+        public static PropertyMap CreatePropertyMap(in SyntaxNode node)
+        {
+            PropertyMap map = new();
+            Configure(in node, in map);
+            
+            UnionType type = DataTypeInferencer.Infer(in node);
+            map.DataType.Merge(type);
+
+            if (type.UseTag)
+            {
+                map.ToColumn(CreateColumnMap(UnionTag.Tag, map.Name + "_TYPE"));
+            }
+            
+            if (type.IsBoolean)
+            {
+                map.ToColumn(CreateColumnMap(UnionTag.Boolean, map.Name + "_L"));
+            }
+
+            //TODO !!!
+
+            return new PropertyMap();
+        }
+        private static void Configure(in SyntaxNode node, in PropertyMap property)
+        {
+            if (node is ColumnExpression column)
+            {
+                Configure(in column, in property);
+            }
+            else if (node is ColumnReference reference)
+            {
+                Configure(in reference, in property);
+            }
+            else if (node is ScalarExpression scalar)
+            {
+                Configure(in scalar, in property);
+            }
+            else if (node is VariableReference variable)
+            {
+                Configure(in variable, in property);
+            }
+            else if (node is CaseExpression expression)
+            {
+                Configure(in expression, in property);
+            }
+            else if (node is FunctionExpression function)
+            {
+                Configure(in function, in property);
+            }
+        }
+        private static void Configure(in ColumnExpression column, in PropertyMap property)
+        {
+            if (!string.IsNullOrEmpty(column.Alias))
+            {
+                property.Name = column.Alias;
+            }
+            else
+            {
+                Configure(column.Expression, in property);
+            }
+        }
+        private static void Configure(in ColumnReference column, in PropertyMap property)
+        {
+            if (column.Tag is ColumnExpression parent)
+            {
+                Configure(in parent, in property);
+            }
+            else if (column.Tag is MetadataProperty source)
+            {
+                Configure(in source, in property);
+            }
+        }
+        private static void Configure(in MetadataProperty source, in PropertyMap property)
+        {
+            property.Name = source.Name;
+        }
+        private static void Configure(in ScalarExpression scalar, in PropertyMap property)
+        {
+
+        }
+        private static void Configure(in VariableReference variable, in PropertyMap property)
+        {
+
+        }
+        private static void Configure(in CaseExpression expression, in PropertyMap property)
+        {
+
+        }
+        private static void Configure(in FunctionExpression function, in PropertyMap property)
+        {
+
         }
     }
 }
