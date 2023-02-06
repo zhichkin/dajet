@@ -2,7 +2,7 @@
 
 namespace DaJet.Scripting
 {
-    public sealed class WhereOnClauseTransformer : IScriptVisitor
+    public sealed class WhereOnClauseTransformer : IScriptWalker
     {
         private readonly ComparisonOperatorTransformer _transformer = new();
         public void SayHello(SyntaxNode node)
@@ -31,7 +31,7 @@ namespace DaJet.Scripting
                     }
                 }
             }
-            else if (node is WhenExpression clause3)
+            else if (node is WhenClause clause3)
             {
                 if (clause3.WHEN is ComparisonOperator comparison3)
                 {

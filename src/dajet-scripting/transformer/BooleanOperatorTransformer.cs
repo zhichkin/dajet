@@ -2,7 +2,7 @@
 
 namespace DaJet.Scripting
 {
-    public sealed class BooleanOperatorTransformer : IScriptVisitor
+    public sealed class BooleanOperatorTransformer : IScriptWalker
     {
         private readonly ComparisonOperatorTransformer _transformer = new();
         public void SayHello(SyntaxNode node)

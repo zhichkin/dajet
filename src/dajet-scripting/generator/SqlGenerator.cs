@@ -1,4 +1,4 @@
-﻿using DaJet.Data.Mapping;
+﻿using DaJet.Data;
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
@@ -136,6 +136,29 @@ namespace DaJet.Scripting
             }
             Visit(node.Select, in script);
         }
+        protected virtual void Visit(in SelectExpression node, in StringBuilder script)
+        {
+            script.Append("SELECT");
+
+            if (node.Top is not null)
+            {
+                Visit(node.Top, in script);
+            }
+            script.AppendLine();
+
+            for (int i = 0; i < node.Select.Count; i++)
+            {
+                if (i > 0) { script.Append(',').Append(Environment.NewLine); }
+
+                Visit(node.Select[i], in script);
+            }
+
+            if (node.From is not null) { Visit(node.From, in script); }
+            if (node.Where is not null) { Visit(node.Where, in script); }
+            if (node.Group is not null) { Visit(node.Group, in script); }
+            if (node.Having is not null) { Visit(node.Having, in script); }
+            if (node.Order is not null) { Visit(node.Order, in script); }
+        }
         protected virtual void Visit(in TableReference node, in StringBuilder script)
         {
             if (node.Tag is ApplicationObject entity)
@@ -152,6 +175,7 @@ namespace DaJet.Scripting
                 script.Append(" AS ").Append(node.Alias);
             }
 
+            //TODO: table hints
             //if (table.Hints.Count > 0)
             //{
             //    script.Append(" WITH (");
@@ -170,56 +194,118 @@ namespace DaJet.Scripting
             //    script.Append(hints.ToString()).Append(")");
             //}
         }
-        protected virtual void Visit(in ColumnReference node, in StringBuilder script)
+        protected virtual void Visit(in ColumnExpression node, in StringBuilder script)
         {
-            ScriptHelper.GetColumnIdentifiers(node.Identifier, out string tableAlias, out string columnName);
+            //Visit(node.Expression, in script);
 
-            if (!string.IsNullOrEmpty(tableAlias))
+            if (node.Expression is ColumnReference column && column.Tag is MetadataProperty property)
             {
-                script.Append($"{tableAlias}.");
-            }
+                ScriptHelper.GetColumnIdentifiers(column.Identifier, out string tableAlias, out string columnAlias);
 
-            if (node.Tag is MetadataProperty source)
-            {
-                Visit(in source, in script);
-            }
-            else if (node.Tag is ColumnExpression parent)
-            {
-                Visit(in parent, in script);
-
-                if (!string.IsNullOrEmpty(parent.Alias))
-                {
-                    script.Append(" AS ").Append(parent.Alias);
-                }
-            }
-            //else if (node.Tag is MetadataColumn column)
-            //{
-            //    //TODO: script.Append(column.Name);
-            //}
-        }
-        protected virtual void Visit(in MetadataProperty property, in StringBuilder script)
-        {
-            if (property.Columns.Count == 1)
-            {
-                script.Append(property.Columns[0].Name);
-            }
-            else
-            {
-                List<MetadataColumn> columns = property.Columns
+                List<MetadataColumn> list = property.Columns
                     .OrderBy((column) => { return column.Purpose; })
                     .ToList();
 
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (i > 0) { script.Append(", "); }
+
+                    if (!string.IsNullOrEmpty(tableAlias))
+                    {
+                        script.Append(tableAlias).Append('.');
+                    }
+
+                    script.Append(list[i].Name);
+
+                    if (!string.IsNullOrEmpty(node.Alias))
+                    {
+                        script.Append(" AS ").Append(node.Alias);
+                    }
+                    else
+                    {
+                        script.Append(" AS ").Append(property.Name);
+                    }
+
+                    if (list.Count > 1)
+                    {
+                        script.Append('_').Append(i);
+                    }
+                }
+            }
+            else if (node.Expression is ColumnReference reference && reference.Tag is ColumnExpression parent)
+            {
+                UnionType type = new();
+                DataMapper.Visit(node.Expression, in type);
+                List<UnionTag> columns = type.ToList();
+
                 for (int i = 0; i < columns.Count; i++)
                 {
-                    MetadataColumn column = columns[i];
                     if (i > 0) { script.Append(", "); }
-                    script.Append(column.Name);
+
+                    script.Append(reference.Identifier);
+
+                    if (columns.Count > 1)
+                    {
+                        script.Append('_').Append(i);
+                    }
+
+                    if (!string.IsNullOrEmpty(node.Alias))
+                    {
+                        script.Append(" AS ").Append(node.Alias);
+
+                        if (columns.Count > 1)
+                        {
+                            script.Append('_').Append(i);
+                        }
+                    }
                 }
             }
         }
-        protected virtual void Visit(in ColumnExpression node, in StringBuilder script)
+        protected virtual void Visit(in ColumnReference node, in StringBuilder script)
         {
-            Visit(node.Expression, in script);
+            ScriptHelper.GetColumnIdentifiers(node.Identifier, out string tableAlias, out string columnAlias);
+
+            if (node.Tag is MetadataProperty source)
+            {
+                Visit(in source, in script, in tableAlias); //TODO: transformer ?
+            }
+            else if (node.Tag is MetadataColumn column)
+            {
+                Visit(in column, in script, in tableAlias);
+            }
+            else if (node.Tag is ColumnExpression parent)
+            {
+                //TODO: Visit(in parent, in script);
+                script.Append(node.Identifier);
+            }
+        }
+        protected virtual void Visit(in MetadataProperty property, in StringBuilder script, in string tableAlias)
+        {
+            List<MetadataColumn> columns = property.Columns
+                .OrderBy((column) => { return column.Purpose; })
+                .ToList();
+
+            MetadataColumn column;
+
+            for (int i = 0; i < columns.Count; i++)
+            {
+                column = columns[i];
+
+                if (i > 0)
+                {
+                    script.Append(", ");
+                }
+
+                Visit(in column, in script, in tableAlias);
+            }
+        }
+        protected virtual void Visit(in MetadataColumn column, in StringBuilder script, in string tableAlias)
+        {
+            if (!string.IsNullOrEmpty(tableAlias))
+            {
+                script.Append(tableAlias).Append('.');
+            }
+            script.Append(column.Name);
         }
         protected virtual void Visit(in TableExpression node, in StringBuilder script)
         {
@@ -271,29 +357,6 @@ namespace DaJet.Scripting
             script.AppendLine($"{node.Name} AS ").Append("(");
             Visit(node.Expression, in script);
             script.AppendLine(")");
-        }
-        protected virtual void Visit(in SelectExpression node, in StringBuilder script)
-        {
-            script.Append("SELECT");
-
-            if (node.Top is not null)
-            {
-                Visit(node.Top, in script);
-            }
-            script.AppendLine();
-
-            for (int i = 0; i < node.Select.Count; i++)
-            {
-                if (i > 0) { script.Append("," + Environment.NewLine); }
-
-                Visit(node.Select[i], in script);
-            }
-
-            if (node.From is not null) { Visit(node.From, in script); }
-            if (node.Where is not null) { Visit(node.Where, in script); }
-            if (node.Group is not null) { Visit(node.Group, in script); }
-            if (node.Having is not null) { Visit(node.Having, in script); }
-            if (node.Order is not null) { Visit(node.Order, in script); }
         }
         protected virtual void Visit(in TopClause node, in StringBuilder script)
         {
@@ -437,7 +500,7 @@ namespace DaJet.Scripting
         protected virtual void Visit(in CaseExpression node, in StringBuilder script)
         {
             script.Append("CASE");
-            foreach (WhenExpression when in node.CASE)
+            foreach (WhenClause when in node.CASE)
             {
                 script.Append(" WHEN ");
                 Visit(when.WHEN, in script);

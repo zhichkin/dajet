@@ -4,16 +4,22 @@ using System.Reflection;
 
 namespace DaJet.Scripting
 {
+    //TODO: make SayHello and SayGoodbye cancelable
+    public interface IScriptWalker
+    {
+        void SayHello(SyntaxNode node);
+        void SayGoodbye(SyntaxNode node);
+    }
     public static class ScriptWalker
     {
-        public static void Walk(in SyntaxNode node, in IScriptVisitor visitor)
+        public static void Walk(in SyntaxNode node, in IScriptWalker walker)
         {
-            if (node == null || visitor == null)
+            if (node == null || walker == null)
             {
                 return;
             }
 
-            Visit(in node, in visitor);
+            Visit(in node, in walker);
         }
         private static bool IsSyntaxNode(Type type)
         {
@@ -26,15 +32,15 @@ namespace DaJet.Scripting
                 && type.GetGenericTypeDefinition() == typeof(List<>)
                 && IsSyntaxNode(type.GetGenericArguments()[0]);
         }
-        private static void Visit(in SyntaxNode node, in IScriptVisitor visitor)
+        private static void Visit(in SyntaxNode node, in IScriptWalker walker)
         {
-            visitor?.SayHello(node);
+            walker?.SayHello(node);
 
-            VisitChildren(in node, in visitor);
+            VisitChildren(in node, in walker);
 
-            visitor?.SayGoodbye(node);
+            walker?.SayGoodbye(node);
         }
-        private static void VisitChildren(in SyntaxNode parent, in IScriptVisitor visitor)
+        private static void VisitChildren(in SyntaxNode parent, in IScriptWalker walker)
         {
             Type type = parent.GetType();
 
@@ -51,7 +57,7 @@ namespace DaJet.Scripting
 
                 if (IsSyntaxNode(propertyType))
                 {
-                    Visit((value as SyntaxNode), in visitor);
+                    Visit((value as SyntaxNode), in walker);
                 }
                 else if (IsSyntaxNodeList(propertyType))
                 {
@@ -59,7 +65,7 @@ namespace DaJet.Scripting
                     {
                         for (int i = 0; i < list.Count; i++)
                         {
-                            Visit((list[i] as SyntaxNode), in visitor);
+                            Visit((list[i] as SyntaxNode), in walker);
                         }
                     }
                 }

@@ -1,5 +1,4 @@
 ﻿using DaJet.Data;
-using DaJet.Data.Mapping;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 
@@ -48,7 +47,7 @@ namespace DaJet.Scripting
             _name = string.Empty;
         }
         
-        private static void Visit(in SyntaxNode node, in UnionType union)
+        public static void Visit(in SyntaxNode node, in UnionType union)
         {
             if (node is ColumnExpression column)
             {
@@ -70,7 +69,7 @@ namespace DaJet.Scripting
             {
                 Visit(in _case, in union);
             }
-            else if (node is WhenExpression when)
+            else if (node is WhenClause when)
             {
                 Visit(in when, in union);
             }
@@ -195,15 +194,20 @@ namespace DaJet.Scripting
         }
         private static void Visit(in CaseExpression node, in UnionType union)
         {
-            foreach (WhenExpression when in node.CASE)
+            foreach (WhenClause when in node.CASE)
             {
                 Visit(when, in union);
             }
-            Visit(node.ELSE, in union);
+
+            if (node.ELSE is not null)
+            {
+                Visit(node.ELSE, in union);
+            }
         }
-        private static void Visit(in WhenExpression when, in UnionType union)
+        private static void Visit(in WhenClause node, in UnionType union)
         {
-            Visit(when.THEN, in union);
+            //Visit(node.WHEN, in union); does not return value for union
+            Visit(node.THEN, in union);
         }
         private static void Visit(in FunctionExpression function, in UnionType union)
         {

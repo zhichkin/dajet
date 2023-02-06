@@ -1,4 +1,6 @@
-﻿namespace DaJet.Data.Mapping
+﻿using DaJet.Data;
+
+namespace DaJet.Scripting
 {
     public sealed class ColumnMap
     {

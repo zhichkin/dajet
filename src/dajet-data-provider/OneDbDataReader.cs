@@ -1,5 +1,4 @@
-﻿using DaJet.Data.Mapping;
-using DaJet.Scripting;
+﻿using DaJet.Scripting;
 using System.Collections;
 using System.Data.Common;
 

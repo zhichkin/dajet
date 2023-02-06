@@ -1,5 +1,4 @@
 ﻿using DaJet.Data;
-using DaJet.Data.Mapping;
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;

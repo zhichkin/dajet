@@ -3,7 +3,7 @@ using DaJet.Scripting.Model;
 
 namespace DaJet.Scripting
 {
-    public sealed class ScopeBuilder : IScriptVisitor
+    public sealed class ScopeBuilder : IScriptWalker
     {
         private ScriptScope _scope = null; // root scope owned by ScriptModel
         private ScriptScope _current = null;

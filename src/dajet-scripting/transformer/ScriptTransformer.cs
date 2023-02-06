@@ -3,7 +3,7 @@ using DaJet.Scripting.Model;
 
 namespace DaJet.Scripting
 {
-    public sealed class ScriptTransformer : IScriptVisitor
+    public sealed class ScriptTransformer : IScriptWalker
     {
         public ScriptTransformer()
         {
@@ -12,12 +12,12 @@ namespace DaJet.Scripting
 
             Transformers.Add(typeof(OnClause), transformer1);
             Transformers.Add(typeof(WhereClause), transformer1);
-            Transformers.Add(typeof(WhenExpression), transformer1);
+            Transformers.Add(typeof(WhenClause), transformer1);
             Transformers.Add(typeof(UnaryOperator), transformer2);
             Transformers.Add(typeof(BinaryOperator), transformer2);
             Transformers.Add(typeof(GroupOperator), transformer2);
         }
-        public Dictionary<Type, IScriptVisitor> Transformers = new();
+        public Dictionary<Type, IScriptWalker> Transformers = new();
         public bool TryTransform(in SyntaxNode tree, out string error)
         {
             error = string.Empty;
@@ -40,7 +40,7 @@ namespace DaJet.Scripting
                 return;
             }
 
-            if (Transformers.TryGetValue(node.GetType(), out IScriptVisitor visitor))
+            if (Transformers.TryGetValue(node.GetType(), out IScriptWalker visitor))
             {
                 visitor?.SayHello(node);
             }
@@ -52,7 +52,7 @@ namespace DaJet.Scripting
                 return;
             }
 
-            if (Transformers.TryGetValue(node.GetType(), out IScriptVisitor visitor))
+            if (Transformers.TryGetValue(node.GetType(), out IScriptWalker visitor))
             {
                 visitor?.SayGoodbye(node);
             }

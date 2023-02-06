@@ -1,9 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using DaJet.Data;
 using System.Data;
 using System.Reflection;
 
-namespace DaJet.Data.Mapping
+namespace DaJet.Scripting
 {
     public sealed class EntityMap
     {

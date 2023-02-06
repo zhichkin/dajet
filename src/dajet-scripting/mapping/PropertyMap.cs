@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using DaJet.Data;
 using System.Data;
 
-namespace DaJet.Data.Mapping
+namespace DaJet.Scripting
 {
     public sealed class PropertyMap
     {

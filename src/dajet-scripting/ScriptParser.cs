@@ -897,9 +897,9 @@ namespace DaJet.Scripting
 
             return node;
         }
-        private WhenExpression when_expression()
+        private WhenClause when_expression()
         {
-            WhenExpression node = new()
+            WhenClause node = new()
             {
                 WHEN = predicate()
             };
