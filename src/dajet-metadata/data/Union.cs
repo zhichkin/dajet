@@ -31,39 +31,6 @@ namespace DaJet.Data
     {
         private readonly UnionTag _tag;
         public static readonly Union Undefined = new CaseUndefined();
-        public static Type GetType(UnionTag tag)
-        {
-            if (tag == UnionTag.Boolean)
-            {
-                return typeof(bool); // L
-            }
-            else if (tag == UnionTag.Numeric)
-            {
-                return typeof(decimal); // N
-            }
-            else if (tag == UnionTag.DateTime)
-            {
-                return typeof(DateTime); // T
-            }
-            else if (tag == UnionTag.String)
-            {
-                return typeof(string); // S
-            }
-            else if (tag == UnionTag.Binary)
-            {
-                return typeof(byte[]); // B
-            }
-            else if (tag == UnionTag.Uuid)
-            {
-                return typeof(Guid); // U
-            }
-            else if (tag == UnionTag.Entity)
-            {
-                return typeof(Entity); // #
-            }
-
-            return null; // UnionTag.Undefined
-        }
         protected Union(UnionTag tag) { _tag = tag; }
         [JsonIgnore] public bool IsUndefined { get { return _tag == UnionTag.Undefined; } }
         public UnionTag Tag { get { return _tag; } } // TYPE

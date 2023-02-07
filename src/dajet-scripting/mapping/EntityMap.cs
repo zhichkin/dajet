@@ -19,7 +19,7 @@ namespace DaJet.Scripting
             };
             property.DataType.Merge(type);
 
-            List<UnionTag> columns = type.ToList();
+            List<UnionTag> columns = type.ToColumnList();
 
             for (int i = 0; i < columns.Count; i++)
             {

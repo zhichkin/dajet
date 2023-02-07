@@ -7,17 +7,13 @@ namespace DaJet.Scripting
     {
         public ScriptTransformer()
         {
-            WhereOnClauseTransformer transformer1 = new();
-            BooleanOperatorTransformer transformer2 = new();
-
-            Transformers.Add(typeof(OnClause), transformer1);
-            Transformers.Add(typeof(WhereClause), transformer1);
-            Transformers.Add(typeof(WhenClause), transformer1);
-            Transformers.Add(typeof(UnaryOperator), transformer2);
-            Transformers.Add(typeof(BinaryOperator), transformer2);
-            Transformers.Add(typeof(GroupOperator), transformer2);
+            BooleanClauseTransformer transformer = new();
+            Transformers.Add(typeof(OnClause), transformer);
+            Transformers.Add(typeof(WhereClause), transformer);
+            Transformers.Add(typeof(WhenClause), transformer);
+            Transformers.Add(typeof(ColumnExpression), new ColumnReferenceTransformer());
         }
-        public Dictionary<Type, IScriptWalker> Transformers = new();
+        public Dictionary<Type, IScriptTransformer> Transformers = new();
         public bool TryTransform(in SyntaxNode tree, out string error)
         {
             error = string.Empty;
@@ -35,27 +31,16 @@ namespace DaJet.Scripting
         }
         public void SayHello(SyntaxNode node)
         {
-            if (node == null)
-            {
-                return;
-            }
+            if (node == null) { return; }
 
-            if (Transformers.TryGetValue(node.GetType(), out IScriptWalker visitor))
+            if (Transformers.TryGetValue(node.GetType(), out IScriptTransformer transformer))
             {
-                visitor?.SayHello(node);
+                transformer?.Transform(in node);
             }
         }
         public void SayGoodbye(SyntaxNode node)
         {
-            if (node == null)
-            {
-                return;
-            }
-
-            if (Transformers.TryGetValue(node.GetType(), out IScriptWalker visitor))
-            {
-                visitor?.SayGoodbye(node);
-            }
+            return; // not implemented
         }
     }
 }

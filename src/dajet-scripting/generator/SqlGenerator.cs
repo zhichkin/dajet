@@ -2,7 +2,9 @@
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
+using System.Collections.Generic;
 using System.Text;
+using static Npgsql.Replication.PgOutput.Messages.RelationMessage;
 
 namespace DaJet.Scripting
 {
@@ -26,6 +28,7 @@ namespace DaJet.Scripting
                         Visit(in select, in script);
                         script.Append(";");
 
+                        //TODO: implement outside this class !!!
                         ConfigureDataMapper(in select, result.Mapper);
                     }
                     else if (node is DeleteStatement delete)
@@ -47,16 +50,31 @@ namespace DaJet.Scripting
         }
         private void ConfigureDataMapper(in SelectStatement statement, in EntityMap mapper)
         {
-            if (statement.Select is SelectExpression projection)
+            if (statement.Select is not SelectExpression select)
             {
-                foreach (ColumnExpression column in projection.Select)
+                if (statement.Select is not TableUnionOperator union)
                 {
-                    DataMapper.Map(in column, in mapper);
+                    throw new InvalidOperationException("UNION operator is not found.");
+                }
+
+                if (union.Expression1 is SelectExpression)
+                {
+                    select = union.Expression1 as SelectExpression;
+                }
+                else
+                {
+                    select = union.Expression2 as SelectExpression;
                 }
             }
-            else if (statement.Select is TableUnionOperator union)
+
+            if (select is null)
             {
-                //TODO: select = union.Expression1/2 as SelectStatement;
+                throw new InvalidOperationException("SELECT statement is not defined.");
+            }
+
+            foreach (ColumnExpression column in select.Select)
+            {
+                DataMapper.Map(in column, in mapper);
             }
         }
 
@@ -196,68 +214,35 @@ namespace DaJet.Scripting
         }
         protected virtual void Visit(in ColumnExpression node, in StringBuilder script)
         {
-            //Visit(node.Expression, in script);
-
-            if (node.Expression is ColumnReference column && column.Tag is MetadataProperty property)
+            if (node.Expression is ColumnReference column && column.Map is not null)
             {
-                ScriptHelper.GetColumnIdentifiers(column.Identifier, out string tableAlias, out string columnAlias);
+                Visit(column.Map, in script);
+            }
+            else //TODO: function, case_when_then_else
+            {
+                Visit(node.Expression, in script);
 
-                List<MetadataColumn> list = property.Columns
-                    .OrderBy((column) => { return column.Purpose; })
-                    .ToList();
-
-                for (int i = 0; i < list.Count; i++)
+                if (!string.IsNullOrEmpty(node.Alias))
                 {
-                    if (i > 0) { script.Append(", "); }
-
-                    if (!string.IsNullOrEmpty(tableAlias))
-                    {
-                        script.Append(tableAlias).Append('.');
-                    }
-
-                    script.Append(list[i].Name);
-
-                    if (!string.IsNullOrEmpty(node.Alias))
-                    {
-                        script.Append(" AS ").Append(node.Alias);
-                    }
-                    else
-                    {
-                        script.Append(" AS ").Append(property.Name);
-                    }
-
-                    if (list.Count > 1)
-                    {
-                        script.Append('_').Append(i);
-                    }
+                    script.Append(" AS ").Append(node.Alias);
                 }
             }
-            else if (node.Expression is ColumnReference reference && reference.Tag is ColumnExpression parent)
+        }
+        private void Visit(in List<ColumnMap> columns, in StringBuilder script)
+        {
+            ColumnMap column;
+
+            for (int i = 0; i < columns.Count; i++)
             {
-                UnionType type = new();
-                DataMapper.Visit(node.Expression, in type);
-                List<UnionTag> columns = type.ToList();
+                column = columns[i];
 
-                for (int i = 0; i < columns.Count; i++)
+                if (i > 0) { script.Append(", "); }
+
+                script.Append(column.Name);
+
+                if (!string.IsNullOrEmpty(column.Alias))
                 {
-                    if (i > 0) { script.Append(", "); }
-
-                    script.Append(reference.Identifier);
-
-                    if (columns.Count > 1)
-                    {
-                        script.Append('_').Append(i);
-                    }
-
-                    if (!string.IsNullOrEmpty(node.Alias))
-                    {
-                        script.Append(" AS ").Append(node.Alias);
-
-                        if (columns.Count > 1)
-                        {
-                            script.Append('_').Append(i);
-                        }
-                    }
+                    script.Append(" AS ").Append(column.Alias);
                 }
             }
         }
@@ -267,15 +252,14 @@ namespace DaJet.Scripting
 
             if (node.Tag is MetadataProperty source)
             {
-                Visit(in source, in script, in tableAlias); //TODO: transformer ?
+                Visit(in source, in script, in tableAlias);
             }
             else if (node.Tag is MetadataColumn column)
             {
                 Visit(in column, in script, in tableAlias);
             }
-            else if (node.Tag is ColumnExpression parent)
+            else if (node.Tag is ColumnExpression)
             {
-                //TODO: Visit(in parent, in script);
                 script.Append(node.Identifier);
             }
         }
@@ -568,7 +552,9 @@ namespace DaJet.Scripting
         {
             script.Append("OVER").Append("(");
 
-            if (node.Partition is not null)
+            if (node.Partition is not null &&
+                node.Partition.Columns is not null &&
+                node.Partition.Columns.Count > 0)
             {
                 Visit(node.Partition, in script);
             }

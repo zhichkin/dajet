@@ -17,6 +17,34 @@ namespace DaJet.Data
         {
             return (_flags & (1U << position)) == (1U << position);
         }
+        public void Add(UnionTag type)
+        {
+            if (type == UnionTag.TypeCode)
+            {
+                TypeCode = 0;
+                IsEntity = true;
+            }
+            else
+            {
+                SetBit((int)type, true);
+            }
+        }
+        public void Remove(UnionTag type)
+        {
+            if (type == UnionTag.Entity)
+            {
+                IsEntity = false;
+                _typeCode = -1;
+            }
+            else if (type == UnionTag.TypeCode)
+            {
+                _typeCode = -1;
+            }
+            else
+            {
+                SetBit((int)type, false);
+            }
+        }
         public void Merge(in UnionType union)
         {
             _flags |= union._flags;
@@ -73,6 +101,7 @@ namespace DaJet.Data
         }
         public bool IsUndefined { get { return (_flags == uint.MinValue); } }
         public bool UseTag { get { return IsBitSet((int)UnionTag.Tag); } set { SetBit((int)UnionTag.Tag, value); } }
+        public bool UseTypeCode { get { return TypeCode == 0; } }
         public bool IsBoolean { get { return IsBitSet((int)UnionTag.Boolean); } set { SetBit((int)UnionTag.Boolean, value); } }
         public bool IsNumeric { get { return IsBitSet((int)UnionTag.Numeric); } set { SetBit((int)UnionTag.Numeric, value); } }
         public bool IsDateTime { get { return IsBitSet((int)UnionTag.DateTime); } set { SetBit((int)UnionTag.DateTime, value); } }
@@ -189,7 +218,179 @@ namespace DaJet.Data
 
             return null;
         }
-        public List<UnionTag> ToList()
+        public static Type GetDataType(UnionTag tag)
+        {
+            if (tag == UnionTag.Tag)
+            {
+                return typeof(byte); // TYPE
+            }
+            else if (tag == UnionTag.Boolean)
+            {
+                return typeof(bool); // L
+            }
+            else if (tag == UnionTag.Numeric)
+            {
+                return typeof(decimal); // N
+            }
+            else if (tag == UnionTag.DateTime)
+            {
+                return typeof(DateTime); // T
+            }
+            else if (tag == UnionTag.String)
+            {
+                return typeof(string); // S
+            }
+            else if (tag == UnionTag.Binary)
+            {
+                return typeof(byte[]); // B
+            }
+            else if (tag == UnionTag.Uuid)
+            {
+                return typeof(Guid); // U
+            }
+            else if (tag == UnionTag.Entity)
+            {
+                return typeof(Entity); // #
+            }
+            else if (tag == UnionTag.TypeCode)
+            {
+                return typeof(int);
+            }
+            else if (tag == UnionTag.Version)
+            {
+                return typeof(ulong);
+            }
+            else if (tag == UnionTag.Integer)
+            {
+                return typeof(int);
+            }
+
+            return null; // UnionTag.Undefined
+        }
+        public static string GetLiteral(UnionTag tag)
+        {
+            if (tag == UnionTag.Tag)
+            {
+                return "TYPE";
+            }
+            else if (tag == UnionTag.Boolean)
+            {
+                return "L";
+            }
+            else if (tag == UnionTag.Numeric)
+            {
+                return "N";
+            }
+            else if (tag == UnionTag.DateTime)
+            {
+                return "T";
+            }
+            else if (tag == UnionTag.String)
+            {
+                return "S";
+            }
+            else if (tag == UnionTag.Binary)
+            {
+                return "B";
+            }
+            else if (tag == UnionTag.Uuid)
+            {
+                return "U";
+            }
+            else if (tag == UnionTag.Entity)
+            {
+                return "RRef";
+            }
+            else if (tag == UnionTag.TypeCode)
+            {
+                return "TRef";
+            }
+            else if (tag == UnionTag.Version)
+            {
+                return "V";
+            }
+            else if (tag == UnionTag.Integer)
+            {
+                return "I";
+            }
+
+            return string.Empty; // UnionTag.Undefined
+        }
+        public static string GetPurposeLiteral(ColumnPurpose purpose)
+        {
+            if (purpose == ColumnPurpose.Tag)
+            {
+                return "TYPE";
+            }
+            else if (purpose == ColumnPurpose.Boolean)
+            {
+                return "L";
+            }
+            else if (purpose == ColumnPurpose.Numeric)
+            {
+                return "N";
+            }
+            else if (purpose == ColumnPurpose.DateTime)
+            {
+                return "T";
+            }
+            else if (purpose == ColumnPurpose.String)
+            {
+                return "S";
+            }
+            else if (purpose == ColumnPurpose.Binary)
+            {
+                return "B";
+            }
+            else if (purpose == ColumnPurpose.TypeCode)
+            {
+                return "TRef";
+            }
+            else if (purpose == ColumnPurpose.Identity)
+            {
+                return "RRef";
+            }
+
+            return string.Empty; // ColumnPurpose.Default
+        }
+        public static UnionTag GetPurposeUnionTag(ColumnPurpose purpose)
+        {
+            if (purpose == ColumnPurpose.Tag)
+            {
+                return UnionTag.Tag;
+            }
+            else if (purpose == ColumnPurpose.Boolean)
+            {
+                return UnionTag.Boolean;
+            }
+            else if (purpose == ColumnPurpose.Numeric)
+            {
+                return UnionTag.Numeric;
+            }
+            else if (purpose == ColumnPurpose.DateTime)
+            {
+                return UnionTag.DateTime;
+            }
+            else if (purpose == ColumnPurpose.String)
+            {
+                return UnionTag.String;
+            }
+            else if (purpose == ColumnPurpose.Binary)
+            {
+                return UnionTag.Binary;
+            }
+            else if (purpose == ColumnPurpose.TypeCode)
+            {
+                return UnionTag.TypeCode;
+            }
+            else if (purpose == ColumnPurpose.Identity)
+            {
+                return UnionTag.Entity;
+            }
+
+            return UnionTag.Undefined; // ColumnPurpose.Default
+        }
+        public List<UnionTag> ToColumnList()
         {
             List<UnionTag> tags = new();
 
@@ -201,7 +402,7 @@ namespace DaJet.Data
             if (IsBinary) { tags.Add(UnionTag.Binary); }
             if (IsEntity)
             {
-                if (TypeCode == 0)
+                if (UseTypeCode)
                 {
                     tags.Add(UnionTag.TypeCode);
                 }
