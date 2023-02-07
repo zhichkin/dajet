@@ -12,7 +12,16 @@ namespace DaJet.Scripting
             {
                 Transform(in parent, in column);
             }
+            else if (node is OrderClause order)
+            {
+                Transform(in order);
+            }
+            else if (node is GroupClause group)
+            {
+                Transform(in group);
+            }
         }
+        
         private void Transform(in ColumnExpression parent, in ColumnReference column)
         {
             if(column.Tag is MetadataProperty property)
@@ -87,6 +96,28 @@ namespace DaJet.Scripting
                 }
 
                 column.Map.Add(map);
+            }
+        }
+
+        private void Transform(in OrderClause clause)
+        {
+            foreach (OrderExpression order in clause.Expressions)
+            {
+                if (order.Expression is ColumnReference column)
+                {
+                    //TODO
+                }
+            }
+        }
+
+        private void Transform(in GroupClause clause)
+        {
+            foreach (SyntaxNode expression in clause.Expressions)
+            {
+                if (expression is ColumnReference column)
+                {
+                    //TODO
+                }
             }
         }
     }

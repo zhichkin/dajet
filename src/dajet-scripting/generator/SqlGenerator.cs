@@ -1,10 +1,7 @@
-﻿using DaJet.Data;
-using DaJet.Metadata;
+﻿using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
-using System.Collections.Generic;
 using System.Text;
-using static Npgsql.Replication.PgOutput.Messages.RelationMessage;
 
 namespace DaJet.Scripting
 {
@@ -216,9 +213,9 @@ namespace DaJet.Scripting
         {
             if (node.Expression is ColumnReference column && column.Map is not null)
             {
-                Visit(column.Map, in script);
+                Visit(column.Map, in script); // terminates tree traversing at column reference
             }
-            else //TODO: function, case_when_then_else
+            else //TODO: transform functions and case-when-then-else with type addition
             {
                 Visit(node.Expression, in script);
 
@@ -250,7 +247,11 @@ namespace DaJet.Scripting
         {
             ScriptHelper.GetColumnIdentifiers(node.Identifier, out string tableAlias, out string columnAlias);
 
-            if (node.Tag is MetadataProperty source)
+            if (node.Map is not null) // we are here from anywhere, but not the select clause
+            {
+                Visit(node.Map, in script); // terminates tree traversing at column reference
+            }
+            else if (node.Tag is MetadataProperty source)
             {
                 Visit(in source, in script, in tableAlias);
             }

@@ -40,31 +40,42 @@ namespace DaJet.Scripting
                 throw new InvalidOperationException("Root scope is missing");
             }
 
-            foreach (SyntaxNode node in root.Identifiers)
+            BindDataTypes(in scope, in metadata);
+            BindVariables(in scope, in metadata);
+        }
+        private void BindDataTypes(in ScriptScope scope, in MetadataCache metadata)
+        {
+            foreach (SyntaxNode node in scope.Identifiers)
             {
                 if (node is not TypeIdentifier identifier)
                 {
                     continue;
                 }
 
-                if (ScriptHelper.IsDataType(identifier.Identifier, out Type type))
-                {
-                    identifier.Tag = type; // bool, decimal, DateTime, string, Union == Undefined
-                }
-                else
-                {
-                    MetadataObject table = metadata.GetMetadataObject(identifier.Identifier);
+                BindDataType(in scope, in identifier, in metadata);
 
-                    if (table is ApplicationObject entity)
-                    {
-                        identifier.Tag = new Entity(entity.TypeCode, Guid.Empty);
-                    }
-                }
+                
+            }
+        }
+        private void BindDataType(in ScriptScope scope, in TypeIdentifier identifier, in MetadataCache metadata)
+        {
+            if (ScriptHelper.IsDataType(identifier.Identifier, out Type type))
+            {
+                identifier.Tag = type; // bool, decimal, DateTime, string, Union == Undefined
+            }
+            else
+            {
+                MetadataObject table = metadata.GetMetadataObject(identifier.Identifier);
 
-                if (identifier.Tag == null)
+                if (table is ApplicationObject entity)
                 {
-                    ThrowBindingException(identifier.Token, identifier.Identifier);
+                    identifier.Tag = new Entity(entity.TypeCode, Guid.Empty);
                 }
+            }
+
+            if (identifier.Tag == null)
+            {
+                ThrowBindingException(identifier.Token, identifier.Identifier);
             }
         }
         private void BindVariables(in ScriptScope scope, in MetadataCache metadata)
@@ -85,7 +96,7 @@ namespace DaJet.Scripting
 
             if (root.Owner is not ScriptModel script)
             {
-                throw new InvalidOperationException("Root scope is not found");
+                throw new InvalidOperationException("Root scope is missing");
             }
 
             foreach (SyntaxNode node in script.Statements)
@@ -127,6 +138,7 @@ namespace DaJet.Scripting
                 ThrowBindingException(variable.Token, variable.Identifier);
             }
         }
+        
         private void BindCommonScope(in ScriptScope scope, in MetadataCache metadata)
         {
             // bottom-up the scope tree - visit children first
@@ -152,8 +164,8 @@ namespace DaJet.Scripting
 
             BindTables(in scope, in metadata);
             BindColumns(in scope);
-            BindVariables(in scope, in metadata);
         }
+        
         private void BindResultScope(in ScriptScope scope, in MetadataCache metadata)
         {
             // bottom-up the scope tree - visit children first
@@ -172,7 +184,6 @@ namespace DaJet.Scripting
 
             BindTables(in scope, in metadata);
             BindColumns(in scope);
-            BindVariables(in scope, in metadata);
         }
 
         private void BindTables(in ScriptScope scope, in MetadataCache metadata)

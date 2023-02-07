@@ -7,11 +7,16 @@ namespace DaJet.Scripting
     {
         public ScriptTransformer()
         {
-            BooleanClauseTransformer transformer = new();
-            Transformers.Add(typeof(OnClause), transformer);
-            Transformers.Add(typeof(WhereClause), transformer);
-            Transformers.Add(typeof(WhenClause), transformer);
-            Transformers.Add(typeof(ColumnExpression), new ColumnReferenceTransformer());
+            BooleanClauseTransformer booleanTransformer = new();
+            Transformers.Add(typeof(OnClause), booleanTransformer);
+            Transformers.Add(typeof(WhenClause), booleanTransformer);
+            Transformers.Add(typeof(WhereClause), booleanTransformer);
+            Transformers.Add(typeof(HavingClause), booleanTransformer);
+
+            ColumnReferenceTransformer selectTransformer = new();
+            Transformers.Add(typeof(OrderClause), selectTransformer);
+            Transformers.Add(typeof(GroupClause), selectTransformer);
+            Transformers.Add(typeof(ColumnExpression), selectTransformer);
         }
         public Dictionary<Type, IScriptTransformer> Transformers = new();
         public bool TryTransform(in SyntaxNode tree, out string error)

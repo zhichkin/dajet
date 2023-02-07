@@ -20,6 +20,8 @@ namespace DaJet.Scripting
                 return TransformColumnIsType(in comparison);
             }
 
+            //TODO: comparison to scalar values
+
             if (IsColumnColumn(comparison.Expression1, comparison.Expression2))
             {
                 return Transform(comparison, comparison.Expression1, comparison.Expression2);
@@ -375,7 +377,7 @@ namespace DaJet.Scripting
             }
             else
             {
-                comparison.Expression1 = CreateColumnReference(in column1, union1[tag]);
+                comparison.Expression1 = CreateSyntaxNode(in column1, union1[tag]);
             }
 
             if (union2[tag] is int value2)
@@ -388,23 +390,27 @@ namespace DaJet.Scripting
             }
             else
             {
-                comparison.Expression2 = CreateColumnReference(in column2, union2[tag]);
+                comparison.Expression2 = CreateSyntaxNode(in column2, union2[tag]);
             }
 
             return comparison;
         }
-        private ColumnReference CreateColumnReference(in SyntaxNode node, object tag)
+        private SyntaxNode CreateSyntaxNode(in SyntaxNode node, object tag)
         {
-            if (node is not ColumnReference source)
+            if (node is ColumnReference source)
             {
-                return null;
+                return new ColumnReference()
+                {
+                    Tag = tag,
+                    Identifier = source.Identifier
+                };
+            }
+            else if (node is VariableReference variable)
+            {
+                return variable;
             }
 
-            return new ColumnReference()
-            {
-                Tag = tag,
-                Identifier = source.Identifier
-            };
+            return null; // TODO: this is error !
         }
 
         private void ThrowUnableToCompareException(SyntaxNode node1, SyntaxNode node2)

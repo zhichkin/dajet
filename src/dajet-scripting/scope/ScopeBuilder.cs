@@ -41,6 +41,7 @@ namespace DaJet.Scripting
             else if (node is TableReference) { JoinScope(node); }
             else if (node is ColumnReference) { JoinScope(node); }
             else if (node is TypeIdentifier) { JoinScope(node); }
+            else if (node is VariableReference) { JoinScope(node); }
         }
         public void SayGoodbye(SyntaxNode node)
         {
@@ -70,7 +71,8 @@ namespace DaJet.Scripting
         }
         private void JoinScope(SyntaxNode node)
         {
-            if (node.Token == TokenType.Type)
+            if (node.Token == TokenType.Type ||
+                node.Token == TokenType.Variable)
             {
                 if (_scope != null)
                 {
