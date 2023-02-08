@@ -3,9 +3,9 @@
     public sealed class TableReference : SyntaxNode
     {
         public TableReference() { Token = TokenType.Table; }
-        public object Tag { get; set; }
         public string Alias { get; set; } = string.Empty;
         public string Identifier { get; set; } = string.Empty;
+        public object Binding { get; set; }
         public override string ToString()
         {
             return $"[{Token}: {Identifier}]";

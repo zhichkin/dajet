@@ -13,10 +13,11 @@ namespace DaJet.Scripting
             Transformers.Add(typeof(WhereClause), booleanTransformer);
             Transformers.Add(typeof(HavingClause), booleanTransformer);
 
-            ColumnReferenceTransformer selectTransformer = new();
-            Transformers.Add(typeof(OrderClause), selectTransformer);
-            Transformers.Add(typeof(GroupClause), selectTransformer);
-            Transformers.Add(typeof(ColumnExpression), selectTransformer);
+            ColumnReferenceTransformer columnTransformer = new();
+            Transformers.Add(typeof(OrderClause), columnTransformer);
+            Transformers.Add(typeof(GroupClause), columnTransformer);
+            Transformers.Add(typeof(ColumnExpression), columnTransformer);
+            Transformers.Add(typeof(ColumnReference), columnTransformer);
         }
         public Dictionary<Type, IScriptTransformer> Transformers = new();
         public bool TryTransform(in SyntaxNode tree, out string error)

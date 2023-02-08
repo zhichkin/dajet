@@ -89,11 +89,11 @@ namespace DaJet.Scripting
         }
         private static void Visit(in ColumnReference column, in UnionType union)
         {
-            if (column.Tag is MetadataProperty source)
+            if (column.Binding is MetadataProperty source)
             {
                 Visit(in source, in union);
             }
-            else if (column.Tag is ColumnExpression parent)
+            else if (column.Binding is ColumnExpression parent)
             {
                 Visit(in parent, in union);
             }
@@ -147,14 +147,14 @@ namespace DaJet.Scripting
         }
         private static void Visit(in VariableReference identifier, in UnionType union)
         {
-            if (identifier.Tag is Entity entity)
+            if (identifier.Binding is Entity entity)
             {
                 union.IsEntity = true;
                 union.TypeCode = entity.TypeCode;
                 return;
             }
 
-            if (identifier.Tag is not Type type)
+            if (identifier.Binding is not Type type)
             {
                 return;
             }

@@ -20,8 +20,6 @@ namespace DaJet.Scripting
                 return TransformColumnIsType(in comparison);
             }
 
-            //TODO: comparison to scalar values
-
             if (IsColumnColumn(comparison.Expression1, comparison.Expression2))
             {
                 return Transform(comparison, comparison.Expression1, comparison.Expression2);
@@ -31,6 +29,14 @@ namespace DaJet.Scripting
                 return Transform(comparison, comparison.Expression1, comparison.Expression2);
             }
             else if (IsVariableColumn(comparison.Expression1, comparison.Expression2))
+            {
+                return Transform(comparison, comparison.Expression1, comparison.Expression2);
+            }
+            else if (IsColumnScalar(comparison.Expression1, comparison.Expression2))
+            {
+                return Transform(comparison, comparison.Expression1, comparison.Expression2);
+            }
+            else if (IsScalarColumn(comparison.Expression1, comparison.Expression2))
             {
                 return Transform(comparison, comparison.Expression1, comparison.Expression2);
             }
@@ -50,7 +56,7 @@ namespace DaJet.Scripting
         private bool IsScalarColumn(SyntaxNode node)
         {
             return (node is ColumnReference column
-                && column.Tag is MetadataProperty property
+                && column.Binding is MetadataProperty property
                 && property.Columns.Count == 1);
         }
         private bool IsUnionColumn(SyntaxNode node, out ColumnReference column)
@@ -58,7 +64,7 @@ namespace DaJet.Scripting
             column = null;
 
             if (node is ColumnReference identifier &&
-                identifier.Tag is MetadataProperty property &&
+                identifier.Binding is MetadataProperty property &&
                 property.Columns.Count > 1)
             {
                 column = identifier;
@@ -75,7 +81,7 @@ namespace DaJet.Scripting
                 return false;
             }
 
-            if (identifier.Tag is Type || identifier.Tag is Entity)
+            if (identifier.Binding is Type || identifier.Binding is Entity)
             {
                 type = identifier;
             }
@@ -86,22 +92,36 @@ namespace DaJet.Scripting
         {
             return (node1 is ColumnReference column1 &&
                     node2 is ColumnReference column2 &&
-                    column1.Tag is MetadataProperty property1 &&
-                    column2.Tag is MetadataProperty property2 &&
+                    column1.Binding is MetadataProperty property1 &&
+                    column2.Binding is MetadataProperty property2 &&
                     (property1.Columns.Count > 1 || property2.Columns.Count > 1));
         }
         private bool IsColumnVariable(SyntaxNode node1, SyntaxNode node2)
         {
             return (node1 is ColumnReference column &&
                 node2 is VariableReference &&
-                column.Tag is MetadataProperty property &&
+                column.Binding is MetadataProperty property &&
                 property.Columns.Count > 1);
         }
         private bool IsVariableColumn(SyntaxNode node1, SyntaxNode node2)
         {
-            return (node1 is VariableReference variable &&
-                node2 is ColumnReference &&
-                variable.Tag is MetadataProperty property &&
+            return (node1 is VariableReference &&
+                node2 is ColumnReference column &&
+                column.Binding is MetadataProperty property &&
+                property.Columns.Count > 1);
+        }
+        private bool IsColumnScalar(SyntaxNode node1, SyntaxNode node2)
+        {
+            return (node1 is ColumnReference column &&
+                node2 is ScalarExpression &&
+                column.Binding is MetadataProperty property &&
+                property.Columns.Count > 1);
+        }
+        private bool IsScalarColumn(SyntaxNode node1, SyntaxNode node2)
+        {
+            return (node1 is ScalarExpression &&
+                node2 is ColumnReference column &&
+                column.Binding is MetadataProperty property &&
                 property.Columns.Count > 1);
         }
 
@@ -176,6 +196,11 @@ namespace DaJet.Scripting
             {
                 return ConvertVariableToUnion(variable);
             }
+
+            if (node is ScalarExpression scalar)
+            {
+                return ConvertScalarToUnion(scalar);
+            }
             
             if (node is TypeIdentifier type)
             {
@@ -183,7 +208,7 @@ namespace DaJet.Scripting
             }
 
             if (node is ColumnReference column &&
-                column.Tag is MetadataProperty property &&
+                column.Binding is MetadataProperty property &&
                 property.Columns.Count > 0)
             {
                 if (property.Columns.Count == 1)
@@ -272,6 +297,44 @@ namespace DaJet.Scripting
 
             return union;
         }
+        private object[] ConvertScalarToUnion(ScalarExpression scalar)
+        {
+            object[] union = new object[((int)ColumnPurpose.Identity) + 1];
+
+            int tag = (int)ColumnPurpose.Tag;
+            int value = tag; // Undefined
+
+            if (scalar.Token == TokenType.Boolean)
+            {
+                value = (int)ColumnPurpose.Boolean;
+            }
+            else if (scalar.Token == TokenType.Number)
+            {
+                value = (int)ColumnPurpose.Numeric;
+            }
+            else if (scalar.Token == TokenType.DateTime)
+            {
+                value = (int)ColumnPurpose.DateTime;
+            }
+            else if (scalar.Token == TokenType.String)
+            {
+                value = (int)ColumnPurpose.String;
+            }
+            else if (scalar.Token == TokenType.Uuid || scalar.Token == TokenType.Binary)
+            {
+                value = (int)ColumnPurpose.Binary;
+            }
+            else if (scalar.Token == TokenType.Entity)
+            {
+                value = (int)ColumnPurpose.Identity;
+                union[(int)ColumnPurpose.TypeCode] = Entity.Parse(scalar.Literal).TypeCode;
+            }
+
+            union[tag] = value;
+            union[value] = scalar.Literal;
+
+            return union;
+        }
         private object[] ConvertVariableToUnion(VariableReference variable)
         {
             object[] union = new object[((int)ColumnPurpose.Identity) + 1];
@@ -279,7 +342,7 @@ namespace DaJet.Scripting
             int tag = (int)ColumnPurpose.Tag;
             int value = tag;
 
-            if (variable.Tag is Type type)
+            if (variable.Binding is Type type)
             {
                 if (type == typeof(bool))
                 {
@@ -302,14 +365,14 @@ namespace DaJet.Scripting
                     value = (int)ColumnPurpose.Binary;
                 }
             }
-            else if (variable.Tag is Entity reference)
+            else if (variable.Binding is Entity reference)
             {
                 value = (int)ColumnPurpose.Identity;
                 union[(int)ColumnPurpose.TypeCode] = reference.TypeCode;
             }
 
             union[tag] = value;
-            union[value] = variable.Tag;
+            union[value] = variable.Binding;
 
             return union;
         }
@@ -320,7 +383,7 @@ namespace DaJet.Scripting
             int tag = (int)ColumnPurpose.Tag; // адрес значения поля _TYPE
             int code = (int)ColumnPurpose.TypeCode; // адрес значения поля _TRef
 
-            if (identifier.Tag is Type type)
+            if (identifier.Binding is Type type)
             {
                 if (type == typeof(Union)) // undefined
                 {
@@ -347,7 +410,7 @@ namespace DaJet.Scripting
                     throw new FormatException($"Unknown type identifier: {identifier.Identifier}");
                 }
             }
-            else if (identifier.Tag is Entity entity)
+            else if (identifier.Binding is Entity entity)
             {
                 union[tag] = (int)ColumnPurpose.Identity; // 0x08 - значение поля _TYPE
                 union[code] = entity.TypeCode; // integer - значение поля _TRef
@@ -395,19 +458,37 @@ namespace DaJet.Scripting
 
             return comparison;
         }
-        private SyntaxNode CreateSyntaxNode(in SyntaxNode node, object tag)
+        private SyntaxNode CreateSyntaxNode(in SyntaxNode node, object binding)
         {
-            if (node is ColumnReference source)
+            if (node is ColumnReference property)
             {
-                return new ColumnReference()
+                ColumnReference column = new()
                 {
-                    Tag = tag,
-                    Identifier = source.Identifier
+                    Binding = binding, // database column
+                    Identifier = property.Identifier
                 };
+
+                ScriptHelper.GetColumnIdentifiers(property.Identifier, out string tableAlias, out string _);
+
+                if (column.Binding is MetadataColumn source)
+                {
+                    ColumnMap map = new()
+                    {
+                        Type = UnionType.GetPurposeUnionTag(source.Purpose),
+                        Name = string.IsNullOrEmpty(tableAlias) ? source.Name : $"{tableAlias}.{source.Name}"
+                    };
+                    column.Mapping = new List<ColumnMap>() { map };
+                }
+
+                return column;
             }
             else if (node is VariableReference variable)
             {
                 return variable;
+            }
+            else if (node is ScalarExpression scalar)
+            {
+                return scalar;
             }
 
             return null; // TODO: this is error !
@@ -470,9 +551,9 @@ namespace DaJet.Scripting
 
             if (IsNullScalar(rigthOperand)) // _Fld_TYPE IS [NOT] NULL
             {
-                if (column.Tag is MetadataProperty property)
+                if (column.Binding is MetadataProperty property)
                 {
-                    column.Tag = GetColumnToCompareToNull(property);
+                    column.Binding = GetColumnToCompareToNull(property);
                 }
                 return null;
             }

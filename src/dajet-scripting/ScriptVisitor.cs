@@ -1,5 +1,4 @@
-﻿using DaJet.Data;
-using DaJet.Metadata.Model;
+﻿using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 
 namespace DaJet.Scripting
@@ -93,15 +92,15 @@ namespace DaJet.Scripting
         }
         protected virtual void Visit(in TableReference node)
         {
-            if (node.Tag is ApplicationObject entity)
+            if (node.Binding is ApplicationObject entity)
             {
                 Visit(in entity);
             }
-            else if (node.Tag is TableExpression table)
+            else if (node.Binding is TableExpression table)
             {
                 Visit(in table);
             }
-            else if (node.Tag is CommonTableExpression cte)
+            else if (node.Binding is CommonTableExpression cte)
             {
                 Visit(in cte);
             }
@@ -109,15 +108,15 @@ namespace DaJet.Scripting
         protected virtual void Visit(in StarExpression node) { }
         protected virtual void Visit(in ColumnReference node)
         {
-            if (node.Tag is MetadataProperty source)
+            if (node.Binding is MetadataProperty source)
             {
                 Visit(in source);
             }
-            else if (node.Tag is MetadataColumn column)
+            else if (node.Binding is MetadataColumn column)
             {
                 Visit(in column);
             }
-            else if (node.Tag is ColumnExpression parent)
+            else if (node.Binding is ColumnExpression parent)
             {
                 Visit(in parent);
             }

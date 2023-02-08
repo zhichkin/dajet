@@ -176,11 +176,11 @@ namespace DaJet.Scripting
         }
         protected virtual void Visit(in TableReference node, in StringBuilder script)
         {
-            if (node.Tag is ApplicationObject entity)
+            if (node.Binding is ApplicationObject entity)
             {
                 script.Append(entity.TableName);
             }
-            else if (node.Tag is TableExpression || node.Tag is CommonTableExpression)
+            else if (node.Binding is TableExpression || node.Binding is CommonTableExpression)
             {
                 script.Append(node.Identifier);
             }
@@ -211,11 +211,11 @@ namespace DaJet.Scripting
         }
         protected virtual void Visit(in ColumnExpression node, in StringBuilder script)
         {
-            if (node.Expression is ColumnReference column && column.Map is not null)
+            if (node.Expression is ColumnReference column)
             {
-                Visit(column.Map, in script); // terminates tree traversing at column reference
+                Visit(in column, in script); // terminates tree traversing at column reference
             }
-            else //TODO: transform functions and case-when-then-else with type addition
+            else
             {
                 Visit(node.Expression, in script);
 
@@ -225,18 +225,19 @@ namespace DaJet.Scripting
                 }
             }
         }
-        private void Visit(in List<ColumnMap> columns, in StringBuilder script)
+        private void Visit(in List<ColumnMap> mapping, in StringBuilder script)
         {
             ColumnMap column;
 
-            for (int i = 0; i < columns.Count; i++)
+            for (int i = 0; i < mapping.Count; i++)
             {
-                column = columns[i];
+                column = mapping[i];
 
                 if (i > 0) { script.Append(", "); }
 
                 script.Append(column.Name);
 
+                //TODO: select = AS, order by = ASC|DESC - ColumnReference context
                 if (!string.IsNullOrEmpty(column.Alias))
                 {
                     script.Append(" AS ").Append(column.Alias);
@@ -245,21 +246,21 @@ namespace DaJet.Scripting
         }
         protected virtual void Visit(in ColumnReference node, in StringBuilder script)
         {
-            ScriptHelper.GetColumnIdentifiers(node.Identifier, out string tableAlias, out string columnAlias);
+            ScriptHelper.GetColumnIdentifiers(node.Identifier, out string tableAlias, out string _);
 
-            if (node.Map is not null) // we are here from anywhere, but not the select clause
+            if (node.Mapping is not null) // we are here from anywhere, but not ColumnExpression itself
             {
-                Visit(node.Map, in script); // terminates tree traversing at column reference
+                Visit(node.Mapping, in script); // terminates tree traversing at column reference
             }
-            else if (node.Tag is MetadataProperty source)
+            else if (node.Binding is MetadataProperty source)
             {
                 Visit(in source, in script, in tableAlias);
             }
-            else if (node.Tag is MetadataColumn column)
+            else if (node.Binding is MetadataColumn column)
             {
                 Visit(in column, in script, in tableAlias);
             }
-            else if (node.Tag is ColumnExpression)
+            else if (node.Binding is ColumnExpression)
             {
                 script.Append(node.Identifier);
             }

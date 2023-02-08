@@ -61,7 +61,7 @@ namespace DaJet.Scripting
         {
             if (ScriptHelper.IsDataType(identifier.Identifier, out Type type))
             {
-                identifier.Tag = type; // bool, decimal, DateTime, string, Union == Undefined
+                identifier.Binding = type; // bool, decimal, DateTime, string, Union == Undefined
             }
             else
             {
@@ -69,11 +69,11 @@ namespace DaJet.Scripting
 
                 if (table is ApplicationObject entity)
                 {
-                    identifier.Tag = new Entity(entity.TypeCode, Guid.Empty);
+                    identifier.Binding = new Entity(entity.TypeCode, Guid.Empty);
                 }
             }
 
-            if (identifier.Tag == null)
+            if (identifier.Binding == null)
             {
                 ThrowBindingException(identifier.Token, identifier.Identifier);
             }
@@ -111,12 +111,12 @@ namespace DaJet.Scripting
                             {
                                 if (declare.Initializer is ScalarExpression scalar)
                                 {
-                                    variable.Tag = Entity.Parse(scalar.Literal);
+                                    variable.Binding = Entity.Parse(scalar.Literal);
                                 }
                             }
                             else
                             {
-                                variable.Tag = type;
+                                variable.Binding = type;
                             }
                         }
                         else
@@ -125,7 +125,7 @@ namespace DaJet.Scripting
 
                             if (table is ApplicationObject entity)
                             {
-                                variable.Tag = new Entity(entity.TypeCode, Guid.Empty);
+                                variable.Binding = new Entity(entity.TypeCode, Guid.Empty);
                             }
                         }
                         break;
@@ -133,7 +133,7 @@ namespace DaJet.Scripting
                 }
             }
 
-            if (variable.Tag == null)
+            if (variable.Binding == null)
             {
                 ThrowBindingException(variable.Token, variable.Identifier);
             }
@@ -202,7 +202,7 @@ namespace DaJet.Scripting
 
             BindTableScoped(in scope, in table);
 
-            if (table.Tag is not null) { return; } // successful binding
+            if (table.Binding is not null) { return; } // successful binding
 
             // 2. failed to bind in current scope - bind to common table
 
@@ -218,7 +218,7 @@ namespace DaJet.Scripting
             {
                 BindCommonTable(context, in table);
             }
-            if (table.Tag is not null) { return; } // successful binding
+            if (table.Binding is not null) { return; } // successful binding
 
             // 3. finally bind table to the database schema object
 
@@ -237,14 +237,14 @@ namespace DaJet.Scripting
                 {
                     if (derived.Alias == table.Identifier)
                     {
-                        table.Tag = derived; return; // successful binding
+                        table.Binding = derived; return; // successful binding
                     }
                 }
                 else if (child.Owner is CommonTableExpression common)
                 {
                     if (common.Name == table.Identifier)
                     {
-                        table.Tag = common; return; // successful binding
+                        table.Binding = common; return; // successful binding
                     }
                 }
 
@@ -255,14 +255,14 @@ namespace DaJet.Scripting
         {
             if (scope.Owner is CommonTableExpression common && common.Name == table.Identifier)
             {
-                table.Tag = common; return; // successful binding
+                table.Binding = common; return; // successful binding
             }
 
             foreach (ScriptScope child in scope.Children)
             {
                 BindCommonTable(in child, in table);
 
-                if (table.Tag != null)
+                if (table.Binding is not null)
                 {
                     break; // successful binding
                 }
@@ -283,7 +283,7 @@ namespace DaJet.Scripting
 
             if (schema is ApplicationObject entity)
             {
-                table.Tag = entity; // successful binding
+                table.Binding = entity; // successful binding
             }
             else
             {
@@ -317,7 +317,7 @@ namespace DaJet.Scripting
 
             BindColumn(in table, in columnName, in column);
 
-            if (column.Tag is null)
+            if (column.Binding is null)
             {
                 ThrowBindingException(column.Token, column.Identifier);
             }
@@ -374,19 +374,19 @@ namespace DaJet.Scripting
                 {
                     if (string.IsNullOrEmpty(identifier)) // identifier is not provided - take first available table
                     {
-                        table = reference.Tag; return true; // success
+                        table = reference.Binding; return true; // success
                     }
 
                     if (string.IsNullOrEmpty(reference.Alias)) // table has no alias
                     {
                         if (reference.Identifier == identifier) // match by table identifier
                         {
-                            table = reference.Tag; return true; // success
+                            table = reference.Binding; return true; // success
                         }
                     }
                     else if (reference.Alias == identifier) // match by table alias
                     {
-                        table = reference.Tag; return true; // success
+                        table = reference.Binding; return true; // success
                     }
                 }
             }
@@ -485,7 +485,7 @@ namespace DaJet.Scripting
 
                 if (columnName == identifier)
                 {
-                    column.Tag = expression; return;
+                    column.Binding = expression; return;
                 }
             }
         }
@@ -495,7 +495,7 @@ namespace DaJet.Scripting
             {
                 if (property.Name == identifier)
                 {
-                    column.Tag = property; return;
+                    column.Binding = property; return;
                 }
             }
         }
