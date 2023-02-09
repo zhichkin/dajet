@@ -70,6 +70,10 @@ namespace DaJet.Data
                     {
                         _typeCode = value;
                     }
+                    else if (_typeCode == value)
+                    {
+                        // skip the same type code
+                    }
                     else if (_typeCode > 0) // was set once
                     {
                         _typeCode = 0; // multiple type

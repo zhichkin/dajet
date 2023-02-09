@@ -14,10 +14,8 @@ namespace DaJet.Scripting
             Transformers.Add(typeof(HavingClause), booleanTransformer);
 
             ColumnReferenceTransformer columnTransformer = new();
-            Transformers.Add(typeof(OrderClause), columnTransformer);
-            Transformers.Add(typeof(GroupClause), columnTransformer);
-            Transformers.Add(typeof(ColumnExpression), columnTransformer);
             Transformers.Add(typeof(ColumnReference), columnTransformer);
+            Transformers.Add(typeof(ColumnExpression), columnTransformer);
         }
         public Dictionary<Type, IScriptTransformer> Transformers = new();
         public bool TryTransform(in SyntaxNode tree, out string error)

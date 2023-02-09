@@ -97,6 +97,10 @@ namespace DaJet.Scripting
             {
                 Visit(in parent, in union);
             }
+            else if (column.Binding is EnumValue)
+            {
+                union.IsUuid = true;
+            }
         }
         private static void Visit(in ScalarExpression scalar, in UnionType union)
         {
@@ -222,6 +226,10 @@ namespace DaJet.Scripting
             union.Merge(GetUnionType(in property));
         }
         private static void Visit(in MetadataColumn column, in UnionType union)
+        {
+            //TODO: ?
+        }
+        private static void Visit(in ColumnMap column, in UnionType union)
         {
             //TODO: ?
         }

@@ -231,7 +231,7 @@ namespace DaJet.Scripting
                         Number();
                     }
                 }
-                else if (_char == '@' || _char == '&')
+                else if (_char == '@')
                 {
                     Variable();
                 }
@@ -364,7 +364,7 @@ namespace DaJet.Scripting
         private void SingleQuotedString()
         {
             _start = _position;
-            _lexeme.Append(_char);
+            //_lexeme.Append(_char); do not include quotation mark
 
             while (PeekNext() != '\'' && Consume())
             {
@@ -384,7 +384,7 @@ namespace DaJet.Scripting
             // the ' is met
             if (Consume())
             {
-                _lexeme.Append(_char);
+                //_lexeme.Append(_char); do not include quotation mark
             }
 
             if (_char != '\'') // end of script
@@ -397,7 +397,7 @@ namespace DaJet.Scripting
         private void DoubleQuotedString()
         {
             _start = _position;
-            _lexeme.Append(_char);
+            //_lexeme.Append(_char); do not include quotation mark
 
             while (PeekNext() != '\"' && Consume())
             {
@@ -417,7 +417,7 @@ namespace DaJet.Scripting
             // the " is met
             if (Consume())
             {
-                _lexeme.Append(_char);
+                //_lexeme.Append(_char); do not include quotation mark
             }
 
             if (_char != '\"') // end of script

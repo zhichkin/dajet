@@ -163,7 +163,7 @@ namespace DaJet.Scripting
             }
 
             BindTables(in scope, in metadata);
-            BindColumns(in scope);
+            BindColumns(in scope, in metadata);
         }
         
         private void BindResultScope(in ScriptScope scope, in MetadataCache metadata)
@@ -183,7 +183,7 @@ namespace DaJet.Scripting
             }
 
             BindTables(in scope, in metadata);
-            BindColumns(in scope);
+            BindColumns(in scope, in metadata);
         }
 
         private void BindTables(in ScriptScope scope, in MetadataCache metadata)
@@ -291,18 +291,21 @@ namespace DaJet.Scripting
             }
         }
 
-        private void BindColumns(in ScriptScope scope)
+        private void BindColumns(in ScriptScope scope, in MetadataCache metadata)
         {
             foreach (ScriptScope child in scope.Children)
             {
-                BindColumns(in child);
+                BindColumns(in child, in metadata);
             }
 
             foreach (SyntaxNode node in scope.Identifiers)
             {
                 if (node is ColumnReference column)
                 {
-                    BindColumn(in scope, in column);
+                    if (!TryBindEnumValue(in column, in metadata))
+                    {
+                        BindColumn(in scope, in column);
+                    }
                 }
             }
         }
@@ -321,6 +324,22 @@ namespace DaJet.Scripting
             {
                 ThrowBindingException(column.Token, column.Identifier);
             }
+        }
+        private bool TryBindEnumValue(in ColumnReference column, in MetadataCache metadata)
+        {
+            string[] identifiers = column.Identifier.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            if (identifiers is null || identifiers.Length != 3) { return false; }
+
+            if (metadata.TryGetEnumValue(column.Identifier, out EnumValue value) && value is not null)
+            {
+                column.Binding = value;
+                column.Token = TokenType.Enumeration;
+
+                return true;
+            }
+
+            return false;
         }
 
         private bool TryGetSourceTable(in ScriptScope scope, in string identifier, out object table)

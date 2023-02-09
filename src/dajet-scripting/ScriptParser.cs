@@ -186,9 +186,9 @@ namespace DaJet.Scripting
 
             if (Match(TokenType.Equals))
             {
-                if (!Match(TokenType.String, TokenType.Boolean, TokenType.Number, TokenType.Entity))
+                if (!Match(TokenType.Boolean, TokenType.Number, TokenType.String, TokenType.Binary))
                 {
-                    throw new FormatException("Scalar expression expected.");
+                    throw new FormatException("Scalar initializer expression expected.");
                 }
                 else
                 {
@@ -330,13 +330,19 @@ namespace DaJet.Scripting
 
             SelectExpression select = new();
 
+            Skip(TokenType.Comment);
             select_clause(in select);
-
+            Skip(TokenType.Comment);
             if (Match(TokenType.FROM)) { select.From = from_clause(); }
+            Skip(TokenType.Comment);
             if (Match(TokenType.WHERE)) { select.Where = where_clause(); }
+            Skip(TokenType.Comment);
             if (Match(TokenType.GROUP)) { select.Group = group_clause(); }
+            Skip(TokenType.Comment);
             if (Match(TokenType.HAVING)) { select.Having = having_clause(); }
+            Skip(TokenType.Comment);
             if (Match(TokenType.ORDER)) { select.Order = order_clause(); }
+            Skip(TokenType.Comment);
 
             return select;
         }
@@ -842,18 +848,13 @@ namespace DaJet.Scripting
                 Literal = Previous().Lexeme
             };
 
-            if (scalar.Token == TokenType.String && scalar.Literal.Length >= 12)
+            if (scalar.Token == TokenType.String && scalar.Literal.Length >= 10)
             {
-                int start = 1;
-                int length = scalar.Literal.Length - 2;
-
-                string value = scalar.Literal.Trim().Substring(start, length); // remove leading and trailing ' and "
-
-                if (Guid.TryParse(value, out Guid _))
+                if (Guid.TryParse(scalar.Literal, out Guid _))
                 {
                     scalar.Token = TokenType.Uuid;
                 }
-                else if (DateTime.TryParse(value, out DateTime _))
+                else if (DateTime.TryParse(scalar.Literal, out DateTime _))
                 {
                     scalar.Token = TokenType.DateTime;
                 }

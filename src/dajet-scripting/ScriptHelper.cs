@@ -1,4 +1,5 @@
 ﻿using DaJet.Data;
+using System;
 
 namespace DaJet.Scripting
 {
@@ -241,7 +242,8 @@ namespace DaJet.Scripting
                 || (character >= 'A' && character <= 'Z')
                 || (character >= 'a' && character <= 'z')
                 || (character >= 'А' && character <= 'Я')
-                || (character >= 'а' && character <= 'я');
+                || (character >= 'а' && character <= 'я')
+                || (character == 'Ё' || character == 'ё');
         }
         internal static bool IsNumeric(char character)
         {
@@ -315,6 +317,21 @@ namespace DaJet.Scripting
             else if (purpose == ColumnPurpose.Identity) { return "_RRef"; }
 
             return string.Empty;
+        }
+
+        internal static string GetUuidHexLiteral(Guid uuid)
+        {
+            string value = uuid.ToString("N");
+
+            return string.Concat(
+                value.AsSpan(16, 16),
+                value.AsSpan(12, 4),
+                value.AsSpan(8, 4),
+                value.AsSpan(0, 8));
+
+            // SqlServer return $"0x{value}";
+
+            // PostgreSql return $"CAST(E'\\\\x{value}' AS bytea)";
         }
     }
 }

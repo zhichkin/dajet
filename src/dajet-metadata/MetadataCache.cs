@@ -1761,19 +1761,65 @@ namespace DaJet.Metadata
             }
             else if (entity is Catalog catalog)
             {
-                foreach (PredefinedValue value in catalog.PredefinedValues)
+                if (TryGetPredefinedValue(catalog.PredefinedValues, in valueName, out PredefinedValue value))
                 {
-                    if (value.Name == valueName)
-                    {
-                        return value.Uuid;
-                    }
+                    return value.Uuid;
                 }
                 throw new InvalidOperationException($"Предопределённое значение [{valueName}] справочника \"{metadataName}\" не найдено.");
             }
 
             throw new InvalidOperationException($"Предопределённые значения для объекта метаданных \"{metadataName}\" не поддерживаются.");
         }
+        public bool TryGetEnumValue(in string valueFullName, out EnumValue result)
+        {
+            result = null;
 
+            string[] identifiers = GetIdentifiers(valueFullName);
+
+            if (identifiers is null || identifiers.Length != 3) { return false; }
+
+            string valueName = identifiers[2];
+            string metadataName = string.Join(".", identifiers[0], identifiers[1]);
+
+            MetadataObject entity = GetMetadataObject(metadataName);
+
+            if (entity == null) { return false; }
+
+            if (entity is Enumeration enumeration)
+            {
+                foreach (EnumValue value in enumeration.Values)
+                {
+                    if (value.Name == valueName)
+                    {
+                        result = value; return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+        private bool TryGetPredefinedValue(in List<PredefinedValue> values, in string name, out PredefinedValue result)
+        {
+            result = null;
+
+            foreach (PredefinedValue value in values)
+            {
+                if (value.Name == name)
+                {
+                    result = value; return true;
+                }
+            }
+
+            foreach (PredefinedValue value in values)
+            {
+                if (TryGetPredefinedValue(value.Children, in name, out result))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
         #endregion
     }
 }

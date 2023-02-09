@@ -75,7 +75,7 @@ namespace DaJet.Scripting
             }
         }
 
-        private void Visit(in SyntaxNode expression, in StringBuilder script)
+        protected void Visit(in SyntaxNode expression, in StringBuilder script)
         {
             if (expression is GroupOperator group)
             {
@@ -214,6 +214,14 @@ namespace DaJet.Scripting
             if (node.Expression is ColumnReference column)
             {
                 Visit(in column, in script); // terminates tree traversing at column reference
+
+                if (column.Token == TokenType.Enumeration)
+                {
+                    if (!string.IsNullOrEmpty(node.Alias))
+                    {
+                        script.Append(" AS ").Append(node.Alias);
+                    }
+                }
             }
             else
             {
@@ -225,7 +233,18 @@ namespace DaJet.Scripting
                 }
             }
         }
-        private void Visit(in List<ColumnMap> mapping, in StringBuilder script)
+        protected virtual void Visit(in ColumnReference node, in StringBuilder script)
+        {
+            if (node.Mapping is not null) // we are here from anywhere, but not ColumnExpression itself
+            {
+                Visit(node.Mapping, in script); // terminates tree traversing at column reference
+            }
+            else if (node.Binding is EnumValue value)
+            {
+                Visit(in value, in script);
+            }
+        }
+        protected virtual void Visit(in List<ColumnMap> mapping, in StringBuilder script)
         {
             ColumnMap column;
 
@@ -244,26 +263,13 @@ namespace DaJet.Scripting
                 }
             }
         }
-        protected virtual void Visit(in ColumnReference node, in StringBuilder script)
+        protected virtual void Visit(in MetadataColumn column, in StringBuilder script, in string tableAlias)
         {
-            ScriptHelper.GetColumnIdentifiers(node.Identifier, out string tableAlias, out string _);
-
-            if (node.Mapping is not null) // we are here from anywhere, but not ColumnExpression itself
+            if (!string.IsNullOrEmpty(tableAlias))
             {
-                Visit(node.Mapping, in script); // terminates tree traversing at column reference
+                script.Append(tableAlias).Append('.');
             }
-            else if (node.Binding is MetadataProperty source)
-            {
-                Visit(in source, in script, in tableAlias);
-            }
-            else if (node.Binding is MetadataColumn column)
-            {
-                Visit(in column, in script, in tableAlias);
-            }
-            else if (node.Binding is ColumnExpression)
-            {
-                script.Append(node.Identifier);
-            }
+            script.Append(column.Name);
         }
         protected virtual void Visit(in MetadataProperty property, in StringBuilder script, in string tableAlias)
         {
@@ -285,14 +291,7 @@ namespace DaJet.Scripting
                 Visit(in column, in script, in tableAlias);
             }
         }
-        protected virtual void Visit(in MetadataColumn column, in StringBuilder script, in string tableAlias)
-        {
-            if (!string.IsNullOrEmpty(tableAlias))
-            {
-                script.Append(tableAlias).Append('.');
-            }
-            script.Append(column.Name);
-        }
+        
         protected virtual void Visit(in TableExpression node, in StringBuilder script)
         {
             script.Append("(");
@@ -430,6 +429,7 @@ namespace DaJet.Scripting
                 }
             }
         }
+        
         protected virtual void Visit(in GroupOperator node, in StringBuilder script)
         {
             script.Append("(");
@@ -500,6 +500,7 @@ namespace DaJet.Scripting
             }
             script.Append(" END");
         }
+        
         protected virtual void Visit(in ScalarExpression node, in StringBuilder script)
         {
             if (node.Token == TokenType.Boolean)
@@ -513,22 +514,39 @@ namespace DaJet.Scripting
                     script.Append("0x00");
                 }
             }
-            else
+            else if (node.Token == TokenType.DateTime)
+            {
+                if (DateTime.TryParse(node.Literal, out DateTime datetime))
+                {
+                    script.Append($"CAST(\'{datetime.AddYears(YearOffset):yyyy-MM-ddTHH:mm:ss}\' AS datetime2)");
+                }
+                else
+                {
+                    script.Append(node.Literal);
+                }
+            }
+            else if (node.Token == TokenType.String)
+            {
+                script.Append($"\'{node.Literal}\'");
+            }
+            else if (node.Token == TokenType.Uuid)
+            {
+                script.Append($"0x{ScriptHelper.GetUuidHexLiteral(new Guid(node.Literal))}");
+            }
+            else // Number | Binary
             {
                 script.Append(node.Literal);
             }
         }
         protected virtual void Visit(in VariableReference node, in StringBuilder script)
         {
-            string name = node.Identifier;
-            
-            if (node.Identifier.StartsWith('&'))
-            {
-                name = name.Replace('&', '@');
-            }
-            
-            script.Append(name);
+            script.Append(node.Identifier);
         }
+        protected virtual void Visit(in EnumValue node, in StringBuilder script)
+        {
+            script.Append($"0x{ScriptHelper.GetUuidHexLiteral(node.Uuid)}");
+        }
+
         protected virtual void Visit(in FunctionExpression node, in StringBuilder script)
         {
             script.Append(node.Name).Append("(");
@@ -614,7 +632,7 @@ namespace DaJet.Scripting
                 Visit(in expression, in script);
             }
         }
-        
+
         #region "DELETE STATEMENT"
         private void VisitDeleteStatement(DeleteStatement delete, StringBuilder script, EntityMap mapper)
         {
