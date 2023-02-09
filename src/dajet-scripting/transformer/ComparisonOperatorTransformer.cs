@@ -20,6 +20,8 @@ namespace DaJet.Scripting
                 return TransformColumnIsType(in comparison);
             }
 
+            //TODO: refactor union type comparison to use UnionType inference
+
             if (IsColumnColumn(comparison.Expression1, comparison.Expression2))
             {
                 return Transform(comparison, comparison.Expression1, comparison.Expression2);
@@ -491,7 +493,7 @@ namespace DaJet.Scripting
                 return scalar;
             }
 
-            return null; // TODO: this is error !
+            return null; // TODO: throw error - unable to compare types
         }
 
         private void ThrowUnableToCompareException(SyntaxNode node1, SyntaxNode node2)

@@ -129,6 +129,7 @@ namespace DaJet.Scripting
 
                 if (column.Type == UnionTag.String)
                 {
+                    //TODO: optimize cast - do it only for ColumnExpression of SelectStatement
                     script.Append($"CAST({column.Name} AS varchar)");
                 }
                 else
@@ -144,7 +145,7 @@ namespace DaJet.Scripting
         }
         protected override void Visit(in EnumValue node, in StringBuilder script)
         {
-            script.Append($"0x{ScriptHelper.GetUuidHexLiteral(node.Uuid)}");
+            script.Append($"CAST(E'\\\\x{ScriptHelper.GetUuidHexLiteral(node.Uuid)}' AS bytea)");
         }
         protected override void Visit(in ScalarExpression node, in StringBuilder script)
         {

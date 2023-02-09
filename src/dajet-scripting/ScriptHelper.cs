@@ -1,5 +1,7 @@
 ﻿using DaJet.Data;
+using DaJet.Scripting.Model;
 using System;
+using System.Globalization;
 
 namespace DaJet.Scripting
 {
@@ -332,6 +334,59 @@ namespace DaJet.Scripting
             // SqlServer return $"0x{value}";
 
             // PostgreSql return $"CAST(E'\\\\x{value}' AS bytea)";
+        }
+
+        internal static ScalarExpression CreateDefaultScalar(in DeclareStatement declare)
+        {
+            if (!IsDataType(declare.Type.Identifier, out Type type))
+            {
+                return new ScalarExpression()
+                {
+                    Token = TokenType.Uuid,
+                    Literal = "00000000-0000-0000-0000-000000000000"
+                };
+            }
+
+            string literal = string.Empty;
+            TokenType token = TokenType.String;
+
+            if (type == typeof(bool))
+            {
+                literal = "false";
+                token = TokenType.Boolean;
+            }
+            else if (type == typeof(decimal))
+            {
+                literal = "0";
+                token = TokenType.Number;
+            }
+            else if (type == typeof(DateTime))
+            {
+                literal = "0001-01-01T00:00:00";
+                token = TokenType.DateTime;
+            }
+            else if (type == typeof(string))
+            {
+                literal = string.Empty;
+                token = TokenType.String;
+            }
+            else if (type == typeof(byte[]))
+            {
+                literal = "0x00";
+                token = TokenType.Binary;
+            }
+            else if (type == typeof(Guid))
+            {
+                literal = "00000000-0000-0000-0000-000000000000";
+                token = TokenType.Uuid;
+            }
+            else if (type == typeof(Entity))
+            {
+                literal = "{0:00000000-0000-0000-0000-000000000000}";
+                token = TokenType.Entity;
+            }
+
+            return new ScalarExpression() { Token = token, Literal = literal };
         }
     }
 }

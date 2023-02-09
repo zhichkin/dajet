@@ -186,7 +186,7 @@ namespace DaJet.Scripting
 
             if (Match(TokenType.Equals))
             {
-                if (!Match(TokenType.Boolean, TokenType.Number, TokenType.String, TokenType.Binary))
+                if (!Match(TokenType.Boolean, TokenType.Number, TokenType.String, TokenType.Binary, TokenType.Entity))
                 {
                     throw new FormatException("Scalar initializer expression expected.");
                 }
@@ -474,19 +474,16 @@ namespace DaJet.Scripting
                 return;
             }
 
-            if (!Match(TokenType.OpenRoundBracket))
-            {
-                throw new FormatException($"Open round bracket expected.");
-            }
+            bool expect_close = Match(TokenType.OpenRoundBracket);
 
             select.Top = new TopClause()
             {
                 Expression = expression()
             };
 
-            if (!Match(TokenType.CloseRoundBracket))
+            if (expect_close && !Match(TokenType.CloseRoundBracket))
             {
-                throw new FormatException($"Close round bracket expected.");
+                throw new FormatException($"TOP clause: close round bracket expected.");
             }
         }
 

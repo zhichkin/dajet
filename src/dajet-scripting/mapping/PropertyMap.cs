@@ -34,7 +34,7 @@ namespace DaJet.Scripting
         {
             if (Columns.Count == 1)
             {
-                // TODO !?
+                //TODO: optimize getting ordinal
 
                 //column = Columns[tag];
 
@@ -166,7 +166,7 @@ namespace DaJet.Scripting
                 value = (((byte[])reader.GetValue(ordinal))[0] == 1); // SqlServer
             }
 
-            //TODO: подумать как убрать этот костыль: в класс DaJet.Scripting.TypeInferencer ?
+            //TODO: убрать этот костыль в класс DataMapper _Folder
             if (column.Name == "_Folder" || column.Name == "_folder")
             {
                 return !value; // invert - exceptional 1C case
@@ -185,9 +185,7 @@ namespace DaJet.Scripting
                 return null;
             }
 
-            //TODO: подумать как убрать этот костыль:
-            // - в класс DaJet.Scripting.DataMapper ?
-            // - в класс DaJet.Scripting.TypeInferencer ?
+            //TODO: убрать этот костыль в класс DataMapper _KeyField
             if (column.Name == "_KeyField") // binary(4)
             {
                 //NOTE: the value is stored as unsigned big-endian !!!

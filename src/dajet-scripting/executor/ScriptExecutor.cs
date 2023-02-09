@@ -82,14 +82,18 @@ namespace DaJet.Scripting
                 {
                     if (declare.Initializer is not ScalarExpression scalar)
                     {
-                        //TODO: set default value ???
-                        continue; // it is expected to be set from the parameters provided by the caller
+                        // Set default value if parameter value is not initialized in script.
+                        scalar = ScriptHelper.CreateDefaultScalar(in declare);
+                        declare.Initializer = scalar;
                     }
 
                     object value = null!;
-                    string name = declare.Name[1..]; // remove leading @ or &
+                    string name = declare.Name[1..]; // remove leading @
                     string literal = scalar.Literal;
 
+                    // Synchronize parameters defined by script and provided by caller.
+                    // Parameters defined by script must present anyway!
+                    // Parameter values provided by the caller overrides parameter values set by script.
                     if (!Parameters.TryGetValue(name, out _))
                     {
                         if (ScriptHelper.IsDataType(declare.Type.Identifier, out Type type))
@@ -107,26 +111,26 @@ namespace DaJet.Scripting
                             }
                             else if (type == typeof(decimal))
                             {
-                                if (literal.Contains("."))
+                                if (literal.Contains('.'))
                                 {
                                     value = decimal.Parse(literal, CultureInfo.InvariantCulture);
                                 }
                                 else
                                 {
-                                    value = int.Parse(literal);
+                                    value = int.Parse(literal, CultureInfo.InvariantCulture);
                                 }
                             }
                             else if (type == typeof(DateTime))
                             {
-                                value = DateTime.Parse(literal.TrimStart('\"').TrimEnd('\"')).AddYears(_cache.InfoBase.YearOffset);
+                                value = DateTime.Parse(literal);
                             }
                             else if (type == typeof(string))
                             {
-                                value = literal.TrimStart('\"').TrimEnd('\"');
+                                value = literal;
                             }
                             else if (type == typeof(Guid))
                             {
-                                value = new Guid(literal.TrimStart('\"').TrimEnd('\"'));
+                                value = new Guid(literal);
                             }
                             else if (type == typeof(byte[]))
                             {
@@ -134,15 +138,16 @@ namespace DaJet.Scripting
                             }
                             else if (type == typeof(Entity))
                             {
+                                // Metadata object reference parameter:
+                                // DECLARE @product entity = {50:9a1984dc-3084-11ed-9cd7-408d5c93cc8e};
                                 value = Entity.Parse(scalar.Literal); // {50:9a1984dc-3084-11ed-9cd7-408d5c93cc8e}
                             }
                         }
                         else
                         {
                             // Metadata object reference parameter:
-                            // Case 1. DECLARE @product Справочник.Номенклатура = {50:9a1984dc-3084-11ed-9cd7-408d5c93cc8e};
-                            // Case 2. DECLARE @product Справочник.Номенклатура = "9a1984dc-3084-11ed-9cd7-408d5c93cc8e";
-                            
+                            // DECLARE @product Справочник.Номенклатура = "9a1984dc-3084-11ed-9cd7-408d5c93cc8e";
+
                             MetadataObject table = _cache.GetMetadataObject(declare.Type.Identifier);
 
                             if (table is ApplicationObject entity)
@@ -156,7 +161,7 @@ namespace DaJet.Scripting
                                 }
                                 else
                                 {
-                                    value = new Entity(entity.TypeCode, new Guid(literal.TrimStart('\"').TrimEnd('\"')));
+                                    value = new Entity(entity.TypeCode, new Guid(literal));
                                 }
                             }
                         }
@@ -166,7 +171,7 @@ namespace DaJet.Scripting
                 }
             }
 
-            // remove unnecessary parameters
+            // remove unnecessary parameters provided by caller
             List<string> keys_to_remove = new();
             foreach (var key in Parameters.Keys)
             {

@@ -52,7 +52,7 @@ namespace DaJet.Scripting
         }
         public ScriptScope Descendant<TOwner>() where TOwner : SyntaxNode
         {
-            return null; // TODO
+            return null; //TODO: getting descendant scope
         }
         public override string ToString()
         {

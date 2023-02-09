@@ -225,13 +225,5 @@ namespace DaJet.Scripting
             _name = property.Name;
             union.Merge(GetUnionType(in property));
         }
-        private static void Visit(in MetadataColumn column, in UnionType union)
-        {
-            //TODO: ?
-        }
-        private static void Visit(in ColumnMap column, in UnionType union)
-        {
-            //TODO: ?
-        }
     }
 }

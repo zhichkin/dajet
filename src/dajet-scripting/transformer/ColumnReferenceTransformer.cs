@@ -130,11 +130,6 @@ namespace DaJet.Scripting
                         : DataMapper.GetUnionType(in property).ToColumnList()[0]
                 };
 
-                if (columns.Count > 1)
-                {
-                    map.Alias += $"_{UnionType.GetPurposeLiteral(columns[i].Purpose)}";
-                }
-
                 column.Mapping.Add(map);
             }
         }

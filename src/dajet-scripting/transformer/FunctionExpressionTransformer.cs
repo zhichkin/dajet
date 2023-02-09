@@ -2,6 +2,6 @@
 {
     public sealed class FunctionExpressionTransformer : ScriptVisitor
     {
-        //TODO
+        //TODO: type addition effect
     }
 }

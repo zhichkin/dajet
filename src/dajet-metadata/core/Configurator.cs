@@ -311,7 +311,7 @@ namespace DaJet.Metadata.Core
             {
                 if (cache.Extension != null && string.IsNullOrEmpty(tablePart.TableName))
                 {
-                    //NOTE: Заимствованные из основной конфигурации табличные части в расширениях
+                    //NOTE (!) Заимствованные из основной конфигурации табличные части в расширениях
                     //не имеют системных свойств (они их наследуют), если только они их не переопределяют.
                     continue;
                 }
@@ -334,6 +334,17 @@ namespace DaJet.Metadata.Core
             property.PropertyType.CanBeReference = true;
             property.PropertyType.TypeCode = owner.TypeCode;
             property.PropertyType.Reference = owner.Uuid;
+
+            // Собственная табличная часть расширения, но добавленная к заимствованному объекту основной конфигурации:
+            // в таком случае у заимствованного объекта значения TypeCode и Uuid надо искать в основной конфигурации.
+            // Однако, в данный момент мы находимся в контексте расширения и контекст основной конфигруации недоступен!
+            //if (owner.Parent != Guid.Empty)
+            //{
+                // TODO: нужно реализовать алгоритм разрешения ссылок на заимствованные объекты
+                // в процедуре применения расширения к основной конфиграции!
+
+                //MetadataObject parent = cache.GetMetadataObject(owner.Parent);
+            //}
 
             //TODO: property.PropertyType.References.Add(new MetadataItem(MetadataTypes.Catalog, owner.Uuid, owner.Name));
 

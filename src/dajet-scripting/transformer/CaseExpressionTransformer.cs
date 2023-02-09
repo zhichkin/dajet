@@ -2,6 +2,6 @@
 {
     public sealed class CaseExpressionTransformer : ScriptVisitor
     {
-        //TODO
+        //TODO: type addition effect
     }
 }

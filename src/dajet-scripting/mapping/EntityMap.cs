@@ -34,7 +34,7 @@ namespace DaJet.Scripting
         }
         public void Map(in IDbCommand command)
         {
-            // TODO
+            //TODO: map IDbCommand for DML
         }
         public Dictionary<string, object> Map(in IDataReader reader)
         {
