@@ -177,13 +177,9 @@ namespace DaJet.Studio.Pages
             {
                 InfoBaseModel database = AppState.GetDatabaseOrThrowException(Model.Owner);
 
-                QueryRequest request = new()
-                {
-                    DbName = database.Name,
-                    Script = Model.Script
-                };
+                Dictionary<string, object> parameters = new();
 
-                HttpResponseMessage response = await Http.PostAsJsonAsync("/djql/execute", request);
+                HttpResponseMessage response = await Http.PostAsJsonAsync(ScriptUrl, parameters);
 
                 string result = await response.Content.ReadAsStringAsync();
 
@@ -214,13 +210,9 @@ namespace DaJet.Studio.Pages
             {
                 InfoBaseModel database = AppState.GetDatabaseOrThrowException(Model.Owner);
 
-                QueryRequest request = new()
-                {
-                    DbName = database.Name,
-                    Script = Model.Script
-                };
+                Dictionary<string, object> parameters = new();
 
-                HttpResponseMessage response = await Http.PostAsJsonAsync("/djql/execute", request);
+                HttpResponseMessage response = await Http.PostAsJsonAsync(ScriptUrl, parameters);
 
                 if (!response.IsSuccessStatusCode)
                 {
