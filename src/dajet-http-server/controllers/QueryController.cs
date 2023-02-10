@@ -3,6 +3,7 @@ using DaJet.Http.DataMappers;
 using DaJet.Http.Model;
 using DaJet.Metadata;
 using DaJet.Scripting;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -10,7 +11,7 @@ using System.Text.Unicode;
 
 namespace DaJet.Http.Controllers
 {
-    [ApiController][Route("1ql")]
+    [ApiController][Route("djql")][Authorize]
     public class QueryController : ControllerBase
     {
         private readonly InfoBaseDataMapper _mapper = new();

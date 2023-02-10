@@ -30,25 +30,26 @@
                 <MudTooltip Text="Домашняя страница">
                     <MudIconButton Icon="@Icons.Material.Filled.Home" Color="Color.Default" Size="Size.Small" OnClick="NavigateToHomePage" />
                 </MudTooltip>
-                <MudTooltip Text="Обновить список баз данных">
-                    <MudIconButton Icon="@Icons.Material.Outlined.Refresh" Color="Color.Info" Size="Size.Small" OnClick="RefreshInfoBaseList" />
-                </MudTooltip>
                 <MudTooltip Text="Добавить базу данных">
                     <MudIconButton Icon="@Icons.Material.Outlined.Add" Color="Color.Success" Size="Size.Small" OnClick="RegisterNewInfoBase" />
+                </MudTooltip>
+                <MudTooltip Text="Обновить список баз данных">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Refresh" Color="Color.Info" Size="Size.Small" OnClick="RefreshInfoBaseList" />
                 </MudTooltip>
                 <MudTooltip Text="Удалить базу данных">
                     <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Error" Size="Size.Small" OnClick="UnRegisterInfoBase" />
                 </MudTooltip>
-                <MudTooltip Text="Создать новый скрипт">
+                @*<MudTooltip Text="Создать новый скрипт">
                     <MudIconButton Icon="@Icons.Material.Outlined.Description" Color="Color.Default" Size="Size.Small" OnClick="CreateNewScript" />
-                </MudTooltip>
+                </MudTooltip>*@
             </MudContainer>
 
             <MudSpacer />
-            <MudIconButton Icon="@Icons.Custom.Brands.Telegram" Size="Size.Small" Color="Color.Info" Href="https://t.me/dajet_studio" />
+            
+            <MudIconButton Icon="@Icons.Custom.Brands.Telegram" Size="Size.Small" Color="Color.Info" Href="https://t.me/dajet_studio_group" />
             <MudIconButton Icon="@Icons.Material.Outlined.Info" Size="Size.Small" Color="Color.Dark"  Href="https://zhichkin.github.io/" />
             <MudIconButton Icon="@Icons.Custom.Brands.GitHub" Size="Size.Small" Color="Color.Dark" Href="https://github.com/zhichkin/dajet" />
-            @*<a href="https://infostart.ru/profile/525991/"><img src="img/infostart.jpeg" width="24" height="24" style="vertical-align: middle;" /></a>*@
+            
         </MudToolBar>
     </div>
     <div class="app-lpanel">

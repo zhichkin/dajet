@@ -137,7 +137,7 @@ namespace DaJet.Studio.Pages
                     Script = Model.Script
                 };
 
-                HttpResponseMessage response = await Http.PostAsJsonAsync("/1ql/prepare", request);
+                HttpResponseMessage response = await Http.PostAsJsonAsync("/djql/prepare", request);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -183,7 +183,7 @@ namespace DaJet.Studio.Pages
                     Script = Model.Script
                 };
 
-                HttpResponseMessage response = await Http.PostAsJsonAsync("/1ql/execute", request);
+                HttpResponseMessage response = await Http.PostAsJsonAsync("/djql/execute", request);
 
                 string result = await response.Content.ReadAsStringAsync();
 
@@ -220,7 +220,7 @@ namespace DaJet.Studio.Pages
                     Script = Model.Script
                 };
 
-                HttpResponseMessage response = await Http.PostAsJsonAsync("/1ql/execute", request);
+                HttpResponseMessage response = await Http.PostAsJsonAsync("/djql/execute", request);
 
                 if (!response.IsSuccessStatusCode)
                 {
