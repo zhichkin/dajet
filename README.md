@@ -2,13 +2,13 @@
 
 [Документация DaJet](https://zhichkin.github.io/)
 
-![dajet-studio](https://github.com/zhichkin/dajet/blob/main/doc/dajet-studio/dajet-studio.png)
+![dajet-studio](https://github.com/zhichkin/dajet/blob/main/doc/dajet-studio/dajet-architecture.png)
 
 Платформа состоит из сервера DaJet, который работает под управлением
 [web сервера Kestrel](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/servers/kestrel?view=aspnetcore-7.0)
-и графического интерфейса пользователя DaJet Studio.
+и графического интерфейса пользователя - DaJet Studio.
 
-**Сервер DaJet** реализует Web Api для доступа к основным библиотекам платформы, а именно:
+**Сервер DaJet** реализует web api для доступа к основным библиотекам платформы, а именно:
 - DaJet.Metadata
 - DaJet.Scripting
 
@@ -25,4 +25,4 @@ DaJet Studio является средой разработки хранимых
 пользовательских данных платформы 1С:Предприятие 8, а также её язык запросов. Таким образом,
 это обеспечивает некоторую совместимость DaJet и 1С.
 
-[Канал DaJet в Телеграм](https://t.me/dajet_studio_group)
+[Канал DaJet в Телеграм](https://t.me/dajet_studio)
