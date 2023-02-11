@@ -1,125 +1,28 @@
-# DaJet
-Набор инструментов на C# для интеграции и расширения возможностей платформы 1С:Предприятие 8.
+# DaJet - платформа для разработки бэкенда и интеграции
 
-Поддерживается работа с базами данных 1С под управлением СУБД Microsoft SQL Server и PostgreSQL.
+[Документация DaJet](https://zhichkin.github.io/)
 
-Работа DaJet основана на чтении метаданных 1С:Предприятие 8 напрямую из баз данных 1С.
+![dajet-studio](https://github.com/zhichkin/dajet/blob/main/doc/dajet-studio/dajet-studio.png)
 
-Базовыми библиотеками являются DaJet.Metadata и DaJet.Scripting.
+Платформа состоит из сервера DaJet, который работает под управлением
+[web сервера Kestrel](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/servers/kestrel?view=aspnetcore-7.0)
+и графического интерфейса пользователя DaJet Studio.
 
-[Обсуждение и поддержка пользователей DaJet](https://t.me/dajet_studio_group)
+**Сервер DaJet** реализует Web Api для доступа к основным библиотекам платформы, а именно:
+- DaJet.Metadata
+- DaJet.Scripting
 
-Пример чтения метаданных 1С при помощи DaJet.Metadata:
-```C#
-using DaJet.Metadata;
-using DaJet.Metadata.Model;
+**DaJet Studio** реализовано как приложение
+[Microsoft Blazor](https://learn.microsoft.com/en-us/ASPNET/core/blazor/?view=aspnetcore-7.0)
+Web Assembly (wasm) и интегрированно непосредственно в сервер DaJet.
+DaJet Studio является средой разработки хранимых скриптов на SQL-подобном языке **DaJet QL** (DJQL).
+Вызов этих скриптов доступен для внешних систем как web api сервера DaJet.
 
-static void Main(string[] args)
-{
-   // Строка подключения к базе данных 1С
-   string MS_CONNECTION_STRING = "Data Source=MY_DATABASE_SERVER;Initial Catalog=MY_1C_DATABASE;Integrated Security=True;Encrypt=False;";
+На текущий момент времени поддерживается работа с СУБД Microsoft SQL Server и PostgreSQL,
+а также брокерами сообщений RabbitMQ и Apache Kafka.
 
-   // Регистрируем настройки подключения к базе данных 1С по строковому ключу
-   InfoBaseOptions options = new()
-   {
-      Key = "my_1c_infobase",
-      ConnectionString = MS_CONNECTION_STRING,
-      DatabaseProvider = DatabaseProvider.SqlServer
-   };
+Исторически так сложилось, что платформа DaJet частично заимствовала и развивает структуру хранения
+пользовательских данных платформы 1С:Предприятие 8, а также её язык запросов. Таким образом,
+это обеспечивает некоторую совместимость DaJet и 1С.
 
-   MetadataService metadata = new();
-   metadata.Add(options);
-
-   // Подключаемся к информационной базе 1С
-   if (!metadata.TryGetMetadataCache(options.Key, out MetadataCache cache, out string error))
-   {
-      Console.WriteLine($"Ошибка открытия информационной базы: {error}");
-      return;
-   }
-
-   // Читаем метаданные справочников
-   foreach (MetadataItem item in cache.GetMetadataItems(MetadataTypes.Catalog))
-   {
-      Catalog catalog = cache.GetMetadataObject<Catalog>(item.Uuid);
-
-      // Имя справочника и его таблицы СУБД
-      Console.WriteLine($"{catalog.Name} [{catalog.TableName}]");
-
-      // Читаем метаданные свойств справочников
-      foreach (MetadataProperty property in catalog.Properties)
-      {
-         // Имя свойства справочника
-         Console.WriteLine(property.Name);
-
-         // Читаем метаданные колонок таблицы СУБД
-         foreach (MetadataColumn column in property.Columns)
-         {
-            // Имя колонки таблицы СУБД
-            Console.WriteLine(column.Name);
-         }
-      }
-   }
-}
-```
-
-Пример выполнения запроса 1С при помощи DaJet.Scripting:
-```C#
-// Класс для вывода данных
-public class ProductInfo
-{
-   public string Code { get; set; }
-   public string Name { get; set; }
-   public EntityRef Reference { get; set; }
-   public bool IsMarkedForDeletion { get; set; }
-}
-
-// Метод для получения данных
-public void GetProductInfo()
-{
-   // Строка подключения к базе данных 1С
-   string MS_CONNECTION_STRING = "Data Source=MY_DATABASE_SERVER;Initial Catalog=MY_1C_DATABASE;Integrated Security=True;Encrypt=False;";
-
-   // Регистрируем настройки подключения к базе данных 1С по строковому ключу
-   InfoBaseOptions options = new()
-   {
-      Key = "my_1c_infobase",
-      ConnectionString = MS_CONNECTION_STRING,
-      DatabaseProvider = DatabaseProvider.SqlServer
-   };
-
-   MetadataService metadata = new();
-   metadata.Add(options);
-
-   // Подключаемся к информационной базе 1С
-   if (!metadata.TryGetMetadataCache(options.Key, out MetadataCache cache, out string error))
-   {
-      Console.WriteLine($"Ошибка открытия информационной базы: {error}");
-      return;
-   }
-
-   // Настраиваем выполнение запроса к базе данных 1С
-   ScriptExecutor executor = new(_cache);
-   executor.Parameters.Add("КодТовара", "А-1234");
-
-   string script = "ВЫБРАТЬ "
-      + "Код             КАК Code, "
-      + "Наименование    КАК Name, "
-      + "Ссылка          КАК Reference, "
-      + "ПометкаУдаления КАК IsMarkedForDeletion "
-      + "ИЗ Справочник.Номенклатура "
-      + "WHERE Код = @КодТовара;";
-
-   // Выполняем запрос и выводим данные на консоль
-   try
-   {
-      foreach (ProductInfo entity in executor.ExecuteReader<ProductInfo>(script))
-      {
-         Console.WriteLine($"[{entity.Code}] {entity.Name} : {entity.Reference} {entity.IsMarkedForDeletion}");
-      }
-   }
-   catch (Exception exception)
-   {
-      Console.WriteLine(ExceptionHelper.GetErrorMessage(exception));
-   }
-}
-```
+[Канал DaJet в Телеграм](https://t.me/dajet_studio_group)
