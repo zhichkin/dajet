@@ -1,24 +1,24 @@
 private const string MS_OUTGOING_QUEUE_SELECT_SCRIPT_TEMPLATE =
-            "WITH cte AS (SELECT TOP (@MessageCount) " +
-            "{МоментВремени} AS [МоментВремени], {Идентификатор} AS [Идентификатор], {ДатаВремя} AS [ДатаВремя], " +
-            "{Отправитель} AS [Отправитель], {Заголовки} AS [Заголовки], " +
-            "{Получатели} AS [Получатели], {ТипОперации} AS [ТипОперации], {ТипСообщения} AS [ТипСообщения], {ТелоСообщения} AS [ТелоСообщения] " +
-            "FROM {TABLE_NAME} WITH (ROWLOCK, READPAST) ORDER BY {МоментВремени} ASC, {Идентификатор} ASC) " +
-            "DELETE cte OUTPUT deleted.[МоментВремени], deleted.[Идентификатор], deleted.[ДатаВремя], deleted.[Отправитель], " +
-            "deleted.[Получатели], deleted.[ТипОперации], deleted.[ТипСообщения], deleted.[ТелоСообщения], deleted.[Заголовки];";
+"WITH cte AS (SELECT TOP (@MessageCount) " +
+"{МоментВремени} AS [МоментВремени], {Идентификатор} AS [Идентификатор], {ДатаВремя} AS [ДатаВремя], " +
+"{Отправитель} AS [Отправитель], {Заголовки} AS [Заголовки], " +
+"{Получатели} AS [Получатели], {ТипОперации} AS [ТипОперации], {ТипСообщения} AS [ТипСообщения], {ТелоСообщения} AS [ТелоСообщения] " +
+"FROM {TABLE_NAME} WITH (ROWLOCK, READPAST) ORDER BY {МоментВремени} ASC, {Идентификатор} ASC) " +
+"DELETE cte OUTPUT deleted.[МоментВремени], deleted.[Идентификатор], deleted.[ДатаВремя], deleted.[Отправитель], " +
+"deleted.[Получатели], deleted.[ТипОперации], deleted.[ТипСообщения], deleted.[ТелоСообщения], deleted.[Заголовки];";
 
-        private const string PG_OUTGOING_QUEUE_SELECT_SCRIPT_TEMPLATE =
-            "WITH cte AS (SELECT {МоментВремени}, {Идентификатор} " +
-            "FROM {TABLE_NAME} ORDER BY {МоментВремени} ASC, {Идентификатор} ASC LIMIT @MessageCount), " +
-            "del AS (DELETE FROM {TABLE_NAME} t USING cte " +
-            "WHERE t.{МоментВремени} = cte.{МоментВремени} AND t.{Идентификатор} = cte.{Идентификатор} " +
-            "RETURNING t.{МоментВремени}, t.{Идентификатор}, " +
-            "t.{ДатаВремя}, t.{Отправитель}, t.{Заголовки}, " +
-            "t.{Получатели}, t.{ТипОперации}, " +
-            "t.{ТипСообщения}, t.{ТелоСообщения}) " +
-            "SELECT del.{МоментВремени} AS \"МоментВремени\", del.{Идентификатор} AS \"Идентификатор\", " +
-            "del.{ДатаВремя} AS \"ДатаВремя\", CAST(del.{Отправитель} AS varchar) AS \"Отправитель\", " +
-            "CAST(del.{Заголовки} AS text) AS \"Заголовки\", " +
-            "CAST(del.{Получатели} AS text) AS \"Получатели\", CAST(del.{ТипОперации} AS varchar) AS \"ТипОперации\", " +
-            "CAST(del.{ТипСообщения} AS varchar) AS \"ТипСообщения\", CAST(del.{ТелоСообщения} AS text) AS \"ТелоСообщения\" " +
-            "FROM del ORDER BY del.{МоментВремени} ASC;";
+private const string PG_OUTGOING_QUEUE_SELECT_SCRIPT_TEMPLATE =
+"WITH cte AS (SELECT {МоментВремени}, {Идентификатор} " +
+"FROM {TABLE_NAME} ORDER BY {МоментВремени} ASC, {Идентификатор} ASC LIMIT @MessageCount), " +
+"del AS (DELETE FROM {TABLE_NAME} t USING cte " +
+"WHERE t.{МоментВремени} = cte.{МоментВремени} AND t.{Идентификатор} = cte.{Идентификатор} " +
+"RETURNING t.{МоментВремени}, t.{Идентификатор}, " +
+"t.{ДатаВремя}, t.{Отправитель}, t.{Заголовки}, " +
+"t.{Получатели}, t.{ТипОперации}, " +
+"t.{ТипСообщения}, t.{ТелоСообщения}) " +
+"SELECT del.{МоментВремени} AS \"МоментВремени\", del.{Идентификатор} AS \"Идентификатор\", " +
+"del.{ДатаВремя} AS \"ДатаВремя\", CAST(del.{Отправитель} AS varchar) AS \"Отправитель\", " +
+"CAST(del.{Заголовки} AS text) AS \"Заголовки\", " +
+"CAST(del.{Получатели} AS text) AS \"Получатели\", CAST(del.{ТипОперации} AS varchar) AS \"ТипОперации\", " +
+"CAST(del.{ТипСообщения} AS varchar) AS \"ТипСообщения\", CAST(del.{ТелоСообщения} AS text) AS \"ТелоСообщения\" " +
+"FROM del ORDER BY del.{МоментВремени} ASC;";
