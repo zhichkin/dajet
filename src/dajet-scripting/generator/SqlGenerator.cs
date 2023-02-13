@@ -2,6 +2,7 @@
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 using System.Text;
+using System.Xml.Linq;
 
 namespace DaJet.Scripting
 {
@@ -31,6 +32,10 @@ namespace DaJet.Scripting
                     else if (node is DeleteStatement delete)
                     {
                         //TODO: VisitDeleteStatement(delete, script, result.Mapper);
+                    }
+                    else
+                    {
+                        Visit(in node, in script);
                     }
                 }
 
@@ -141,6 +146,14 @@ namespace DaJet.Scripting
             {
                 Visit(in function, in script);
             }
+            else if (expression is TableVariableExpression table_variable)
+            {
+                Visit(in table_variable, in script);
+            }
+            else if (expression is TemporaryTableExpression temporary_table)
+            {
+                Visit(in temporary_table, in script);
+            }
         }
         protected virtual void Visit(in SelectStatement node, in StringBuilder script)
         {
@@ -180,7 +193,10 @@ namespace DaJet.Scripting
             {
                 script.Append(entity.TableName);
             }
-            else if (node.Binding is TableExpression || node.Binding is CommonTableExpression)
+            else if (node.Binding is TableExpression
+                || node.Binding is CommonTableExpression
+                || node.Binding is TableVariableExpression
+                || node.Binding is TemporaryTableExpression)
             {
                 script.Append(node.Identifier);
             }
@@ -189,25 +205,6 @@ namespace DaJet.Scripting
             {
                 script.Append(" AS ").Append(node.Alias);
             }
-
-            //TODO: table hints
-            //if (table.Hints.Count > 0)
-            //{
-            //    script.Append(" WITH (");
-
-            //    StringBuilder hints = new();
-
-            //    foreach (TokenType hint in table.Hints)
-            //    {
-            //        if (hints.Length > 0)
-            //        {
-            //            hints.Append(", ");
-            //        }
-            //        hints.Append(hint.ToString());
-            //    }
-
-            //    script.Append(hints.ToString()).Append(")");
-            //}
         }
         protected virtual void Visit(in ColumnExpression node, in StringBuilder script)
         {
@@ -631,6 +628,15 @@ namespace DaJet.Scripting
                 if (i > 0) { script.Append(", "); }
                 Visit(in expression, in script);
             }
+        }
+
+        protected virtual void Visit(in TableVariableExpression node, in StringBuilder script)
+        {
+            //TODO: declare table variable (ms) or create unlogged table (pg)
+        }
+        protected virtual void Visit(in TemporaryTableExpression node, in StringBuilder script)
+        {
+            //TODO: create temporary table and insert rows in it
         }
 
         #region "DELETE STATEMENT"

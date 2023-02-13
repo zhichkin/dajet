@@ -6,7 +6,7 @@
 
         SELECT, TOP, FROM, WHERE, GROUP, HAVING, ORDER, BY, ASC, DESC,
         AND, OR, AS, NOT,
-        JOIN, LEFT, RIGHT, INNER, FULL, CROSS, ON,
+        JOIN, LEFT, RIGHT, INNER, FULL, CROSS, ON, APPLY,
         UNION, ALL, UNION_ALL,
         DECLARE, WITH, INSERT, UPDATE, DELETE, OUTPUT, SET,
         NOLOCK, ROWLOCK, READPAST, READCOMMITTEDLOCK, SERIALIZABLE, UPDLOCK,
@@ -15,7 +15,7 @@
         OVER, PARTITION, RANGE, BETWEEN, UNBOUNDED, PRECEDING, CURRENT, FOLLOWING,
         CASE, WHEN, THEN, ELSE, END,
 
-        Identifier, Type, Table, Column, Variable, Enumeration, TemporaryTable, Star,
+        Identifier, Type, Table, Column, Variable, Enumeration, Star,
 
         IS, NULL, ISNULL, Boolean, Number, DateTime, String, Binary, Uuid, Entity, Version, Integer,
 
@@ -23,6 +23,8 @@
 
         OpenRoundBracket, CloseRoundBracket, OpenCurlyBracket, CloseCurlyBracket, OpenSquareBracket, CloseSquareBracket,
         
-        Plus, Minus, Divide, Modulo, Multiply
+        Plus, Minus, Divide, Modulo, Multiply,
+
+        CREATE, TABLE, COMMON, VARIABLE, TEMPORARY
     }
 }

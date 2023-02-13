@@ -1,7 +1,5 @@
 ﻿using DaJet.Data;
 using DaJet.Scripting.Model;
-using System;
-using System.Globalization;
 
 namespace DaJet.Scripting
 {
@@ -67,7 +65,12 @@ namespace DaJet.Scripting
             { "UNION", TokenType.UNION },
             { "ALL", TokenType.ALL },
             { "IS", TokenType.IS },
-            { "NULL", TokenType.NULL }
+            { "NULL", TokenType.NULL },
+            { "CREATE", TokenType.CREATE },
+            { "TABLE", TokenType.TABLE },
+            { "COMMON", TokenType.COMMON },
+            { "VARIABLE", TokenType.VARIABLE },
+            { "TEMPORARY", TokenType.TEMPORARY }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {

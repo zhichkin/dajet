@@ -32,6 +32,8 @@ namespace DaJet.Scripting
 
             if (node is ScriptModel) { OpenScope(ScopeType.Global, node); }
             else if (node is DeclareStatement) { JoinScope(node); }
+            else if (node is TableVariableExpression) { OpenScope(ScopeType.Node, node); }
+            else if (node is TemporaryTableExpression) { OpenScope(ScopeType.Node, node); }
             else if (node is SelectStatement) { OpenScope(ScopeType.Root, node); }
             else if (node is CommonTableExpression) { OpenScope(ScopeType.Node, node); }
             else if (node is TableExpression) { OpenScope(ScopeType.Node, node); }
@@ -40,8 +42,8 @@ namespace DaJet.Scripting
             else if (node is TableUnionOperator) { OpenScope(ScopeType.Node, node); }
             else if (node is TableReference) { JoinScope(node); }
             else if (node is ColumnReference) { JoinScope(node); }
-            else if (node is TypeIdentifier) { JoinScope(node); }
-            else if (node is VariableReference) { JoinScope(node); }
+            else if (node is TypeIdentifier) { JoinGlobalScope(node); }
+            else if (node is VariableReference) { JoinGlobalScope(node); }
         }
         public void SayGoodbye(SyntaxNode node)
         {
@@ -54,6 +56,8 @@ namespace DaJet.Scripting
             else if (node is TableExpression) { CloseScope(); }
             else if (node is TableJoinOperator) { CloseScope(); }
             else if (node is TableUnionOperator) { CloseScope(); }
+            else if (node is TableVariableExpression) { CloseScope(); }
+            else if (node is TemporaryTableExpression) { CloseScope(); }
         }
         private void OpenScope(ScopeType type, SyntaxNode owner)
         {
@@ -71,17 +75,16 @@ namespace DaJet.Scripting
         }
         private void JoinScope(SyntaxNode node)
         {
-            if (node.Token == TokenType.Type ||
-                node.Token == TokenType.Variable)
-            {
-                if (_scope != null)
-                {
-                    _scope.Identifiers.Add(node); // root scope
-                }
-            }
-            else if (_current != null)
+            if (_current != null)
             {
                 _current.Identifiers.Add(node);
+            }
+        }
+        private void JoinGlobalScope(SyntaxNode node)
+        {
+            if (_scope != null)
+            {
+                _scope.Identifiers.Add(node);
             }
         }
         private void CloseScope()

@@ -235,10 +235,6 @@ namespace DaJet.Scripting
                 {
                     Variable();
                 }
-                else if (_char == '#')
-                {
-                    TemporaryTable();
-                }
                 else if (ScriptHelper.IsAlphaNumeric(_char))
                 {
                     Identifier();
@@ -549,33 +545,12 @@ namespace DaJet.Scripting
 
             while (ScriptHelper.IsAlphaNumeric(next) && Consume())
             {
-                // read variable
+                // read identifier
                 _lexeme.Append(_char);
                 next = PeekNext();
             }
 
             AddToken(TokenType.Variable);
-        }
-        private void TemporaryTable()
-        {
-            _start = _position;
-            _lexeme.Append(_char);
-
-            if (Consume('#')) // ## global temporary table
-            {
-                _lexeme.Append(_char);
-            }
-
-            char next = PeekNext();
-
-            while (ScriptHelper.IsAlphaNumeric(next) && Consume())
-            {
-                // read variable
-                _lexeme.Append(_char);
-                next = PeekNext();
-            }
-
-            AddToken(TokenType.TemporaryTable);
         }
     }
 }

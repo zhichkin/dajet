@@ -42,6 +42,7 @@ namespace DaJet.Scripting
 
             BindDataTypes(in scope, in metadata);
             BindVariables(in scope, in metadata);
+            BindScriptScopeTables(in scope, in metadata);
         }
         private void BindDataTypes(in ScriptScope scope, in MetadataCache metadata)
         {
@@ -138,7 +139,19 @@ namespace DaJet.Scripting
                 ThrowBindingException(variable.Token, variable.Identifier);
             }
         }
-        
+
+        private void BindScriptScopeTables(in ScriptScope scope, in MetadataCache metadata)
+        {
+            foreach (ScriptScope child in scope.Children)
+            {
+                if (child.Owner is TableVariableExpression ||
+                    child.Owner is TemporaryTableExpression)
+                {
+                    BindResultScope(in child, in metadata);
+                }
+            }
+        }
+
         private void BindCommonScope(in ScriptScope scope, in MetadataCache metadata)
         {
             // bottom-up the scope tree - visit children first
@@ -198,6 +211,12 @@ namespace DaJet.Scripting
         }
         private void BindTable(in ScriptScope scope, in TableReference table, in MetadataCache metadata)
         {
+            // 0. bind table to script scope tables: variable or temporary
+
+            BindScriptTable(in scope, in table);
+
+            if (table.Binding is not null) { return; } // successful binding
+
             // 1. bind table in current scope
 
             BindTableScoped(in scope, in table);
@@ -251,8 +270,28 @@ namespace DaJet.Scripting
                 BindTableScoped(in child, in table); // go down the scope tree
             }
         }
+        private void BindScriptTable(in ScriptScope scope, in TableReference table)
+        {
+            ScriptScope root = scope.Ancestor<ScriptModel>();
+
+            if (root is null) { return; }
+
+            foreach (ScriptScope child in root.Children)
+            {
+                if (child.Owner is TableVariableExpression variable && variable.Name == table.Identifier)
+                {
+                    table.Binding = variable; return; // successful binding
+                }
+                else if (child.Owner is TemporaryTableExpression temporary && temporary.Name == table.Identifier)
+                {
+                    table.Binding = temporary; return; // successful binding
+                }
+            }
+        }
         private void BindCommonTable(in ScriptScope scope, in TableReference table)
         {
+            if (scope is null) { return; }
+
             if (scope.Owner is CommonTableExpression common && common.Name == table.Identifier)
             {
                 table.Binding = common; return; // successful binding
@@ -344,6 +383,13 @@ namespace DaJet.Scripting
 
         private bool TryGetSourceTable(in ScriptScope scope, in string identifier, out object table)
         {
+            // check if this is script scope table
+
+            if (TryGetScriptTable(in scope, in identifier, out table))
+            {
+                return true;
+            }
+
             // check if this is common table first
 
             ScriptScope context = scope.Ancestor<CommonTableExpression>();
@@ -362,9 +408,35 @@ namespace DaJet.Scripting
 
             return TryGetTableScoped(in scope, in identifier, out table);
         }
+        private bool TryGetScriptTable(in ScriptScope scope, in string identifier, out object table)
+        {
+            table = null;
+
+            if (scope is null) { return false; }
+
+            ScriptScope root = scope.Ancestor<ScriptModel>();
+
+            if (root is null) { return false; }
+
+            foreach (ScriptScope child in root.Children)
+            {
+                if (child.Owner is TableVariableExpression variable && variable.Name == identifier)
+                {
+                    table = variable; return true ; // success
+                }
+                else if (child.Owner is TemporaryTableExpression temporary && temporary.Name == identifier)
+                {
+                    table = temporary; return true; // success
+                }
+            }
+
+            return false; // not found
+        }
         private bool TryGetCommonTable(in ScriptScope scope, in string identifier, out object table)
         {
             table = null;
+
+            if (scope is null) { return false; }
 
             if (scope.Owner is CommonTableExpression common && common.Name == identifier)
             {
@@ -453,6 +525,14 @@ namespace DaJet.Scripting
             {
                 BindColumn(in derived, in identifier, in column);
             }
+            else if (source is TableVariableExpression variable)
+            {
+                BindColumn(in variable, in identifier, in column);
+            }
+            else if (source is TemporaryTableExpression temporary)
+            {
+                BindColumn(in temporary, in identifier, in column);
+            }
         }
         private void BindColumn(in TableExpression table, in string identifier, in ColumnReference column)
         {
@@ -477,6 +557,28 @@ namespace DaJet.Scripting
             }
         }
         private void BindColumn(in CommonTableExpression table, in string identifier, in ColumnReference column)
+        {
+            if (table.Expression is SelectExpression select)
+            {
+                BindColumn(in select, in identifier, in column);
+            }
+            else if (table.Expression is TableUnionOperator union)
+            {
+                BindColumn(in union, in identifier, in column);
+            }
+        }
+        private void BindColumn(in TableVariableExpression table, in string identifier, in ColumnReference column)
+        {
+            if (table.Expression is SelectExpression select)
+            {
+                BindColumn(in select, in identifier, in column);
+            }
+            else if (table.Expression is TableUnionOperator union)
+            {
+                BindColumn(in union, in identifier, in column);
+            }
+        }
+        private void BindColumn(in TemporaryTableExpression table, in string identifier, in ColumnReference column)
         {
             if (table.Expression is SelectExpression select)
             {
