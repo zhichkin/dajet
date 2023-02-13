@@ -34,7 +34,6 @@ namespace DaJet.Scripting
 
             return union;
         }
-
         private static string _name = string.Empty; // TODO: убрать костыль !
         public static void Map(in ColumnExpression node, in EntityMap map)
         {
@@ -46,7 +45,6 @@ namespace DaJet.Scripting
 
             _name = string.Empty;
         }
-        
         public static void Visit(in SyntaxNode node, in UnionType union)
         {
             if (node is ColumnExpression column)
@@ -224,6 +222,229 @@ namespace DaJet.Scripting
         {
             _name = property.Name;
             union.Merge(GetUnionType(in property));
+        }
+
+        public static EntityMap CreateEntityMap(in SelectExpression source)
+        {
+            EntityMap map = new();
+
+            int ordinal = 0;
+            PropertyMap property;
+            List<ColumnMap> columns;
+            ColumnExpression column;
+            List<ColumnExpression> select = source.Select;
+
+            for (int i = 0; i < select.Count; i++)
+            {
+                property = new();
+                column = select[i];
+
+                if (!string.IsNullOrEmpty(column.Alias))
+                {
+                    property.Name = column.Alias;
+                }
+
+                Visit(in column, in property);
+
+                columns = property.ColumnSequence;
+
+                for (int ii = 0; ii < columns.Count; ii++)
+                {
+                    columns[ii].Ordinal = ordinal++;
+                }
+
+                map.Properties.Add(property);
+            }
+
+            return map;
+        }
+        private static void Visit(in ColumnExpression source, in PropertyMap map)
+        {
+            if (source.Expression is ColumnReference column)
+            {
+                Visit(in column, in map);
+            }
+            else if (source.Expression is ScalarExpression scalar)
+            {
+                Visit(in scalar, in map);
+            }
+            else if (source.Expression is VariableReference variable)
+            {
+                Visit(in variable, in map);
+            }
+            else if (source.Expression is CaseExpression _case)
+            {
+                Visit(in _case, in map);
+            }
+            else if (source.Expression is WhenClause when)
+            {
+                Visit(in when, in map);
+            }
+            else if (source.Expression is FunctionExpression function)
+            {
+                Visit(in function, in map);
+            }
+        }
+        private static void Visit(in ColumnReference node, in PropertyMap map)
+        {
+            if (node.Binding is MetadataProperty property)
+            {
+                Visit(in property, in map);
+            }
+            else if (node.Binding is ColumnExpression parent)
+            {
+                //TODO
+            }
+            else if (node.Binding is EnumValue value)
+            {
+                map.DataType.IsUuid = true;
+            }
+        }
+        private static void Visit(in ScalarExpression scalar, in PropertyMap map)
+        {
+            if (scalar.Token == TokenType.Boolean)
+            {
+                map.DataType.IsBoolean = true;
+            }
+            else if (scalar.Token == TokenType.Number)
+            {
+                map.DataType.IsNumeric = true;
+            }
+            else if (scalar.Token == TokenType.DateTime)
+            {
+                map.DataType.IsDateTime = true;
+            }
+            else if (scalar.Token == TokenType.String)
+            {
+                map.DataType.IsString = true;
+            }
+            else if (scalar.Token == TokenType.Binary)
+            {
+                map.DataType.IsBinary = true;
+            }
+            else if (scalar.Token == TokenType.Uuid)
+            {
+                map.DataType.IsUuid = true;
+            }
+            else if (scalar.Token == TokenType.Entity)
+            {
+                if (Entity.TryParse(scalar.Literal, out Entity entity))
+                {
+                    map.DataType.IsEntity = true;
+                    map.DataType.TypeCode = entity.TypeCode;
+                }
+            }
+            else if (scalar.Token == TokenType.Version)
+            {
+                map.DataType.IsVersion = true;
+            }
+            else if (scalar.Token == TokenType.Integer)
+            {
+                map.DataType.IsInteger = true;
+            }
+            else if (scalar.Token == TokenType.NULL)
+            {
+                map.DataType.Clear(); // undefined
+            }
+        }
+        private static void Visit(in VariableReference identifier, in PropertyMap map)
+        {
+            if (identifier.Binding is Entity entity)
+            {
+                map.DataType.IsEntity = true;
+                map.DataType.TypeCode = entity.TypeCode;
+                return;
+            }
+
+            if (identifier.Binding is not Type type)
+            {
+                return;
+            }
+
+            if (type == typeof(Guid))
+            {
+                map.DataType.IsUuid = true;
+            }
+            else if (type == typeof(bool))
+            {
+                map.DataType.IsBoolean = true;
+            }
+            else if (type == typeof(decimal))
+            {
+                map.DataType.IsNumeric = true;
+            }
+            else if (type == typeof(DateTime))
+            {
+                map.DataType.IsDateTime = true;
+            }
+            else if (type == typeof(string))
+            {
+                map.DataType.IsString = true;
+            }
+            else if (type == typeof(byte[]))
+            {
+                map.DataType.IsBinary = true;
+            }
+            else if (type == typeof(ulong))
+            {
+                map.DataType.IsVersion = true;
+            }
+            else if (type == typeof(int))
+            {
+                map.DataType.IsInteger = true;
+            }
+        }
+        private static void Visit(in CaseExpression node, in PropertyMap map)
+        {
+            foreach (WhenClause when in node.CASE)
+            {
+                Visit(when, in map);
+            }
+
+            //if (node.ELSE is not null)
+            //{
+            //    Visit(node.ELSE, in map);
+            //}
+        }
+        private static void Visit(in WhenClause node, in PropertyMap map)
+        {
+            //Visit(node.WHEN, in map); does not return value for union
+            //Visit(node.THEN, in map);
+        }
+        private static void Visit(in FunctionExpression function, in PropertyMap map)
+        {
+            if (function.Parameters is not null && function.Parameters.Count == 0)
+            {
+                //TODO: get return type of function
+            }
+
+            foreach (SyntaxNode parameter in function.Parameters)
+            {
+                //TODO: Visit(in parameter, in map);
+            }
+        }
+        private static void Visit(in MetadataProperty property, in PropertyMap map)
+        {
+            UnionType type = GetUnionType(in property);
+
+            map.DataType.Merge(type);
+
+            if (string.IsNullOrEmpty(map.Name))
+            {
+                map.Name = property.Name;
+            }
+            
+            foreach (MetadataColumn source in property.Columns)
+            {
+                ColumnMap column = new()
+                {
+                    Name = source.Name,
+                    TypeName = SQLHelper.GetDbTypeName(in property, source.Purpose),
+                    Type = type.IsUnion ? UnionType.GetPurposeUnionTag(source.Purpose) : type.GetSingleTagOrUndefined(),
+                    Alias = type.IsUnion ? $"{map.Name}_{UnionType.GetPurposeLiteral(source.Purpose)}" : map.Name
+                };
+                map.Columns.Add(column.Type, column);
+            }
         }
     }
 }

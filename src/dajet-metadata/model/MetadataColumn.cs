@@ -25,6 +25,6 @@ namespace DaJet.Metadata.Model
         public bool IsNullable { get; set; }
         public int KeyOrdinal { get; set; }
         public bool IsPrimaryKey { get; set; }
-        public override string ToString() { return Name; }
+        public override string ToString() { return $"{Name} {{{Purpose}}}"; }
     }
 }

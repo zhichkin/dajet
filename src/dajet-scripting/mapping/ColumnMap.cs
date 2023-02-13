@@ -11,6 +11,7 @@ namespace DaJet.Scripting
         public string Name { get; set; } = string.Empty; // name of column to get ordinal position in IDataReader
         public string Alias { get; set; } = string.Empty; // alias, if not empty, is used instead of the name
         public UnionTag Type { get; set; } = UnionTag.Undefined; // data type of column (purpose)
+        public string TypeName { get; set; } = string.Empty; // database data type name
         public override string ToString() { return $"[{Ordinal}] {Name} {Type}"; }
     }
 }

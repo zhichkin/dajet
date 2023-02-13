@@ -11,6 +11,20 @@ namespace DaJet.Scripting
         public UnionType DataType { get; } = new();
         public Type Type { get { return UnionType.MapToType(DataType); } }
         public Dictionary<UnionTag, ColumnMap> Columns { get; } = new();
+        public List<ColumnMap> ColumnSequence
+        {
+            get
+            {
+                List<ColumnMap> sequence = new();
+
+                foreach (var item in Columns.OrderBy(item => item.Key))
+                {
+                    sequence.Add(item.Value);
+                }
+
+                return sequence;
+            }
+        }
         public override string ToString() { return $"{Name} {DataType}"; }
         
         #region "GET VALUE FROM DATA READER"

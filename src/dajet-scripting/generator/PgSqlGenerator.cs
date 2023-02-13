@@ -189,5 +189,21 @@ namespace DaJet.Scripting
             }
             base.Visit(in node, in script);
         }
+        protected override void Visit(in TableVariableExpression node, in StringBuilder script)
+        {
+            script.Append($"CREATE TEMPORARY TABLE {node.Name} AS").AppendLine();
+
+            base.Visit(in node, in script);
+
+            script.Append(';').AppendLine();
+        }
+        protected override void Visit(in TemporaryTableExpression node, in StringBuilder script)
+        {
+            script.Append($"CREATE TEMPORARY TABLE {node.Name} AS").AppendLine();
+
+            base.Visit(in node, in script);
+
+            script.Append(';').AppendLine();
+        }
     }
 }

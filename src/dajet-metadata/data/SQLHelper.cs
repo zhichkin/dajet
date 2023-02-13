@@ -1,4 +1,5 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using DaJet.Metadata.Model;
+using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -321,6 +322,48 @@ namespace DaJet.Data
         public static byte[] GetSqlUuid(Guid guid_1c)
         {
             return GetSqlUuid(guid_1c.ToByteArray());
+        }
+
+        public static string GetDbTypeName(in MetadataProperty property, ColumnPurpose purpose)
+        {
+            DataTypeSet type = property.PropertyType;
+
+            if (purpose == ColumnPurpose.Default)
+            {
+                if (type.IsUuid) { return "binary(16)"; }
+                else if (type.IsBinary) { return "varbinary(max)"; }
+                else if (type.IsValueStorage) { return "varbinary(max)"; }
+                else if (type.CanBeBoolean) { return "binary(1)"; }
+                else if (type.CanBeNumeric) { return $"numeric({type.NumericPrecision},{type.NumericScale})"; }
+                else if (type.CanBeDateTime) { return "datetime2"; }
+                else if (type.CanBeString) { return $"n{(type.StringKind == StringKind.Variable ? "var" : string.Empty)}char({(type.StringLength == 0 ? "max" : type.StringLength.ToString())})"; }
+                else if (type.CanBeReference) { return "binary(16)"; }
+                else { return property.Columns[0].TypeName; }
+            }
+            else
+            {
+                MetadataColumn column = null;
+                for (int i = 0; i < property.Columns.Count; i++)
+                {
+                    column = property.Columns[i];
+                    if (column.Purpose == purpose) { break; }
+                }
+
+                if (column is null)
+                {
+                    throw new InvalidOperationException($"Column purpose [{purpose}] is not found for property \"{property.Name}\".");
+                }
+
+                if (purpose == ColumnPurpose.Tag || purpose == ColumnPurpose.Boolean) { return "binary(1)"; }
+                else if (purpose == ColumnPurpose.Numeric) { return $"numeric({type.NumericPrecision},{type.NumericScale})"; }
+                else if (purpose == ColumnPurpose.DateTime) { return $"datetime2"; }
+                else if (purpose == ColumnPurpose.String) { return $"n{(type.StringKind == StringKind.Variable ? "var" : string.Empty)}char({(type.StringLength == 0 ? "max" : type.StringLength.ToString())})"; }
+                else if (purpose == ColumnPurpose.Binary) { return $"varbinary({(column.Length == -1 ? "max" : column.Length.ToString())})"; }
+                else if (purpose == ColumnPurpose.TypeCode) { return $"binary(4)"; }
+                else if (purpose == ColumnPurpose.Identity) { return $"binary(16)"; }
+            }
+
+            throw new InvalidOperationException($"Failed to get DbTypeName for property \"{property.Name}\".");
         }
     }
 }

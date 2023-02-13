@@ -115,6 +115,21 @@ namespace DaJet.Data
         public bool IsEntity { get { return IsBitSet((int)UnionTag.Entity); } set { SetBit((int)UnionTag.Entity, value); } }
         public bool IsVersion { get { return IsBitSet((int)UnionTag.Version); } set { SetBit((int)UnionTag.Version, value); } }
         public bool IsInteger { get { return IsBitSet((int)UnionTag.Integer); } set { SetBit((int)UnionTag.Integer, value); } }
+        public UnionTag GetSingleTagOrUndefined()
+        {
+            if (IsUnion) { return UnionTag.Tag; }
+            else if (IsBoolean) { return UnionTag.Boolean; }
+            else if (IsNumeric) { return UnionTag.Numeric; }
+            else if (IsDateTime) { return UnionTag.DateTime; }
+            else if (IsString) { return UnionTag.String; }
+            else if (IsBinary) { return UnionTag.Binary; }
+            else if (IsUuid) { return UnionTag.Uuid; }
+            else if (IsEntity) { return UnionTag.Entity; }
+            else if (IsVersion) { return UnionTag.Version; }
+            else if (IsInteger) { return UnionTag.Integer; }
+
+            return UnionTag.Undefined;
+        }
         public override string ToString()
         {
             if (IsUndefined) { return "{ Undefined }"; }

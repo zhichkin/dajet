@@ -2,7 +2,6 @@
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 using System.Text;
-using System.Xml.Linq;
 
 namespace DaJet.Scripting
 {
@@ -632,11 +631,11 @@ namespace DaJet.Scripting
 
         protected virtual void Visit(in TableVariableExpression node, in StringBuilder script)
         {
-            //TODO: declare table variable (ms) or create unlogged table (pg)
+            Visit(node.Expression, in script);
         }
         protected virtual void Visit(in TemporaryTableExpression node, in StringBuilder script)
         {
-            //TODO: create temporary table and insert rows in it
+            Visit(node.Expression, in script);
         }
 
         #region "DELETE STATEMENT"
