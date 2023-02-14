@@ -167,6 +167,11 @@ namespace DaJet.Scripting
         {
             script.Append("SELECT");
 
+            if (node.Distinct)
+            {
+                script.Append(" DISTINCT");
+            }
+
             if (node.Top is not null)
             {
                 Visit(node.Top, in script);

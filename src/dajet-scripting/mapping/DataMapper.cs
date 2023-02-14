@@ -67,10 +67,6 @@ namespace DaJet.Scripting
             {
                 Visit(in _case, in union);
             }
-            else if (node is WhenClause when)
-            {
-                Visit(in when, in union);
-            }
             else if (node is FunctionExpression function)
             {
                 Visit(in function, in union);
@@ -198,7 +194,7 @@ namespace DaJet.Scripting
         {
             foreach (WhenClause when in node.CASE)
             {
-                Visit(when, in union);
+                Visit(when.THEN, in union); //NOTE: WHEN clause is not used for type inference
             }
 
             if (node.ELSE is not null)
@@ -206,13 +202,19 @@ namespace DaJet.Scripting
                 Visit(node.ELSE, in union);
             }
         }
-        private static void Visit(in WhenClause node, in UnionType union)
-        {
-            //Visit(node.WHEN, in union); does not return value for union
-            Visit(node.THEN, in union);
-        }
         private static void Visit(in FunctionExpression function, in UnionType union)
         {
+            if (function.Name == "ROW_NUMBER")
+            {
+                //TODO: IsVersion is an int64 (bigint) hack
+                //NOTE: the function does not have any parameters
+                union.IsVersion = true; return;
+            }
+            else if (function.Name == "SUBSTRING")
+            {
+                union.IsString = true; return;
+            }
+
             foreach (SyntaxNode parameter in function.Parameters)
             {
                 Visit(in parameter, in union);
@@ -236,15 +238,9 @@ namespace DaJet.Scripting
 
             for (int i = 0; i < select.Count; i++)
             {
-                property = new();
                 column = select[i];
 
-                if (!string.IsNullOrEmpty(column.Alias))
-                {
-                    property.Name = column.Alias;
-                }
-
-                Visit(in column, in property);
+                property = CreatePropertyMap(in column);
 
                 columns = property.ColumnSequence;
 
@@ -258,31 +254,54 @@ namespace DaJet.Scripting
 
             return map;
         }
-        private static void Visit(in ColumnExpression source, in PropertyMap map)
+        private static PropertyMap CreatePropertyMap(in ColumnExpression source)
         {
+            PropertyMap map = new();
+
+            if (!string.IsNullOrEmpty(source.Alias))
+            {
+                map.Name = source.Alias;
+            }
+
             if (source.Expression is ColumnReference column)
             {
                 Visit(in column, in map);
             }
+            else if (source.Expression is CaseExpression case_when_then_else)
+            {
+                Map(case_when_then_else, in map);
+            }
             else if (source.Expression is ScalarExpression scalar)
             {
-                Visit(in scalar, in map);
+                Map(scalar, in map);
             }
             else if (source.Expression is VariableReference variable)
             {
-                Visit(in variable, in map);
-            }
-            else if (source.Expression is CaseExpression _case)
-            {
-                Visit(in _case, in map);
-            }
-            else if (source.Expression is WhenClause when)
-            {
-                Visit(in when, in map);
+                Map(variable, in map);
             }
             else if (source.Expression is FunctionExpression function)
             {
-                Visit(in function, in map);
+                Map(function, in map);
+            }
+
+            return map;
+        }
+        private static void Map(in SyntaxNode expression, in PropertyMap map)
+        {
+            UnionType type = new();
+            DataMapper.Visit(expression, in type);
+            List<UnionTag> columns = type.ToColumnList();
+
+            for (int i = 0; i < columns.Count; i++)
+            {
+                ColumnMap column = new()
+                {
+                    Name = map.Name,
+                    Type = columns[i],
+                    Alias = type.IsUnion ? $"{map.Name}_{UnionType.GetLiteral(columns[i])}" : map.Name,
+                    TypeName = UnionType.GetDbTypeName(columns[i])
+                };
+                map.Columns.Add(column.Type, column);
             }
         }
         private static void Visit(in ColumnReference node, in PropertyMap map)
@@ -291,136 +310,20 @@ namespace DaJet.Scripting
             {
                 Visit(in property, in map);
             }
-            else if (node.Binding is ColumnExpression parent)
+            else if (node.Binding is ColumnExpression column)
             {
-                //TODO
-            }
-            else if (node.Binding is EnumValue value)
-            {
-                map.DataType.IsUuid = true;
-            }
-        }
-        private static void Visit(in ScalarExpression scalar, in PropertyMap map)
-        {
-            if (scalar.Token == TokenType.Boolean)
-            {
-                map.DataType.IsBoolean = true;
-            }
-            else if (scalar.Token == TokenType.Number)
-            {
-                map.DataType.IsNumeric = true;
-            }
-            else if (scalar.Token == TokenType.DateTime)
-            {
-                map.DataType.IsDateTime = true;
-            }
-            else if (scalar.Token == TokenType.String)
-            {
-                map.DataType.IsString = true;
-            }
-            else if (scalar.Token == TokenType.Binary)
-            {
-                map.DataType.IsBinary = true;
-            }
-            else if (scalar.Token == TokenType.Uuid)
-            {
-                map.DataType.IsUuid = true;
-            }
-            else if (scalar.Token == TokenType.Entity)
-            {
-                if (Entity.TryParse(scalar.Literal, out Entity entity))
+                if (string.IsNullOrEmpty(map.Name))
                 {
-                    map.DataType.IsEntity = true;
-                    map.DataType.TypeCode = entity.TypeCode;
+                    ScriptHelper.GetColumnIdentifiers(node.Identifier, out string _, out string columnAlias);
+
+                    map.Name = string.IsNullOrEmpty(column.Alias) ? columnAlias : column.Alias;
                 }
-            }
-            else if (scalar.Token == TokenType.Version)
-            {
-                map.DataType.IsVersion = true;
-            }
-            else if (scalar.Token == TokenType.Integer)
-            {
-                map.DataType.IsInteger = true;
-            }
-            else if (scalar.Token == TokenType.NULL)
-            {
-                map.DataType.Clear(); // undefined
-            }
-        }
-        private static void Visit(in VariableReference identifier, in PropertyMap map)
-        {
-            if (identifier.Binding is Entity entity)
-            {
-                map.DataType.IsEntity = true;
-                map.DataType.TypeCode = entity.TypeCode;
-                return;
-            }
 
-            if (identifier.Binding is not Type type)
-            {
-                return;
+                Map(column, in map);
             }
-
-            if (type == typeof(Guid))
+            else if (node.Binding is EnumValue)
             {
-                map.DataType.IsUuid = true;
-            }
-            else if (type == typeof(bool))
-            {
-                map.DataType.IsBoolean = true;
-            }
-            else if (type == typeof(decimal))
-            {
-                map.DataType.IsNumeric = true;
-            }
-            else if (type == typeof(DateTime))
-            {
-                map.DataType.IsDateTime = true;
-            }
-            else if (type == typeof(string))
-            {
-                map.DataType.IsString = true;
-            }
-            else if (type == typeof(byte[]))
-            {
-                map.DataType.IsBinary = true;
-            }
-            else if (type == typeof(ulong))
-            {
-                map.DataType.IsVersion = true;
-            }
-            else if (type == typeof(int))
-            {
-                map.DataType.IsInteger = true;
-            }
-        }
-        private static void Visit(in CaseExpression node, in PropertyMap map)
-        {
-            foreach (WhenClause when in node.CASE)
-            {
-                Visit(when, in map);
-            }
-
-            //if (node.ELSE is not null)
-            //{
-            //    Visit(node.ELSE, in map);
-            //}
-        }
-        private static void Visit(in WhenClause node, in PropertyMap map)
-        {
-            //Visit(node.WHEN, in map); does not return value for union
-            //Visit(node.THEN, in map);
-        }
-        private static void Visit(in FunctionExpression function, in PropertyMap map)
-        {
-            if (function.Parameters is not null && function.Parameters.Count == 0)
-            {
-                //TODO: get return type of function
-            }
-
-            foreach (SyntaxNode parameter in function.Parameters)
-            {
-                //TODO: Visit(in parameter, in map);
+                Map(node, in map);
             }
         }
         private static void Visit(in MetadataProperty property, in PropertyMap map)

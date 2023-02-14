@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DaJet.Metadata.Model;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -115,21 +116,6 @@ namespace DaJet.Data
         public bool IsEntity { get { return IsBitSet((int)UnionTag.Entity); } set { SetBit((int)UnionTag.Entity, value); } }
         public bool IsVersion { get { return IsBitSet((int)UnionTag.Version); } set { SetBit((int)UnionTag.Version, value); } }
         public bool IsInteger { get { return IsBitSet((int)UnionTag.Integer); } set { SetBit((int)UnionTag.Integer, value); } }
-        public UnionTag GetSingleTagOrUndefined()
-        {
-            if (IsUnion) { return UnionTag.Tag; }
-            else if (IsBoolean) { return UnionTag.Boolean; }
-            else if (IsNumeric) { return UnionTag.Numeric; }
-            else if (IsDateTime) { return UnionTag.DateTime; }
-            else if (IsString) { return UnionTag.String; }
-            else if (IsBinary) { return UnionTag.Binary; }
-            else if (IsUuid) { return UnionTag.Uuid; }
-            else if (IsEntity) { return UnionTag.Entity; }
-            else if (IsVersion) { return UnionTag.Version; }
-            else if (IsInteger) { return UnionTag.Integer; }
-
-            return UnionTag.Undefined;
-        }
         public override string ToString()
         {
             if (IsUndefined) { return "{ Undefined }"; }
@@ -150,6 +136,30 @@ namespace DaJet.Data
             value.Append(" }");
 
             return value.ToString();
+        }
+        public List<UnionTag> ToColumnList()
+        {
+            List<UnionTag> tags = new();
+
+            if (UseTag) { tags.Add(UnionTag.Tag); }
+            if (IsBoolean) { tags.Add(UnionTag.Boolean); }
+            if (IsNumeric) { tags.Add(UnionTag.Numeric); }
+            if (IsDateTime) { tags.Add(UnionTag.DateTime); }
+            if (IsString) { tags.Add(UnionTag.String); }
+            if (IsBinary) { tags.Add(UnionTag.Binary); }
+            if (IsEntity)
+            {
+                if (UseTypeCode)
+                {
+                    tags.Add(UnionTag.TypeCode);
+                }
+                tags.Add(UnionTag.Entity);
+            }
+            if (IsUuid) { tags.Add(UnionTag.Uuid); }
+            if (IsVersion) { tags.Add(UnionTag.Version); }
+            if (IsInteger) { tags.Add(UnionTag.Integer); }
+
+            return tags;
         }
         public static Type MapToType(in UnionType union)
         {
@@ -409,29 +419,36 @@ namespace DaJet.Data
 
             return UnionTag.Undefined; // ColumnPurpose.Default
         }
-        public List<UnionTag> ToColumnList()
+        public UnionTag GetSingleTagOrUndefined()
         {
-            List<UnionTag> tags = new();
+            if (IsUnion) { return UnionTag.Tag; }
+            else if (IsBoolean) { return UnionTag.Boolean; }
+            else if (IsNumeric) { return UnionTag.Numeric; }
+            else if (IsDateTime) { return UnionTag.DateTime; }
+            else if (IsString) { return UnionTag.String; }
+            else if (IsBinary) { return UnionTag.Binary; }
+            else if (IsUuid) { return UnionTag.Uuid; }
+            else if (IsEntity) { return UnionTag.Entity; }
+            else if (IsVersion) { return UnionTag.Version; }
+            else if (IsInteger) { return UnionTag.Integer; }
 
-            if (UseTag) { tags.Add(UnionTag.Tag); }
-            if (IsBoolean) { tags.Add(UnionTag.Boolean); }
-            if (IsNumeric) { tags.Add(UnionTag.Numeric); }
-            if (IsDateTime) { tags.Add(UnionTag.DateTime); }
-            if (IsString) { tags.Add(UnionTag.String); }
-            if (IsBinary) { tags.Add(UnionTag.Binary); }
-            if (IsEntity)
-            {
-                if (UseTypeCode)
-                {
-                    tags.Add(UnionTag.TypeCode);
-                }
-                tags.Add(UnionTag.Entity);
-            }
-            if (IsUuid) { tags.Add(UnionTag.Uuid); }
-            if (IsVersion) { tags.Add(UnionTag.Version); }
-            if (IsInteger) { tags.Add(UnionTag.Integer); }
+            return UnionTag.Undefined;
+        }
+        public static string GetDbTypeName(UnionTag tag)
+        {
+            if (tag == UnionTag.Tag) { return "binary(1)"; }
+            else if (tag == UnionTag.Boolean) { return "binary(1)"; }
+            else if (tag == UnionTag.Numeric) { return "numeric(16,4)"; }
+            else if (tag == UnionTag.DateTime) { return "datetime2"; }
+            else if (tag == UnionTag.String) { return "nvarchar(max)"; }
+            else if (tag == UnionTag.Binary) { return "varbinary(max)"; }
+            else if (tag == UnionTag.Uuid) { return "binary(16)"; }
+            else if (tag == UnionTag.TypeCode) { return "binary(4)"; }
+            else if (tag == UnionTag.Entity) { return "binary(16)"; }
+            else if (tag == UnionTag.Version) { return "binary(8)"; }
+            else if (tag == UnionTag.Integer) { return "binary(4)"; }
 
-            return tags;
+            return "varbinary(max)"; // UnionTag.Undefined
         }
     }
 }

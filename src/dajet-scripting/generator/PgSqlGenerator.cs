@@ -25,7 +25,14 @@ namespace DaJet.Scripting
         }
         protected override void Visit(in SelectExpression node, in StringBuilder script)
         {
-            script.Append("SELECT").AppendLine();
+            script.Append("SELECT");
+
+            if (node.Distinct)
+            {
+                script.Append(" DISTINCT");
+            }
+
+            script.AppendLine();
 
             for (int i = 0; i < node.Select.Count; i++)
             {
@@ -43,7 +50,7 @@ namespace DaJet.Scripting
         }
         protected override void Visit(in TopClause node, in StringBuilder script)
         {
-            script.Append("LIMIT ");
+            script.AppendLine().Append("LIMIT ");
             Visit(node.Expression, in script);
         }
         private bool IsRecursive(in CommonTableExpression cte)

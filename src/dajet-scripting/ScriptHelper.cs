@@ -160,7 +160,9 @@ namespace DaJet.Scripting
             { "MIN", TokenType.MIN },
             { "AVG", TokenType.AVG },
             { "COUNT", TokenType.COUNT },
-            { "ISNULL", TokenType.ISNULL }
+            { "ISNULL", TokenType.ISNULL },
+            { "ROW_NUMBER", TokenType.ROW_NUMBER },
+            { "SUBSTRING", TokenType.SUBSTRING }
         };
         private static Dictionary<string, TokenType> _function_ru = new()
         {

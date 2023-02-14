@@ -437,9 +437,11 @@ namespace DaJet.Scripting
         private void select_clause(in SelectExpression select)
         {
             Skip(TokenType.Comment);
+            select.Distinct = Match(TokenType.DISTINCT);
+            Skip(TokenType.Comment);
 
+            Skip(TokenType.Comment);
             top(in select);
-
             Skip(TokenType.Comment);
 
             select.Select.Add(column());
@@ -915,16 +917,23 @@ namespace DaJet.Scripting
                 Name = identifier
             };
 
-            function.Parameters.Add(expression());
-
-            while (Match(TokenType.Comma))
+            if (Match(TokenType.CloseRoundBracket))
+            {
+                // the function does not have any parameters
+            }
+            else
             {
                 function.Parameters.Add(expression());
-            }
 
-            if (!Match(TokenType.CloseRoundBracket))
-            {
-                throw new FormatException("Close round bracket expected.");
+                while (Match(TokenType.Comma))
+                {
+                    function.Parameters.Add(expression());
+                }
+
+                if (!Match(TokenType.CloseRoundBracket))
+                {
+                    throw new FormatException("Close round bracket expected.");
+                }
             }
 
             if (Match(TokenType.OVER))
