@@ -26,6 +26,6 @@
         
         Plus, Minus, Divide, Modulo, Multiply,
 
-        CREATE, TABLE, COMMON, VARIABLE, TEMPORARY
+        CREATE, TABLE, COMPUTED, TEMPORARY, VARIABLE
     }
 }

@@ -68,7 +68,7 @@ namespace DaJet.Scripting
             { "NULL", TokenType.NULL },
             { "CREATE", TokenType.CREATE },
             { "TABLE", TokenType.TABLE },
-            { "COMMON", TokenType.COMMON },
+            { "COMPUTED", TokenType.COMPUTED },
             { "VARIABLE", TokenType.VARIABLE },
             { "TEMPORARY", TokenType.TEMPORARY }
         };

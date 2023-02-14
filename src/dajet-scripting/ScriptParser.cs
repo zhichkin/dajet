@@ -1053,7 +1053,7 @@ namespace DaJet.Scripting
         {
             TokenType token = TokenType.TABLE;
 
-            if (Match(TokenType.COMMON, TokenType.TEMPORARY))
+            if (Match(TokenType.COMPUTED, TokenType.TEMPORARY))
             {
                 token = Previous().Type;
             }
@@ -1078,7 +1078,7 @@ namespace DaJet.Scripting
                 throw new FormatException("Table identifier expected.");
             }
 
-            if (token == TokenType.COMMON)
+            if (token == TokenType.COMPUTED)
             {
                 return statement_with_cte();
             }
