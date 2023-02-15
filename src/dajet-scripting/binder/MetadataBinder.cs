@@ -482,6 +482,13 @@ namespace DaJet.Scripting
                 }
             }
 
+            // identifier is not provided and current scope does not have any TableReference
+            // we might be in the ORDER clause of UNION operator ... exceptional case
+            if (string.IsNullOrEmpty(identifier) && scope.Owner is TableUnionOperator union)
+            {
+                table = union; return true; // success
+            }
+
             // continue to search down the scope tree
 
             foreach (ScriptScope child in scope.Children)
@@ -532,6 +539,10 @@ namespace DaJet.Scripting
             else if (source is TemporaryTableExpression temporary)
             {
                 BindColumn(in temporary, in identifier, in column);
+            }
+            else if (source is TableUnionOperator union) // ORDER clause column of the UNION operator 
+            {
+                BindColumn(in union, in identifier, in column);
             }
         }
         private void BindColumn(in TableExpression table, in string identifier, in ColumnReference column)

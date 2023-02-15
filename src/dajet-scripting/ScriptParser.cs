@@ -282,6 +282,40 @@ namespace DaJet.Scripting
         }
         private SyntaxNode union()
         {
+            SyntaxNode node = union_operator();
+
+            if (node is not TableUnionOperator _union)
+            {
+                return node;
+            }
+
+            SyntaxNode bottom = _union.Expression2;
+
+            while (bottom is TableUnionOperator next)
+            {
+                bottom = next.Expression2;
+            }
+
+            if (bottom is not SelectExpression select)
+            {
+                throw new FormatException("UNION: SELECT expression expected.");
+            }
+
+            if (select.Order is not null)
+            {
+                _union.Order = select.Order;
+
+                select.Order = null;
+            }
+            else if (Previous().Type == TokenType.CloseRoundBracket)
+            {
+                if (Match(TokenType.ORDER)) { _union.Order = order_clause(); }
+            }
+            
+            return _union;
+        }
+        private SyntaxNode union_operator()
+        {
             SyntaxNode node;
 
             if (Match(TokenType.OpenRoundBracket))
@@ -298,8 +332,13 @@ namespace DaJet.Scripting
                 node = select();
             }
 
-            while (Match(TokenType.UNION))
+            if (Match(TokenType.UNION))
             {
+                if (node is SelectExpression select && select.Order is not null)
+                {
+                    throw new FormatException("UNION: unexpected ORDER keyword.");
+                }
+
                 Skip(TokenType.Comment);
 
                 TokenType _operator = Match(TokenType.ALL) ? TokenType.UNION_ALL : TokenType.UNION;
@@ -310,10 +349,10 @@ namespace DaJet.Scripting
                 {
                     Token = _operator,
                     Expression1 = node,
-                    Expression2 = union()
+                    Expression2 = union_operator()
                 };
             }
-
+            
             return node;
         }
         private SelectExpression select()

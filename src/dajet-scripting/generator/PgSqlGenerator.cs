@@ -137,6 +137,8 @@ namespace DaJet.Scripting
                 if (column.Type == UnionTag.String)
                 {
                     //TODO: optimize cast - do it only for ColumnExpression of SelectStatement
+                    //NOTE: input parameters, as an example for comparison operations,
+                    //NOTE: are provided as varchar, but columns are mvarchar
                     script.Append($"CAST({column.Name} AS varchar)");
                 }
                 else

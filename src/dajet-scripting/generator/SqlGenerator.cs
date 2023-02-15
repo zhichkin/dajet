@@ -316,6 +316,7 @@ namespace DaJet.Scripting
             {
                 Visit(in union1, in script);
             }
+
             if (node.Token == TokenType.UNION)
             {
                 script.AppendLine().AppendLine("UNION");
@@ -324,6 +325,7 @@ namespace DaJet.Scripting
             {
                 script.AppendLine().AppendLine("UNION ALL");
             }
+
             if (node.Expression2 is SelectExpression select2)
             {
                 Visit(in select2, in script);
@@ -331,6 +333,11 @@ namespace DaJet.Scripting
             else if (node.Expression2 is TableUnionOperator union2)
             {
                 Visit(in union2, in script);
+            }
+
+            if (node.Order is OrderClause order)
+            {
+                Visit(in order, in script);
             }
         }
         protected virtual void Visit(in CommonTableExpression node, in StringBuilder script)
