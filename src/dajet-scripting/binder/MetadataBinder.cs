@@ -230,6 +230,7 @@ namespace DaJet.Scripting
             if (context is null) // result context
             {
                 context = scope.Ancestor<SelectStatement>();
+                if (context is null) { context = scope.Ancestor<InsertStatement>(); }
 
                 BindCommonTable(context, in table);
             }

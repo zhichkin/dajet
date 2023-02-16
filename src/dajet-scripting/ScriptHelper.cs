@@ -9,6 +9,7 @@ namespace DaJet.Scripting
         {
             { "WITH", TokenType.WITH },
             { "SELECT", TokenType.SELECT },
+            { "INTO", TokenType.INTO },
             { "DISTINCT", TokenType.DISTINCT },
             { "TOP", TokenType.TOP },
             { "FROM", TokenType.FROM },
@@ -36,6 +37,7 @@ namespace DaJet.Scripting
             { "SERIALIZABLE", TokenType.SERIALIZABLE },
             { "READCOMMITTEDLOCK", TokenType.READCOMMITTEDLOCK },
             { "INSERT", TokenType.INSERT },
+            { "VALUES", TokenType.VALUES },
             { "UPDATE", TokenType.UPDATE },
             { "DELETE", TokenType.DELETE },
             { "OUTPUT", TokenType.OUTPUT },

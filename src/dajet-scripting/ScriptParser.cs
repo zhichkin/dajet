@@ -1,5 +1,6 @@
 ﻿using DaJet.Metadata;
 using DaJet.Scripting.Model;
+using System.Xml.Linq;
 
 namespace DaJet.Scripting
 {
@@ -118,38 +119,7 @@ namespace DaJet.Scripting
             }
         }
         #endregion
-        
-        private SyntaxNode statement()
-        {
-            if (Match(TokenType.Comment))
-            {
-                return comment();
-            }
-            else if (Match(TokenType.DECLARE))
-            {
-                return declare();
-            }
-            else if (Match(TokenType.CREATE))
-            {
-                return create_statement();
-            }
-            else if (Check(TokenType.SELECT))
-            {
-                return select_statement();
-            }
-            //else if (Check(TokenType.DELETE))
-            //{
-            //    return delete_statement();
-            //}
-            else if (Match(TokenType.EndOfStatement))
-            {
-                return null;
-            }
 
-            Ignore();
-
-            throw new FormatException($"Unknown statement: {Previous()}");
-        }
         private SyntaxNode comment()
         {
             return new CommentStatement()
@@ -203,6 +173,145 @@ namespace DaJet.Scripting
 
             return declare;
         }
+        private SyntaxNode statement()
+        {
+            if (Match(TokenType.Comment))
+            {
+                return comment();
+            }
+            else if (Match(TokenType.DECLARE))
+            {
+                return declare();
+            }
+            else if (Match(TokenType.CREATE))
+            {
+                return create_statement();
+            }
+            else if (Check(TokenType.SELECT))
+            {
+                return select_statement();
+            }
+            else if (Check(TokenType.INSERT))
+            {
+                return insert_statement();
+            }
+            //else if (Check(TokenType.DELETE))
+            //{
+            //    return delete_statement();
+            //}
+            else if (Match(TokenType.EndOfStatement))
+            {
+                return null;
+            }
+
+            Ignore();
+
+            throw new FormatException($"Unknown statement: {Previous()}");
+        }
+
+        #region "CREATE TABLE STATEMENT"
+        private SyntaxNode create_statement()
+        {
+            TokenType token = TokenType.TABLE;
+
+            if (Match(TokenType.COMPUTED, TokenType.TEMPORARY))
+            {
+                token = Previous().Type;
+            }
+
+            if (!Match(TokenType.TABLE))
+            {
+                throw new FormatException("TABLE keyword expected.");
+            }
+
+            if (Match(TokenType.VARIABLE))
+            {
+                token = Previous().Type;
+            }
+
+            if (token == TokenType.TABLE)
+            {
+                throw new NotSupportedException("Creating regular tables is not supported yet.");
+            }
+
+            if (!Check(TokenType.Identifier))
+            {
+                throw new FormatException("Table identifier expected.");
+            }
+
+            if (token == TokenType.COMPUTED)
+            {
+                return statement_with_cte();
+            }
+            else if (token == TokenType.VARIABLE)
+            {
+                return table_variable();
+            }
+            else if (token == TokenType.TEMPORARY)
+            {
+                return temporary_table();
+            }
+
+            throw new FormatException("Invalid CREATE TABLE statement.");
+        }
+        private SyntaxNode table_variable()
+        {
+            if (!Match(TokenType.Identifier))
+            {
+                throw new FormatException("Table identifier expected.");
+            }
+
+            string identifier = Previous().Lexeme;
+
+            if (!Match(TokenType.AS))
+            {
+                throw new FormatException("AS keyword expected.");
+            }
+
+            bool expect_close = Match(TokenType.CloseRoundBracket);
+
+            TableVariableExpression table = new()
+            {
+                Name = identifier,
+                Expression = union()
+            };
+
+            if (expect_close && !Match(TokenType.CloseRoundBracket))
+            {
+                throw new FormatException("CREATE TABLE: close round bracket expected.");
+            }
+
+            return table;
+        }
+        private SyntaxNode temporary_table()
+        {
+            if (!Match(TokenType.Identifier))
+            {
+                throw new FormatException("Table identifier expected.");
+            }
+
+            string identifier = Previous().Lexeme;
+
+            if (!Match(TokenType.AS))
+            {
+                throw new FormatException("AS keyword expected.");
+            }
+
+            bool expect_close = Match(TokenType.CloseRoundBracket);
+
+            TemporaryTableExpression table = new()
+            {
+                Name = identifier,
+                Expression = union()
+            };
+
+            if (expect_close && !Match(TokenType.CloseRoundBracket))
+            {
+                throw new FormatException("CREATE TABLE: close round bracket expected.");
+            }
+
+            return table;
+        }
         private SyntaxNode statement_with_cte()
         {
             CommonTableExpression root = cte();
@@ -222,6 +331,12 @@ namespace DaJet.Scripting
                     CommonTables = root
                 };
             }
+            else if (Check(TokenType.INSERT))
+            {
+                InsertStatement insert = insert_statement();
+                insert.CommonTables = root;
+                return insert;
+            }
 
             //if (Check(TokenType.DELETE))
             //{
@@ -230,7 +345,7 @@ namespace DaJet.Scripting
             //    return delete;
             //}
 
-            throw new FormatException("SELECT statement expected.");
+            throw new FormatException("Statement expected.");
         }
         private CommonTableExpression cte()
         {
@@ -271,6 +386,7 @@ namespace DaJet.Scripting
 
             return cte;
         }
+        #endregion
 
         #region "SELECT STATEMENT"
         private SyntaxNode select_statement()
@@ -461,12 +577,17 @@ namespace DaJet.Scripting
 
             return string.Empty;
         }
-        private SyntaxNode star()
-        {
-            return new StarExpression();
-        }
         private ColumnExpression column()
         {
+            if (Match(TokenType.Star))
+            {
+                return new ColumnExpression()
+                {
+                    Expression = new StarExpression(),
+                    Alias = alias()
+                };
+            }
+
             return new ColumnExpression()
             {
                 Expression = expression(),
@@ -1087,108 +1208,95 @@ namespace DaJet.Scripting
         }
         #endregion
 
-        #region "CREATE TABLE STATEMENT"
-        private SyntaxNode create_statement()
+        #region "INSERT STATEMENT"
+        private InsertStatement insert_statement()
         {
-            TokenType token = TokenType.TABLE;
-
-            if (Match(TokenType.COMPUTED, TokenType.TEMPORARY))
+            if (!Match(TokenType.INSERT))
             {
-                token = Previous().Type;
+                throw new FormatException("INSERT keyword expected.");
             }
 
-            if (!Match(TokenType.TABLE))
+            InsertStatement insert = new();
+
+            if (Match(TokenType.INTO)) { /* do nothing - optional */ }
+
+            insert.Target = table_identifier();
+
+            if (Match(TokenType.OpenRoundBracket))
             {
-                throw new FormatException("TABLE keyword expected.");
+                insert.Columns.Add(column_identifier());
+
+                while (Match(TokenType.Comma))
+                {
+                    insert.Columns.Add(column_identifier());
+                }
+
+                if (!Match(TokenType.CloseRoundBracket))
+                {
+                    throw new FormatException("INSERT: close round bracket expected.");
+                }
+            }
+
+            if (Check(TokenType.SELECT))
+            {
+                insert.Source = union();
+            }
+            else if (Check(TokenType.VALUES))
+            {
+                insert.Source = values();
+            }
+            else
+            {
+                throw new FormatException("INSERT: source or values expression expected.");
             }
             
-            if (Match(TokenType.VARIABLE))
-            {
-                token = Previous().Type;
-            }
-
-            if (token == TokenType.TABLE)
-            {
-                throw new NotSupportedException("Creating regular tables is not supported yet.");
-            }
-
-            if (!Check(TokenType.Identifier))
-            {
-                throw new FormatException("Table identifier expected.");
-            }
-
-            if (token == TokenType.COMPUTED)
-            {
-                return statement_with_cte();
-            }
-            else if (token == TokenType.VARIABLE)
-            {
-                return table_variable();
-            }
-            else if (token == TokenType.TEMPORARY)
-            {
-                return temporary_table();
-            }
-            
-            throw new FormatException("Invalid CREATE TABLE statement.");
+            return insert;
         }
-        private SyntaxNode table_variable()
+        private SyntaxNode values()
+        {
+            if (!Match(TokenType.VALUES))
+            {
+                throw new FormatException("VALUES keyword expected.");
+            }
+            
+            if (!Match(TokenType.OpenRoundBracket))
+            {
+                throw new FormatException("Open round bracket expected.");
+            }
+
+            ValuesExpression values = new();
+
+            values.Values.Add(expression());
+
+            while (Match(TokenType.Comma))
+            {
+                values.Values.Add(expression());
+            }
+
+            if (!Match(TokenType.CloseRoundBracket))
+            {
+                throw new FormatException("Close round bracket expected.");
+            }
+
+            return values;
+        }
+        private TableReference table_identifier()
         {
             if (!Match(TokenType.Identifier))
             {
-                throw new FormatException("Table identifier expected.");
+                throw new FormatException("INSERT: target identifier expected.");
             }
-
-            string identifier = Previous().Lexeme;
-
-            if (!Match(TokenType.AS))
-            {
-                throw new FormatException("AS keyword expected.");
-            }
-
-            bool expect_close = Match(TokenType.CloseRoundBracket);
-
-            TableVariableExpression table = new()
-            {
-                Name = identifier,
-                Expression = union()
-            };
-
-            if (expect_close && !Match(TokenType.CloseRoundBracket))
-            {
-                throw new FormatException("CREATE TABLE: close round bracket expected.");
-            }
-
-            return table;
+            
+            return new TableReference() { Identifier = Previous().Lexeme };
         }
-        private SyntaxNode temporary_table()
+        private ColumnReference column_identifier()
         {
             if (!Match(TokenType.Identifier))
             {
-                throw new FormatException("Table identifier expected.");
+                throw new FormatException("INSERT: column identifier expected.");
             }
 
-            string identifier = Previous().Lexeme;
-
-            if (!Match(TokenType.AS))
-            {
-                throw new FormatException("AS keyword expected.");
-            }
-
-            bool expect_close = Match(TokenType.CloseRoundBracket);
-
-            TemporaryTableExpression table = new()
-            {
-                Name = identifier,
-                Expression = union()
-            };
-
-            if (expect_close && !Match(TokenType.CloseRoundBracket))
-            {
-                throw new FormatException("CREATE TABLE: close round bracket expected.");
-            }
-
-            return table;
+            return new ColumnReference() { Identifier = Previous().Lexeme };
         }
         #endregion
 
@@ -1281,7 +1389,7 @@ namespace DaJet.Scripting
                 {
                     output.Expressions.Add(new ColumnExpression()
                     {
-                        Expression = star()
+                        Expression = new StarExpression()
                     });
                 }
                 else if (token.Type == TokenType.Identifier)

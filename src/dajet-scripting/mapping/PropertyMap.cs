@@ -1,5 +1,8 @@
 ﻿using DaJet.Data;
+using Npgsql;
+using System.Buffers;
 using System.Data;
+using System.Text;
 
 namespace DaJet.Scripting
 {
@@ -230,12 +233,31 @@ namespace DaJet.Scripting
         {
             int ordinal = GetOrdinal(in reader, UnionTag.String, out _);
 
-            if (reader.IsDBNull(ordinal))
-            {
-                return null;
-            }
+            if (reader.IsDBNull(ordinal)) { return null; }
 
-            return reader.GetString(ordinal);
+            if (reader is not NpgsqlDataReader postgres)
+            {
+                return reader.GetString(ordinal);
+            }
+            
+            string typeName = postgres.GetPostgresType(ordinal).Name;
+
+            if (typeName == "mchar" || typeName == "mvarchar")
+            {
+                //TODO: optimize text reading - cash pooled buffer
+                Stream stream = postgres.GetStream(ordinal);
+                int length = (int)stream.Length;
+                if (length == 0) { return string.Empty; }
+                byte[] buffer = ArrayPool<byte>.Shared.Rent(length);
+                int count = stream.Read(buffer, 0, length);
+                string text = Encoding.Unicode.GetString(buffer, 0, count);
+                ArrayPool<byte>.Shared.Return(buffer);
+                return text;
+            }
+            else
+            {
+                return postgres.GetString(ordinal);
+            }
         }
         private object GetBinary(in IDataReader reader)
         {

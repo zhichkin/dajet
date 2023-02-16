@@ -35,6 +35,7 @@ namespace DaJet.Scripting
             else if (node is TableVariableExpression) { OpenScope(ScopeType.Node, node); }
             else if (node is TemporaryTableExpression) { OpenScope(ScopeType.Node, node); }
             else if (node is SelectStatement) { OpenScope(ScopeType.Root, node); }
+            else if (node is InsertStatement) { OpenScope(ScopeType.Root, node); }
             else if (node is CommonTableExpression) { OpenScope(ScopeType.Node, node); }
             else if (node is TableExpression) { OpenScope(ScopeType.Node, node); }
             else if (node is SelectExpression) { OpenScope(ScopeType.Node, node); }
@@ -51,6 +52,7 @@ namespace DaJet.Scripting
             
             if (node is ScriptModel) { CloseScope(); }
             else if (node is SelectStatement) { CloseScope(); }
+            else if (node is InsertStatement) { CloseScope(); }
             else if (node is CommonTableExpression) { CloseScope(); }
             else if (node is SelectExpression) { CloseScope(); }
             else if (node is TableExpression) { CloseScope(); }

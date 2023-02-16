@@ -124,34 +124,6 @@ namespace DaJet.Scripting
         {
             return (table.Binding == cte);
         }
-        protected override void Visit(in List<ColumnMap> mapping, in StringBuilder script)
-        {
-            ColumnMap column;
-
-            for (int i = 0; i < mapping.Count; i++)
-            {
-                column = mapping[i];
-
-                if (i > 0) { script.Append(", "); }
-
-                if (column.Type == UnionTag.String)
-                {
-                    //TODO: optimize cast - do it only for ColumnExpression of SelectStatement
-                    //NOTE: input parameters, as an example for comparison operations,
-                    //NOTE: are provided as varchar, but columns are mvarchar
-                    script.Append($"CAST({column.Name} AS varchar)");
-                }
-                else
-                {
-                    script.Append(column.Name);
-                }
-
-                if (!string.IsNullOrEmpty(column.Alias))
-                {
-                    script.Append(" AS ").Append(column.Alias);
-                }
-            }
-        }
         protected override void Visit(in EnumValue node, in StringBuilder script)
         {
             script.Append($"CAST(E'\\\\x{ScriptHelper.GetUuidHexLiteral(node.Uuid)}' AS bytea)");
@@ -175,7 +147,7 @@ namespace DaJet.Scripting
             }
             else if (node.Token == TokenType.String)
             {
-                script.Append($"\'{node.Literal}\'");
+                script.Append($"CAST(\'{node.Literal}\' AS mvarchar)");
             }
             else if (node.Token == TokenType.Uuid)
             {
@@ -190,13 +162,52 @@ namespace DaJet.Scripting
                 script.Append(node.Literal);
             }
         }
+        protected override void Visit(in VariableReference node, in StringBuilder script)
+        {
+            if (node.Binding is Type type && type == typeof(string))
+            {
+                script.Append($"CAST({node.Identifier} AS mvarchar)");
+            }
+            else
+            {
+                script.Append(node.Identifier);
+            }
+        }
         protected override void Visit(in FunctionExpression node, in StringBuilder script)
         {
             if (node.Name.ToUpperInvariant() == "ISNULL")
             {
                 node.Name = "COALESCE";
             }
-            base.Visit(in node, in script);
+
+            script.Append(node.Name).Append("(");
+
+            SyntaxNode expression;
+
+            for (int i = 0; i < node.Parameters.Count; i++)
+            {
+                expression = node.Parameters[i];
+                if (i > 0) { script.Append(", "); }
+
+                if (node.Name == "SUBSTRING" && i == 0)
+                {
+                    script.Append("CAST(");
+                    Visit(in expression, in script);
+                    script.Append(" AS varchar)");
+                }
+                else
+                {
+                    Visit(in expression, in script);
+                }
+            }
+
+            script.Append(")");
+
+            if (node.Over is not null)
+            {
+                script.Append(" ");
+                Visit(node.Over, in script);
+            }
         }
         protected override void Visit(in TableVariableExpression node, in StringBuilder script)
         {

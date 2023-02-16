@@ -23,10 +23,13 @@ namespace DaJet.Scripting
                     if (node is SelectStatement select)
                     {
                         Visit(in select, in script);
-                        script.Append(";");
-
+                        
                         //TODO: implement outside this class !!!
                         ConfigureDataMapper(in select, result.Mapper);
+                    }
+                    else if (node is InsertStatement insert)
+                    {
+                        Visit(in insert, in script);
                     }
                     else if (node is DeleteStatement delete)
                     {
@@ -78,7 +81,6 @@ namespace DaJet.Scripting
                 DataMapper.Map(in column, in mapper);
             }
         }
-
         protected void Visit(in SyntaxNode expression, in StringBuilder script)
         {
             if (expression is GroupOperator group)
@@ -153,14 +155,29 @@ namespace DaJet.Scripting
             {
                 Visit(in temporary_table, in script);
             }
+            else if (expression is StarExpression star)
+            {
+                Visit(in star, in script);
+            }
+            else if (expression is ValuesExpression values)
+            {
+                Visit(in values, in script);
+            }
         }
+
+        #region "SELECT STATEMENT"
         protected virtual void Visit(in SelectStatement node, in StringBuilder script)
         {
+            script.AppendLine();
+
             if (node.CommonTables is not null)
             {
                 script.Append("WITH ");
                 Visit(node.CommonTables, in script);
             }
+
+            script.AppendLine();
+
             Visit(node.Select, in script);
         }
         protected virtual void Visit(in SelectExpression node, in StringBuilder script)
@@ -234,6 +251,10 @@ namespace DaJet.Scripting
                 }
             }
         }
+        protected virtual void Visit(in StarExpression node, in StringBuilder script)
+        {
+            script.Append(" * ");
+        }
         protected virtual void Visit(in ColumnReference node, in StringBuilder script)
         {
             if (node.Mapping is not null) // we are here from anywhere, but not ColumnExpression itself
@@ -257,7 +278,6 @@ namespace DaJet.Scripting
 
                 script.Append(column.Name);
 
-                //TODO: select = AS, order by = ASC|DESC - ColumnReference context
                 if (!string.IsNullOrEmpty(column.Alias))
                 {
                     script.Append(" AS ").Append(column.Alias);
@@ -649,6 +669,67 @@ namespace DaJet.Scripting
         {
             Visit(node.Expression, in script);
         }
+        #endregion
+
+        #region "INSERT STATEMENT"
+        protected virtual void Visit(in InsertStatement node, in StringBuilder script)
+        {
+            script.AppendLine();
+
+            if (node.CommonTables is not null)
+            {
+                script.Append("WITH ");
+                Visit(node.CommonTables, in script);
+            }
+
+            script.AppendLine().Append("INSERT INTO ");
+
+            Visit(node.Target, in script);
+            
+            script.Append(' ');
+
+            if (node.Columns.Count > 0)
+            {
+                script.Append('(');
+
+                ColumnReference column;
+
+                for (int i = 0; i < node.Columns.Count; i++)
+                {
+                    column = node.Columns[i];
+                    
+                    if (i > 0) { script.Append(", "); }
+                    
+                    Visit(in column, in script);
+                }
+
+                script.Append(')');
+            }
+
+            script.AppendLine();
+
+            Visit(node.Source, in script);
+
+            script.Append(';').AppendLine();
+        }
+        protected virtual void Visit(in ValuesExpression node, in StringBuilder script)
+        {
+            script.Append("VALUES(");
+
+            SyntaxNode value;
+
+            for (int i = 0; i < node.Values.Count; i++)
+            {
+                value = node.Values[i];
+
+                if (i > 0) { script.Append(", "); }
+
+                Visit(in value, in script);
+            }
+
+            script.Append(")").AppendLine();
+        }
+        #endregion
 
         #region "DELETE STATEMENT"
         private void VisitDeleteStatement(DeleteStatement delete, StringBuilder script, EntityMap mapper)
