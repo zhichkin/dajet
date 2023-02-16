@@ -195,10 +195,14 @@ namespace DaJet.Scripting
             {
                 return insert_statement();
             }
-            //else if (Check(TokenType.DELETE))
-            //{
-            //    return delete_statement();
-            //}
+            else if (Check(TokenType.UPDATE))
+            {
+                return update_statement();
+            }
+            else if (Check(TokenType.DELETE))
+            {
+                return delete_statement();
+            }
             else if (Match(TokenType.EndOfStatement))
             {
                 return null;
@@ -337,13 +341,18 @@ namespace DaJet.Scripting
                 insert.CommonTables = root;
                 return insert;
             }
-
-            //if (Check(TokenType.DELETE))
-            //{
-            //    DeleteStatement delete = delete_statement();
-            //    delete.CommonTables = root;
-            //    return delete;
-            //}
+            else if (Check(TokenType.UPDATE))
+            {
+                UpdateStatement update = update_statement();
+                update.CommonTables = root;
+                return update;
+            }
+            else if (Check(TokenType.DELETE))
+            {
+                DeleteStatement delete = delete_statement();
+                delete.CommonTables = root;
+                return delete;
+            }
 
             throw new FormatException("Statement expected.");
         }
@@ -1293,14 +1302,99 @@ namespace DaJet.Scripting
         {
             if (!Match(TokenType.Identifier))
             {
-                throw new FormatException("INSERT: column identifier expected.");
+                throw new FormatException("Column identifier expected.");
             }
 
             return new ColumnReference() { Identifier = Previous().Lexeme };
         }
         #endregion
 
+        #region "UPDATE STATEMENT"
+        private UpdateStatement update_statement()
+        {
+            if (!Match(TokenType.UPDATE))
+            {
+                throw new FormatException("UPDATE keyword expected.");
+            }
+
+            UpdateStatement update = new()
+            {
+                Target = table_identifier()
+            };
+
+            if (!Match(TokenType.SET))
+            {
+                throw new FormatException("SET keyword expected.");
+            }
+
+            update.Set.Add(set_expression());
+
+            while (Match(TokenType.Comma))
+            {
+                update.Set.Add(set_expression());
+            }
+
+            if (Match(TokenType.FROM))
+            {
+                update.Source = from_clause();
+            }
+            
+            if (Match(TokenType.WHERE))
+            {
+                update.Where = where_clause();
+            }
+
+            return update;
+        }
+        private SetExpression set_expression()
+        {
+            SetExpression set = new()
+            {
+                Column = column_identifier()
+            };
+
+            if (!Match(TokenType.Equals))
+            {
+                throw new FormatException("Assignment operator expected.");
+            }
+
+            set.Initializer = expression();
+
+            return set;
+        }
+        #endregion
+
         #region "DELETE STATEMENT"
+        private DeleteStatement delete_statement()
+        {
+            if (!Match(TokenType.DELETE))
+            {
+                throw new FormatException("DELETE keyword expected.");
+            }
+
+            DeleteStatement delete = new();
+
+            if (Match(TokenType.FROM)) { /* do nothing - optional */ }
+
+            delete.TARGET = table_source();
+
+            if (Match(TokenType.OUTPUT))
+            {
+                delete.OUTPUT = output_clause();
+            }
+
+            if (Match(TokenType.FROM))
+            {
+                delete.FROM = from_clause();
+            }
+
+            if (Match(TokenType.WHERE))
+            {
+                delete.WHERE = where_clause();
+            }
+
+            return delete;
+        }
         private TableSource table_source()
         {
             SyntaxNode expression = null!;
@@ -1346,36 +1440,6 @@ namespace DaJet.Scripting
             }
 
             return source;
-        }
-        private DeleteStatement delete_statement()
-        {
-            if (!Match(TokenType.DELETE))
-            {
-                throw new FormatException("DELETE keyword expected.");
-            }
-
-            DeleteStatement delete = new();
-
-            if (Match(TokenType.FROM)) { /* do nothing - optional */ }
-
-            delete.TARGET = table_source();
-
-            if (Match(TokenType.OUTPUT))
-            {
-                delete.OUTPUT = output_clause();
-            }
-
-            if (Match(TokenType.FROM))
-            {
-                delete.FROM = from_clause();
-            }
-
-            if (Match(TokenType.WHERE))
-            {
-                delete.WHERE = where_clause();
-            }
-
-            return delete;
         }
         private OutputClause output_clause()
         {
