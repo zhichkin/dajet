@@ -1,0 +1,29 @@
+UPDATE T
+
+SET
+
+T.[_LineNo] = T.[RowNumber]
+
+FROM
+
+(SELECT
+
+[_LineNo],
+
+ROW_NUMBER() OVER (
+
+PARTITION BY [_Period], [_RecorderTRef], [_RecorderRRef]
+
+ORDER BY [_LineNo]) AS [RowNumber]
+
+FROM
+
+[ИмяТаблицыРегистра]
+
+WHERE
+
+[_Period] <= @Period) AS T
+
+WHERE
+
+T.[_LineNo] <> T.[RowNumber];

@@ -1,6 +1,5 @@
 ﻿using DaJet.Metadata;
 using DaJet.Scripting.Model;
-using System.Xml.Linq;
 
 namespace DaJet.Scripting
 {
@@ -1376,90 +1375,28 @@ namespace DaJet.Scripting
 
             if (Match(TokenType.FROM)) { /* do nothing - optional */ }
 
-            delete.TARGET = table_source();
-
-            if (Match(TokenType.OUTPUT))
-            {
-                delete.OUTPUT = output_clause();
-            }
-
-            if (Match(TokenType.FROM))
-            {
-                delete.FROM = from_clause();
-            }
+            delete.Target = table_identifier();
 
             if (Match(TokenType.WHERE))
             {
-                delete.WHERE = where_clause();
+                delete.Where = where_clause();
             }
 
             return delete;
-        }
-        private TableSource table_source()
-        {
-            SyntaxNode expression = null!;
-
-            if (Match(TokenType.Identifier))
-            {
-                expression = table();
-            }
-            else if (Check(TokenType.OpenRoundBracket))
-            {
-                expression = table();
-            }
-
-            if (expression == null)
-            {
-                throw new FormatException("Identifier or Subquery expected.");
-            }
-
-            TableSource source = new() { Expression = expression };
-
-            if (!Match(TokenType.WITH))
-            {
-                return source;
-            }
-
-            if (!Match(TokenType.OpenRoundBracket))
-            {
-                throw new FormatException($"Open round bracket expected.");
-            }
-
-            while (Match(TokenType.Comma, TokenType.NOLOCK, TokenType.ROWLOCK, TokenType.READPAST,
-                TokenType.READCOMMITTEDLOCK, TokenType.SERIALIZABLE, TokenType.UPDLOCK))
-            {
-                if (Previous().Type != TokenType.Comma)
-                {
-                    source.Hints.Add(Previous().Type);
-                }
-            }
-
-            if (!Match(TokenType.CloseRoundBracket))
-            {
-                throw new FormatException($"Close round bracket expected.");
-            }
-
-            return source;
         }
         private OutputClause output_clause()
         {
             OutputClause output = new();
 
-            while (Match(TokenType.Comma, TokenType.Comment, TokenType.Star, TokenType.Identifier))
-            {
-                ScriptToken token = Previous();
+            Skip(TokenType.Comment);
+            output.Columns.Add(column());
+            Skip(TokenType.Comment);
 
-                if (token.Type == TokenType.Star)
-                {
-                    output.Expressions.Add(new ColumnExpression()
-                    {
-                        Expression = new StarExpression()
-                    });
-                }
-                else if (token.Type == TokenType.Identifier)
-                {
-                    output.Expressions.Add(column());
-                }
+            while (Match(TokenType.Comma))
+            {
+                Skip(TokenType.Comment);
+                output.Columns.Add(column());
+                Skip(TokenType.Comment);
             }
 
             return output;

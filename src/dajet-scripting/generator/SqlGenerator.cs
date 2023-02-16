@@ -24,7 +24,7 @@ namespace DaJet.Scripting
                     {
                         Visit(in select, in script);
                         
-                        //TODO: implement outside this class !!!
+                        //TODO: implement outside of this class !!!
                         ConfigureDataMapper(in select, result.Mapper);
                     }
                     else if (node is InsertStatement insert)
@@ -38,7 +38,12 @@ namespace DaJet.Scripting
                     else if (node is DeleteStatement delete)
                     {
                         Visit(in delete, in script);
-                        //TODO: ConfigureDataMapper for OUTPUT clause
+
+                        //if (delete.Output is not null)
+                        //{
+                        //    //TODO: implement outside of this class !!!
+                        //    ConfigureOutputDataMapper(delete.Output, result.Mapper);
+                        //}
                     }
                     else
                     {
@@ -82,6 +87,13 @@ namespace DaJet.Scripting
             }
 
             foreach (ColumnExpression column in select.Select)
+            {
+                DataMapper.Map(in column, in mapper);
+            }
+        }
+        private void ConfigureOutputDataMapper(in OutputClause output, in EntityMap mapper)
+        {
+            foreach (ColumnExpression column in output.Columns)
             {
                 DataMapper.Map(in column, in mapper);
             }
@@ -171,10 +183,6 @@ namespace DaJet.Scripting
             else if (expression is SetExpression set)
             {
                 Visit(in set, in script);
-            }
-            else if (expression is OutputClause output)
-            {
-                Visit(in output, in script);
             }
         }
 
@@ -796,38 +804,35 @@ namespace DaJet.Scripting
         #endregion
 
         #region "DELETE STATEMENT"
-        protected virtual void Visit(in DeleteStatement delete, in StringBuilder script)
+        protected virtual void Visit(in DeleteStatement node, in StringBuilder script)
         {
-            Visit(delete.CommonTables, script);
+            script.AppendLine();
 
-            script.Append("DELETE ");
-
-            Visit(delete.TARGET, script);
-
-            if (delete.OUTPUT != null) // optional
+            if (node.CommonTables is not null)
             {
-                Visit(delete.OUTPUT, script);
+                script.Append("WITH ");
+
+                Visit(node.CommonTables, in script);
             }
 
-            if (delete.FROM != null) // optional
-            {
-                Visit(delete.FROM, script);
-            }
+            script.Append("DELETE FROM ");
 
-            if (delete.WHERE != null) // optional
+            Visit(node.Target, script);
+
+            if (node.Where is not null)
             {
-                Visit(delete.WHERE, script);
+                Visit(node.Where, script);
             }
         }
-        protected virtual void Visit(in OutputClause output, in StringBuilder script)
+        protected virtual void Visit(in OutputClause node, in StringBuilder script)
         {
             script.AppendLine().AppendLine("OUTPUT");
 
-            for (int i = 0; i < output.Expressions.Count; i++)
+            for (int i = 0; i < node.Columns.Count; i++)
             {
                 if (i > 0) { script.Append(", "); }
 
-                Visit(output.Expressions[i], in script);
+                Visit(node.Columns[i], in script);
             }
         }
         #endregion
