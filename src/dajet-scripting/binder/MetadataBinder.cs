@@ -230,9 +230,10 @@ namespace DaJet.Scripting
             if (context is null) // result context
             {
                 context = scope.Ancestor<SelectStatement>();
-                if (context is null) { context = scope.Ancestor<InsertStatement>(); }
-                if (context is null) { context = scope.Ancestor<UpdateStatement>(); }
-                if (context is null) { context = scope.Ancestor<DeleteStatement>(); }
+                context ??= scope.Ancestor<UpsertStatement>();
+                context ??= scope.Ancestor<InsertStatement>();
+                context ??= scope.Ancestor<UpdateStatement>();
+                context ??= scope.Ancestor<DeleteStatement>();
 
                 BindCommonTable(context, in table);
             }
@@ -400,8 +401,9 @@ namespace DaJet.Scripting
             if (context is null) // statement result context
             {
                 context = scope.Ancestor<SelectStatement>();
-                
-                //NOTE: UPDATE statement columns are not searched in CTE if it is ordinary WHERE UPDATE
+                context ??= scope.Ancestor<UpsertStatement>();
+
+                //NOTE: UPDATE statement columns are not searched in CTE if it is ordinary WHERE UPDATE without FROM clause.
                 //If it is FROM UPDATE then such kind of columns are searched via referenced tables in the FROM clause
                 //if (context is null) { context = scope.Ancestor<InsertStatement>(); }
                 //if (context is null) { context = scope.Ancestor<UpdateStatement>(); }

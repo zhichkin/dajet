@@ -72,7 +72,9 @@ namespace DaJet.Scripting
             { "TABLE", TokenType.TABLE },
             { "COMPUTED", TokenType.COMPUTED },
             { "VARIABLE", TokenType.VARIABLE },
-            { "TEMPORARY", TokenType.TEMPORARY }
+            { "TEMPORARY", TokenType.TEMPORARY },
+            { "UPSERT", TokenType.UPSERT },
+            { "IGNORE", TokenType.IGNORE }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {

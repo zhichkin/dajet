@@ -6,9 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <AssemblyName>DaJet.Scripting</AssemblyName>
-    <Version>1.2.3</Version>
+    <Version>1.2.4</Version>
     <Authors>Zhichkin</Authors>
-    <Description>1QL - 1C query language transpiler</Description>
+    <Description>DaJet SQL-like scripting language for back-end and integration</Description>
     <Copyright>Zhichkin © 2022</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/zhichkin/dajet/tree/main/src/dajet-scripting</RepositoryUrl>

@@ -45,6 +45,10 @@ namespace DaJet.Scripting
                         //    ConfigureOutputDataMapper(delete.Output, result.Mapper);
                         //}
                     }
+                    else if (node is UpsertStatement upsert)
+                    {
+                        Visit(in upsert, in script);
+                    }
                     else
                     {
                         Visit(in node, in script);
@@ -838,6 +842,50 @@ namespace DaJet.Scripting
 
                 Visit(node.Columns[i], in script);
             }
+        }
+        #endregion
+
+        #region "UPSERT STATEMENT"
+        protected virtual void Visit(in UpsertStatement node, in StringBuilder script)
+        {
+            script.AppendLine();
+
+            if (node.CommonTables is not null)
+            {
+                script.Append("WITH ");
+                Visit(node.CommonTables, in script);
+            }
+
+            script.AppendLine().Append("UPSERT ");
+
+            Visit(node.Target, in script);
+
+            if (node.IgnoreUpdate) { script.Append(" IGNORE UPDATE"); }
+
+            if (node.Where is not null) { Visit(node.Where, in script); }
+            else { throw new InvalidOperationException("UPSERT: WHERE clause is not defined."); }
+
+            if (node.Set is not null && node.Set.Count > 0)
+            {
+                script.AppendLine().Append("SET ");
+                SetExpression set;
+                for (int i = 0; i < node.Set.Count; i++)
+                {
+                    set = node.Set[i];
+                    if (i > 0) { script.Append(","); }
+                    Visit(in set, in script);
+                }
+                script.AppendLine();
+            }
+            else
+            {
+                throw new InvalidOperationException("UPSERT: SET clause is not defined.");
+            }
+
+            if (node.Source is not null) { Visit(node.Source, in script); }
+            else { throw new InvalidOperationException("UPSERT: FROM clause is not defined."); }
+
+            script.Append(';').AppendLine();
         }
         #endregion
     }

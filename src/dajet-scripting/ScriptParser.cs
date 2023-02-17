@@ -202,6 +202,10 @@ namespace DaJet.Scripting
             {
                 return delete_statement();
             }
+            else if (Check(TokenType.UPSERT))
+            {
+                return upsert_statement();
+            }
             else if (Match(TokenType.EndOfStatement))
             {
                 return null;
@@ -351,6 +355,12 @@ namespace DaJet.Scripting
                 DeleteStatement delete = delete_statement();
                 delete.CommonTables = root;
                 return delete;
+            }
+            else if (Check(TokenType.UPSERT))
+            {
+                UpsertStatement upsert = upsert_statement();
+                upsert.CommonTables = root;
+                return upsert;
             }
 
             throw new FormatException("Statement expected.");
@@ -1400,6 +1410,54 @@ namespace DaJet.Scripting
             }
 
             return output;
+        }
+        #endregion
+
+        #region "UPSERT STATEMENT"
+        private UpsertStatement upsert_statement()
+        {
+            if (!Match(TokenType.UPSERT))
+            {
+                throw new FormatException("UPSERT keyword expected.");
+            }
+
+            UpsertStatement upsert = new()
+            {
+                Target = table_identifier()
+            };
+
+            bool ignore = Match(TokenType.IGNORE);
+            bool update = Match(TokenType.UPDATE);
+            if (ignore && !update)
+            {
+                throw new FormatException("UPSERT: UPDATE keyword is missing.");
+            }
+            else if (update && !ignore)
+            {
+                throw new FormatException("UPSERT: IGNORE keyword is missing.");
+            }
+            upsert.IgnoreUpdate = ignore && update;
+
+            if (Match(TokenType.WHERE)) { upsert.Where = where_clause(); }
+            else { throw new FormatException("UPSERT: WHERE keyword expected."); }
+
+            if (Match(TokenType.SET))
+            {
+                upsert.Set.Add(set_expression());
+                while (Match(TokenType.Comma))
+                {
+                    upsert.Set.Add(set_expression());
+                }
+            }
+            else
+            {
+                throw new FormatException("UPSERT: SET keyword expected.");
+            }
+
+            if (Match(TokenType.FROM)) { upsert.Source = from_clause(); }
+            else { throw new FormatException("UPSERT: FROM keyword expected."); }
+
+            return upsert;
         }
         #endregion
     }
