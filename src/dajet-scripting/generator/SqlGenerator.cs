@@ -200,6 +200,8 @@ namespace DaJet.Scripting
             script.AppendLine();
 
             Visit(node.Select, in script);
+
+            script.Append(';');
         }
         protected virtual void Visit(in SelectExpression node, in StringBuilder script)
         {
@@ -823,6 +825,8 @@ namespace DaJet.Scripting
             {
                 Visit(node.Where, script);
             }
+
+            script.Append(';').AppendLine();
         }
         protected virtual void Visit(in OutputClause node, in StringBuilder script)
         {

@@ -23,6 +23,8 @@ namespace DaJet.Scripting
             }
 
             Visit(node.Select, in script);
+
+            script.Append(';');
         }
         protected override void Visit(in SelectExpression node, in StringBuilder script)
         {
