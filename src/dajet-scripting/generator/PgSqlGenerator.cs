@@ -1,5 +1,4 @@
-﻿using DaJet.Data;
-using DaJet.Metadata.Model;
+﻿using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 using System.Text;
 
@@ -9,6 +8,8 @@ namespace DaJet.Scripting
     {
         protected override void Visit(in SelectStatement node, in StringBuilder script)
         {
+            script.AppendLine();
+
             if (node.CommonTables is not null)
             {
                 script.Append("WITH ");
