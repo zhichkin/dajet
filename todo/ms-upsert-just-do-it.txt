@@ -1,0 +1,10 @@
+BEGIN TRANSACTION;
+ 
+BEGIN TRY
+  INSERT dbo.t([key], val) VALUES(@key, @val);
+END TRY
+BEGIN CATCH
+  UPDATE dbo.t SET val = @val WHERE [key] = @key;
+END CATCH
+ 
+COMMIT TRANSACTION;

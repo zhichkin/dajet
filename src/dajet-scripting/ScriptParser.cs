@@ -1425,6 +1425,12 @@ namespace DaJet.Scripting
             {
                 Target = table_identifier()
             };
+            upsert.Target.Alias = alias();
+
+            if (string.IsNullOrEmpty(upsert.Target.Alias))
+            {
+                throw new FormatException("UPSERT: target table alias expected.");
+            }
 
             bool ignore = Match(TokenType.IGNORE);
             bool update = Match(TokenType.UPDATE);
@@ -1454,7 +1460,7 @@ namespace DaJet.Scripting
                 throw new FormatException("UPSERT: SET keyword expected.");
             }
 
-            if (Match(TokenType.FROM)) { upsert.Source = from_clause(); }
+            if (Match(TokenType.FROM)) { upsert.Source = table(); }
             else { throw new FormatException("UPSERT: FROM keyword expected."); }
 
             return upsert;

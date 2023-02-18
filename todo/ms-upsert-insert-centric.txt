@@ -1,0 +1,16 @@
+BEGIN TRANSACTION;
+ 
+INSERT dbo.t([key], val) 
+  SELECT @key, @val
+  WHERE NOT EXISTS
+  (
+    SELECT 1 FROM dbo.t WITH (UPDLOCK, SERIALIZABLE)
+      WHERE [key] = @key
+  );
+ 
+IF @@ROWCOUNT = 0
+BEGIN
+  UPDATE dbo.t SET val = @val WHERE [key] = @key;
+END
+ 
+COMMIT TRANSACTION;

@@ -1,0 +1,10 @@
+BEGIN TRANSACTION;
+ 
+UPDATE dbo.t WITH (UPDLOCK, SERIALIZABLE) SET val = @val WHERE [key] = @key;
+ 
+IF @@ROWCOUNT = 0
+BEGIN
+  INSERT dbo.t([key], val) VALUES(@key, @val);
+END
+ 
+COMMIT TRANSACTION;

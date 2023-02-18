@@ -1,0 +1,20 @@
+CREATE PROCEDURE dbo.UpsertTheThings
+    @tvp dbo.TableType READONLY
+AS
+BEGIN
+  SET NOCOUNT ON;
+ 
+  BEGIN TRANSACTION;
+ 
+  UPDATE t WITH (UPDLOCK, SERIALIZABLE) 
+    SET val = tvp.val
+  FROM dbo.t AS t
+  INNER JOIN @tvp AS tvp
+    ON t.[key] = tvp.[key];
+ 
+  INSERT dbo.t([key], val)
+    SELECT [key], val FROM @tvp AS tvp
+    WHERE NOT EXISTS (SELECT 1 FROM dbo.t WHERE [key] = tvp.[key]);
+ 
+  COMMIT TRANSACTION;
+END

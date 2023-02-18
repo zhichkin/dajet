@@ -99,5 +99,156 @@ namespace DaJet.Scripting
 
             script.Append(';').AppendLine();
         }
+        protected override void VisitTargetTable(in TableReference node, in StringBuilder script)
+        {
+            if (node.Binding is ApplicationObject entity)
+            {
+                script.Append(entity.TableName);
+            }
+            else if (node.Binding is TableExpression || node.Binding is CommonTableExpression)
+            {
+                script.Append(node.Identifier);
+            }
+            else if (node.Binding is TableVariableExpression)
+            {
+                script.Append($"@{node.Identifier}");
+            }
+            else if (node.Binding is TemporaryTableExpression)
+            {
+                script.Append($"#{node.Identifier}");
+            }
+            else
+            {
+                throw new InvalidOperationException("MS-DML: Target table identifier is missing.");
+            }
+        }
+        protected override void Visit(in UpsertStatement node, in StringBuilder script)
+        {
+            if (node.Target.Binding is CommonTableExpression)
+            {
+                throw new InvalidOperationException("UPSERT: computed table (cte) targeting is not allowed.");
+            }
+
+            if (node.Set is null || node.Set.Count == 0)
+            {
+                throw new InvalidOperationException("UPSERT: SET clause is not defined.");
+            }
+
+            if (node.Source is null)
+            {
+                throw new InvalidOperationException("UPSERT: FROM clause is not defined.");
+            }
+            
+            script.AppendLine();
+
+            //script.AppendLine("SET NOCOUNT ON;");
+            //script.AppendLine("SET XACT_ABORT ON;");
+            //script.AppendLine("BEGIN TRY");
+            //script.AppendLine("BEGIN TRANSACTION;");
+
+            // UPDATE statement
+
+            if (!node.IgnoreUpdate)
+            {
+                if (node.CommonTables is not null)
+                {
+                    script.Append("WITH ");
+                    Visit(node.CommonTables, in script);
+                }
+
+                script.Append("UPDATE ");
+                if (!string.IsNullOrEmpty(node.Target.Alias))
+                {
+                    script.Append(node.Target.Alias);
+                }
+                else
+                {
+                    script.Append(node.Target.Identifier);
+                }
+
+                if (node.Target.Binding is MetadataObject ||
+                    node.Target.Binding is TemporaryTableExpression)
+                {
+                    script.Append(" WITH (UPDLOCK, SERIALIZABLE)");
+                }
+
+                script.AppendLine().Append("SET ");
+                SetExpression set;
+                for (int i = 0; i < node.Set.Count; i++)
+                {
+                    set = node.Set[i];
+                    if (i > 0) { script.Append(","); }
+                    Visit(in set, in script);
+                }
+
+                script.AppendLine().Append($"FROM ");
+                Visit(node.Target, in script);
+
+                script.Append($" INNER JOIN ");
+                Visit(node.Source, in script);
+                script.Append($" ON ");
+                Visit(node.Where.Expression, in script);
+                script.Append(';');
+            }
+
+            #region "INSERT STATEMENT"
+
+            script.AppendLine();
+
+            if (node.CommonTables is not null)
+            {
+                script.Append("WITH ");
+                Visit(node.CommonTables, in script);
+            }
+
+            script.Append("INSERT INTO ");
+            VisitTargetTable(node.Target, in script);
+            script.Append(' ');
+
+            script.Append('(');
+            ColumnReference column;
+            for (int i = 0; i < node.Set.Count; i++)
+            {
+                column = node.Set[i].Column;
+                if (i > 0) { script.Append(", "); }
+                Visit(column.Mapping, in script);
+                //TODO: synchronize target to source column mapping
+                //and set default values for missing columns on target side
+            }
+            script.AppendLine(")");
+
+            if (node.Source is TableReference table)
+            {
+                script.AppendLine("SELECT "); //TODO: SELECT _key, name, value FROM table AS alias
+                Visit(in table, in script);
+            }
+            else if (node.Source is TableExpression select)
+            {
+                Visit(in select, in script); //TODO: SELECT _key, name, value FROM (select) AS alias
+            }
+            else
+            {
+                throw new InvalidOperationException("UPSERT: FROM clause contains invalid table source.");
+            }
+
+            script.AppendLine().Append($"WHERE NOT EXISTS (SELECT 1 FROM ");
+            Visit(node.Target, in script);
+            script.Append(' ');
+            Visit(node.Where, in script);
+            script.Append(')');
+
+            script.Append(';');
+
+            #endregion
+
+            //script.AppendLine()
+            //    .AppendLine("COMMIT TRANSACTION;")
+            //    .AppendLine("END TRY")
+            //    .AppendLine("BEGIN CATCH")
+            //    .AppendLine("IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;")
+            //    .AppendLine("THROW;")
+            //    .Append("END CATCH")
+            //    .Append(';');
+        }
     }
 }

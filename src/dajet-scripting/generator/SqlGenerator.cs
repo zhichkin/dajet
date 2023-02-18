@@ -698,9 +698,33 @@ namespace DaJet.Scripting
         }
         #endregion
 
+        protected virtual void VisitTargetTable(in TableReference node, in StringBuilder script)
+        {
+            if (node.Binding is ApplicationObject entity)
+            {
+                script.Append(entity.TableName);
+            }
+            else if (node.Binding is TableExpression
+                || node.Binding is CommonTableExpression
+                || node.Binding is TableVariableExpression
+                || node.Binding is TemporaryTableExpression)
+            {
+                script.Append(node.Identifier);
+            }
+            else
+            {
+                throw new InvalidOperationException("DML: Target table identifier is missing.");
+            }
+        }
+
         #region "INSERT STATEMENT"
         protected virtual void Visit(in InsertStatement node, in StringBuilder script)
         {
+            if (node.Target.Binding is CommonTableExpression)
+            {
+                throw new InvalidOperationException("INSERT: computed table (cte) targeting is not allowed.");
+            }
+
             script.AppendLine();
 
             if (node.CommonTables is not null)
@@ -711,7 +735,7 @@ namespace DaJet.Scripting
 
             script.AppendLine().Append("INSERT INTO ");
 
-            Visit(node.Target, in script);
+            VisitTargetTable(node.Target, in script);
             
             script.Append(' ');
 
@@ -761,6 +785,11 @@ namespace DaJet.Scripting
         #region "UPDATE STATEMENT"
         protected virtual void Visit(in UpdateStatement node, in StringBuilder script)
         {
+            if (node.Target.Binding is CommonTableExpression)
+            {
+                throw new InvalidOperationException("UPDATE: computed table (cte) targeting is not allowed.");
+            }
+
             script.AppendLine();
 
             if (node.CommonTables is not null)
@@ -771,7 +800,7 @@ namespace DaJet.Scripting
 
             script.AppendLine().Append("UPDATE ");
 
-            Visit(node.Target, in script);
+            VisitTargetTable(node.Target, in script);
 
             script.AppendLine().Append("SET ");
 
@@ -812,6 +841,11 @@ namespace DaJet.Scripting
         #region "DELETE STATEMENT"
         protected virtual void Visit(in DeleteStatement node, in StringBuilder script)
         {
+            if (node.Target.Binding is CommonTableExpression)
+            {
+                throw new InvalidOperationException("DELETE: computed table (cte) targeting is not allowed.");
+            }
+
             script.AppendLine();
 
             if (node.CommonTables is not null)
@@ -823,7 +857,7 @@ namespace DaJet.Scripting
 
             script.Append("DELETE FROM ");
 
-            Visit(node.Target, script);
+            VisitTargetTable(node.Target, in script);
 
             if (node.Where is not null)
             {
