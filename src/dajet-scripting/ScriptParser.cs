@@ -1444,6 +1444,9 @@ namespace DaJet.Scripting
             }
             upsert.IgnoreUpdate = ignore && update;
 
+            bool from = Match(TokenType.FROM);
+            if (from) { upsert.Source = table(); }
+
             if (Match(TokenType.WHERE)) { upsert.Where = where_clause(); }
             else { throw new FormatException("UPSERT: WHERE keyword expected."); }
 
@@ -1460,7 +1463,14 @@ namespace DaJet.Scripting
                 throw new FormatException("UPSERT: SET keyword expected.");
             }
 
-            if (Match(TokenType.FROM)) { upsert.Source = table(); }
+            if (from)
+            {
+                if (Check(TokenType.FROM))
+                {
+                    throw new FormatException("UPSERT: FROM clause is used twice.");
+                }
+            }
+            else if (Match(TokenType.FROM)) { upsert.Source = table(); }
             else { throw new FormatException("UPSERT: FROM keyword expected."); }
 
             return upsert;

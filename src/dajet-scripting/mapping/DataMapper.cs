@@ -226,6 +226,109 @@ namespace DaJet.Scripting
             union.Merge(GetUnionType(in property));
         }
 
+        public static object GetColumnSource(in SyntaxNode node)
+        {
+            if (node is SelectExpression select)
+            {
+                return select;
+            }
+            else if (node is TableUnionOperator union)
+            {
+                return union.Expression1;
+            }
+            else if (node is TableExpression table)
+            {
+                return GetColumnSource(table.Expression);
+            }
+            else if (node is CommonTableExpression cte)
+            {
+                return GetColumnSource(cte.Expression);
+            }
+            else if (node is TableVariableExpression variable)
+            {
+                return GetColumnSource(variable.Expression);
+            }
+            else if (node is TemporaryTableExpression temporary)
+            {
+                return GetColumnSource(temporary.Expression);
+            }
+            else if (node is TableReference reference)
+            {
+                return GetColumnSource(in reference);
+            }
+
+            return null;
+        }
+        public static object GetColumnSource(in TableReference node)
+        {
+            if (node.Binding is ApplicationObject)
+            {
+                return node.Binding;
+            }
+            else if (node.Binding is TableExpression table)
+            {
+                return GetColumnSource(table.Expression);
+            }
+            else if (node.Binding is CommonTableExpression cte)
+            {
+                return GetColumnSource(cte.Expression);
+            }
+            else if (node.Binding is TableVariableExpression variable)
+            {
+                return GetColumnSource(variable.Expression);
+            }
+            else if (node.Binding is TemporaryTableExpression temporary)
+            {
+                return GetColumnSource(temporary.Expression);
+            }
+            
+            return null;
+        }
+
+        public static EntityMap CreateEntityMap(in SyntaxNode node)
+        {
+            object source = GetColumnSource(in node);
+
+            if (source is ApplicationObject entity)
+            {
+                return CreateEntityMap(in entity);
+            }
+            else if (source is SelectExpression select)
+            {
+                return CreateEntityMap(in select);
+            }
+            
+            throw new InvalidOperationException("Failed to create entity map from data source");
+        }
+        public static EntityMap CreateEntityMap(in ApplicationObject entity)
+        {
+            if (entity is null) { throw new ArgumentNullException(nameof(entity)); }
+
+            EntityMap map = new();
+
+            int ordinal = 0;
+            PropertyMap column;
+            List<ColumnMap> columns;
+            MetadataProperty property;
+            List<MetadataProperty> select = entity.Properties;
+
+            for (int i = 0; i < select.Count; i++)
+            {
+                property = select[i];
+                column = new PropertyMap();
+                Visit(in property, in column);
+
+                columns = column.ColumnSequence;
+                for (int ii = 0; ii < columns.Count; ii++)
+                {
+                    columns[ii].Ordinal = ordinal++;
+                }
+
+                map.Properties.Add(column);
+            }
+
+            return map;
+        }
         public static EntityMap CreateEntityMap(in SelectExpression source)
         {
             EntityMap map = new();
@@ -254,7 +357,19 @@ namespace DaJet.Scripting
 
             return map;
         }
-        private static PropertyMap CreatePropertyMap(in ColumnExpression source)
+        public static PropertyMap CreatePropertyMap(in SyntaxNode expression)
+        {
+            PropertyMap map = new();
+            
+            Map(in expression, in map);
+            
+            //TODO: set property map name during type inference - убрать костыль !!!
+            map.Name = _name;
+            _name = string.Empty;
+
+            return map;
+        }
+        public static PropertyMap CreatePropertyMap(in ColumnExpression source)
         {
             PropertyMap map = new();
 
@@ -289,7 +404,11 @@ namespace DaJet.Scripting
         private static void Map(in SyntaxNode expression, in PropertyMap map)
         {
             UnionType type = new();
-            DataMapper.Visit(expression, in type);
+            
+            Visit(expression, in type);
+
+            map.DataType.Merge(type);
+
             List<UnionTag> columns = type.ToColumnList();
 
             for (int i = 0; i < columns.Count; i++)
@@ -301,6 +420,7 @@ namespace DaJet.Scripting
                     Alias = type.IsUnion ? $"{map.Name}_{UnionType.GetLiteral(columns[i])}" : map.Name,
                     TypeName = UnionType.GetDbTypeName(columns[i])
                 };
+
                 map.Columns.Add(column.Type, column);
             }
         }
@@ -348,6 +468,71 @@ namespace DaJet.Scripting
                 };
                 map.Columns.Add(column.Type, column);
             }
+        }
+
+        public static List<MappingRule> CreateMappingRules(in SyntaxNode target, in SyntaxNode source, in List<SetExpression> mapping)
+        {
+            List<MappingRule> rules = new();
+
+            EntityMap target_map = CreateEntityMap(in target);
+            EntityMap source_map = CreateEntityMap(in source);
+
+            for (int i = 0; i < target_map.Properties.Count; i++)
+            {
+                PropertyMap property = target_map.Properties[i];
+
+                MappingRule rule = new()
+                {
+                    Target = property
+                };
+
+                if (mapping is not null) // use this block only for updates
+                {
+                    foreach (SetExpression set in mapping)
+                    {
+                        if (property.Name == set.Column.GetName())
+                        {
+                            if (set.Initializer is ColumnReference)
+                            {
+                                rule.Source = CreatePropertyMap(set.Initializer);
+                            }
+                            else
+                            {
+                                rule.Source = set.Initializer;
+                            }
+                            break;
+                        }
+                    }
+                }
+                else // use this block for insert
+                {
+                    foreach (PropertyMap initializer in source_map.Properties)
+                    {
+                        if (property.Name == initializer.Name) //TODO: may alias be used ?
+                        {
+                            rule.Source = initializer;
+                            break;
+                        }
+                    }
+                }
+
+                //if (rule.Source is null)
+                //{
+                //    //TODO: create ScalarExpression to initialize target ?
+                //    rule.Source = UnionType.GetDefaultValue(property.Type);
+                //}
+
+                rules.Add(rule);
+
+                //TODO: build property mapping rules or column sequence
+                //for (int ii = 0; ii < property.ColumnSequence.Count; ii++)
+                //{
+                //    ColumnMap column = property.ColumnSequence[ii];
+                //    
+                //}
+            }
+
+            return rules;
         }
     }
 }

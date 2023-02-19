@@ -6,26 +6,7 @@ namespace DaJet.Scripting
 {
     public sealed class MsSqlGenerator : SqlGenerator
     {
-        private SelectExpression GetColumnSource(in SyntaxNode node)
-        {
-            if (node is SelectExpression select)
-            {
-                return select;
-            }
-            else if (node is TableUnionOperator union)
-            {
-                if (union.Expression1 is SelectExpression select1)
-                {
-                    return select1;
-                }
-                else if (union.Expression2 is SelectExpression select2)
-                {
-                    return select2;
-                }
-            }
-            return null;
-        }
-        private string GetColumnList(in SelectExpression select)
+        private string GetCreateTableColumnList(in SelectExpression select)
         {
             StringBuilder columns = new();
 
@@ -48,6 +29,35 @@ namespace DaJet.Scripting
             }
 
             return columns.ToString();
+        }
+        private string GetInsertStatementColumnList(in TableReference table)
+        {
+            ColumnMap column;
+            PropertyMap property;
+            StringBuilder columns = new();
+
+            EntityMap map = DataMapper.CreateEntityMap(table);
+
+            for (int i = 0; i < map.Properties.Count; i++)
+            {
+                property = map.Properties[i];
+
+                for (int ii = 0; ii < property.ColumnSequence.Count; ii++)
+                {
+                    column = property.ColumnSequence[ii];
+                    if (column.Ordinal > 0) { columns.Append(", "); }
+
+                    columns.Append(column.Name);
+                }
+            }
+
+            return columns.ToString();
+        }
+        private string GetSelectExpressionColumnList(in SyntaxNode target, in SyntaxNode source, in List<SetExpression> mapping)
+        {
+            List<MappingRule> rules = DataMapper.CreateMappingRules(in target, in source, in mapping);
+
+            return string.Empty; //TODO: create select column list
         }
         protected override void Visit(in TableReference node, in StringBuilder script)
         {
@@ -75,11 +85,13 @@ namespace DaJet.Scripting
         }
         protected override void Visit(in TableVariableExpression node, in StringBuilder script)
         {
-            SelectExpression source = GetColumnSource(node.Expression);
+            SelectExpression source = DataMapper.GetColumnSource(node.Expression) as SelectExpression;
 
             if (source is null) { return; }
 
-            script.Append($"DECLARE @{node.Name} TABLE (").Append(GetColumnList(in source)).Append(");").AppendLine();
+            script.Append($"DECLARE @{node.Name} TABLE (");
+            script.Append(GetCreateTableColumnList(in source));
+            script.Append(");").AppendLine();
             script.Append($"INSERT @{node.Name}").AppendLine();
 
             base.Visit(in node, in script);
@@ -88,11 +100,13 @@ namespace DaJet.Scripting
         }
         protected override void Visit(in TemporaryTableExpression node, in StringBuilder script)
         {
-            SelectExpression source = GetColumnSource(node.Expression);
+            SelectExpression source = DataMapper.GetColumnSource(node.Expression) as SelectExpression;
 
             if (source is null) { return; }
 
-            script.Append($"CREATE TABLE #{node.Name} (").Append(GetColumnList(in source)).Append(");").AppendLine();
+            script.Append($"CREATE TABLE #{node.Name} (");
+            script.Append(GetCreateTableColumnList(in source));
+            script.Append(");").AppendLine();
             script.Append($"INSERT #{node.Name}").AppendLine();
 
             base.Visit(in node, in script);
@@ -141,12 +155,7 @@ namespace DaJet.Scripting
             
             script.AppendLine();
 
-            //script.AppendLine("SET NOCOUNT ON;");
-            //script.AppendLine("SET XACT_ABORT ON;");
-            //script.AppendLine("BEGIN TRY");
-            //script.AppendLine("BEGIN TRANSACTION;");
-
-            // UPDATE statement
+            #region "UPDATE STATEMENT"
 
             if (!node.IgnoreUpdate)
             {
@@ -191,6 +200,8 @@ namespace DaJet.Scripting
                 script.Append(';');
             }
 
+            #endregion
+
             #region "INSERT STATEMENT"
 
             script.AppendLine();
@@ -204,18 +215,12 @@ namespace DaJet.Scripting
             script.Append("INSERT INTO ");
             VisitTargetTable(node.Target, in script);
             script.Append(' ');
-
             script.Append('(');
-            ColumnReference column;
-            for (int i = 0; i < node.Set.Count; i++)
-            {
-                column = node.Set[i].Column;
-                if (i > 0) { script.Append(", "); }
-                Visit(column.Mapping, in script);
-                //TODO: synchronize target to source column mapping
-                //and set default values for missing columns on target side
-            }
+            script.Append(GetInsertStatementColumnList(node.Target));
             script.AppendLine(")");
+
+            string insert_columns = GetSelectExpressionColumnList(node.Target, node.Source, null);
+            string update_columns = GetSelectExpressionColumnList(node.Target, node.Source, node.Set);
 
             if (node.Source is TableReference table)
             {
@@ -236,19 +241,9 @@ namespace DaJet.Scripting
             script.Append(' ');
             Visit(node.Where, in script);
             script.Append(')');
-
             script.Append(';');
 
             #endregion
-
-            //script.AppendLine()
-            //    .AppendLine("COMMIT TRANSACTION;")
-            //    .AppendLine("END TRY")
-            //    .AppendLine("BEGIN CATCH")
-            //    .AppendLine("IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;")
-            //    .AppendLine("THROW;")
-            //    .Append("END CATCH")
-            //    .Append(';');
         }
     }
 }
