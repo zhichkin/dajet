@@ -533,7 +533,8 @@ namespace DaJet.Metadata.Core
                 Name = "ВерсияДанных",
                 Uuid = Guid.Empty,
                 Purpose = PropertyPurpose.System,
-                DbName = "_Version"
+                DbName = "_Version",
+                IsDbGenerated = true
             };
             property.PropertyType.IsBinary = true;
 

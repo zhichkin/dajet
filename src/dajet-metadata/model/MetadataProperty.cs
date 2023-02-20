@@ -8,6 +8,8 @@ namespace DaJet.Metadata.Model
     {
         ///<summary>Основа имени поля в таблице СУБД (может быть дополнено постфиксами в зависимости от типа данных свойства)</summary>
         public string DbName { get; set; } = string.Empty;
+        ///<summary>Значение свойства генерируется средствами СУБД автоматически при выполнении команды INSERT.</summary>
+        public bool IsDbGenerated { get; set; } = false;
         ///<summary>Коллекция для описания полей таблицы СУБД свойства объекта метаданных</summary>
         public List<MetadataColumn> Columns { get; set; } = new List<MetadataColumn>();
         ///<summary>Логический смысл свойства. Подробнее смотри перечисление <see cref="PropertyPurpose"/>.</summary>

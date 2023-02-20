@@ -247,15 +247,113 @@ namespace DaJet.Data
 
             return null;
         }
+        public static object GetDefaultValue(UnionTag tag)
+        {
+            if (tag == UnionTag.Tag)
+            {
+                return new byte[1] { 0x01 }; // TYPE
+            }
+            else if (tag == UnionTag.Boolean)
+            {
+                return false; // L
+            }
+            else if (tag == UnionTag.Numeric)
+            {
+                return 0.00M; // N
+            }
+            else if (tag == UnionTag.DateTime)
+            {
+                return new DateTime(1, 1, 1); // T
+            }
+            else if (tag == UnionTag.String)
+            {
+                return string.Empty; // S
+            }
+            else if (tag == UnionTag.Binary)
+            {
+                return Array.Empty<byte>(); // B
+            }
+            else if (tag == UnionTag.Uuid)
+            {
+                return Guid.Empty.ToByteArray(); // U
+            }
+            else if (tag == UnionTag.Entity)
+            {
+                return Guid.Empty.ToByteArray(); // #
+            }
+            else if (tag == UnionTag.TypeCode)
+            {
+                return new byte[4] { 0x00, 0x00, 0x00, 0x00 };
+            }
+            else if (tag == UnionTag.Version)
+            {
+                return 0UL;
+            }
+            else if (tag == UnionTag.Integer)
+            {
+                return 0;
+            }
+
+            return null; // UnionTag.Undefined
+        }
+        public static string GetDefaultValueLiteral(UnionTag tag)
+        {
+            if (tag == UnionTag.Tag)
+            {
+                return "0x01"; // TYPE
+            }
+            else if (tag == UnionTag.Boolean)
+            {
+                return "0x00"; // L
+            }
+            else if (tag == UnionTag.Numeric)
+            {
+                return "0.00"; // N
+            }
+            else if (tag == UnionTag.DateTime)
+            {
+                return "0001-01-01T00:00:00"; // T
+            }
+            else if (tag == UnionTag.String)
+            {
+                return string.Empty; // S
+            }
+            else if (tag == UnionTag.Binary)
+            {
+                return "0x00"; // B
+            }
+            else if (tag == UnionTag.Uuid)
+            {
+                return $"0x{Convert.ToHexString(Guid.Empty.ToByteArray())}"; // U
+            }
+            else if (tag == UnionTag.Entity)
+            {
+                return $"0x{Convert.ToHexString(Guid.Empty.ToByteArray())}"; // #
+            }
+            else if (tag == UnionTag.TypeCode)
+            {
+                return "0x00000000";
+            }
+            else if (tag == UnionTag.Version)
+            {
+                return "0x0000000000000000";
+            }
+            else if (tag == UnionTag.Integer)
+            {
+                return "0x00000000";
+            }
+
+            return null; // UnionTag.Undefined
+        }
         public static Type GetDataType(UnionTag tag)
         {
             if (tag == UnionTag.Tag)
             {
-                return typeof(byte); // TYPE
+                return typeof(byte[]); // TYPE
             }
             else if (tag == UnionTag.Boolean)
             {
-                return typeof(bool); // L
+                return typeof(byte[]); // L
             }
             else if (tag == UnionTag.Numeric)
             {
@@ -275,23 +373,23 @@ namespace DaJet.Data
             }
             else if (tag == UnionTag.Uuid)
             {
-                return typeof(Guid); // U
+                return typeof(byte[]); // U
             }
             else if (tag == UnionTag.Entity)
             {
-                return typeof(Entity); // #
+                return typeof(byte[]); // #
             }
             else if (tag == UnionTag.TypeCode)
             {
-                return typeof(int);
+                return typeof(byte[]);
             }
             else if (tag == UnionTag.Version)
             {
-                return typeof(ulong);
+                return typeof(byte[]);
             }
             else if (tag == UnionTag.Integer)
             {
-                return typeof(int);
+                return typeof(byte[]);
             }
 
             return null; // UnionTag.Undefined

@@ -11,6 +11,7 @@ namespace DaJet.Scripting
         public PropertyMap() { }
         public int YearOffset { get; set; } = 0;
         public string Name { get; set; } = string.Empty;
+        public bool IsDbGenerated { get; set; } = false;
         public UnionType DataType { get; } = new();
         public Type Type { get { return UnionType.MapToType(DataType); } }
         public Dictionary<UnionTag, ColumnMap> Columns { get; } = new();

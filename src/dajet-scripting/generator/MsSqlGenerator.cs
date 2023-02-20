@@ -1,6 +1,7 @@
 ﻿using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 using System.Text;
+using System.Xml.Linq;
 
 namespace DaJet.Scripting
 {
@@ -29,35 +30,6 @@ namespace DaJet.Scripting
             }
 
             return columns.ToString();
-        }
-        private string GetInsertStatementColumnList(in TableReference table)
-        {
-            ColumnMap column;
-            PropertyMap property;
-            StringBuilder columns = new();
-
-            EntityMap map = DataMapper.CreateEntityMap(table);
-
-            for (int i = 0; i < map.Properties.Count; i++)
-            {
-                property = map.Properties[i];
-
-                for (int ii = 0; ii < property.ColumnSequence.Count; ii++)
-                {
-                    column = property.ColumnSequence[ii];
-                    if (column.Ordinal > 0) { columns.Append(", "); }
-
-                    columns.Append(column.Name);
-                }
-            }
-
-            return columns.ToString();
-        }
-        private string GetSelectExpressionColumnList(in SyntaxNode target, in SyntaxNode source, in List<SetExpression> mapping)
-        {
-            List<MappingRule> rules = DataMapper.CreateMappingRules(in target, in source, in mapping);
-
-            return string.Empty; //TODO: create select column list
         }
         protected override void Visit(in TableReference node, in StringBuilder script)
         {
@@ -136,6 +108,60 @@ namespace DaJet.Scripting
                 throw new InvalidOperationException("MS-DML: Target table identifier is missing.");
             }
         }
+
+        private string GetInsertStatementColumnList(in TableReference table)
+        {
+            ColumnMap column;
+            PropertyMap property;
+            StringBuilder columns = new();
+
+            EntityMap map = DataMapper.CreateEntityMap(table);
+
+            for (int i = 0; i < map.Properties.Count; i++)
+            {
+                property = map.Properties[i];
+
+                for (int ii = 0; ii < property.ColumnSequence.Count; ii++)
+                {
+                    column = property.ColumnSequence[ii];
+                    if (column.Ordinal > 0) { columns.Append(", "); }
+
+                    columns.Append(column.Name);
+                }
+            }
+
+            return columns.ToString();
+        }
+        private string[] GetInsertSelectColumnLists(in SyntaxNode target, in SyntaxNode source)
+        {
+            List<PropertyMappingRule> rules = DataMapper.CreateMappingRules(in target, in source, null);
+
+            StringBuilder insert = new();
+            StringBuilder select = new();
+
+            foreach (PropertyMappingRule rule in rules)
+            {
+                if (rule.Target.IsDbGenerated) { continue; }
+
+                foreach (ColumnMappingRule map in rule.Columns)
+                {
+                    if (insert.Length > 0) { insert.Append(", "); }
+                    insert.Append(map.Target.Name);
+
+                    if (select.Length > 0) { select.Append(", "); }
+                    if (map.Source is ColumnMap source_column)
+                    {
+                        select.Append(source_column.Alias);
+                    }
+                    else if (map.Source is ScalarExpression scalar)
+                    {
+                        Visit(in scalar, select);
+                    }
+                }
+            }
+
+            return new string[] { insert.ToString(), select.ToString() };
+        }
         protected override void Visit(in UpsertStatement node, in StringBuilder script)
         {
             if (node.Target.Binding is CommonTableExpression)
@@ -212,24 +238,26 @@ namespace DaJet.Scripting
                 Visit(node.CommonTables, in script);
             }
 
+            string[] columns = GetInsertSelectColumnLists(node.Target, node.Source);
             script.Append("INSERT INTO ");
             VisitTargetTable(node.Target, in script);
             script.Append(' ');
             script.Append('(');
-            script.Append(GetInsertStatementColumnList(node.Target));
+            script.Append(columns[0]);
             script.AppendLine(")");
-
-            string insert_columns = GetSelectExpressionColumnList(node.Target, node.Source, null);
-            string update_columns = GetSelectExpressionColumnList(node.Target, node.Source, node.Set);
-
             if (node.Source is TableReference table)
             {
-                script.AppendLine("SELECT "); //TODO: SELECT _key, name, value FROM table AS alias
+                script.AppendLine("SELECT");
+                script.AppendLine(columns[1]);
+                script.Append("FROM ");
                 Visit(in table, in script);
             }
             else if (node.Source is TableExpression select)
             {
-                Visit(in select, in script); //TODO: SELECT _key, name, value FROM (select) AS alias
+                script.AppendLine("SELECT ");
+                script.AppendLine(columns[1]);
+                script.Append("FROM ");
+                Visit(in select, in script);
             }
             else
             {

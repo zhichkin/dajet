@@ -137,24 +137,25 @@ namespace DaJet.Scripting
         };
         private static Dictionary<Type, TokenType> _datatype_token = new()
         {
-            { typeof(Guid), TokenType.Uuid },
             { typeof(bool), TokenType.Boolean },
             { typeof(int), TokenType.Number },
             { typeof(decimal), TokenType.Number },
             { typeof(DateTime), TokenType.DateTime },
             { typeof(string), TokenType.String },
             { typeof(byte[]), TokenType.Binary },
-            { typeof(Entity), TokenType.Entity }
+            { typeof(Entity), TokenType.Entity },
+            { typeof(Guid), TokenType.Uuid },
+            { typeof(ulong), TokenType.Number }
         };
         private static Dictionary<Type, string> _datatype_literal = new()
         {
-            { typeof(Guid), "uuid" },
             { typeof(bool), "boolean" },
             { typeof(int), "number" },
             { typeof(decimal), "number" },
             { typeof(DateTime), "datetime" },
             { typeof(string), "string" },
             { typeof(byte[]), "binary" },
+            { typeof(Guid), "uuid" },
             { typeof(Entity), "entity" }
         };
         private static Dictionary<string, TokenType> _function_en = new()

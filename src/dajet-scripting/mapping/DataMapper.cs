@@ -1,6 +1,8 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
+using Microsoft.IdentityModel.Tokens;
+using static Npgsql.Replication.PgOutput.Messages.RelationMessage;
 
 // Исключения из правил:
 // - _KeyField (табличная часть) binary(4) -> int CanBeNumeric
@@ -448,6 +450,8 @@ namespace DaJet.Scripting
         }
         private static void Visit(in MetadataProperty property, in PropertyMap map)
         {
+            map.IsDbGenerated = property.IsDbGenerated;
+
             UnionType type = GetUnionType(in property);
 
             map.DataType.Merge(type);
@@ -470,9 +474,9 @@ namespace DaJet.Scripting
             }
         }
 
-        public static List<MappingRule> CreateMappingRules(in SyntaxNode target, in SyntaxNode source, in List<SetExpression> mapping)
+        public static List<PropertyMappingRule> CreateMappingRules(in SyntaxNode target, in SyntaxNode source, in List<SetExpression> mapping)
         {
-            List<MappingRule> rules = new();
+            List<PropertyMappingRule> rules = new();
 
             EntityMap target_map = CreateEntityMap(in target);
             EntityMap source_map = CreateEntityMap(in source);
@@ -481,34 +485,27 @@ namespace DaJet.Scripting
             {
                 PropertyMap property = target_map.Properties[i];
 
-                MappingRule rule = new()
+                PropertyMappingRule rule = new()
                 {
                     Target = property
                 };
 
-                if (mapping is not null) // use this block only for updates
+                if (mapping is not null) // use this block only for update rules
                 {
                     foreach (SetExpression set in mapping)
                     {
                         if (property.Name == set.Column.GetName())
                         {
-                            if (set.Initializer is ColumnReference)
-                            {
-                                rule.Source = CreatePropertyMap(set.Initializer);
-                            }
-                            else
-                            {
-                                rule.Source = set.Initializer;
-                            }
+                            rule.Source = CreatePropertyMap(set.Initializer);
                             break;
                         }
                     }
                 }
-                else // use this block for insert
+                else // use this block for insert and select rules
                 {
                     foreach (PropertyMap initializer in source_map.Properties)
                     {
-                        if (property.Name == initializer.Name) //TODO: may alias be used ?
+                        if (property.Name == initializer.Name)
                         {
                             rule.Source = initializer;
                             break;
@@ -516,20 +513,61 @@ namespace DaJet.Scripting
                     }
                 }
 
-                //if (rule.Source is null)
-                //{
-                //    //TODO: create ScalarExpression to initialize target ?
-                //    rule.Source = UnionType.GetDefaultValue(property.Type);
-                //}
+                rule.Columns = CreateMappingRules(in rule);
 
                 rules.Add(rule);
+            }
 
-                //TODO: build property mapping rules or column sequence
-                //for (int ii = 0; ii < property.ColumnSequence.Count; ii++)
-                //{
-                //    ColumnMap column = property.ColumnSequence[ii];
-                //    
-                //}
+            return rules;
+        }
+        public static List<ColumnMappingRule> CreateMappingRules(in PropertyMappingRule mapping)
+        {
+            List<ColumnMappingRule> rules = new();
+            List<ColumnMap> sequence = mapping.Target.ColumnSequence;
+
+            if (mapping.Source is null) // map default values
+            {
+                foreach (ColumnMap column in sequence)
+                {
+                    rules.Add(new ColumnMappingRule()
+                    {
+                        Target = column,
+                        Source = new ScalarExpression()
+                        {
+                            Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(column.Type)),
+                            Literal = UnionType.GetDefaultValueLiteral(column.Type)
+                        }
+                    });
+                }
+                return rules;
+            }
+
+            ColumnMap target_column;
+            Dictionary<UnionTag, ColumnMap> source = mapping.Source.Columns;
+
+            for (int i = 0; i < sequence.Count; i++)
+            {
+                target_column = sequence[i];
+
+                ColumnMappingRule rule = new()
+                {
+                    Target = target_column
+                };
+
+                if (source.TryGetValue(target_column.Type, out ColumnMap source_column))
+                {
+                    rule.Source = source_column;
+                }
+                else
+                {
+                    rule.Source = new ScalarExpression()
+                    {
+                        Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(target_column.Type)),
+                        Literal = UnionType.GetDefaultValueLiteral(target_column.Type)
+                    };
+                }
+
+                rules.Add(rule);
             }
 
             return rules;
