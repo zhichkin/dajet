@@ -1,5 +1,6 @@
 ﻿using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
+using System.Data;
 using System.Text;
 using System.Xml.Linq;
 
@@ -109,28 +110,19 @@ namespace DaJet.Scripting
             }
         }
 
-        private string GetInsertStatementColumnList(in TableReference table)
+        private void ConfigureTableAlias(in SyntaxNode node)
         {
-            ColumnMap column;
-            PropertyMap property;
-            StringBuilder columns = new();
-
-            EntityMap map = DataMapper.CreateEntityMap(table);
-
-            for (int i = 0; i < map.Properties.Count; i++)
+            if (node is TableReference table && string.IsNullOrEmpty(table.Alias))
             {
-                property = map.Properties[i];
-
-                for (int ii = 0; ii < property.ColumnSequence.Count; ii++)
+                if (table.Binding is TableVariableExpression || table.Binding is TemporaryTableExpression)
                 {
-                    column = property.ColumnSequence[ii];
-                    if (column.Ordinal > 0) { columns.Append(", "); }
-
-                    columns.Append(column.Name);
+                    table.Alias = table.Identifier;
                 }
             }
-
-            return columns.ToString();
+            else if (node is TableExpression expression && string.IsNullOrEmpty(expression.Alias))
+            {
+                throw new InvalidOperationException("UPSERT: derived table alias is not defined.");
+            }
         }
         private string[] GetInsertSelectColumnLists(in SyntaxNode target, in SyntaxNode source)
         {
@@ -141,14 +133,18 @@ namespace DaJet.Scripting
 
             foreach (PropertyMappingRule rule in rules)
             {
-                if (rule.Target.IsDbGenerated) { continue; }
+                if (rule.Target.IsDbGenerated) { continue; } // _Version binary(8)
 
                 foreach (ColumnMappingRule map in rule.Columns)
                 {
+                    // INSERT column list
                     if (insert.Length > 0) { insert.Append(", "); }
+                    
                     insert.Append(map.Target.Name);
 
+                    // SELECT column list
                     if (select.Length > 0) { select.Append(", "); }
+
                     if (map.Source is ColumnMap source_column)
                     {
                         select.Append(source_column.Alias);
@@ -161,6 +157,82 @@ namespace DaJet.Scripting
             }
 
             return new string[] { insert.ToString(), select.ToString() };
+        }
+        private void TransformSetClause(in SyntaxNode target, in SyntaxNode source, in List<SetExpression> set_clause, in StringBuilder script)
+        {
+            List<PropertyMappingRule> rules = DataMapper.CreateMappingRules(in target, in source, in set_clause);
+
+            string target_table = string.Empty;
+            string source_table = string.Empty;
+
+            if (target is TableReference table)
+            {
+                if (string.IsNullOrEmpty(table.Alias))
+                {
+                    target_table = table.Identifier;
+                }
+                else
+                {
+                    target_table = table.Alias;
+                }
+            }
+
+            if (source is TableReference table2)
+            {
+                if (string.IsNullOrEmpty(table2.Alias))
+                {
+                    source_table = table2.Identifier;
+                }
+                else
+                {
+                    source_table = table2.Alias;
+                }
+            }
+            else if (source is TableExpression expression)
+            {
+                source_table = expression.Alias;
+            }
+
+            foreach (PropertyMappingRule rule in rules)
+            {
+                for (int s = 0; s < set_clause.Count; s++)
+                {
+                    SetExpression set = set_clause[s];
+
+                    if (rule.Target.Name == set.Column.GetName())
+                    {
+                        if (s > 0) { script.AppendLine(","); }
+
+                        for (int i = 0; i < rule.Columns.Count; i++)
+                        {
+                            ColumnMappingRule map = rule.Columns[i];
+
+                            if (i > 0) { script.AppendLine(","); }
+
+                            if (!string.IsNullOrEmpty(target_table))
+                            {
+                                script.Append(target_table).Append('.');
+                            }
+                            script.Append(map.Target.Name);
+
+                            script.Append(" = ");
+
+                            if (map.Source is ColumnMap column)
+                            {
+                                if (!string.IsNullOrEmpty(source_table))
+                                {
+                                    script.Append(source_table).Append('.');
+                                }
+                                script.Append(column.Alias);
+                            }
+                            else if (map.Source is ScalarExpression scalar)
+                            {
+                                Visit(in scalar, script);
+                            }
+                        }
+                    }
+                }
+            }
         }
         protected override void Visit(in UpsertStatement node, in StringBuilder script)
         {
@@ -178,7 +250,9 @@ namespace DaJet.Scripting
             {
                 throw new InvalidOperationException("UPSERT: FROM clause is not defined.");
             }
-            
+
+            ConfigureTableAlias(node.Source); // @variable and #temporary tables
+
             script.AppendLine();
 
             #region "UPDATE STATEMENT"
@@ -208,13 +282,14 @@ namespace DaJet.Scripting
                 }
 
                 script.AppendLine().Append("SET ");
-                SetExpression set;
-                for (int i = 0; i < node.Set.Count; i++)
-                {
-                    set = node.Set[i];
-                    if (i > 0) { script.Append(","); }
-                    Visit(in set, in script);
-                }
+                TransformSetClause(node.Target, node.Source, node.Set, in script);
+                //SetExpression set;
+                //for (int i = 0; i < node.Set.Count; i++)
+                //{
+                //    set = node.Set[i];
+                //    if (i > 0) { script.Append(","); }
+                //    Visit(in set, in script);
+                //}
 
                 script.AppendLine().Append($"FROM ");
                 Visit(node.Target, in script);

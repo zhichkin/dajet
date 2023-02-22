@@ -1,6 +1,8 @@
 ﻿using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
+using System.Collections.Generic;
+using System.Data;
 using System.Text;
 
 namespace DaJet.Scripting
@@ -835,6 +837,10 @@ namespace DaJet.Scripting
             Visit(node.Column, in script);
             script.Append(" = ");
             Visit(node.Initializer, in script);
+
+            // TODO: implement SetClause transformer class
+            // SET expression initializer could be as follows (currently only ColumnReference is implemented):
+            // ColumnReference, ScalarExpression, VariableReference, FunctionExpression, CaseExpression, EnumValue
         }
         #endregion
 
@@ -880,47 +886,7 @@ namespace DaJet.Scripting
         #endregion
 
         #region "UPSERT STATEMENT"
-        protected virtual void Visit(in UpsertStatement node, in StringBuilder script)
-        {
-            script.AppendLine();
-
-            if (node.CommonTables is not null)
-            {
-                script.Append("WITH ");
-                Visit(node.CommonTables, in script);
-            }
-
-            script.AppendLine().Append("UPSERT ");
-
-            Visit(node.Target, in script);
-
-            if (node.IgnoreUpdate) { script.Append(" IGNORE UPDATE"); }
-
-            if (node.Where is not null) { Visit(node.Where, in script); }
-            else { throw new InvalidOperationException("UPSERT: WHERE clause is not defined."); }
-
-            if (node.Set is not null && node.Set.Count > 0)
-            {
-                script.AppendLine().Append("SET ");
-                SetExpression set;
-                for (int i = 0; i < node.Set.Count; i++)
-                {
-                    set = node.Set[i];
-                    if (i > 0) { script.Append(","); }
-                    Visit(in set, in script);
-                }
-                script.AppendLine();
-            }
-            else
-            {
-                throw new InvalidOperationException("UPSERT: SET clause is not defined.");
-            }
-
-            if (node.Source is not null) { Visit(node.Source, in script); }
-            else { throw new InvalidOperationException("UPSERT: FROM clause is not defined."); }
-
-            script.Append(';').AppendLine();
-        }
+        protected abstract void Visit(in UpsertStatement node, in StringBuilder script);
         #endregion
     }
 }

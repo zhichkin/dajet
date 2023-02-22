@@ -1,5 +1,4 @@
-﻿using DaJet.Metadata.Model;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -18,6 +17,7 @@ namespace DaJet.Data
         {
             return (_flags & (1U << position)) == (1U << position);
         }
+        public bool Is(UnionTag tag) { return IsBitSet((int)tag); }
         public void Add(UnionTag type)
         {
             if (type == UnionTag.TypeCode)
@@ -442,6 +442,10 @@ namespace DaJet.Data
             }
 
             return string.Empty; // UnionTag.Undefined
+        }
+        public static string GetHexString(UnionTag tag)
+        {
+            return $"0x{Convert.ToHexString(new byte[] { (byte)tag })}";
         }
         public static string GetPurposeLiteral(ColumnPurpose purpose)
         {

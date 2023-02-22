@@ -29,6 +29,31 @@ namespace DaJet.Scripting
                 return sequence;
             }
         }
+        public ColumnMap MapColumn(UnionTag tag)
+        {
+            ColumnMap column = null;
+
+            if (Columns.TryGetValue(tag, out column))
+            {
+                return column;
+            }
+
+            if (tag == UnionTag.Entity && Columns.TryGetValue(UnionTag.Uuid, out column))
+            {
+                return column; // convertion of Uuid to Entity 
+            }
+            else if (tag == UnionTag.Uuid && Columns.TryGetValue(UnionTag.Entity, out column))
+            {
+                return column; // convertion of Entity to Uuid
+            }
+
+            return column;
+        }
+        public bool TryMapColumn(UnionTag tag, out ColumnMap column)
+        {
+            column = MapColumn(tag);
+            return (column is not null);
+        }
         public override string ToString() { return $"{Name} {DataType}"; }
         
         #region "GET VALUE FROM DATA READER"

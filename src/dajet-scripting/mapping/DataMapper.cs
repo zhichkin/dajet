@@ -1,8 +1,6 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
-using Microsoft.IdentityModel.Tokens;
-using static Npgsql.Replication.PgOutput.Messages.RelationMessage;
 
 // Исключения из правил:
 // - _KeyField (табличная часть) binary(4) -> int CanBeNumeric
@@ -481,41 +479,65 @@ namespace DaJet.Scripting
             EntityMap target_map = CreateEntityMap(in target);
             EntityMap source_map = CreateEntityMap(in source);
 
-            for (int i = 0; i < target_map.Properties.Count; i++)
+            if (mapping is not null) // update set clause mapping
             {
-                PropertyMap property = target_map.Properties[i];
-
-                PropertyMappingRule rule = new()
+                foreach (SetExpression set in mapping)
                 {
-                    Target = property
-                };
-
-                if (mapping is not null) // use this block only for update rules
-                {
-                    foreach (SetExpression set in mapping)
+                    for (int i = 0; i < target_map.Properties.Count; i++)
                     {
-                        if (property.Name == set.Column.GetName())
+                        PropertyMap column = target_map.Properties[i];
+
+                        if (set.Column.GetName() == column.Name)
                         {
-                            rule.Source = CreatePropertyMap(set.Initializer);
-                            break;
+                            PropertyMappingRule rule = new()
+                            {
+                                Target = column
+                            };
+
+                            PropertyMap initializer = CreatePropertyMap(set.Initializer);
+
+                            foreach (PropertyMap source_column in source_map.Properties)
+                            {
+                                if (initializer.Name == source_column.Name)
+                                {
+                                    rule.Source = source_column;
+
+                                    rule.Columns = CreateMappingRules(in rule);
+
+                                    rules.Add(rule);
+
+                                    break;
+                                }
+                            }
                         }
                     }
                 }
-                else // use this block for insert and select rules
+            }
+            else // insert and select mapping
+            {
+                for (int i = 0; i < target_map.Properties.Count; i++)
                 {
+                    PropertyMap property = target_map.Properties[i];
+
+                    PropertyMappingRule rule = new()
+                    {
+                        Target = property
+                    };
+
                     foreach (PropertyMap initializer in source_map.Properties)
                     {
                         if (property.Name == initializer.Name)
                         {
                             rule.Source = initializer;
+
                             break;
                         }
                     }
+
+                    rule.Columns = CreateMappingRules(in rule);
+
+                    rules.Add(rule);
                 }
-
-                rule.Columns = CreateMappingRules(in rule);
-
-                rules.Add(rule);
             }
 
             return rules;
@@ -542,25 +564,83 @@ namespace DaJet.Scripting
                 return rules;
             }
 
-            ColumnMap target_column;
-            Dictionary<UnionTag, ColumnMap> source = mapping.Source.Columns;
-
             for (int i = 0; i < sequence.Count; i++)
             {
-                target_column = sequence[i];
+                ColumnMap target_column = sequence[i];
 
-                ColumnMappingRule rule = new()
-                {
-                    Target = target_column
-                };
+                ColumnMappingRule rule = new() { Target = target_column };
 
-                if (source.TryGetValue(target_column.Type, out ColumnMap source_column))
+                if (mapping.Source.TryMapColumn(target_column.Type, out ColumnMap source_column))
                 {
-                    rule.Source = source_column;
+                    rule.Source = source_column; // map column to column
                 }
-                else
+                else if (target_column.Type == UnionTag.Tag)
                 {
-                    rule.Source = new ScalarExpression()
+                    if (mapping.Source.DataType.UseTypeCode || // is union reference type
+                        mapping.Source.DataType.IsEntity)      // is single reference type
+                    {
+                        if (mapping.Target.DataType.Is(UnionTag.Entity)) // target can be entity
+                        {
+                            rule.Source = new ScalarExpression() // map _TYPE column to default value 0x08 - Entity
+                            {
+                                Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
+                                Literal = UnionType.GetHexString(UnionTag.Entity)
+                            };
+                        }
+                        else
+                        {
+                            rule.Source = new ScalarExpression() // map _TYPE column to default value 0x01 - Undefined
+                            {
+                                Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
+                                Literal = UnionType.GetHexString(UnionTag.Tag)
+                            };
+                        }
+                    }
+                    else
+                    {
+                        UnionTag source_type = mapping.Source.DataType.GetSingleTagOrUndefined();
+
+                        if (mapping.Target.DataType.Is(source_type)) // target can be of source type
+                        {
+
+                            rule.Source = new ScalarExpression() // map _TYPE column to default value 0x02...0x05
+                            {
+                                Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
+                                Literal = UnionType.GetHexString(source_type)
+                            };
+                        }
+                        else
+                        {
+                            rule.Source = new ScalarExpression() // map _TYPE column to default value 0x01 - Undefined
+                            {
+                                Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
+                                Literal = UnionType.GetHexString(UnionTag.Tag)
+                            };
+                        }
+                    }
+                }
+                else if (target_column.Type == UnionTag.TypeCode)
+                {
+                    if (mapping.Source.DataType.IsEntity) // is single reference type
+                    {
+                        rule.Source = new ScalarExpression() // map _TRef column to type code constant value
+                        {
+                            Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.TypeCode)),
+                            Literal = $"0x{Convert.ToHexString(DbUtilities.GetByteArray(mapping.Source.DataType.TypeCode))}"
+                        };
+                    }
+                    else
+                    {
+                        rule.Source = new ScalarExpression() // map _TRef column to type code default value
+                        {
+                            Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.TypeCode)),
+                            Literal = UnionType.GetHexString(UnionTag.Undefined)
+                        };
+                    }
+                }
+                else // map primitive data type column to default value
+                {
+                    rule.Source = new ScalarExpression() // map column to default value
                     {
                         Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(target_column.Type)),
                         Literal = UnionType.GetDefaultValueLiteral(target_column.Type)
