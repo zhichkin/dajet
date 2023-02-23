@@ -1,5 +1,4 @@
-﻿using Azure;
-using DaJet.Data;
+﻿using DaJet.Data;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 
@@ -26,33 +25,14 @@ namespace DaJet.Scripting
                 return TransformUnionComparison(in comparison);
             }
 
-            //TODO: refactor union type comparison to use UnionType inference
-
-            if (IsColumnColumn(comparison.Expression1, comparison.Expression2))
-            {
-                return Transform(comparison, comparison.Expression1, comparison.Expression2);
-            }
-            else if (IsColumnVariable(comparison.Expression1, comparison.Expression2))
-            {
-                return Transform(comparison, comparison.Expression1, comparison.Expression2);
-            }
-            else if (IsVariableColumn(comparison.Expression1, comparison.Expression2))
-            {
-                return Transform(comparison, comparison.Expression1, comparison.Expression2);
-            }
-            else if (IsColumnScalar(comparison.Expression1, comparison.Expression2))
-            {
-                return Transform(comparison, comparison.Expression1, comparison.Expression2);
-            }
-            else if (IsScalarColumn(comparison.Expression1, comparison.Expression2))
-            {
-                return Transform(comparison, comparison.Expression1, comparison.Expression2);
-            }
-
             return null; // no transformation is needed
         }
+        private void ThrowUnableToCompareException(SyntaxNode node1, SyntaxNode node2)
+        {
+            throw new InvalidCastException($"Unable to compare [{node1}] and [{node2}]");
+        }
 
-        #region "<union type> == <union type>"
+        #region "<column> IS <type>"
         private bool IsSimpleIsNullOperator(SyntaxNode left, SyntaxNode right)
         {
             return IsScalarColumn(left) && IsNullScalar(right);
@@ -95,42 +75,6 @@ namespace DaJet.Scripting
             }
 
             return (type != null);
-        }
-        private bool IsColumnColumn(SyntaxNode node1, SyntaxNode node2)
-        {
-            return (node1 is ColumnReference column1 &&
-                    node2 is ColumnReference column2 &&
-                    column1.Binding is MetadataProperty property1 &&
-                    column2.Binding is MetadataProperty property2 &&
-                    (property1.Columns.Count > 1 || property2.Columns.Count > 1));
-        }
-        private bool IsColumnVariable(SyntaxNode node1, SyntaxNode node2)
-        {
-            return (node1 is ColumnReference column &&
-                node2 is VariableReference &&
-                column.Binding is MetadataProperty property &&
-                property.Columns.Count > 1);
-        }
-        private bool IsVariableColumn(SyntaxNode node1, SyntaxNode node2)
-        {
-            return (node1 is VariableReference &&
-                node2 is ColumnReference column &&
-                column.Binding is MetadataProperty property &&
-                property.Columns.Count > 1);
-        }
-        private bool IsColumnScalar(SyntaxNode node1, SyntaxNode node2)
-        {
-            return (node1 is ColumnReference column &&
-                node2 is ScalarExpression &&
-                column.Binding is MetadataProperty property &&
-                property.Columns.Count > 1);
-        }
-        private bool IsScalarColumn(SyntaxNode node1, SyntaxNode node2)
-        {
-            return (node1 is ScalarExpression &&
-                node2 is ColumnReference column &&
-                column.Binding is MetadataProperty property &&
-                property.Columns.Count > 1);
         }
 
         private GroupOperator Transform(ComparisonOperator comparison, SyntaxNode node1, SyntaxNode node2)
@@ -502,15 +446,6 @@ namespace DaJet.Scripting
             return null; // TODO: throw error - unable to compare types
         }
 
-        private void ThrowUnableToCompareException(SyntaxNode node1, SyntaxNode node2)
-        {
-            throw new InvalidCastException($"Unable to compare [{node1}] and [{node2}]");
-        }
-
-        #endregion
-
-        #region "<column> IS <type>"
-
         private MetadataColumn GetColumnToCompareToNull(MetadataProperty property)
         {
             for (int i = 0; i < property.Columns.Count; i++)
@@ -578,6 +513,8 @@ namespace DaJet.Scripting
 
         #endregion
 
+        #region "<union type> == <union type>"
+
         private bool IsUnionNode(in SyntaxNode node)
         {
             return DataMapper.TryInfer(in node, out UnionType type) && type.IsUnion;
@@ -603,55 +540,8 @@ namespace DaJet.Scripting
             Transform(comparison.Expression1, in map, SetExpression1);
             Transform(comparison.Expression2, in map, SetExpression2);
 
-            if (map.TryGetValue(UnionTag.Tag, out ComparisonOperator comparison1))
-            {
-                if (comparison1.Expression1 is not null && comparison1.Expression2 is null)
-                {
-                    comparison1.Expression2 = new ScalarExpression() // map _TYPE column to default value 0x08 - Entity
-                    {
-                        Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
-                        Literal = UnionType.GetHexString(UnionTag.Entity)
-                    };
-                }
-                else if (comparison1.Expression1 is null && comparison1.Expression2 is not null)
-                {
-                    comparison1.Expression1 = new ScalarExpression() // map _TYPE column to default value 0x08 - Entity
-                    {
-                        Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
-                        Literal = UnionType.GetHexString(UnionTag.Entity)
-                    };
-                }
-            }
-
-            if (map.TryGetValue(UnionTag.TypeCode, out ComparisonOperator comparison2))
-            {
-                if (comparison2.Expression1 is not null && comparison2.Expression2 is null)
-                {
-                    UnionType type = DataMapper.Infer(comparison.Expression2);
-
-                    if (type.IsEntity)
-                    {
-                        comparison2.Expression2 = new ScalarExpression() // map _TRef column to type code constant value
-                        {
-                            Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.TypeCode)),
-                            Literal = $"0x{Convert.ToHexString(DbUtilities.GetByteArray(type.TypeCode))}"
-                        };
-                    }
-                }
-                else if (comparison2.Expression1 is null && comparison2.Expression2 is not null)
-                {
-                    UnionType type = DataMapper.Infer(comparison.Expression1);
-
-                    if (type.IsEntity)
-                    {
-                        comparison2.Expression1 = new ScalarExpression() // map _TRef column to type code constant value
-                        {
-                            Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.TypeCode)),
-                            Literal = $"0x{Convert.ToHexString(DbUtilities.GetByteArray(type.TypeCode))}"
-                        };
-                    }
-                }
-            }
+            ConfigureTag(in map, in comparison); // _TYPE column
+            ConfigureTypeCode(in map, in comparison); // _TRef column
 
             GroupOperator group = new();
 
@@ -675,9 +565,9 @@ namespace DaJet.Scripting
                 }
             }
 
-            if (group.Expression == null)
+            if (group.Expression == null) // no compatible types are found to compare
             {
-                return null; // no compatible types are found to compare
+                ThrowUnableToCompareException(comparison.Expression1, comparison.Expression2);
             }
 
             return group;
@@ -689,6 +579,77 @@ namespace DaJet.Scripting
         private void SetExpression2(ComparisonOperator comparison, SyntaxNode value)
         {
             comparison.Expression2 = value;
+        }
+        private void ConfigureTag(in Dictionary<UnionTag, ComparisonOperator> map, in ComparisonOperator comparison)
+        {
+            if (!map.TryGetValue(UnionTag.Tag, out ComparisonOperator item)) { return; }
+            if (item.Expression1 is null && item.Expression2 is null) { return; }
+
+            UnionType target;
+            UnionType source;
+
+            if (item.Expression1 is null)
+            {
+                target = DataMapper.Infer(comparison.Expression1);
+                source = DataMapper.Infer(comparison.Expression2);
+            }
+            else
+            {
+                target = DataMapper.Infer(comparison.Expression2);
+                source = DataMapper.Infer(comparison.Expression1);
+            }
+
+            UnionTag type = target.GetSingleTagOrUndefined();
+
+            if (!source.Is(type)) { return; } // incompatible data types
+
+            ScalarExpression scalar = new()
+            {
+                Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
+                Literal = UnionType.GetHexString(type)
+            };
+
+            if (item.Expression1 is null)
+            {
+                item.Expression1 = scalar;
+            }
+            else
+            {
+                item.Expression2 = scalar;
+            }
+        }
+        private void ConfigureTypeCode(in Dictionary<UnionTag, ComparisonOperator> map, in ComparisonOperator comparison)
+        {
+            if (!map.TryGetValue(UnionTag.TypeCode, out ComparisonOperator item)) { return; }
+            if (item.Expression1 is null && item.Expression2 is null) { return; }
+
+            UnionType target;
+
+            if (item.Expression1 is null)
+            {
+                target = DataMapper.Infer(comparison.Expression1);
+            }
+            else
+            {
+                target = DataMapper.Infer(comparison.Expression2);
+            }
+
+            if (!target.IsEntity) { return; } // TypeCode can only be used in conjunction with Entity
+
+            ScalarExpression scalar = new()
+            {
+                Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.TypeCode)),
+                Literal = $"0x{Convert.ToHexString(DbUtilities.GetByteArray(target.TypeCode))}"
+            };
+
+            if (item.Expression1 is null)
+            {
+                item.Expression1 = scalar;
+            }
+            else
+            {
+                item.Expression2 = scalar;
+            }
         }
         private void Transform(in SyntaxNode node, in Dictionary<UnionTag, ComparisonOperator> map, Action<ComparisonOperator, SyntaxNode> setter)
         {
@@ -748,5 +709,7 @@ namespace DaJet.Scripting
                 setter(comparison, node);
             }
         }
+
+        #endregion
     }
 }
