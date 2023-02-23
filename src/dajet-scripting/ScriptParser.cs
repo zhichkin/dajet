@@ -1234,38 +1234,24 @@ namespace DaJet.Scripting
                 throw new FormatException("INSERT keyword expected.");
             }
 
-            InsertStatement insert = new();
-
             if (Match(TokenType.INTO)) { /* do nothing - optional */ }
 
-            insert.Target = table_identifier();
-
-            if (Match(TokenType.OpenRoundBracket))
+            InsertStatement insert = new()
             {
-                insert.Columns.Add(column_identifier());
+                Target = table_identifier()
+            };
 
-                while (Match(TokenType.Comma))
-                {
-                    insert.Columns.Add(column_identifier());
-                }
-
-                if (!Match(TokenType.CloseRoundBracket))
-                {
-                    throw new FormatException("INSERT: close round bracket expected.");
-                }
+            if (Match(TokenType.FROM))
+            {
+                insert.Source = table();
             }
-
-            if (Check(TokenType.SELECT))
+            else if (Check(TokenType.SELECT))
             {
                 insert.Source = union();
             }
-            else if (Check(TokenType.VALUES))
-            {
-                insert.Source = values();
-            }
             else
             {
-                throw new FormatException("INSERT: source or values expression expected.");
+                throw new FormatException("INSERT: table source expression expected.");
             }
             
             return insert;

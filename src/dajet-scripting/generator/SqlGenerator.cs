@@ -1,7 +1,6 @@
 ﻿using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
-using System.Collections.Generic;
 using System.Data;
 using System.Text;
 
@@ -718,6 +717,130 @@ namespace DaJet.Scripting
                 throw new InvalidOperationException("DML: Target table identifier is missing.");
             }
         }
+        protected void ConfigureTableAlias(in SyntaxNode node)
+        {
+            if (node is TableReference table && string.IsNullOrEmpty(table.Alias))
+            {
+                if (table.Binding is TableVariableExpression || table.Binding is TemporaryTableExpression)
+                {
+                    table.Alias = table.Identifier;
+                }
+            }
+            else if (node is TableExpression expression && string.IsNullOrEmpty(expression.Alias))
+            {
+                throw new InvalidOperationException("Derived table alias is not defined.");
+            }
+        }
+        protected string[] GetInsertSelectColumnLists(in SyntaxNode target, in SyntaxNode source)
+        {
+            List<PropertyMappingRule> rules = DataMapper.CreateMappingRules(in target, in source, null);
+
+            StringBuilder insert = new();
+            StringBuilder select = new();
+
+            foreach (PropertyMappingRule rule in rules)
+            {
+                if (rule.Target.IsDbGenerated) { continue; } // _Version binary(8)
+
+                foreach (ColumnMappingRule map in rule.Columns)
+                {
+                    // INSERT column list
+                    if (insert.Length > 0) { insert.Append(", "); }
+
+                    insert.Append(map.Target.Name);
+
+                    // SELECT column list
+                    if (select.Length > 0) { select.Append(", "); }
+
+                    if (map.Source is ColumnMap source_column)
+                    {
+                        select.Append(source_column.Alias);
+                    }
+                    else if (map.Source is ScalarExpression scalar)
+                    {
+                        Visit(in scalar, select);
+                    }
+                }
+            }
+
+            return new string[] { insert.ToString(), select.ToString() };
+        }
+        protected void TransformSetClause(in SyntaxNode target, in SyntaxNode source, in List<SetExpression> set_clause, in StringBuilder script)
+        {
+            List<PropertyMappingRule> rules = DataMapper.CreateMappingRules(in target, in source, in set_clause);
+
+            string target_table = string.Empty;
+            string source_table = string.Empty;
+
+            if (target is TableReference table)
+            {
+                if (string.IsNullOrEmpty(table.Alias))
+                {
+                    target_table = table.Identifier;
+                }
+                else
+                {
+                    target_table = table.Alias;
+                }
+            }
+
+            if (source is TableReference table2)
+            {
+                if (string.IsNullOrEmpty(table2.Alias))
+                {
+                    source_table = table2.Identifier;
+                }
+                else
+                {
+                    source_table = table2.Alias;
+                }
+            }
+            else if (source is TableExpression expression)
+            {
+                source_table = expression.Alias;
+            }
+
+            foreach (PropertyMappingRule rule in rules)
+            {
+                for (int s = 0; s < set_clause.Count; s++)
+                {
+                    SetExpression set = set_clause[s];
+
+                    if (rule.Target.Name == set.Column.GetName())
+                    {
+                        if (s > 0) { script.AppendLine(","); }
+
+                        for (int i = 0; i < rule.Columns.Count; i++)
+                        {
+                            ColumnMappingRule map = rule.Columns[i];
+
+                            if (i > 0) { script.AppendLine(","); }
+
+                            if (!string.IsNullOrEmpty(target_table))
+                            {
+                                script.Append(target_table).Append('.');
+                            }
+                            script.Append(map.Target.Name);
+
+                            script.Append(" = ");
+
+                            if (map.Source is ColumnMap column)
+                            {
+                                if (!string.IsNullOrEmpty(source_table))
+                                {
+                                    script.Append(source_table).Append('.');
+                                }
+                                script.Append(column.Alias);
+                            }
+                            else if (map.Source is ScalarExpression scalar)
+                            {
+                                Visit(in scalar, script);
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         #region "INSERT STATEMENT"
         protected virtual void Visit(in InsertStatement node, in StringBuilder script)
@@ -727,6 +850,8 @@ namespace DaJet.Scripting
                 throw new InvalidOperationException("INSERT: computed table (cte) targeting is not allowed.");
             }
 
+            ConfigureTableAlias(node.Source); // @variable and #temporary tables
+
             script.AppendLine();
 
             if (node.CommonTables is not null)
@@ -735,35 +860,39 @@ namespace DaJet.Scripting
                 Visit(node.CommonTables, in script);
             }
 
+            string[] columns = GetInsertSelectColumnLists(node.Target, node.Source);
+
             script.AppendLine().Append("INSERT INTO ");
-
             VisitTargetTable(node.Target, in script);
-            
             script.Append(' ');
+            script.Append('(');
+            script.Append(columns[0]);
+            script.AppendLine(")");
 
-            if (node.Columns.Count > 0)
+            if (node.Source is TableReference table) // CTE, @variable or #temporary tables
             {
-                script.Append('(');
-
-                ColumnReference column;
-
-                for (int i = 0; i < node.Columns.Count; i++)
-                {
-                    column = node.Columns[i];
-                    
-                    if (i > 0) { script.Append(", "); }
-                    
-                    Visit(in column, in script);
-                }
-
-                script.Append(')');
+                script.AppendLine("SELECT");
+                script.AppendLine(columns[1]);
+                script.Append("FROM ");
+                Visit(in table, in script);
+            }
+            else if (node.Source is TableExpression select) // Derived table: SELECT...FROM (SELECT...) AS source
+            {
+                script.AppendLine("SELECT ");
+                script.AppendLine(columns[1]);
+                script.Append("FROM ");
+                Visit(in select, in script);
+            }
+            else // SELECT expression - convert to derived table to ensure proper column order
+            {
+                script.AppendLine("SELECT ");
+                script.AppendLine(columns[1]);
+                script.Append("FROM (");
+                Visit(node.Source, in script);
+                script.Append(") AS source");
             }
 
-            script.AppendLine();
-
-            Visit(node.Source, in script);
-
-            script.Append(';').AppendLine();
+            script.AppendLine().Append(';');
         }
         protected virtual void Visit(in ValuesExpression node, in StringBuilder script)
         {

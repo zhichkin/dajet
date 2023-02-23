@@ -158,7 +158,18 @@ namespace DaJet.Scripting
             }
             else if (node.Token == TokenType.Binary || node.Literal.StartsWith("0x"))
             {
-                script.Append($"CAST(E'\\\\{node.Literal.TrimStart('0')}' AS bytea)");
+                if (node.Literal == "0x00") // TODO: подумать как убрать этот костыль
+                {
+                    script.Append("FALSE");
+                }
+                else if (node.Literal == "0x01") // TODO: может прилетать как значение по умолчанию для INSERT
+                {
+                    script.Append("TRUE");
+                }
+                else
+                {
+                    script.Append($"CAST(E'\\\\{node.Literal.TrimStart('0')}' AS bytea)");
+                }
             }
             else // Number
             {
