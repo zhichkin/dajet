@@ -1,4 +1,5 @@
-﻿using DaJet.Data;
+﻿using Azure;
+using DaJet.Data;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 
@@ -18,6 +19,11 @@ namespace DaJet.Scripting
             if (comparison.Token == TokenType.IS)
             {
                 return TransformColumnIsType(in comparison);
+            }
+
+            if (comparison.Token == TokenType.Equals && IsUnionComparison(comparison.Expression1, comparison.Expression2))
+            {
+                return TransformUnionComparison(in comparison);
             }
 
             //TODO: refactor union type comparison to use UnionType inference
@@ -571,5 +577,176 @@ namespace DaJet.Scripting
         }
 
         #endregion
+
+        private bool IsUnionNode(in SyntaxNode node)
+        {
+            return DataMapper.TryInfer(in node, out UnionType type) && type.IsUnion;
+        }
+        private bool IsUnionComparison(in SyntaxNode left, in SyntaxNode right)
+        {
+            return IsUnionNode(in left) || IsUnionNode(in right);
+        }
+        private SyntaxNode TransformUnionComparison(in ComparisonOperator comparison)
+        {
+            Dictionary<UnionTag, ComparisonOperator> map = new()
+            {
+                { UnionTag.Tag, new ComparisonOperator() { Token = TokenType.Equals } },
+                { UnionTag.Boolean, new ComparisonOperator() { Token = TokenType.Equals } },
+                { UnionTag.Numeric, new ComparisonOperator() { Token = TokenType.Equals } },
+                { UnionTag.DateTime, new ComparisonOperator() { Token = TokenType.Equals } },
+                { UnionTag.String, new ComparisonOperator() { Token = TokenType.Equals } },
+                { UnionTag.Binary, new ComparisonOperator() { Token = TokenType.Equals } },
+                { UnionTag.TypeCode, new ComparisonOperator() { Token = TokenType.Equals } },
+                { UnionTag.Entity, new ComparisonOperator() { Token = TokenType.Equals } }
+            };
+
+            Transform(comparison.Expression1, in map, SetExpression1);
+            Transform(comparison.Expression2, in map, SetExpression2);
+
+            if (map.TryGetValue(UnionTag.Tag, out ComparisonOperator comparison1))
+            {
+                if (comparison1.Expression1 is not null && comparison1.Expression2 is null)
+                {
+                    comparison1.Expression2 = new ScalarExpression() // map _TYPE column to default value 0x08 - Entity
+                    {
+                        Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
+                        Literal = UnionType.GetHexString(UnionTag.Entity)
+                    };
+                }
+                else if (comparison1.Expression1 is null && comparison1.Expression2 is not null)
+                {
+                    comparison1.Expression1 = new ScalarExpression() // map _TYPE column to default value 0x08 - Entity
+                    {
+                        Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
+                        Literal = UnionType.GetHexString(UnionTag.Entity)
+                    };
+                }
+            }
+
+            if (map.TryGetValue(UnionTag.TypeCode, out ComparisonOperator comparison2))
+            {
+                if (comparison2.Expression1 is not null && comparison2.Expression2 is null)
+                {
+                    UnionType type = DataMapper.Infer(comparison.Expression2);
+
+                    if (type.IsEntity)
+                    {
+                        comparison2.Expression2 = new ScalarExpression() // map _TRef column to type code constant value
+                        {
+                            Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.TypeCode)),
+                            Literal = $"0x{Convert.ToHexString(DbUtilities.GetByteArray(type.TypeCode))}"
+                        };
+                    }
+                }
+                else if (comparison2.Expression1 is null && comparison2.Expression2 is not null)
+                {
+                    UnionType type = DataMapper.Infer(comparison.Expression1);
+
+                    if (type.IsEntity)
+                    {
+                        comparison2.Expression1 = new ScalarExpression() // map _TRef column to type code constant value
+                        {
+                            Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.TypeCode)),
+                            Literal = $"0x{Convert.ToHexString(DbUtilities.GetByteArray(type.TypeCode))}"
+                        };
+                    }
+                }
+            }
+
+            GroupOperator group = new();
+
+            foreach (var item in map)
+            {
+                if (item.Value.Expression1 is not null && item.Value.Expression2 is not null)
+                {
+                    if (group.Expression == null)
+                    {
+                        group.Expression = item.Value;
+                    }
+                    else
+                    {
+                        group.Expression = new BinaryOperator()
+                        {
+                            Token = TokenType.AND,
+                            Expression1 = group.Expression,
+                            Expression2 = item.Value
+                        };
+                    }
+                }
+            }
+
+            if (group.Expression == null)
+            {
+                return null; // no compatible types are found to compare
+            }
+
+            return group;
+        }
+        private void SetExpression1(ComparisonOperator comparison, SyntaxNode value)
+        {
+            comparison.Expression1 = value;
+        }
+        private void SetExpression2(ComparisonOperator comparison, SyntaxNode value)
+        {
+            comparison.Expression2 = value;
+        }
+        private void Transform(in SyntaxNode node, in Dictionary<UnionTag, ComparisonOperator> map, Action<ComparisonOperator, SyntaxNode> setter)
+        {
+            if (node is ColumnReference column)
+            {
+                Transform(in column, map, setter);
+            }
+            else if (node is ScalarExpression scalar)
+            {
+                Transform(in scalar, map, setter);
+            }
+            else if (node is VariableReference variable)
+            {
+                Transform(in variable, map, setter);
+            }
+        }
+        private void Transform(in ColumnReference node, in Dictionary<UnionTag, ComparisonOperator> map, Action<ComparisonOperator, SyntaxNode> setter)
+        {
+            if (node.Mapping is null || node.Mapping.Count == 0) { return; }
+
+            for (int i = 0; i < node.Mapping.Count; i++)
+            {
+                ColumnMap column = node.Mapping[i];
+
+                if (map.TryGetValue(column.Type, out ComparisonOperator comparison))
+                {
+                    ColumnReference copy = new()
+                    {
+                        Binding = node.Binding,
+                        Identifier = node.Identifier,
+                        Mapping = new List<ColumnMap>() { column }
+                    };
+
+                    setter(comparison, copy);
+                }
+            }
+        }
+        private void Transform(in ScalarExpression node, in Dictionary<UnionTag, ComparisonOperator> map, Action<ComparisonOperator, SyntaxNode> setter)
+        {
+            UnionType type = DataMapper.Infer(node);
+
+            UnionTag tag = type.IsUuid ? UnionTag.Entity : type.GetSingleTagOrUndefined();
+
+            if (map.TryGetValue(tag, out ComparisonOperator comparison))
+            {
+                setter(comparison, node);
+            }
+        }
+        private void Transform(in VariableReference node, in Dictionary<UnionTag, ComparisonOperator> map, Action<ComparisonOperator, SyntaxNode> setter)
+        {
+            UnionType type = DataMapper.Infer(node);
+
+            UnionTag tag = type.IsUuid ? UnionTag.Entity : type.GetSingleTagOrUndefined();
+
+            if (map.TryGetValue(tag, out ComparisonOperator comparison))
+            {
+                setter(comparison, node);
+            }
+        }
     }
 }

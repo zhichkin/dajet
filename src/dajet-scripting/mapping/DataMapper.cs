@@ -45,6 +45,18 @@ namespace DaJet.Scripting
 
             _name = string.Empty;
         }
+        public static UnionType Infer(in SyntaxNode node)
+        {
+            UnionType union = new();
+            Visit(in node, in union);
+            return union;
+        }
+        public static bool TryInfer(in SyntaxNode node, out UnionType union)
+        {
+            union = new();
+            Visit(in node, in union);
+            return !union.IsUndefined;
+        }
         public static void Visit(in SyntaxNode node, in UnionType union)
         {
             if (node is ColumnExpression column)

@@ -35,16 +35,16 @@ namespace DaJet.Scripting
         }
         public void SayHello(SyntaxNode node)
         {
+            return; // not implemented
+        }
+        public void SayGoodbye(SyntaxNode node)
+        {
             if (node == null) { return; }
 
             if (Transformers.TryGetValue(node.GetType(), out IScriptTransformer transformer))
             {
                 transformer?.Transform(in node);
             }
-        }
-        public void SayGoodbye(SyntaxNode node)
-        {
-            return; // not implemented
         }
     }
 }

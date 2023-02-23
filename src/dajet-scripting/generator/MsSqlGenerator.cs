@@ -1,8 +1,6 @@
 ﻿using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
-using System.Data;
 using System.Text;
-using System.Xml.Linq;
 
 namespace DaJet.Scripting
 {
@@ -283,13 +281,6 @@ namespace DaJet.Scripting
 
                 script.AppendLine().Append("SET ");
                 TransformSetClause(node.Target, node.Source, node.Set, in script);
-                //SetExpression set;
-                //for (int i = 0; i < node.Set.Count; i++)
-                //{
-                //    set = node.Set[i];
-                //    if (i > 0) { script.Append(","); }
-                //    Visit(in set, in script);
-                //}
 
                 script.AppendLine().Append($"FROM ");
                 Visit(node.Target, in script);
