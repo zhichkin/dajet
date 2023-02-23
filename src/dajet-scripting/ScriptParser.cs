@@ -1331,7 +1331,7 @@ namespace DaJet.Scripting
 
             if (Match(TokenType.FROM))
             {
-                update.Source = from_clause();
+                update.Source = table();
             }
             
             if (Match(TokenType.WHERE))

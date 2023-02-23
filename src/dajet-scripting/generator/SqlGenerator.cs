@@ -934,22 +934,15 @@ namespace DaJet.Scripting
             VisitTargetTable(node.Target, in script);
 
             script.AppendLine().Append("SET ");
-
-            SetExpression set;
+            TransformSetClause(node.Target, node.Source, node.Set, in script);
             
-            for (int i = 0; i < node.Set.Count; i++)
-            {
-                set = node.Set[i];
-
-                if (i > 0) { script.Append(","); }
-
-                Visit(in set, in script);
-            }
+            //TODO: table alias for SET clause
 
             script.AppendLine();
 
             if (node.Source is not null)
             {
+                script.Append($"FROM ");
                 Visit(node.Source, in script);
             }
 
