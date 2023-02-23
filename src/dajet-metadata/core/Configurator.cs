@@ -369,9 +369,7 @@ namespace DaJet.Metadata.Core
                 Purpose = PropertyPurpose.System,
                 DbName = "_KeyField"
             };
-            property.PropertyType.CanBeNumeric = true;
-            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
-            property.PropertyType.NumericPrecision = 5;
+            property.PropertyType.IsBinary = true;
 
             property.Columns.Add(new MetadataColumn()
             {

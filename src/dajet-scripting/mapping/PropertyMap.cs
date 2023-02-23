@@ -289,12 +289,23 @@ namespace DaJet.Scripting
         {
             int ordinal = GetOrdinal(in reader, UnionTag.Binary, out _);
 
-            if (reader.IsDBNull(ordinal))
+            if (reader.IsDBNull(ordinal)) { return null; }
+
+            if (reader is not NpgsqlDataReader postgres)
             {
-                return null;
+                return ((byte[])reader.GetValue(ordinal));
             }
 
-            return ((byte[])reader.GetValue(ordinal));
+            string typeName = postgres.GetPostgresType(ordinal).Name;
+            
+            if (typeName == "integer") //TODO: поле _version в PostgreSQL
+            {
+                return BitConverter.GetBytes(reader.GetInt32(ordinal));
+            }
+            else
+            {
+                return ((byte[])reader.GetValue(ordinal));
+            }   
         }
         private object GetUuid(in IDataReader reader)
         {

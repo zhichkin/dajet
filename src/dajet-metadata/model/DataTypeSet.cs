@@ -451,7 +451,7 @@ namespace DaJet.Metadata.Model
             UnionType union = new();
             
             if (IsUuid) { union.IsUuid = true; }
-            else if (IsBinary) { union.IsVersion = true; }
+            else if (IsBinary) { union.IsBinary = true; }
             else if (IsValueStorage) { union.IsBinary = true; }
             else
             {
