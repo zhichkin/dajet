@@ -539,6 +539,8 @@ namespace DaJet.Scripting
                 throw new FormatException("Close round bracket expected.");
             }
 
+            if (!Check(TokenType.AS)) { throw new FormatException("Alias expected."); }
+
             table.Alias = alias();
 
             return table;
@@ -1307,37 +1309,58 @@ namespace DaJet.Scripting
         #region "UPDATE STATEMENT"
         private UpdateStatement update_statement()
         {
-            if (!Match(TokenType.UPDATE))
-            {
-                throw new FormatException("UPDATE keyword expected.");
-            }
+            if (!Match(TokenType.UPDATE)) { throw new FormatException("UPDATE keyword expected."); }
 
             UpdateStatement update = new()
             {
                 Target = table_identifier()
             };
 
-            if (!Match(TokenType.SET))
-            {
-                throw new FormatException("SET keyword expected.");
-            }
-
-            update.Set.Add(set_expression());
-
-            while (Match(TokenType.Comma))
-            {
-                update.Set.Add(set_expression());
-            }
-
-            if (Match(TokenType.FROM))
+            if (Match(TokenType.FROM)) // FROM-WHERE-SET | FROM-SET-WHERE
             {
                 update.Source = table();
+                if (Match(TokenType.WHERE))
+                {
+                    update.Where = where_clause();
+                    if (Match(TokenType.SET)) { update.Set = set_clause(); }
+                }
+                else if (Match(TokenType.SET))
+                {
+                    update.Set = set_clause();
+                    if (Match(TokenType.WHERE)) { update.Where = where_clause(); }
+                }
             }
-            
-            if (Match(TokenType.WHERE))
+            else if (Match(TokenType.WHERE)) // WHERE-FROM-SET | WHERE-SET-FROM
             {
                 update.Where = where_clause();
+                if (Match(TokenType.FROM))
+                {
+                    update.Source = table();
+                    if (Match(TokenType.SET)) { update.Set = set_clause(); }
+                }
+                else if (Match(TokenType.SET))
+                {
+                    update.Set = set_clause();
+                    if (Match(TokenType.FROM)) { update.Source = table(); }
+                }
             }
+            else if (Match(TokenType.SET)) // SET-FROM-WHERE | SET-WHERE-FROM
+            {
+                update.Set = set_clause();
+                if (Match(TokenType.FROM))
+                {
+                    update.Source = table();
+                    if (Match(TokenType.WHERE)) { update.Where = where_clause(); }
+                }
+                else if (Match(TokenType.WHERE))
+                {
+                    update.Where = where_clause();
+                    if (Match(TokenType.FROM)) { update.Source = table(); }
+                }
+            }
+
+            // The WHERE and FROM clauses are optional
+            if (update.Set is null) { throw new FormatException("UPDATE: SET keyword expected."); }
 
             return update;
         }
@@ -1356,6 +1379,20 @@ namespace DaJet.Scripting
             set.Initializer = expression();
 
             return set;
+        }
+        private List<SetExpression> set_clause()
+        {
+            List<SetExpression> clause = new()
+            {
+                set_expression()
+            };
+
+            while (Match(TokenType.Comma))
+            {
+                clause.Add(set_expression());
+            }
+
+            return clause;
         }
         #endregion
 

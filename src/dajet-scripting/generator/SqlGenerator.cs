@@ -921,6 +921,8 @@ namespace DaJet.Scripting
                 throw new InvalidOperationException("UPDATE: computed table (cte) targeting is not allowed.");
             }
 
+            ConfigureTableAlias(node.Source); // @variable and #temporary tables
+
             script.AppendLine();
 
             if (node.CommonTables is not null)
@@ -930,13 +932,22 @@ namespace DaJet.Scripting
             }
 
             script.AppendLine().Append("UPDATE ");
-
             VisitTargetTable(node.Target, in script);
 
             script.AppendLine().Append("SET ");
-            TransformSetClause(node.Target, node.Source, node.Set, in script);
-            
-            //TODO: table alias for SET clause
+            if (node.Source is null)
+            {
+                for (int i = 0; i < node.Set.Count; i++)
+                {
+                    SetExpression set = node.Set[i];
+                    if (i > 0) { script.Append(","); }
+                    Visit(in set, in script);
+                }
+            }
+            else
+            {
+                TransformSetClause(node.Target, node.Source, node.Set, in script);
+            }
 
             script.AppendLine();
 

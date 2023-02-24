@@ -476,6 +476,7 @@ namespace DaJet.Scripting
                 {
                     if (string.IsNullOrEmpty(identifier)) // identifier is not provided - take first available table
                     {
+                        // TODO: find all candidate tables and warn ambiguous names
                         table = reference.Binding; return true; // success
                     }
 
