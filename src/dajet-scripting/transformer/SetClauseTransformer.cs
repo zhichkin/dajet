@@ -14,31 +14,11 @@ namespace DaJet.Scripting
                 Transform(in update, in clause);
             }
         }
-        private TableExpression CreateTableExpression(in SetClause clause)
+        private void Transform(in UpdateStatement update, in SetClause clause)
         {
-            TableExpression table = new()
-            {
-                Alias = "source"
-            };
+            update.Source ??= TransformToTableExpression(in clause);
 
-            SelectExpression select = new();
-
-            foreach (SetExpression set in clause.Expressions)
-            {
-                string columnName = set.Column.GetName();
-
-                ColumnExpression column = new()
-                {
-                    Alias = columnName,
-                    Expression = set.Initializer
-                };
-                
-                select.Select.Add(column);
-            }
-
-            table.Expression = select;
-
-            return table;
+            TransformSetClause(in update, in clause);
         }
         private SetExpression GetSetByName(in SetClause clause, in string name)
         {
@@ -73,68 +53,47 @@ namespace DaJet.Scripting
             }
             return null;
         }
-        private void Transform(in UpdateStatement update, in SetClause clause)
+        private TableExpression TransformToTableExpression(in SetClause clause)
         {
-            if (update.Source is null)
+            TableExpression table = new()
             {
-                TransformSimpleUpdate(in update, in clause);
-            }
-            else
+                Alias = "source"
+            };
+
+            SelectExpression select = new();
+
+            foreach (SetExpression set in clause.Expressions)
             {
-                TransformSourceUpdate(in update, in clause);
-            }
-        }
-        private void TransformSimpleUpdate(in UpdateStatement update, in SetClause clause)
-        {
-            if (update.Source is null)
-            {
-                update.Source = CreateTableExpression(in clause);
-            }
+                string columnName = set.Column.GetName();
 
-            object source_table = DataMapper.GetColumnSource(update.Source);
-
-            if (source_table is not SelectExpression select)
-            {
-                return;
-            }
-
-            List<PropertyMappingRule> rules = DataMapper.CreateMappingRules(update.Target, update.Source, null);
-
-            foreach (PropertyMappingRule rule in rules)
-            {
-                if (rule.Source is null) { continue; }
-
-                SetExpression set = GetSetByName(in clause, rule.Target.Name);
-
-                if (set is null) { continue; }
-
-                ColumnExpression binding = GetColumnByName(in select, rule.Target.Name);
-
-                foreach (ColumnMappingRule map in rule.Columns)
+                ColumnExpression column = new()
                 {
-                    if (map.Source is not ColumnMap column)
-                    {
-                        continue;
-                    }
+                    Alias = columnName,
+                    Expression = set.Initializer
+                };
+                select.Select.Add(column);
 
-                    ColumnReference initializer = new()
+                ColumnReference initializer = new()
+                {
+                    Binding = column,
+                    Identifier = $"source.{columnName}",
+                    Mapping = new List<ColumnMap>()
                     {
-                        Binding = binding,
-                        Identifier = $"source.{column.Name}",
-                        Mapping = new List<ColumnMap>()
+                        new ColumnMap()
                         {
-                            new ColumnMap()
-                            {
-                                Name = $"source.{column.Name}",
-                                Type = column.Type
-                            }
+                            Name = $"source.{columnName}",
+                            Type = DataMapper.Infer(set.Initializer).GetSingleTagOrUndefined()
                         }
-                    };
-                    set.Initializer = initializer;
-                }
+                    }
+                };
+                set.Initializer = initializer;
             }
+
+            table.Expression = select;
+
+            return table;
         }
-        private void TransformSourceUpdate(in UpdateStatement update, in SetClause clause)
+        private void TransformSetClause(in UpdateStatement update, in SetClause clause)
         {
             List<SetExpression> result = new();
 
