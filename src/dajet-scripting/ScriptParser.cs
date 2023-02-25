@@ -1322,11 +1322,11 @@ namespace DaJet.Scripting
                 if (Match(TokenType.WHERE))
                 {
                     update.Where = where_clause();
-                    if (Match(TokenType.SET)) { update.Set = set_clause(); }
+                    if (Match(TokenType.SET)) { update.Set = set_clause(update); }
                 }
                 else if (Match(TokenType.SET))
                 {
-                    update.Set = set_clause();
+                    update.Set = set_clause(update);
                     if (Match(TokenType.WHERE)) { update.Where = where_clause(); }
                 }
             }
@@ -1336,17 +1336,17 @@ namespace DaJet.Scripting
                 if (Match(TokenType.FROM))
                 {
                     update.Source = table();
-                    if (Match(TokenType.SET)) { update.Set = set_clause(); }
+                    if (Match(TokenType.SET)) { update.Set = set_clause(update); }
                 }
                 else if (Match(TokenType.SET))
                 {
-                    update.Set = set_clause();
+                    update.Set = set_clause(update);
                     if (Match(TokenType.FROM)) { update.Source = table(); }
                 }
             }
             else if (Match(TokenType.SET)) // SET-FROM-WHERE | SET-WHERE-FROM
             {
-                update.Set = set_clause();
+                update.Set = set_clause(update);
                 if (Match(TokenType.FROM))
                 {
                     update.Source = table();
@@ -1380,16 +1380,15 @@ namespace DaJet.Scripting
 
             return set;
         }
-        private List<SetExpression> set_clause()
+        private SetClause set_clause(SyntaxNode parent)
         {
-            List<SetExpression> clause = new()
-            {
-                set_expression()
-            };
+            SetClause clause = new() { Parent = parent };
+
+            clause.Expressions.Add(set_expression());
 
             while (Match(TokenType.Comma))
             {
-                clause.Add(set_expression());
+                clause.Expressions.Add(set_expression());
             }
 
             return clause;
@@ -1473,18 +1472,8 @@ namespace DaJet.Scripting
             if (Match(TokenType.WHERE)) { upsert.Where = where_clause(); }
             else { throw new FormatException("UPSERT: WHERE keyword expected."); }
 
-            if (Match(TokenType.SET))
-            {
-                upsert.Set.Add(set_expression());
-                while (Match(TokenType.Comma))
-                {
-                    upsert.Set.Add(set_expression());
-                }
-            }
-            else
-            {
-                throw new FormatException("UPSERT: SET keyword expected.");
-            }
+            if (Match(TokenType.SET)) { upsert.Set = set_clause(upsert); }
+            else { throw new FormatException("UPSERT: SET keyword expected."); }
 
             if (from)
             {

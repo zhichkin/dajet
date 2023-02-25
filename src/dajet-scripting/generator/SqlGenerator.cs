@@ -935,24 +935,11 @@ namespace DaJet.Scripting
             VisitTargetTable(node.Target, in script);
 
             script.AppendLine().Append("SET ");
-            if (node.Source is null)
-            {
-                for (int i = 0; i < node.Set.Count; i++)
-                {
-                    SetExpression set = node.Set[i];
-                    if (i > 0) { script.Append(","); }
-                    Visit(in set, in script);
-                }
-            }
-            else
-            {
-                TransformSetClause(node.Target, node.Source, node.Set, in script);
-            }
-
-            script.AppendLine();
+            Visit(node.Set, in script);
 
             if (node.Source is not null)
             {
+                script.AppendLine();
                 script.Append($"FROM ");
                 Visit(node.Source, in script);
             }
@@ -964,16 +951,25 @@ namespace DaJet.Scripting
 
             script.Append(';').AppendLine();
         }
+        protected virtual void Visit(in SetClause node, in StringBuilder script)
+        {
+            // NOTE: SET expression initializer could be as follows (currently only ColumnReference is implemented):
+            // ColumnReference, ScalarExpression, VariableReference, FunctionExpression, CaseExpression, EnumValue
+
+            SetExpression set;
+            for (int i = 0; i < node.Expressions.Count; i++)
+            {
+                set = node.Expressions[i];
+                if (i > 0) { script.Append(","); }
+                Visit(in set, in script);
+            }
+        }
         protected virtual void Visit(in SetExpression node, in StringBuilder script)
         {
             script.AppendLine();
             Visit(node.Column, in script);
             script.Append(" = ");
             Visit(node.Initializer, in script);
-
-            // TODO: implement SetClause transformer class
-            // SET expression initializer could be as follows (currently only ColumnReference is implemented):
-            // ColumnReference, ScalarExpression, VariableReference, FunctionExpression, CaseExpression, EnumValue
         }
         #endregion
 

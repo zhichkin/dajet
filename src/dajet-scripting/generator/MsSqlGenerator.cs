@@ -115,7 +115,7 @@ namespace DaJet.Scripting
                 throw new InvalidOperationException("UPSERT: computed table (cte) targeting is not allowed.");
             }
 
-            if (node.Set is null || node.Set.Count == 0)
+            if (node.Set is null || node.Set.Expressions.Count == 0)
             {
                 throw new InvalidOperationException("UPSERT: SET clause is not defined.");
             }
@@ -156,7 +156,7 @@ namespace DaJet.Scripting
                 }
 
                 script.AppendLine().Append("SET ");
-                TransformSetClause(node.Target, node.Source, node.Set, in script);
+                TransformSetClause(node.Target, node.Source, node.Set.Expressions, in script);
 
                 script.AppendLine().Append($"FROM ");
                 Visit(node.Target, in script);

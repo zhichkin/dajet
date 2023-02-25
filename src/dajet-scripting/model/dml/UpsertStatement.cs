@@ -8,6 +8,6 @@
         public TableReference Target { get; set; }
         public SyntaxNode Source { get; set; }
         public WhereClause Where { get; set; }
-        public List<SetExpression> Set { get; set; } = new();
+        public SetClause Set { get; set; } = new();
     }
 }

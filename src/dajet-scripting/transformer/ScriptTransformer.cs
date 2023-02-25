@@ -16,6 +16,9 @@ namespace DaJet.Scripting
             ColumnReferenceTransformer columnTransformer = new();
             Transformers.Add(typeof(ColumnReference), columnTransformer);
             Transformers.Add(typeof(ColumnExpression), columnTransformer);
+
+            SetClauseTransformer setTransformer = new();
+            Transformers.Add(typeof(SetClause), setTransformer);
         }
         public Dictionary<Type, IScriptTransformer> Transformers = new();
         public bool TryTransform(in SyntaxNode tree, out string error)

@@ -1,6 +1,7 @@
 ﻿using DaJet.Scripting.Model;
 using System.Collections;
 using System.Reflection;
+using System.Text.Json.Serialization;
 
 namespace DaJet.Scripting
 {
@@ -48,7 +49,12 @@ namespace DaJet.Scripting
             {
                 Type propertyType = property.PropertyType;
 
-                object value = property.GetValue(parent)!;
+                if (property.GetCustomAttribute<JsonIgnoreAttribute>() is not null)
+                {
+                    continue;
+                }
+
+                object value = property.GetValue(parent);
 
                 if (value == null)
                 {
