@@ -8,5 +8,6 @@
         public SyntaxNode Source { get; set; }
         public WhereClause Where { get; set; }
         public SetClause Set { get; set; }
+        public List<string> Hints { get; set; }
     }
 }

@@ -43,9 +43,6 @@ namespace DaJet.Scripting
             else if (node is TableReference table) { Visit(in table); }
             else if (node is TableUnionOperator union) { Visit(in union); }
         }
-        protected virtual void Visit(in ApplicationObject entity) { }
-        protected virtual void Visit(in MetadataProperty property) { }
-        protected virtual void Visit(in MetadataColumn column) { }
         protected virtual void Visit(in ScriptModel node)
         {
             foreach (SyntaxNode statement in node.Statements)
@@ -56,6 +53,9 @@ namespace DaJet.Scripting
                 }
             }
         }
+        protected virtual void Visit(in ApplicationObject entity) { }
+        protected virtual void Visit(in MetadataProperty property) { }
+        protected virtual void Visit(in MetadataColumn column) { }
         protected virtual void Visit(in CommentStatement node) { }
         protected virtual void Visit(in DeclareStatement node)
         {

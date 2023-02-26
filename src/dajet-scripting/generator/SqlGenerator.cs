@@ -21,6 +21,11 @@ namespace DaJet.Scripting
 
                 foreach (SyntaxNode node in model.Statements)
                 {
+                    if (!(node is DeclareStatement || node is CommentStatement))
+                    {
+                        script.AppendLine();
+                    }
+
                     if (node is SelectStatement select)
                     {
                         Visit(in select, in script);
@@ -53,6 +58,11 @@ namespace DaJet.Scripting
                     else
                     {
                         Visit(in node, in script);
+                    }
+
+                    if (!(node is DeclareStatement || node is CommentStatement))
+                    {
+                        script.Append(';');
                     }
                 }
 
@@ -194,8 +204,6 @@ namespace DaJet.Scripting
         #region "SELECT STATEMENT"
         protected virtual void Visit(in SelectStatement node, in StringBuilder script)
         {
-            script.AppendLine();
-
             if (node.CommonTables is not null)
             {
                 script.Append("WITH ");
@@ -205,8 +213,6 @@ namespace DaJet.Scripting
             script.AppendLine();
 
             Visit(node.Select, in script);
-
-            script.Append(';');
         }
         protected virtual void Visit(in SelectExpression node, in StringBuilder script)
         {
@@ -852,8 +858,6 @@ namespace DaJet.Scripting
 
             ConfigureTableAlias(node.Source); // @variable and #temporary tables
 
-            script.AppendLine();
-
             if (node.CommonTables is not null)
             {
                 script.Append("WITH ");
@@ -891,8 +895,6 @@ namespace DaJet.Scripting
                 Visit(node.Source, in script);
                 script.Append(") AS source");
             }
-
-            script.AppendLine().Append(';');
         }
         protected virtual void Visit(in ValuesExpression node, in StringBuilder script)
         {
@@ -909,7 +911,7 @@ namespace DaJet.Scripting
                 Visit(in value, in script);
             }
 
-            script.Append(")").AppendLine();
+            script.Append(")");
         }
         #endregion
 
@@ -923,8 +925,6 @@ namespace DaJet.Scripting
 
             ConfigureTableAlias(node.Source); // @variable and #temporary tables
 
-            script.AppendLine();
-
             if (node.CommonTables is not null)
             {
                 script.Append("WITH ");
@@ -933,6 +933,18 @@ namespace DaJet.Scripting
 
             script.AppendLine().Append("UPDATE ");
             VisitTargetTable(node.Target, in script);
+
+            if (node.Hints is not null && node.Hints.Count > 0)
+            {
+                // MS SQL Server: UPDLOCK, SERIALIZABLE and so on ...
+                script.Append(" WITH (");
+                for (int i = 0; i < node.Hints.Count; i++)
+                {
+                    if (i > 0) { script.Append(", "); }
+                    script.Append(node.Hints[i]);
+                }
+                script.Append(')');
+            }
 
             script.AppendLine().Append("SET ");
             Visit(node.Set, in script);
@@ -948,8 +960,6 @@ namespace DaJet.Scripting
             {
                 Visit(node.Where, in script);
             }
-
-            script.Append(';').AppendLine();
         }
         protected virtual void Visit(in SetClause node, in StringBuilder script)
         {
@@ -981,8 +991,6 @@ namespace DaJet.Scripting
                 throw new InvalidOperationException("DELETE: computed table (cte) targeting is not allowed.");
             }
 
-            script.AppendLine();
-
             if (node.CommonTables is not null)
             {
                 script.Append("WITH ");
@@ -998,8 +1006,6 @@ namespace DaJet.Scripting
             {
                 Visit(node.Where, script);
             }
-
-            script.Append(';').AppendLine();
         }
         protected virtual void Visit(in OutputClause node, in StringBuilder script)
         {

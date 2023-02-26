@@ -66,8 +66,6 @@ namespace DaJet.Scripting
             script.Append($"INSERT @{node.Name}").AppendLine();
 
             base.Visit(in node, in script);
-
-            script.Append(';').AppendLine();
         }
         protected override void Visit(in TemporaryTableExpression node, in StringBuilder script)
         {
@@ -81,8 +79,6 @@ namespace DaJet.Scripting
             script.Append($"INSERT #{node.Name}").AppendLine();
 
             base.Visit(in node, in script);
-
-            script.Append(';').AppendLine();
         }
         protected override void VisitTargetTable(in TableReference node, in StringBuilder script)
         {
@@ -125,96 +121,54 @@ namespace DaJet.Scripting
                 throw new InvalidOperationException("UPSERT: FROM clause is not defined.");
             }
 
-            ConfigureTableAlias(node.Source); // @variable and #temporary tables
+            // INSERT STATEMENT
 
-            script.AppendLine();
+            StringBuilder insert_script = new();
 
-            #region "UPDATE STATEMENT"
+            insert_script.AppendLine();
+
+            InsertStatement insert = new()
+            {
+                CommonTables = node.CommonTables,
+                Target = node.Target,
+                Source = node.Source
+            };
+
+            Visit(in insert, in insert_script);
+
+            insert_script.AppendLine().Append($"WHERE NOT EXISTS (SELECT 1 FROM ");
+            Visit(node.Target, in insert_script);
+            insert_script.Append(' ');
+            Visit(node.Where, in insert_script);
+            insert_script.Append(')');
+
+            // UPDATE STATEMENT
 
             if (!node.IgnoreUpdate)
             {
-                if (node.CommonTables is not null)
+                UpdateStatement update = new()
                 {
-                    script.Append("WITH ");
-                    Visit(node.CommonTables, in script);
-                }
-
-                script.Append("UPDATE ");
-                if (!string.IsNullOrEmpty(node.Target.Alias))
-                {
-                    script.Append(node.Target.Alias);
-                }
-                else
-                {
-                    script.Append(node.Target.Identifier);
-                }
+                    CommonTables = node.CommonTables,
+                    Target = node.Target,
+                    Source = node.Source,
+                    Where = node.Where,
+                    Set = node.Set
+                };
 
                 if (node.Target.Binding is MetadataObject ||
                     node.Target.Binding is TemporaryTableExpression)
                 {
-                    script.Append(" WITH (UPDLOCK, SERIALIZABLE)");
+                    update.Hints = new() { "UPDLOCK", "SERIALIZABLE" };
                 }
 
-                script.AppendLine().Append("SET ");
-                TransformSetClause(node.Target, node.Source, node.Set.Expressions, in script);
+                // change all ColumnMap identifiers in ColumnReference nodes, which are referencing ColumnExpression of the Source
+                // to avoid ambiguous column names when they are the same for both Target and Source (WHERE clause)
+                new UpdateStatementTransformer().Transform(update);
 
-                script.AppendLine().Append($"FROM ");
-                Visit(node.Target, in script);
-
-                script.Append($" INNER JOIN ");
-                Visit(node.Source, in script);
-                script.Append($" ON ");
-                Visit(node.Where.Expression, in script);
-                script.Append(';');
+                Visit(in update, in script); script.Append(';');
             }
 
-            #endregion
-
-            #region "INSERT STATEMENT"
-
-            script.AppendLine();
-
-            if (node.CommonTables is not null)
-            {
-                script.Append("WITH ");
-                Visit(node.CommonTables, in script);
-            }
-
-            string[] columns = GetInsertSelectColumnLists(node.Target, node.Source);
-
-            script.Append("INSERT INTO ");
-            VisitTargetTable(node.Target, in script);
-            script.Append(' ');
-            script.Append('(');
-            script.Append(columns[0]);
-            script.AppendLine(")");
-            if (node.Source is TableReference table)
-            {
-                script.AppendLine("SELECT");
-                script.AppendLine(columns[1]);
-                script.Append("FROM ");
-                Visit(in table, in script);
-            }
-            else if (node.Source is TableExpression select)
-            {
-                script.AppendLine("SELECT ");
-                script.AppendLine(columns[1]);
-                script.Append("FROM ");
-                Visit(in select, in script);
-            }
-            else
-            {
-                throw new InvalidOperationException("UPSERT: FROM clause contains invalid table source.");
-            }
-
-            script.AppendLine().Append($"WHERE NOT EXISTS (SELECT 1 FROM ");
-            Visit(node.Target, in script);
-            script.Append(' ');
-            Visit(node.Where, in script);
-            script.Append(')');
-            script.Append(';');
-
-            #endregion
+            script.Append(insert_script);
         }
     }
 }

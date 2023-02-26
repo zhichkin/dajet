@@ -1447,12 +1447,6 @@ namespace DaJet.Scripting
             {
                 Target = table_identifier()
             };
-            upsert.Target.Alias = alias();
-
-            if (string.IsNullOrEmpty(upsert.Target.Alias))
-            {
-                throw new FormatException("UPSERT: target table alias expected.");
-            }
 
             bool ignore = Match(TokenType.IGNORE);
             bool update = Match(TokenType.UPDATE);
