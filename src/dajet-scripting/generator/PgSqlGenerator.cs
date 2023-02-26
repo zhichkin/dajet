@@ -239,10 +239,5 @@ namespace DaJet.Scripting
 
             script.Append(';').AppendLine();
         }
-
-        protected override void Visit(in UpsertStatement node, in StringBuilder script)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

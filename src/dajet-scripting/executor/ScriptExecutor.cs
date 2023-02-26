@@ -191,7 +191,7 @@ namespace DaJet.Scripting
             {
                 if (parameter.Value is Guid uuid)
                 {
-                    Parameters[parameter.Key] = SQLHelper.GetSqlUuid(uuid);
+                    Parameters[parameter.Key] = uuid.ToByteArray(); // SQLHelper.GetSqlUuid(uuid)
                 }
                 else if (parameter.Value is bool boolean)
                 {
@@ -206,7 +206,7 @@ namespace DaJet.Scripting
                 }
                 else if (parameter.Value is Entity entity)
                 {
-                    Parameters[parameter.Key] = SQLHelper.GetSqlUuid(entity.Identity);
+                    Parameters[parameter.Key] = entity.Identity.ToByteArray(); // SQLHelper.GetSqlUuid(entity.Identity)
                 }
             }
         }

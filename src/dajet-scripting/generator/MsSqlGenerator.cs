@@ -103,72 +103,14 @@ namespace DaJet.Scripting
                 throw new InvalidOperationException("MS-DML: Target table identifier is missing.");
             }
         }
-
         protected override void Visit(in UpsertStatement node, in StringBuilder script)
         {
-            if (node.Target.Binding is CommonTableExpression)
+            if (node.Target.Binding is MetadataObject || node.Target.Binding is TemporaryTableExpression)
             {
-                throw new InvalidOperationException("UPSERT: computed table (cte) targeting is not allowed.");
+                node.Hints = new() { "UPDLOCK", "SERIALIZABLE" };
             }
 
-            if (node.Set is null || node.Set.Expressions.Count == 0)
-            {
-                throw new InvalidOperationException("UPSERT: SET clause is not defined.");
-            }
-
-            if (node.Source is null)
-            {
-                throw new InvalidOperationException("UPSERT: FROM clause is not defined.");
-            }
-
-            // INSERT STATEMENT
-
-            StringBuilder insert_script = new();
-
-            insert_script.AppendLine();
-
-            InsertStatement insert = new()
-            {
-                CommonTables = node.CommonTables,
-                Target = node.Target,
-                Source = node.Source
-            };
-
-            Visit(in insert, in insert_script);
-
-            insert_script.AppendLine().Append($"WHERE NOT EXISTS (SELECT 1 FROM ");
-            Visit(node.Target, in insert_script);
-            insert_script.Append(' ');
-            Visit(node.Where, in insert_script);
-            insert_script.Append(')');
-
-            // UPDATE STATEMENT
-
-            if (!node.IgnoreUpdate)
-            {
-                UpdateStatement update = new()
-                {
-                    CommonTables = node.CommonTables,
-                    Target = node.Target,
-                    Source = node.Source,
-                    Where = node.Where,
-                    Set = node.Set
-                };
-
-                if (node.Target.Binding is MetadataObject ||
-                    node.Target.Binding is TemporaryTableExpression)
-                {
-                    update.Hints = new() { "UPDLOCK", "SERIALIZABLE" };
-                }
-
-                // change all ColumnMap identifiers in ColumnReference nodes, which are referencing ColumnExpression of the Source
-                // to avoid ambiguous column names when they are the same for both Target and Source (WHERE clause)
-                new UpdateStatementTransformer().Transform(update);
-
-                Visit(in update, in script); script.Append(';');
-            }
-
-            script.Append(insert_script);
+            base.Visit(in node, in script);
         }
     }
 }
