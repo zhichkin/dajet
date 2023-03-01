@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace DaJet.Metadata
 {
-    public sealed class MetadataCache
+    public sealed class MetadataCache : IMetadataProvider
     {
         #region "CONSTANTS"
 
@@ -308,6 +308,10 @@ namespace DaJet.Metadata
 
         #endregion
 
+        public void Configure(in Dictionary<string, string> options)
+        {
+            throw new NotImplementedException(); //TODO: IMetadataProvider.Configure(...)
+        }
         internal MetadataCache(MetadataCacheOptions options)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
