@@ -33,8 +33,6 @@ namespace DaJet.Metadata
             "CAST(_extsynonym AS varchar), CAST(_extversion AS varchar), _safemode, CAST(_securityprofilename AS varchar), _version " +
             "FROM _extensionsinfo ORDER BY _extensionorder;";
 
-        private const string EXTENSIONS_INFO_EXISTS = "SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '_extensionsinfo';";
-        
         private const string IS_NEW_AGE_EXTENSIONS_SUPPORTED =
             "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '_extensionsinfo' AND COLUMN_NAME = '_extensionzippedinfo';";
 

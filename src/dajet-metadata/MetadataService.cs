@@ -188,20 +188,38 @@ namespace DaJet.Metadata
             _cache.Clear();
         }
 
+        public bool IsRegularDatabase(string key)
+        {
+            if (!TryGetQueryExecutor(key, out IQueryExecutor executor, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            string script = SQLHelper.GetTableExistsScript("_yearoffset");
+
+            return !(executor.ExecuteScalar<int>(in script, 10) == 1);
+        }
         private IMetadataProvider CreateMetadataProvider(string connectionString)
         {
-            if (!Uri.TryCreate(connectionString, UriKind.Absolute, out Uri uri))
-            {
-                throw new InvalidOperationException(string.Format(ERROR_CASH_ENTRY_INVALID_URI_PROVIDED, connectionString));
-            }
+            //if (!Uri.TryCreate(connectionString, UriKind.Absolute, out Uri uri))
+            //{
+            //    throw new InvalidOperationException(string.Format(ERROR_CASH_ENTRY_INVALID_URI_PROVIDED, connectionString));
+            //}
 
-            if (uri.Scheme != "mssql")
-            {
-                throw new InvalidOperationException(string.Format(ERROR_UNSUPPORTED_METADATA_PROVIDER, uri.Scheme));
-            }
+            //if (uri.Scheme != "mssql")
+            //{
+            //    throw new InvalidOperationException(string.Format(ERROR_UNSUPPORTED_METADATA_PROVIDER, uri.Scheme));
+            //}
 
-            Dictionary<string, string> options = UriHelper.CreateOptions(in uri);
+            //Dictionary<string, string> options = UriHelper.CreateOptions(in uri);
+
+            Dictionary<string, string> options = new()
+            {
+                { "ConnectionString", connectionString }
+            };
+
             IMetadataProvider provider = new MsMetadataProvider();
+
             provider.Configure(options);
 
             return provider;

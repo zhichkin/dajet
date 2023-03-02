@@ -98,7 +98,7 @@ namespace DaJet.Data
     {
         internal static List<SqlFieldInfo> GetSqlFields(string connectionString, string tableName)
         {
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new();
             sb.AppendLine(@"SELECT");
             sb.AppendLine(@"    ORDINAL_POSITION, COLUMN_NAME, DATA_TYPE,");
             sb.AppendLine(@"    ISNULL(CHARACTER_MAXIMUM_LENGTH, 0) AS CHARACTER_MAXIMUM_LENGTH,");
@@ -364,6 +364,17 @@ namespace DaJet.Data
             }
 
             throw new InvalidOperationException($"Failed to get DbTypeName for property \"{property.Name}\".");
+        }
+
+        private const string TABLE_EXISTS_SCRIPT = "SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{0}';";
+        private const string TABLE_SELECT_SCRIPT = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES ORDER BY TABLE_NAME ASC;";
+        public static string GetTableExistsScript(in string tableName)
+        {
+            return string.Format(TABLE_EXISTS_SCRIPT, tableName);
+        }
+        public static string GetTableSelectScript()
+        {
+            return TABLE_SELECT_SCRIPT;
         }
     }
 }
