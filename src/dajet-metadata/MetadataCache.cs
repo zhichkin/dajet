@@ -327,9 +327,19 @@ namespace DaJet.Metadata
         }
         public bool UseExtensions { get; set; } = false;
         public InfoBase InfoBase { get { return _infoBase; } }
+        public int YearOffset { get { return _infoBase is null ? 0 : _infoBase.YearOffset; } }
         public ExtensionInfo Extension { get { return _extension; } }
         public string ConnectionString { get { return _connectionString; } }
         public DatabaseProvider DatabaseProvider { get { return _provider; } }
+        public bool IsRegularDatabase
+        {
+            get
+            {
+                IQueryExecutor executor = CreateQueryExecutor();
+                string script = SQLHelper.GetTableExistsScript("_yearoffset");
+                return !(executor.ExecuteScalar<int>(in script, 10) == 1);
+            }
+        }
         public IQueryExecutor CreateQueryExecutor()
         {
             if (_provider == DatabaseProvider.SqlServer)

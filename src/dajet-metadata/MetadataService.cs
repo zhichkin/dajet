@@ -17,7 +17,6 @@ namespace DaJet.Metadata
         private const string ERROR_UNSUPPORTED_DATABASE_PROVIDER = "Unsupported database provider: [{0}].";
         private const string ERROR_UNSUPPORTED_METADATA_PROVIDER = "Unsupported metadata provider: [{0}].";
         private const string ERROR_CASH_ENTRY_IS_NULL_OR_EXPIRED = "Cache entry [{0}] is null or expired.";
-        private const string ERROR_CASH_ENTRY_INVALID_URI_PROVIDED = "Cache entry [{0}]: invalid URI provided.";
 
         private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
 
@@ -148,37 +147,6 @@ namespace DaJet.Metadata
 
             return (cache != null);
         }
-        public bool TryGetQueryExecutor(string key, out IQueryExecutor executor, out string error)
-        {
-            error = string.Empty;
-
-            if (!_cache.TryGetValue(key, out CacheEntry entry))
-            {
-                executor = null;
-
-                error = string.Format(ERROR_CASH_ENTRY_KEY_IS_NOT_FOUND, key);
-
-                return false;
-            }
-
-            if (entry.Options.DatabaseProvider == DatabaseProvider.SqlServer)
-            {
-                executor = new MsQueryExecutor(entry.Options.ConnectionString);
-            }
-            else if (entry.Options.DatabaseProvider == DatabaseProvider.PostgreSql)
-            {
-                executor = new PgQueryExecutor(entry.Options.ConnectionString);
-            }
-            else
-            {
-                executor = null;
-
-                error = string.Format(ERROR_UNSUPPORTED_DATABASE_PROVIDER, entry.Options.DatabaseProvider);
-            }
-
-            return (executor != null);
-        }
-        
         public void Dispose()
         {
             foreach (CacheEntry entry in _cache.Values)
@@ -186,43 +154,6 @@ namespace DaJet.Metadata
                 entry.Dispose();
             }
             _cache.Clear();
-        }
-
-        public bool IsRegularDatabase(string key)
-        {
-            if (!TryGetQueryExecutor(key, out IQueryExecutor executor, out string error))
-            {
-                throw new InvalidOperationException(error);
-            }
-
-            string script = SQLHelper.GetTableExistsScript("_yearoffset");
-
-            return !(executor.ExecuteScalar<int>(in script, 10) == 1);
-        }
-        private IMetadataProvider CreateMetadataProvider(string connectionString)
-        {
-            //if (!Uri.TryCreate(connectionString, UriKind.Absolute, out Uri uri))
-            //{
-            //    throw new InvalidOperationException(string.Format(ERROR_CASH_ENTRY_INVALID_URI_PROVIDED, connectionString));
-            //}
-
-            //if (uri.Scheme != "mssql")
-            //{
-            //    throw new InvalidOperationException(string.Format(ERROR_UNSUPPORTED_METADATA_PROVIDER, uri.Scheme));
-            //}
-
-            //Dictionary<string, string> options = UriHelper.CreateOptions(in uri);
-
-            Dictionary<string, string> options = new()
-            {
-                { "ConnectionString", connectionString }
-            };
-
-            IMetadataProvider provider = new MsMetadataProvider();
-
-            provider.Configure(options);
-
-            return provider;
         }
         public bool TryGetMetadataProvider(string key, out IMetadataProvider provider, out string error)
         {
@@ -253,7 +184,7 @@ namespace DaJet.Metadata
 
                 try
                 {
-                    provider = CreateMetadataProvider(entry.Options.ConnectionString);
+                    provider = CreateMetadataProvider(entry.Options);
                 }
                 catch (Exception exception)
                 {
@@ -268,6 +199,71 @@ namespace DaJet.Metadata
             }
 
             return (provider is not null);
+        }
+        private IQueryExecutor CreateQueryExecutor(DatabaseProvider provider, string connectionString)
+        {
+            if (provider == DatabaseProvider.SqlServer)
+            {
+                return new MsQueryExecutor(connectionString);
+            }
+            else if (provider == DatabaseProvider.PostgreSql)
+            {
+                return new PgQueryExecutor(connectionString);
+            }
+
+            throw new InvalidOperationException(string.Format(ERROR_UNSUPPORTED_DATABASE_PROVIDER, provider));
+        }
+        private bool IsRegularDatabase(DatabaseProvider provider, string connectionString)
+        {
+            IQueryExecutor executor = CreateQueryExecutor(provider, connectionString);
+
+            string script = SQLHelper.GetTableExistsScript("_yearoffset");
+            
+            return !(executor.ExecuteScalar<int>(in script, 10) == 1);
+        }
+        private IMetadataProvider CreateMetadataCache(in InfoBaseOptions options)
+        {
+            MetadataCache cache = new(new MetadataCacheOptions()
+            {
+                UseExtensions = options.UseExtensions,
+                DatabaseProvider = options.DatabaseProvider,
+                ConnectionString = options.ConnectionString
+            });
+
+            cache.Initialize();
+
+            return cache;
+        }
+        private IMetadataProvider CreateMetadataProvider(in InfoBaseOptions options)
+        {
+            if (!IsRegularDatabase(options.DatabaseProvider, options.ConnectionString))
+            {
+                return CreateMetadataCache(in options);
+            }
+
+            IMetadataProvider provider;
+
+            if (options.DatabaseProvider == DatabaseProvider.SqlServer)
+            {
+                provider = new MsMetadataProvider();
+            }
+            else if (options.DatabaseProvider == DatabaseProvider.PostgreSql)
+            {
+                throw new NotImplementedException();
+            }
+            else
+            {
+                throw new InvalidOperationException(string.Format(ERROR_UNSUPPORTED_DATABASE_PROVIDER, options.DatabaseProvider));
+            }
+
+            Dictionary<string, string> settings = new()
+            {
+                { nameof(options.ConnectionString), options.ConnectionString }
+            };
+
+            provider.Configure(settings);
+
+            return provider;
         }
     }
 }

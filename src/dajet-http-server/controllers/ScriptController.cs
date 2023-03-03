@@ -190,12 +190,12 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            if (!_metadataService.TryGetMetadataCache(database.Uuid.ToString(), out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
 
-            ScriptExecutor executor = new(cache);
+            ScriptExecutor executor = new(provider);
 
             Dictionary<string, object> parameters = await ParseScriptParametersFromBody();
 

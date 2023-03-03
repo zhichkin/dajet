@@ -5,8 +5,6 @@ using DaJet.Metadata;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
@@ -102,32 +100,15 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            string json = string.Empty;
             List<MetadataItem> list = new();
+
             JsonSerializerOptions options = new()
             {
                 WriteIndented = true,
                 Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
             };
 
-            if (_metadataService.IsRegularDatabase(entity.Uuid.ToString()))
-            {
-                if (!_metadataService.TryGetMetadataProvider(entity.Uuid.ToString(), out IMetadataProvider provider, out string message))
-                {
-                    return StatusCode(StatusCodes.Status500InternalServerError, message);
-                }
-
-                foreach (MetadataItem item in provider.GetMetadataItems(Guid.Empty))
-                {
-                    list.Add(item);
-                }
-
-                json = JsonSerializer.Serialize(list, options);
-
-                return Content(json);
-            }
-
-            if (!_metadataService.TryGetMetadataCache(entity.Uuid.ToString(), out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetMetadataProvider(entity.Uuid.ToString(), out IMetadataProvider provider, out string error))
             {
                 return NotFound(error);
             }
@@ -139,9 +120,9 @@ namespace DaJet.Http.Controllers
                 return NotFound(type);
             }
 
-            foreach (MetadataItem item in cache.GetMetadataItems(uuid))
+            foreach (MetadataItem item in provider.GetMetadataItems(uuid))
             {
-                if (cache.TryGetExtendedInfo(item.Uuid, out MetadataItemEx extended))
+                if (provider.TryGetExtendedInfo(item.Uuid, out MetadataItemEx extended))
                 {
                     if (item.Uuid == extended.Uuid)
                     {
@@ -152,7 +133,7 @@ namespace DaJet.Http.Controllers
                 list.Add(item);
             }
 
-            json = JsonSerializer.Serialize(list, options);
+            string json = JsonSerializer.Serialize(list, options);
 
             return Content(json);
         }
@@ -171,30 +152,13 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            string json = string.Empty;
             JsonSerializerOptions options = new()
             {
                 WriteIndented = true,
                 Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
             };
 
-            if (_metadataService.IsRegularDatabase(entity.Uuid.ToString()))
-            {
-                if (!_metadataService.TryGetMetadataProvider(entity.Uuid.ToString(), out IMetadataProvider provider, out string message))
-                {
-                    return StatusCode(StatusCodes.Status500InternalServerError, message);
-                }
-
-                MetadataObject table = provider.GetMetadataObject(name);
-
-                if (table is null) { return NotFound(); }
-
-                json = JsonSerializer.Serialize(table, table.GetType(), options);
-
-                return Content(json);
-            }
-
-            if (!_metadataService.TryGetMetadataCache(entity.Uuid.ToString(), out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetMetadataProvider(entity.Uuid.ToString(), out IMetadataProvider provider, out string error))
             {
                 return NotFound(error);
             }
@@ -210,7 +174,7 @@ namespace DaJet.Http.Controllers
 
             try
             {
-                @object = cache.GetMetadataObject($"{type}.{name}");
+                @object = provider.GetMetadataObject($"{type}.{name}");
             }
             catch (Exception exception)
             {
@@ -222,7 +186,7 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            json = JsonSerializer.Serialize(@object, @object.GetType(), options);
+            string json = JsonSerializer.Serialize(@object, @object.GetType(), options);
 
             return Content(json);
         }

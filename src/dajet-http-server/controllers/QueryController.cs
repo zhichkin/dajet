@@ -34,12 +34,12 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataCache(record.Uuid.ToString(), out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetMetadataProvider(record.Uuid.ToString(), out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
 
-            ScriptExecutor executor = new(cache);
+            ScriptExecutor executor = new(provider);
 
             GeneratorResult result;
 
@@ -76,12 +76,12 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataCache(record.Uuid.ToString(), out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetMetadataProvider(record.Uuid.ToString(), out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
 
-            ScriptExecutor executor = new(cache);
+            ScriptExecutor executor = new(provider);
 
             List<Dictionary<string, object>> result = new();
 

@@ -9,10 +9,10 @@ namespace DaJet.Scripting
 {
     public sealed class ScriptExecutor
     {
-        private readonly MetadataCache _cache;
-        public ScriptExecutor(MetadataCache cache)
+        private readonly IMetadataProvider _metadata;
+        public ScriptExecutor(IMetadataProvider provider)
         {
-            _cache = cache;
+            _metadata = provider;
         }
         public Dictionary<string, object> Parameters { get; } = new();
         public GeneratorResult PrepareScript(in string script)
@@ -39,7 +39,7 @@ namespace DaJet.Scripting
 
             MetadataBinder binder = new();
 
-            if (!binder.TryBind(in scope, in _cache, out error))
+            if (!binder.TryBind(in scope, in _metadata, out error))
             {
                 throw new Exception(error);
             }
@@ -53,17 +53,17 @@ namespace DaJet.Scripting
 
             ISqlGenerator generator;
 
-            if (_cache.DatabaseProvider == DatabaseProvider.SqlServer)
+            if (_metadata.DatabaseProvider == DatabaseProvider.SqlServer)
             {
-                generator = new MsSqlGenerator() { YearOffset = _cache.InfoBase.YearOffset };
+                generator = new MsSqlGenerator() { YearOffset = _metadata.YearOffset };
             }
-            else if (_cache.DatabaseProvider == DatabaseProvider.PostgreSql)
+            else if (_metadata.DatabaseProvider == DatabaseProvider.PostgreSql)
             {
-                generator = new PgSqlGenerator() { YearOffset = _cache.InfoBase.YearOffset };
+                generator = new PgSqlGenerator() { YearOffset = _metadata.YearOffset };
             }
             else
             {
-                throw new InvalidOperationException($"Unsupported database provider: {_cache.DatabaseProvider}");
+                throw new InvalidOperationException($"Unsupported database provider: {_metadata.DatabaseProvider}");
             }
             
             if (!generator.TryGenerate(in model, out GeneratorResult result))
@@ -148,7 +148,7 @@ namespace DaJet.Scripting
                             // Metadata object reference parameter:
                             // DECLARE @product Справочник.Номенклатура = "9a1984dc-3084-11ed-9cd7-408d5c93cc8e";
 
-                            MetadataObject table = _cache.GetMetadataObject(declare.Type.Identifier);
+                            MetadataObject table = _metadata.GetMetadataObject(declare.Type.Identifier);
 
                             if (table is ApplicationObject entity)
                             {
@@ -191,22 +191,22 @@ namespace DaJet.Scripting
             {
                 if (parameter.Value is Guid uuid)
                 {
-                    Parameters[parameter.Key] = uuid.ToByteArray(); // SQLHelper.GetSqlUuid(uuid)
+                    Parameters[parameter.Key] = uuid.ToByteArray();
                 }
                 else if (parameter.Value is bool boolean)
                 {
-                    if (_cache.DatabaseProvider == DatabaseProvider.SqlServer)
+                    if (_metadata.DatabaseProvider == DatabaseProvider.SqlServer)
                     {
                         Parameters[parameter.Key] = new byte[] { Convert.ToByte(boolean) };
                     }
                 }
                 else if (parameter.Value is DateTime dateTime)
                 {
-                    Parameters[parameter.Key] = dateTime.AddYears(_cache.InfoBase.YearOffset);
+                    Parameters[parameter.Key] = dateTime.AddYears(_metadata.YearOffset);
                 }
                 else if (parameter.Value is Entity entity)
                 {
-                    Parameters[parameter.Key] = entity.Identity.ToByteArray(); // SQLHelper.GetSqlUuid(entity.Identity)
+                    Parameters[parameter.Key] = entity.Identity.ToByteArray();
                 }
             }
         }
@@ -235,7 +235,7 @@ namespace DaJet.Scripting
                 throw new Exception(result.Error);
             }
 
-            IQueryExecutor executor = _cache.CreateQueryExecutor();
+            IQueryExecutor executor = _metadata.CreateQueryExecutor();
 
             foreach (IDataReader reader in executor.ExecuteReader(result.Script, 10, Parameters))
             {
@@ -251,7 +251,7 @@ namespace DaJet.Scripting
                 throw new Exception(result.Error);
             }
 
-            IQueryExecutor executor = _cache.CreateQueryExecutor();
+            IQueryExecutor executor = _metadata.CreateQueryExecutor();
 
             foreach (IDataReader reader in executor.ExecuteReader(result.Script, 10, Parameters))
             {

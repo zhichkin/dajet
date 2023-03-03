@@ -7,7 +7,7 @@ namespace DaJet.Scripting
 {
     public sealed class MetadataBinder
     {
-        public bool TryBind(in ScriptScope scope, in MetadataCache metadata, out string error)
+        public bool TryBind(in ScriptScope scope, in IMetadataProvider metadata, out string error)
         {
             error = string.Empty;
 
@@ -31,7 +31,7 @@ namespace DaJet.Scripting
             throw new InvalidOperationException(message);
         }
 
-        private void BindScriptScope(in ScriptScope scope, in MetadataCache metadata)
+        private void BindScriptScope(in ScriptScope scope, in IMetadataProvider metadata)
         {
             ScriptScope root = scope.Root;
 
@@ -44,7 +44,7 @@ namespace DaJet.Scripting
             BindVariables(in scope, in metadata);
             BindScriptScopeTables(in scope, in metadata);
         }
-        private void BindDataTypes(in ScriptScope scope, in MetadataCache metadata)
+        private void BindDataTypes(in ScriptScope scope, in IMetadataProvider metadata)
         {
             foreach (SyntaxNode node in scope.Identifiers)
             {
@@ -58,7 +58,7 @@ namespace DaJet.Scripting
                 
             }
         }
-        private void BindDataType(in ScriptScope scope, in TypeIdentifier identifier, in MetadataCache metadata)
+        private void BindDataType(in ScriptScope scope, in TypeIdentifier identifier, in IMetadataProvider metadata)
         {
             if (ScriptHelper.IsDataType(identifier.Identifier, out Type type))
             {
@@ -79,7 +79,7 @@ namespace DaJet.Scripting
                 ThrowBindingException(identifier.Token, identifier.Identifier);
             }
         }
-        private void BindVariables(in ScriptScope scope, in MetadataCache metadata)
+        private void BindVariables(in ScriptScope scope, in IMetadataProvider metadata)
         {
             foreach (SyntaxNode node in scope.Identifiers)
             {
@@ -91,7 +91,7 @@ namespace DaJet.Scripting
                 BindVariable(in scope, in identifier, in metadata);
             }
         }
-        private void BindVariable(in ScriptScope scope, in VariableReference variable, in MetadataCache metadata)
+        private void BindVariable(in ScriptScope scope, in VariableReference variable, in IMetadataProvider metadata)
         {
             ScriptScope root = scope.Root;
 
@@ -140,7 +140,7 @@ namespace DaJet.Scripting
             }
         }
 
-        private void BindScriptScopeTables(in ScriptScope scope, in MetadataCache metadata)
+        private void BindScriptScopeTables(in ScriptScope scope, in IMetadataProvider metadata)
         {
             foreach (ScriptScope child in scope.Children)
             {
@@ -152,7 +152,7 @@ namespace DaJet.Scripting
             }
         }
 
-        private void BindCommonScope(in ScriptScope scope, in MetadataCache metadata)
+        private void BindCommonScope(in ScriptScope scope, in IMetadataProvider metadata)
         {
             // bottom-up the scope tree - visit children first
 
@@ -168,7 +168,7 @@ namespace DaJet.Scripting
                 BindCommonTableScope(in scope, in metadata);
             }
         }
-        private void BindCommonTableScope(in ScriptScope scope, in MetadataCache metadata)
+        private void BindCommonTableScope(in ScriptScope scope, in IMetadataProvider metadata)
         {
             foreach (ScriptScope child in scope.Children)
             {
@@ -179,7 +179,7 @@ namespace DaJet.Scripting
             BindColumns(in scope, in metadata);
         }
         
-        private void BindResultScope(in ScriptScope scope, in MetadataCache metadata)
+        private void BindResultScope(in ScriptScope scope, in IMetadataProvider metadata)
         {
             // bottom-up the scope tree - visit children first
 
@@ -199,7 +199,7 @@ namespace DaJet.Scripting
             BindColumns(in scope, in metadata);
         }
 
-        private void BindTables(in ScriptScope scope, in MetadataCache metadata)
+        private void BindTables(in ScriptScope scope, in IMetadataProvider metadata)
         {
             foreach (SyntaxNode node in scope.Identifiers)
             {
@@ -209,7 +209,7 @@ namespace DaJet.Scripting
                 }
             }
         }
-        private void BindTable(in ScriptScope scope, in TableReference table, in MetadataCache metadata)
+        private void BindTable(in ScriptScope scope, in TableReference table, in IMetadataProvider metadata)
         {
             // 0. bind table to script scope tables: variable or temporary
 
@@ -311,7 +311,7 @@ namespace DaJet.Scripting
                 }
             }
         }
-        private void BindSchemaTable(in TableReference table, in MetadataCache metadata)
+        private void BindSchemaTable(in TableReference table, in IMetadataProvider metadata)
         {
             MetadataObject schema = null;
 
@@ -334,7 +334,7 @@ namespace DaJet.Scripting
             }
         }
 
-        private void BindColumns(in ScriptScope scope, in MetadataCache metadata)
+        private void BindColumns(in ScriptScope scope, in IMetadataProvider metadata)
         {
             foreach (ScriptScope child in scope.Children)
             {
@@ -368,7 +368,7 @@ namespace DaJet.Scripting
                 ThrowBindingException(column.Token, column.Identifier);
             }
         }
-        private bool TryBindEnumValue(in ColumnReference column, in MetadataCache metadata)
+        private bool TryBindEnumValue(in ColumnReference column, in IMetadataProvider metadata)
         {
             string[] identifiers = column.Identifier.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 

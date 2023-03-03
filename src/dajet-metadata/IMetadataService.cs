@@ -11,10 +11,8 @@ namespace DaJet.Metadata
         void Add(InfoBaseOptions options);
         void Remove(string key);
 
-        bool IsRegularDatabase(string key);
         bool TryGetInfoBase(string key, out InfoBase infoBase, out string error);
         bool TryGetMetadataCache(string key, out MetadataCache cache, out string error);
-        bool TryGetQueryExecutor(string key, out IQueryExecutor executor, out string error);
         bool TryGetMetadataProvider(string key, out IMetadataProvider metadata, out string error);
     }
 }

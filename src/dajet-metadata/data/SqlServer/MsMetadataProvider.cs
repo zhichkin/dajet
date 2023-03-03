@@ -1,4 +1,5 @@
 ﻿using DaJet.Data;
+using DaJet.Data.SqlServer;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using Microsoft.Data.SqlClient;
@@ -13,7 +14,7 @@ namespace DaJet.Metadata.SqlServer
         private string _connectionString;
         public void Configure(in Dictionary<string, string> options)
         {
-            if (!options.TryGetValue("ConnectionString", out string connectionString))
+            if (!options.TryGetValue(nameof(InfoBaseOptions.ConnectionString), out string connectionString))
             {
                 throw new InvalidOperationException();
             }
@@ -21,38 +22,20 @@ namespace DaJet.Metadata.SqlServer
             SqlConnectionStringBuilder builder = new(connectionString);
 
             _connectionString = builder.ToString();
-
-            //Type type = typeof(SqlConnectionStringBuilder);
-
-            //foreach (var option in options)
-            //{
-            //    if (option.Key == "host") { builder.DataSource = option.Value; }
-            //    else if (option.Key == "dbname") { builder.InitialCatalog = option.Value; }
-            //    else if (option.Key == "user") { builder.UserID = option.Value; }
-            //    else if (option.Key == "pswd") { builder.Password = option.Value; }
-            //    else
-            //    {
-            //        PropertyInfo property = type.GetProperty(option.Key);
-
-            //        if (property is not null)
-            //        {
-            //            if (property.PropertyType == typeof(int))
-            //            {
-            //                property.SetValue(builder, int.Parse(option.Value));
-            //            }
-            //            else if (property.PropertyType == typeof(bool))
-            //            {
-            //                property.SetValue(builder, bool.Parse(option.Value));
-            //            }
-            //            else if (property.PropertyType == typeof(string))
-            //            {
-            //                property.SetValue(builder, option.Value);
-            //            }
-            //        }
-            //    }
-            //}
         }
 
+        public int YearOffset { get { return 0; } }
+        public DatabaseProvider DatabaseProvider { get { return DatabaseProvider.SqlServer; } }
+        public IQueryExecutor CreateQueryExecutor() { return new MsQueryExecutor(_connectionString); }
+        public bool IsRegularDatabase
+        {
+            get
+            {
+                IQueryExecutor executor = CreateQueryExecutor();
+                string script = SQLHelper.GetTableExistsScript("_yearoffset");
+                return !(executor.ExecuteScalar<int>(in script, 10) == 1);
+            }
+        }
         public IEnumerable<MetadataItem> GetMetadataItems(Guid type)
         {
             IQueryExecutor executor = QueryExecutor.Create(DatabaseProvider.SqlServer, _connectionString);
@@ -68,6 +51,14 @@ namespace DaJet.Metadata.SqlServer
 
             return list;
         }
+        public bool TryGetEnumValue(in string identifier, out EnumValue value)
+        {
+            throw new NotImplementedException();
+        }
+        public bool TryGetExtendedInfo(Guid uuid, out MetadataItemEx info)
+        {
+            info = MetadataItemEx.Empty; return false;
+        }
         public MetadataObject GetMetadataObject(string metadataName)
         {
             Catalog table = new()
@@ -82,14 +73,14 @@ namespace DaJet.Metadata.SqlServer
                 {
                     Name = column.COLUMN_NAME,
                     DbName = column.COLUMN_NAME,
-                    PropertyType = new DataTypeSet() //TODO !!!
+                    PropertyType = InferDataType(column.COLUMN_NAME, column.DATA_TYPE, column.CHARACTER_MAXIMUM_LENGTH)
                 };
 
                 property.Columns.Add(new MetadataColumn()
                 {
                     Name = column.COLUMN_NAME,
                     TypeName = column.DATA_TYPE,
-                    Purpose = ColumnPurpose.Default,  // TODO !?
+                    Purpose = ColumnPurpose.Default,
                     IsNullable = column.IS_NULLABLE,
                     Scale = column.NUMERIC_SCALE,
                     Length = column.CHARACTER_MAXIMUM_LENGTH,
@@ -101,5 +92,121 @@ namespace DaJet.Metadata.SqlServer
 
             return table;
         }
+        private DataTypeSet InferDataType(string columnName, string typeName, int typeSize)
+        {
+            DataTypeSet type = new();
+
+            if (typeName == "binary" || typeName == "varbinary") // boolean
+            {
+                return InferBinaryType(columnName, typeSize);
+            }
+            else if (typeName == "numeric") // numeric
+            {
+
+            }
+            else if (typeName == "datetime2") // timestamp without time zone
+            {
+
+            }
+            else if (typeName == "nchar" || typeName == "nvarchar") // mchar | mvarchar
+            {
+
+            }
+            else if (typeName == "timestamp") // _Version binary(8) | _version integer
+            {
+
+            }
+
+
+            return type;
+        }
+        private DataTypeSet InferBinaryType(string columnName, int typeSize)
+        {
+            DataTypeSet type = new();
+
+
+
+            return type;
+        }
     }
 }
+
+//    if (field.IsNullable)
+//    {
+//        return null;
+//    }
+//    else if (field.TypeName == "numeric"
+//        || field.TypeName == "decimal"
+//        || field.TypeName == "smallmoney"
+//        || field.TypeName == "money")
+//    {
+//        return 0;
+//    }
+//    else if (field.TypeName == "bit")
+//    {
+//        return false;
+//    }
+//    else if (field.TypeName == "tinyint")
+//    {
+//        return (byte)0;
+//    }
+//    else if (field.TypeName == "smallint")
+//    {
+//        return (short)0;
+//    }
+//    else if (field.TypeName == "int")
+//    {
+//        return 0;
+//    }
+//    else if (field.TypeName == "bigint")
+//    {
+//        return (long)0;
+//    }
+//    else if (field.TypeName == "float"
+//        || field.TypeName == "real")
+//    {
+//        return 0D;
+//    }
+//    else if (field.TypeName == "datetime"
+//        || field.TypeName == "date"
+//        || field.TypeName == "time"
+//        || field.TypeName == "datetime2"
+//        || field.TypeName == "datetimeoffset")
+//    {
+//        return new DateTime(1753, 1, 1);
+//    }
+//    else if (field.TypeName == "smalldatetime")
+//    {
+//        return new DateTime(1900, 1, 1);
+//    }
+//    else if (field.TypeName == "char"
+//        || field.TypeName == "varchar"
+//        || field.TypeName == "nchar"
+//        || field.TypeName == "nvarchar"
+//        || field.TypeName == "text"
+//        || field.TypeName == "ntext")
+//    {
+//        return string.Empty;
+//    }
+//    else if (field.TypeName == "binary")
+//    {
+//        return new byte[field.Length];
+//    }
+//    else if (field.TypeName == "varbinary"
+//        || field.TypeName == "image")
+//    {
+//        return Guid.Empty.ToByteArray();
+//    }
+//    else if (field.TypeName == "timestamp"
+//        || field.TypeName == "rowversion")
+//    {
+//        return null; // the value is auto generated by database engine
+//    }
+//    else if (field.TypeName == "uniqueidentifier")
+//    {
+//        return Guid.Empty;
+//    }
+//    else
+//    {
+//        return null;
+//    }
