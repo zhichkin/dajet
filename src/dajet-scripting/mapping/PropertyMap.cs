@@ -316,7 +316,7 @@ namespace DaJet.Scripting
                 return null;
             }
 
-            return new Guid((byte[])reader.GetValue(ordinal)); // new Guid(SQLHelper.Get1CUuid((byte[])reader.GetValue(ordinal)))
+            return new Guid((byte[])reader.GetValue(ordinal));
         }
         private object GetEntity(in IDataReader reader)
         {
@@ -332,7 +332,7 @@ namespace DaJet.Scripting
                 return null;
             }
 
-            Guid identity = new((byte[])reader.GetValue(ordinal)); // binary(16) // new(SQLHelper.Get1CUuid((byte[])reader.GetValue(ordinal)))
+            Guid identity = new((byte[])reader.GetValue(ordinal)); // binary(16)
 
             if (Columns.Count == 1) // single reference type value - RRef
             {
