@@ -26,6 +26,7 @@
         
         Plus, Minus, Divide, Modulo, Multiply,
 
-        CREATE, TABLE, COMPUTED, TEMPORARY, VARIABLE
+        CREATE, TABLE, COMPUTED, TEMPORARY, VARIABLE, TYPE, ENTITY, PRIMARY, KEY, OF, IDENTITY,
+        DROP, ALTER, COLUMN, AUTO, GENERATED
     }
 }

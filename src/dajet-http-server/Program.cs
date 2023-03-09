@@ -10,7 +10,7 @@ namespace DaJet.Http.Server
     public static class Program
     {
         public static string DATABASE_FILE_NAME = "dajet.db";
-        private static readonly string[] webapi = new string[] { "/api", "/md", "/mdex", "/db", "/djql" };
+        private static readonly string[] webapi = new string[] { "/api", "/md", "/mdex", "/db", "/query" };
         public static void Main(string[] args)
         {
             WebApplicationOptions options = new()

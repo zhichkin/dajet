@@ -74,7 +74,18 @@ namespace DaJet.Scripting
             { "VARIABLE", TokenType.VARIABLE },
             { "TEMPORARY", TokenType.TEMPORARY },
             { "UPSERT", TokenType.UPSERT },
-            { "IGNORE", TokenType.IGNORE }
+            { "IGNORE", TokenType.IGNORE },
+            { "TYPE", TokenType.TYPE },
+            { "ENTITY", TokenType.ENTITY },
+            { "IDENTITY", TokenType.IDENTITY },
+            { "PRIMARY", TokenType.PRIMARY },
+            { "KEY", TokenType.KEY },
+            { "OF", TokenType.OF },
+            { "DROP", TokenType.DROP },
+            { "ALTER", TokenType.ALTER },
+            { "COLUMN", TokenType.COLUMN },
+            { "AUTO", TokenType.AUTO },
+            { "GENERATED", TokenType.GENERATED }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {
@@ -250,6 +261,7 @@ namespace DaJet.Scripting
         internal static bool IsAlpha(char character)
         {
             return character == '_'
+                || character == '-'
                 || character == '.' // multipart identifier
                 || (character >= 'A' && character <= 'Z')
                 || (character >= 'a' && character <= 'z')

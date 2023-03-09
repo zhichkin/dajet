@@ -137,7 +137,7 @@ namespace DaJet.Studio.Pages
                     Script = Model.Script
                 };
 
-                HttpResponseMessage response = await Http.PostAsJsonAsync("/djql/prepare", request);
+                HttpResponseMessage response = await Http.PostAsJsonAsync("/query/prepare", request);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -226,6 +226,53 @@ namespace DaJet.Studio.Pages
                 else
                 {
                     ResultTable = await response.Content.ReadFromJsonAsync<List<Dictionary<string, object>>>();
+                }
+            }
+            catch (Exception error)
+            {
+                ErrorText = error.Message;
+            }
+        }
+
+        protected async Task ExecuteNonQuery()
+        {
+            ErrorText = string.Empty;
+            ResultText = string.Empty;
+            ResultTable = null;
+
+            try
+            {
+                InfoBaseModel database = AppState.GetDatabaseOrThrowException(Model.Owner);
+
+                QueryRequest request = new()
+                {
+                    DbName = database.Name,
+                    Script = Model.Script
+                };
+
+                HttpResponseMessage response = await Http.PostAsJsonAsync("/query/ddl", request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    string result = await response.Content.ReadAsStringAsync();
+
+                    ErrorText = response.ReasonPhrase
+                        + (string.IsNullOrEmpty(result)
+                        ? string.Empty
+                        : Environment.NewLine + result);
+                }
+                else
+                {
+                    QueryResponse result = await response.Content.ReadFromJsonAsync<QueryResponse>();
+
+                    if (result.Success)
+                    {
+                        ResultText = result.Script;
+                    }
+                    else
+                    {
+                        ErrorText = result.Error;
+                    }
                 }
             }
             catch (Exception error)

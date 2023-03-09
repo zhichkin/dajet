@@ -11,7 +11,7 @@ using System.Text.Unicode;
 
 namespace DaJet.Http.Controllers
 {
-    [ApiController][Route("djql")]
+    [ApiController][Route("query")]
     public class QueryController : ControllerBase
     {
         private readonly InfoBaseDataMapper _mapper = new();
@@ -99,6 +99,52 @@ namespace DaJet.Http.Controllers
 
                     result.Add(entity);
                 }
+            }
+            catch (Exception exception)
+            {
+                return BadRequest(ExceptionHelper.GetErrorMessage(exception));
+            }
+
+            JsonSerializerOptions options = new()
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+            };
+
+            string json = JsonSerializer.Serialize(result, options);
+
+            return Content(json);
+        }
+
+        [HttpPost("ddl")] public ActionResult ExecuteNonQuery([FromBody] QueryModel query)
+        {
+            if (string.IsNullOrWhiteSpace(query.DbName) || string.IsNullOrWhiteSpace(query.Script))
+            {
+                return BadRequest();
+            }
+
+            InfoBaseModel record = _mapper.Select(query.DbName);
+
+            if (record == null)
+            {
+                return NotFound();
+            }
+
+            if (!_metadataService.TryGetMetadataProvider(record.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            {
+                return BadRequest(error);
+            }
+
+            ScriptExecutor executor = new(provider);
+
+            GeneratorResult result = new()
+            {
+                Success = true
+            };
+
+            try
+            {
+                executor.ExecuteNonQuery(query.Script);
             }
             catch (Exception exception)
             {

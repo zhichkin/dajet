@@ -4,6 +4,7 @@ using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 using System.Data;
 using System.Globalization;
+using System.Reflection;
 
 namespace DaJet.Scripting
 {
@@ -256,6 +257,29 @@ namespace DaJet.Scripting
             foreach (IDataReader reader in executor.ExecuteReader(result.Script, 10, Parameters))
             {
                 yield return result.Mapper.Map<TEntity>(in reader);
+            }
+        }
+
+        public void ExecuteNonQuery(in string script)
+        {
+            string error;
+            ScriptModel model;
+
+            using (ScriptParser parser = new())
+            {
+                if (!parser.TryParse(in script, out model, out error))
+                {
+                    throw new Exception(error);
+                }
+            }
+
+            ProcessCreateStatements(in model);
+        }
+        private void ProcessCreateStatements(in ScriptModel script)
+        {
+            foreach (SyntaxNode statement in script.Statements)
+            {
+
             }
         }
     }

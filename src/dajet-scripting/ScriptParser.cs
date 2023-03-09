@@ -1,5 +1,6 @@
 ﻿using DaJet.Metadata;
 using DaJet.Scripting.Model;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace DaJet.Scripting
 {
@@ -219,6 +220,11 @@ namespace DaJet.Scripting
         #region "CREATE TABLE STATEMENT"
         private SyntaxNode create_statement()
         {
+            if (Match(TokenType.TYPE))
+            {
+                return create_type();
+            }
+
             TokenType token = TokenType.TABLE;
 
             if (Match(TokenType.COMPUTED, TokenType.TEMPORARY))
@@ -238,7 +244,7 @@ namespace DaJet.Scripting
 
             if (token == TokenType.TABLE)
             {
-                throw new NotSupportedException("Creating regular tables is not supported yet.");
+                return create_table();
             }
 
             if (!Check(TokenType.Identifier))
@@ -260,6 +266,25 @@ namespace DaJet.Scripting
             }
 
             throw new FormatException("Invalid CREATE TABLE statement.");
+        }
+        private SyntaxNode create_table()
+        {
+            if (!Match(TokenType.Identifier)) { throw new FormatException("Table identifier expected."); }
+
+            string identifier = Previous().Lexeme;
+
+            if (!Match(TokenType.OF))
+            {
+                throw new FormatException("OF keyword expected.");
+            }
+
+            if (!Match(TokenType.Identifier)) { throw new FormatException("Type identifier expected."); }
+
+            return new CreateTableStatement()
+            {
+                Name = identifier,
+                Type = Previous().Lexeme
+            };
         }
         private SyntaxNode table_variable()
         {
@@ -1002,10 +1027,30 @@ namespace DaJet.Scripting
         }
         private TypeIdentifier type()
         {
-            return new TypeIdentifier()
+            TypeIdentifier type = new()
             {
                 Identifier = Previous().Lexeme
             };
+
+            if (Match(TokenType.OpenRoundBracket))
+            {
+                if (!Match(TokenType.Number)) { throw new FormatException("Number literal expected."); }
+                if (!int.TryParse(Previous().Lexeme, out int qualifier1)) { throw new FormatException("Number literal expected."); }
+
+                type.Qualifier1 = qualifier1;
+
+                if (Match(TokenType.Comma))
+                {
+                    if (!Match(TokenType.Number)) { throw new FormatException("Number literal expected."); }
+                    if (!int.TryParse(Previous().Lexeme, out int qualifier2)) { throw new FormatException("Number literal expected."); }
+
+                    type.Qualifier2 = qualifier2;
+                }
+
+                if (!Match(TokenType.CloseRoundBracket)) { throw new FormatException("Close round bracket expected."); }
+            }
+
+            return type;
         }
         private SyntaxNode scalar()
         {
@@ -1481,6 +1526,125 @@ namespace DaJet.Scripting
 
             return upsert;
         }
+        #endregion
+
+        #region "CREATE TYPE STATEMENT"
+        private SyntaxNode create_type()
+        {
+            if (Match(TokenType.ENTITY))
+            {
+                // SYSTEM TYPE ENTITY DEFINITION
+            }
+            else if (!Match(TokenType.Identifier))
+            {
+                throw new FormatException("Type identifier expected.");
+            }
+
+            CreateTypeStatement statement = new()
+            {
+                Name = Previous().Lexeme,
+                BaseType = base_type(),
+                DropColumns = drop_columns(),
+                AlterColumns = alter_columns()
+            };
+
+            if (Match(TokenType.PRIMARY))
+            {
+                if (!Match(TokenType.KEY)) { throw new FormatException("KEY keyword expected."); }
+
+                statement.PrimaryKey = column_identifiers();
+            }
+
+            if (!Match(TokenType.OpenRoundBracket)) { throw new FormatException("Open round bracket expected."); }
+
+            statement.Columns.Add(column_definition());
+
+            while (Match(TokenType.Comma))
+            {
+                statement.Columns.Add(column_definition());
+            }
+
+            if (!Match(TokenType.CloseRoundBracket)) { throw new FormatException("Close round bracket expected."); }
+
+            return statement;
+
+            //throw new FormatException("Invalid CREATE TYPE statement.");
+        }
+        private List<string> column_identifiers()
+        {
+            if (!Match(TokenType.Identifier)) { throw new FormatException("Column identifier expected."); }
+
+            List<string> columns = new()
+            {
+                Previous().Lexeme
+            };
+
+            while (Match(TokenType.Comma))
+            {
+                if (!Match(TokenType.Identifier)) { throw new FormatException("Column identifier expected."); }
+
+                columns.Add(Previous().Lexeme);
+            }
+
+            return columns;
+        }
+        private string base_type()
+        {
+            if (!Match(TokenType.AS)) { return null; }
+
+            if (Match(TokenType.ENTITY)) { return Previous().Lexeme; }
+
+            if (!Match(TokenType.Identifier)) { throw new FormatException("Base type identifier expected."); }
+
+            return Previous().Lexeme;
+        }
+        private List<string> drop_columns()
+        {
+            if (!Match(TokenType.DROP)) { return null; }
+
+            if (!Match(TokenType.COLUMN)) { throw new FormatException("COLUMN keyword expected."); }
+
+            return column_identifiers();
+        }
+        private List<ColumnDefinition> alter_columns()
+        {
+            if (!Match(TokenType.ALTER)) { return null; }
+
+            if (!Match(TokenType.COLUMN)) { throw new FormatException("COLUMN keyword expected."); }
+
+            List<ColumnDefinition> columns = new()
+            {
+                column_definition()
+            };
+
+            while (Match(TokenType.ALTER))
+            {
+                if (!Match(TokenType.COLUMN)) { throw new FormatException("COLUMN keyword expected."); }
+
+                columns.Add(column_definition());
+            }
+
+            return columns;
+        }
+        private ColumnDefinition column_definition()
+        {
+            if (!Match(TokenType.Identifier)) { throw new FormatException("Column identifier expected."); }
+
+            ColumnDefinition column = new()
+            {
+                Name = Previous().Lexeme
+            };
+
+            if (!Match(TokenType.Identifier)) { throw new FormatException("Data type identifier expected."); }
+
+            column.Type = type();
+
+            column.IsNullable = Match(TokenType.NULL);
+            column.IsIdentity = Match(TokenType.IDENTITY);
+
+            return column;
+        }
+
         #endregion
     }
 }
