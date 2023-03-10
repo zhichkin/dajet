@@ -2,6 +2,7 @@
 using DaJet.Data.PostgreSql;
 using DaJet.Data.SqlServer;
 using DaJet.Metadata.Core;
+using DaJet.Metadata.Data.Model;
 using DaJet.Metadata.Extensions;
 using DaJet.Metadata.Model;
 using DaJet.Metadata.Parsers;
@@ -309,6 +310,10 @@ namespace DaJet.Metadata
         public void Configure(in Dictionary<string, string> options)
         {
             throw new NotImplementedException(); //TODO: IMetadataProvider.Configure(...)
+        }
+        public TypeDef GetTypeDefinition(in string identifier)
+        {
+            throw new NotImplementedException(); //TODO: IMetadataProvider.GetTypeDefinition(...)
         }
         internal MetadataCache(MetadataCacheOptions options)
         {

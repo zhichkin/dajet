@@ -1644,7 +1644,6 @@ namespace DaJet.Scripting
 
             return column;
         }
-
         #endregion
     }
 }

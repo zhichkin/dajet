@@ -1,10 +1,11 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata;
+using DaJet.Metadata.Data.Model;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 using System.Data;
 using System.Globalization;
-using System.Reflection;
+using static Npgsql.Replication.PgOutput.Messages.RelationMessage;
 
 namespace DaJet.Scripting
 {
@@ -277,10 +278,108 @@ namespace DaJet.Scripting
         }
         private void ProcessCreateStatements(in ScriptModel script)
         {
-            foreach (SyntaxNode statement in script.Statements)
+            foreach (SyntaxNode node in script.Statements)
             {
-
+                if (node is CreateTypeStatement statement)
+                {
+                    TypeDef type = GetSystemTypeDef(in statement);
+                }
             }
+        }
+        private bool IsRegularDatabase
+        {
+            get
+            {
+                IQueryExecutor executor = _metadata.CreateQueryExecutor();
+                string script = SQLHelper.GetTableExistsScript("_yearoffset");
+                return !(executor.ExecuteScalar<int>(in script, 10) == 1);
+            }
+        }
+        private bool TableExists(in string name)
+        {
+            IQueryExecutor executor = _metadata.CreateQueryExecutor();
+            string script = SQLHelper.GetTableExistsScript(name);
+            return (executor.ExecuteScalar<int>(in script, 10) == 1);
+        }
+        
+        private UnionType ResolveDataType(TypeIdentifier type, out List<TypeDef> references)
+        {
+            UnionType union = new();
+
+            references = new List<TypeDef>();
+
+            if (!union.ApplySystemType(type.Identifier, out UnionTag _))
+            {
+                TypeDef target = ApplyEntityType(type.Identifier, in union);
+                
+                references.Add(target);
+            }
+
+            return union;
+        }
+        private TypeDef ApplyEntityType(in string identifier, in UnionType union)
+        {
+            TypeDef type = _metadata.GetTypeDefinition(in identifier) ?? throw new InvalidOperationException($"Undefined type: [{identifier}]");
+
+            if (!type.IsEntity)
+            {
+                throw new InvalidOperationException($"Type [{identifier}] is not ENTITY");
+            }
+
+            union.TypeCode = type.Code;
+
+            return type;
+        }
+        private TypeDef GetSystemTypeDef(in CreateTypeStatement statement)
+        {
+            //if (TableExists("md-types")) { return; }
+
+            TypeDef metadata = _metadata.GetTypeDefinition("Metadata");
+            int ordinal = metadata.Properties.Count + metadata.BaseType.Properties.Count;
+
+            TypeDef definition = new()
+            {
+                Ref = Guid.NewGuid(),
+                Name = statement.Name,
+                TableName = "md-types",
+                BaseType = metadata
+            };
+
+            foreach (ColumnDefinition column in statement.Columns)
+            {
+                PropertyDef property = new()
+                {
+                    Ref = Guid.NewGuid(),
+                    Name = column.Name,
+                    Owner = definition,
+                    Ordinal = ++ordinal,
+                    ColumnName = column.Name,
+                    DataType = ResolveDataType(column.Type, out List<TypeDef> references),
+                    Qualifier1 = column.Type.Qualifier1,
+                    Qualifier2 = column.Type.Qualifier2,
+                    IsNullable = column.IsNullable,
+                    IsPrimaryKey = statement.PrimaryKey.Contains(column.Name),
+                    IsDbGenerated = column.IsIdentity
+                };
+                definition.Properties.Add(property);
+
+                UnionType type = property.DataType;
+
+                if (type.IsEntity)
+                {
+                    List<Relation> relations = new();
+                    Entity source = new(property.Code, property.Ref);
+
+                    foreach (TypeDef target in references)
+                    {
+                        relations.Add(new Relation() { Source = source, Target = target });
+                    }
+                }
+            }
+
+            //IQueryExecutor executor = _metadata.CreateQueryExecutor();
+
+            return definition;
         }
     }
 }

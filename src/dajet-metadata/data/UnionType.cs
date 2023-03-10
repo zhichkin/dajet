@@ -6,6 +6,18 @@ namespace DaJet.Data
 {
     public sealed class UnionType
     {
+        private static Dictionary<string, UnionTag> _literals = new()
+        {
+            { "boolean",  UnionTag.Boolean },
+            { "number",   UnionTag.Numeric },
+            { "datetime", UnionTag.DateTime },
+            { "string",   UnionTag.String },
+            { "binary",   UnionTag.Binary },
+            { "uuid",     UnionTag.Uuid },
+            { "version",  UnionTag.Version },
+            { "integer",  UnionTag.Integer }
+        };
+
         private uint _flags = uint.MinValue;
         private int _typeCode = -1;
         public UnionType() { }
@@ -29,6 +41,17 @@ namespace DaJet.Data
             {
                 SetBit((int)type, true);
             }
+        }
+        public bool ApplySystemType(in string literal, out UnionTag tag)
+        {
+            if (!_literals.TryGetValue(literal, out tag))
+            {
+                tag = UnionTag.Entity;
+            }
+            
+            Add(tag);
+
+            return (tag != UnionTag.Entity);
         }
         public void Remove(UnionTag type)
         {
