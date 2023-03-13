@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace DaJet.Orm
+namespace DaJet.Model
 {
-    public sealed class IdentityMap : IIdentityMap
+    public sealed class IdentityMap
     {
+        private readonly Dictionary<Guid, ReferenceObject> _map = new();
         public IdentityMap() { }
-
-        private Dictionary<Guid, IReferenceObject> map = new Dictionary<Guid, IReferenceObject>();
-
-        public void Add(IReferenceObject item)
+        public void Add(ReferenceObject item)
         {
             if (item == null) throw new ArgumentNullException("item");
 
@@ -22,33 +20,30 @@ namespace DaJet.Orm
                 item.StateChanged += Item_StateChanged;
             }
         }
-
-        public bool Get(Guid identity, ref IReferenceObject item)
+        public bool Get(Guid identity, ref ReferenceObject item)
         {
-            return map.TryGetValue(identity, out item);
+            return _map.TryGetValue(identity, out item);
         }
-
         private void NewItem_StateChanged(IPersistent sender, StateEventArgs args)
         {
             if (args.OldState == PersistentState.New && args.NewState == PersistentState.Original)
             {
-                IReferenceObject item = (IReferenceObject)sender;
+                ReferenceObject item = (ReferenceObject)sender;
 
-                map.Add(item.Identity, item);
+                _map.Add(item.Ref, item);
 
                 item.StateChanged -= NewItem_StateChanged;
 
                 item.StateChanged += Item_StateChanged;
             }
         }
-
         private void Item_StateChanged(IPersistent sender, StateEventArgs args)
         {
             if (args.NewState == PersistentState.Deleted)
             {
-                IReferenceObject item = (IReferenceObject)sender;
+                ReferenceObject item = (ReferenceObject)sender;
 
-                map.Remove(item.Identity);
+                _map.Remove(item.Ref);
 
                 item.StateChanged -= Item_StateChanged;
             }

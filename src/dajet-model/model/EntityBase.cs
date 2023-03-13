@@ -1,12 +1,11 @@
 ﻿using System;
 
-namespace DaJet.Orm
+namespace DaJet.Model
 {
     public abstract class EntityBase : ReferenceObject, IComparable
     {
         public EntityBase(IDataMapper mapper) : base(mapper) { }
         public EntityBase(IDataMapper mapper, Guid identity) : base(mapper, identity) { }
-        public EntityBase(IDataMapper mapper, Guid identity, PersistentState state) : base(mapper, identity, state) { }
 
         protected string name = string.Empty;
         public string Name { set { Set<string>(value, ref name); } get { return Get<string>(ref name); } }

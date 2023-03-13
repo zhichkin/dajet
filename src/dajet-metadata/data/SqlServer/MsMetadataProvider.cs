@@ -1,8 +1,8 @@
 ﻿using DaJet.Data;
 using DaJet.Data.SqlServer;
 using DaJet.Metadata.Core;
-using DaJet.Metadata.Data.Model;
 using DaJet.Metadata.Model;
+using DaJet.Model;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;

@@ -1,7 +1,7 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata.Core;
-using DaJet.Metadata.Data.Model;
 using DaJet.Metadata.Model;
+using DaJet.Model;
 using System;
 using System.Collections.Generic;
 

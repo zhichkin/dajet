@@ -1,23 +1,21 @@
 ﻿using System;
 
-namespace DaJet.Orm
+namespace DaJet.Model
 {
     public class StateEventArgs : EventArgs
     {
         private PersistentState old_state;
         private PersistentState new_state;
-
         private StateEventArgs() { }
-
         public StateEventArgs(PersistentState old_state, PersistentState new_state)
         {
             this.old_state = old_state;
             this.new_state = new_state;
         }
-
         public PersistentState OldState { get { return old_state; } }
         public PersistentState NewState { get { return new_state; } }
     }
+
     public delegate void StateChangingEventHandler(IPersistent sender, StateEventArgs args);
     public delegate void StateChangedEventHandler(IPersistent sender, StateEventArgs args);
 

@@ -2,10 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
-    <RootNamespace>DaJet.Orm</RootNamespace>
+    <RootNamespace>DaJet.Model</RootNamespace>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
-    <AssemblyName>DaJet.Orm</AssemblyName>
+    <AssemblyName>DaJet.Model</AssemblyName>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.0.1" />
+  </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
 ﻿using DaJet.Data;
 
-namespace DaJet.Metadata.Data.Model
+namespace DaJet.Model
 {
     public sealed class Relation
     {

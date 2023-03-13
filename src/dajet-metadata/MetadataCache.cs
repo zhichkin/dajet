@@ -2,11 +2,11 @@
 using DaJet.Data.PostgreSql;
 using DaJet.Data.SqlServer;
 using DaJet.Metadata.Core;
-using DaJet.Metadata.Data.Model;
 using DaJet.Metadata.Extensions;
 using DaJet.Metadata.Model;
 using DaJet.Metadata.Parsers;
 using DaJet.Metadata.Services;
+using DaJet.Model;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;

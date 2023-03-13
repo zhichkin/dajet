@@ -26,4 +26,8 @@
     <PackageReference Include="Npgsql" Version="7.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\dajet-model\dajet-model.csproj" />
+  </ItemGroup>
+
 </Project>

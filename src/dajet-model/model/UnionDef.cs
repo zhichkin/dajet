@@ -1,7 +1,7 @@
 ﻿using DaJet.Data;
 using System;
 
-namespace DaJet.Metadata.Data.Model
+namespace DaJet.Model
 {
     public sealed class UnionDef
     {

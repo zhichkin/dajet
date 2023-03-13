@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace DaJet.Metadata.Data.Model
+namespace DaJet.Model
 {
     public sealed class TypeDef
     {

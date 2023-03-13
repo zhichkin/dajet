@@ -1,4 +1,4 @@
-﻿namespace DaJet.Orm
+﻿namespace DaJet.Model
 {
     public enum PersistentState : byte
     {

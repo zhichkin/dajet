@@ -50,7 +50,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-studio", "dajet-studi
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-dbview-generator", "dajet-dbview-generator\dajet-dbview-generator.csproj", "{9C913C14-657F-4555-BFC4-DDE76EE30CBB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-orm", "dajet-orm\dajet-orm.csproj", "{B658F660-8CB4-412D-A79B-6374D7CD1674}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-model", "dajet-model\dajet-model.csproj", "{B658F660-8CB4-412D-A79B-6374D7CD1674}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
