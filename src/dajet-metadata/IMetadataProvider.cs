@@ -18,6 +18,7 @@ namespace DaJet.Metadata
         bool TryGetExtendedInfo(Guid uuid, out MetadataItemEx info);
         bool TryGetEnumValue(in string identifier, out EnumValue value);
 
+        IDbConfigurator GetDbConfigurator();
         TypeDef GetTypeDefinition(in string identifier);
     }
 }

@@ -23,7 +23,7 @@ namespace DaJet.Model
                 Name = "Ref",
                 Owner = ENTITY,
                 Ordinal = 1,
-                ColumnName = "ref",
+                ColumnName = "_ref",
                 IsPrimaryKey = true,
                 DataType = new UnionType() { IsUuid = true }
             });
@@ -56,6 +56,25 @@ namespace DaJet.Model
 
                 return false;
             }
+        }
+        public List<PropertyDef> GetProperties()
+        {
+            List<PropertyDef> properties = new();
+
+            GetProperties(this, in properties);
+
+            return properties;
+        }
+        private void GetProperties(in TypeDef type, in List<PropertyDef> properties)
+        {
+            if (type is null) { return; }
+
+            if (type.BaseType is not null)
+            {
+                GetProperties(type.BaseType, in properties);
+            }
+
+            properties.AddRange(type.Properties);
         }
     }
 }

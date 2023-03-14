@@ -131,53 +131,13 @@ namespace DaJet.Metadata.SqlServer
         }
 
 
-
+        public IDbConfigurator GetDbConfigurator()
+        {
+            return new MsDbConfigurator(CreateQueryExecutor());
+        }
         public TypeDef GetTypeDefinition(in string identifier)
         {
-            if (identifier == "Metadata")
-            {
-                return GetMetadataType();
-            }
-
             throw new NotImplementedException(); //TODO: IMetadataProvider.GetTypeDefinition(...)
-        }
-        private TypeDef GetMetadataType()
-        {
-            int ordinal = TypeDef.Entity.Properties.Count;
-
-            TypeDef metadata = new()
-            {
-                Ref = Guid.Empty,
-                Code = 0,
-                Name = "Metadata",
-                BaseType = TypeDef.Entity
-            };
-
-            metadata.Properties.Add(new PropertyDef()
-            {
-                Ref = Guid.Empty,
-                Code = 0,
-                Name = "Name",
-                Owner = metadata,
-                Ordinal = ++ordinal,
-                ColumnName = "name",
-                Qualifier1 = 64,
-                DataType = new UnionType() { IsString = true }
-            });
-
-            metadata.Properties.Add(new PropertyDef()
-            {
-                Ref = Guid.Empty,
-                Code = 0,
-                Name = "Code",
-                Owner = metadata,
-                Ordinal = ++ordinal,
-                ColumnName = "code",
-                IsDbGenerated = true,
-                DataType = new UnionType() { IsInteger = true }
-            });
-
-            return metadata;
         }
     }
 }

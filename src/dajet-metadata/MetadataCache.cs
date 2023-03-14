@@ -345,6 +345,7 @@ namespace DaJet.Metadata
                 return !(executor.ExecuteScalar<int>(in script, 10) == 1);
             }
         }
+        public IDbConfigurator GetDbConfigurator() { throw new NotImplementedException(); }
         public IQueryExecutor CreateQueryExecutor()
         {
             if (_provider == DatabaseProvider.SqlServer)

@@ -1,5 +1,4 @@
-﻿using DaJet.Metadata.Model;
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -7,7 +6,7 @@ using System.Text;
 
 namespace DaJet.Data
 {
-    internal sealed class SqlFieldInfo
+    public sealed class SqlFieldInfo
     {
         public SqlFieldInfo() { }
         public int ORDINAL_POSITION;
@@ -18,7 +17,7 @@ namespace DaJet.Data
         public int NUMERIC_SCALE;
         public bool IS_NULLABLE;
     }
-    internal sealed class IndexInfo
+    public sealed class IndexInfo
     {
         public IndexInfo(string name, bool unique, bool clustered, bool primaryKey)
         {
@@ -35,7 +34,7 @@ namespace DaJet.Data
         public List<IndexColumnInfo> Includes { get; } = new List<IndexColumnInfo>();
         public override string ToString() { return Name; }
     }
-    internal sealed class IndexColumnInfo
+    public sealed class IndexColumnInfo
     {
         public IndexColumnInfo(string name, string type, byte ordinal, bool included, bool nullable, bool descending)
         {
@@ -54,7 +53,7 @@ namespace DaJet.Data
         public bool IsDescending { get; private set; } // 0 - ASC, 1 - DESC
         public override string ToString() { return Name; }
     }
-    internal sealed class ClusteredIndexInfo
+    public sealed class ClusteredIndexInfo
     {
         public ClusteredIndexInfo() { }
         public string NAME;
@@ -86,7 +85,7 @@ namespace DaJet.Data
             return info;
         }
     }
-    internal sealed class ClusteredIndexColumnInfo
+    public sealed class ClusteredIndexColumnInfo
     {
         public ClusteredIndexColumnInfo() { }
         public byte KEY_ORDINAL;
@@ -96,7 +95,7 @@ namespace DaJet.Data
     }
     public static class SQLHelper
     {
-        internal static List<SqlFieldInfo> GetSqlFields(string connectionString, string tableName)
+        public static List<SqlFieldInfo> GetSqlFields(string connectionString, string tableName)
         {
             StringBuilder sb = new();
             sb.AppendLine(@"SELECT");
@@ -141,7 +140,7 @@ namespace DaJet.Data
             }
             return list;
         }
-        internal static ClusteredIndexInfo GetClusteredIndexInfo(string connectionString, string tableName)
+        public static ClusteredIndexInfo GetClusteredIndexInfo(string connectionString, string tableName)
         {
             ClusteredIndexInfo info = null;
 
@@ -232,7 +231,7 @@ namespace DaJet.Data
 
             return sb.ToString();
         }
-        internal static List<IndexInfo> GetIndexes(string connectionString, string tableName)
+        public static List<IndexInfo> GetIndexes(string connectionString, string tableName)
         {
             List<IndexInfo> list = new List<IndexInfo>();
 
@@ -322,48 +321,6 @@ namespace DaJet.Data
         public static byte[] GetSqlUuid(Guid guid_1c)
         {
             return GetSqlUuid(guid_1c.ToByteArray());
-        }
-
-        public static string GetDbTypeName(in MetadataProperty property, ColumnPurpose purpose)
-        {
-            DataTypeSet type = property.PropertyType;
-
-            if (purpose == ColumnPurpose.Default)
-            {
-                if (type.IsUuid) { return "binary(16)"; }
-                else if (type.IsBinary) { return "varbinary(max)"; }
-                else if (type.IsValueStorage) { return "varbinary(max)"; }
-                else if (type.CanBeBoolean) { return "binary(1)"; }
-                else if (type.CanBeNumeric) { return $"numeric({type.NumericPrecision},{type.NumericScale})"; }
-                else if (type.CanBeDateTime) { return "datetime2"; }
-                else if (type.CanBeString) { return $"n{(type.StringKind == StringKind.Variable ? "var" : string.Empty)}char({(type.StringLength == 0 ? "max" : type.StringLength.ToString())})"; }
-                else if (type.CanBeReference) { return "binary(16)"; }
-                else { return property.Columns[0].TypeName; }
-            }
-            else
-            {
-                MetadataColumn column = null;
-                for (int i = 0; i < property.Columns.Count; i++)
-                {
-                    column = property.Columns[i];
-                    if (column.Purpose == purpose) { break; }
-                }
-
-                if (column is null)
-                {
-                    throw new InvalidOperationException($"Column purpose [{purpose}] is not found for property \"{property.Name}\".");
-                }
-
-                if (purpose == ColumnPurpose.Tag || purpose == ColumnPurpose.Boolean) { return "binary(1)"; }
-                else if (purpose == ColumnPurpose.Numeric) { return $"numeric({type.NumericPrecision},{type.NumericScale})"; }
-                else if (purpose == ColumnPurpose.DateTime) { return $"datetime2"; }
-                else if (purpose == ColumnPurpose.String) { return $"n{(type.StringKind == StringKind.Variable ? "var" : string.Empty)}char({(type.StringLength == 0 ? "max" : type.StringLength.ToString())})"; }
-                else if (purpose == ColumnPurpose.Binary) { return $"varbinary({(column.Length == -1 ? "max" : column.Length.ToString())})"; }
-                else if (purpose == ColumnPurpose.TypeCode) { return $"binary(4)"; }
-                else if (purpose == ColumnPurpose.Identity) { return $"binary(16)"; }
-            }
-
-            throw new InvalidOperationException($"Failed to get DbTypeName for property \"{property.Name}\".");
         }
 
         private const string TABLE_EXISTS_SCRIPT = "SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{0}';";

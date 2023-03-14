@@ -1,11 +1,10 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata;
-using DaJet.Metadata.Data.Model;
 using DaJet.Metadata.Model;
+using DaJet.Model;
 using DaJet.Scripting.Model;
 using System.Data;
 using System.Globalization;
-using static Npgsql.Replication.PgOutput.Messages.RelationMessage;
 
 namespace DaJet.Scripting
 {
@@ -278,13 +277,17 @@ namespace DaJet.Scripting
         }
         private void ProcessCreateStatements(in ScriptModel script)
         {
-            foreach (SyntaxNode node in script.Statements)
-            {
-                if (node is CreateTypeStatement statement)
-                {
-                    TypeDef type = GetSystemTypeDef(in statement);
-                }
-            }
+            IDbConfigurator configurator = _metadata.GetDbConfigurator();
+
+            configurator.CreateSystemDatabase();
+
+            //foreach (SyntaxNode node in script.Statements)
+            //{
+            //    if (node is CreateTypeStatement statement)
+            //    {
+            //        TypeDef type = GetSystemTypeDef(in statement);
+            //    }
+            //}
         }
         private bool IsRegularDatabase
         {
