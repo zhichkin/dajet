@@ -16,6 +16,9 @@ namespace DaJet.Model
         public string ColumnName { get; set; }
         public bool IsNullable { get; set; }
         public bool IsPrimaryKey { get; set; }
-        public bool IsDbGenerated { get; set; }
+        public bool IsVersion { get; set; }
+        public bool IsIdentity { get; set; }
+        public int IdentitySeed { get; set; } = 1;
+        public int IdentityIncrement { get; set; } = 1;
     }
 }

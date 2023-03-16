@@ -1,7 +1,7 @@
 CREATE TYPE Справочник AS ENTITY
 (
   ПометкаУдаления  boolean,
-  ВерсияДанных     version AUTO GENERATED,
+  ВерсияДанных     version,
   Предопределённый uuid,
   ЭтоГруппа        boolean,
   Родитель         Справочник,

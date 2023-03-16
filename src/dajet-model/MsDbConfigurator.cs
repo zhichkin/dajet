@@ -1,7 +1,7 @@
 ﻿using DaJet.Data;
 using System;
 using System.Collections.Generic;
-using System.Reflection;
+using System.Data;
 using System.Text;
 
 namespace DaJet.Model
@@ -13,11 +13,110 @@ namespace DaJet.Model
         {
             _executor = executor;
         }
+
+        private TypeDef GetMetadataType()
+        {
+            int ordinal = TypeDef.Entity.Properties.Count;
+
+            TypeDef metadata = new()
+            {
+                Ref = Guid.NewGuid(),
+                Code = 2,
+                Name = "Metadata",
+                BaseType = TypeDef.Entity
+            };
+
+            metadata.Properties.Add(new PropertyDef()
+            {
+                Ref = Guid.Empty,
+                Code = 0,
+                Name = "Name",
+                Owner = metadata,
+                Ordinal = ++ordinal,
+                ColumnName = "name",
+                Qualifier1 = 64,
+                DataType = new UnionType() { IsString = true }
+            });
+
+            metadata.Properties.Add(new PropertyDef()
+            {
+                Ref = Guid.Empty,
+                Code = 0,
+                Name = "Code",
+                Owner = metadata,
+                Ordinal = ++ordinal,
+                ColumnName = "type_code",
+                IsIdentity = true,
+                DataType = new UnionType() { IsInteger = true }
+            });
+
+            return metadata;
+        }
+        private TypeDef GetTypeDef()
+        {
+            TypeDef metadata = GetMetadataType();
+            int ordinal = metadata.Properties.Count + metadata.BaseType.Properties.Count;
+
+            TypeDef definition = new()
+            {
+                Ref = Guid.NewGuid(),
+                Name = "TypeDef",
+                TableName = "md_types",
+                BaseType = metadata
+            };
+
+            definition.Properties.Add(new PropertyDef()
+            {
+                Ref = Guid.NewGuid(),
+                Name = "TableName",
+                Owner = definition,
+                Ordinal = ++ordinal,
+                ColumnName = "table_name",
+                Qualifier1 = 32,
+                DataType = new UnionType() { IsString = true }
+            });
+
+            definition.Properties.Add(new PropertyDef()
+            {
+                Ref = Guid.NewGuid(),
+                Name = "BaseType",
+                Owner = definition,
+                Ordinal = ++ordinal,
+                ColumnName = "base_type",
+                Qualifier1 = 16,
+                DataType = new UnionType() { IsEntity = true, TypeCode = definition.Code }
+            });
+
+            definition.Properties.Add(new PropertyDef()
+            {
+                Ref = Guid.NewGuid(),
+                Name = "NestType",
+                Owner = definition,
+                Ordinal = ++ordinal,
+                ColumnName = "nest_type",
+                Qualifier1 = 16,
+                DataType = new UnionType() { IsEntity = true, TypeCode = definition.Code }
+            });
+
+            return definition;
+        }
         public void CreateSystemDatabase()
         {
             TypeDef definition = GetTypeDef();
 
-            CreateTable(in definition);
+            List<string> sql = new()
+            {
+                BuildCreateTableScript(in definition),
+                BuildCreateIndexScript(in definition)
+            };
+
+            _executor.TxExecuteNonQuery(in sql, 10);
+
+            CreateTypeDef(TypeDef.Entity); // ENTITY
+
+            CreateTypeDef(definition.BaseType); // Metadata
+            
+            CreateTypeDef(in definition); // TypeDef
         }
         public static string GetDbTypeName(UnionTag tag)
         {
@@ -30,12 +129,12 @@ namespace DaJet.Model
             else if (tag == UnionTag.Uuid) { return "binary"; }
             else if (tag == UnionTag.TypeCode) { return "binary"; }
             else if (tag == UnionTag.Entity) { return "binary"; }
-            else if (tag == UnionTag.Version) { return "timestamp"; } // rowversion
+            else if (tag == UnionTag.Version) { return "rowversion"; }
             else if (tag == UnionTag.Integer) { return "int"; }
 
             return "varbinary(max)"; // UnionTag.Undefined
         }
-        private void CreateTable(in TypeDef definition)
+        private string BuildCreateTableScript(in TypeDef definition)
         {
             StringBuilder script = new();
 
@@ -68,13 +167,14 @@ namespace DaJet.Model
                     script.Append(')');
                 }
 
-                if (property.IsDbGenerated)
+                if (property.IsIdentity)
                 {
-                    //TODO: IsPrimaryKey
-                }
-                else
-                {
-                    //TODO: IsIdentity
+                    script.Append(' ')
+                        .Append("IDENTITY(")
+                        .Append(property.IdentitySeed)
+                        .Append(',')
+                        .Append(property.IdentityIncrement)
+                        .Append(')');
                 }
 
                 script.Append(' ').Append(property.IsNullable ? "NULL" : "NOT NULL");
@@ -82,61 +182,97 @@ namespace DaJet.Model
 
             script.AppendLine().Append(");");
 
-            string sql = script.ToString();
-
-            _executor.ExecuteNonQuery(in sql, 10);
+            return script.ToString();
         }
-        private TypeDef GetMetadataType()
+        private string BuildCreateIndexScript(in TypeDef definition)
         {
-            int ordinal = TypeDef.Entity.Properties.Count;
+            StringBuilder script = new();
 
-            TypeDef metadata = new()
+            script.Append("CREATE UNIQUE CLUSTERED INDEX pk_").Append(definition.TableName);
+            script.Append(" ON ").Append(definition.TableName).Append('(');
+
+            PropertyDef property;
+            List<PropertyDef> properties = definition.GetPrimaryKey();
+
+            for (int i = 0; i < properties.Count; i++)
             {
-                Ref = Guid.Empty,
-                Code = 0,
-                Name = "Metadata",
-                BaseType = TypeDef.Entity
+                property = properties[i];
+
+                if (i > 0) { script.Append(','); }
+
+                script.Append(property.ColumnName).Append(" ASC");
+            }
+
+            script.Append(");");
+
+            return script.ToString();
+        }
+        private void CreateTypeDef(in TypeDef definition)
+        {
+            string script = new StringBuilder()
+                .Append("INSERT md_types (_ref, name, table_name, base_type, nest_type)")
+                .AppendLine()
+                .Append("OUTPUT INSERTED.type_code AS type_code")
+                .AppendLine()
+                .Append("SELECT @_ref, @name, @table_name, @base_type, @nest_type")
+                .ToString();
+
+            Dictionary<string, object> parameters = new()
+            {
+                { "_ref", definition.Ref.ToByteArray() },
+                { "name", definition.Name is null ? string.Empty : definition.Name },
+                { "table_name", definition.TableName is null ? string.Empty : definition.TableName },
+                { "base_type", definition.BaseType is null ? Guid.Empty.ToByteArray() : definition.BaseType.Ref.ToByteArray() },
+                { "nest_type", definition.NestType is null ? Guid.Empty.ToByteArray() : definition.NestType.Ref.ToByteArray() }
             };
 
-            metadata.Properties.Add(new PropertyDef()
+            foreach (IDataReader reader in _executor.ExecuteReader(script, 10, parameters))
             {
-                Ref = Guid.Empty,
-                Code = 0,
-                Name = "Name",
-                Owner = metadata,
-                Ordinal = ++ordinal,
-                ColumnName = "name",
-                Qualifier1 = 64,
-                DataType = new UnionType() { IsString = true }
-            });
-
-            metadata.Properties.Add(new PropertyDef()
-            {
-                Ref = Guid.Empty,
-                Code = 0,
-                Name = "Code",
-                Owner = metadata,
-                Ordinal = ++ordinal,
-                ColumnName = "type_code",
-                IsDbGenerated = true,
-                DataType = new UnionType() { IsInteger = true }
-            });
-
-            return metadata;
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    if (reader.GetName(i) == "type_code")
+                    {
+                        definition.Code = reader.GetInt32(i); break;
+                    }
+                }
+            }
         }
-        private TypeDef GetTypeDef()
+        public TypeDef SelectTypeDef(in string identifier)
         {
-            TypeDef metadata = GetMetadataType();
-            int ordinal = metadata.Properties.Count + metadata.BaseType.Properties.Count;
+            TypeDef definition = new();
 
-            TypeDef definition = new()
+            string script = new StringBuilder()
+                .Append("SELECT _ref, name, type_code, table_name, base_type, nest_type")
+                .AppendLine()
+                .Append("FROM md_types")
+                .AppendLine()
+                .Append("WHERE name = @name")
+                .ToString();
+
+            Dictionary<string, object> parameters = new()
             {
-                Ref = Guid.NewGuid(),
-                Code = 1,
-                Name = "TypeDef",
-                TableName = "md_types",
-                BaseType = metadata
+                { "name", identifier }
             };
+
+            foreach (IDataReader reader in _executor.ExecuteReader(script, 10, parameters))
+            {
+                definition.Ref = new Guid((byte[])reader["_ref"]);
+                definition.Code = (int)reader["type_code"];
+                definition.Name = (string)reader["name"];
+                definition.TableName = (string)reader["table_name"];
+                definition.BaseType = new TypeDef() { Ref = new Guid((byte[])reader["base_type"]), Code = 3 };
+                definition.NestType = new TypeDef() { Ref = new Guid((byte[])reader["nest_type"]), Code = 3 };
+            }
+
+            definition.BaseType = GetMetadataType();
+
+            SelectProperties(in definition);
+
+            return definition;
+        }
+        private void SelectProperties(in TypeDef definition)
+        {
+            int ordinal = definition.BaseType.Properties.Count + definition.BaseType.BaseType.Properties.Count;
 
             definition.Properties.Add(new PropertyDef()
             {
@@ -156,6 +292,7 @@ namespace DaJet.Model
                 Owner = definition,
                 Ordinal = ++ordinal,
                 ColumnName = "base_type",
+                Qualifier1 = 16,
                 DataType = new UnionType() { IsEntity = true, TypeCode = definition.Code }
             });
 
@@ -166,11 +303,118 @@ namespace DaJet.Model
                 Owner = definition,
                 Ordinal = ++ordinal,
                 ColumnName = "nest_type",
+                Qualifier1 = 16,
                 DataType = new UnionType() { IsEntity = true, TypeCode = definition.Code }
             });
-
-            return definition;
         }
+
+        private string BuildCreateTypeScript(in TypeDef definition)
+        {
+            StringBuilder script = new();
+            StringBuilder insert = new();
+            StringBuilder select = new();
+
+            insert.Append("INSERT md_types (_ref, name, table_name, base_type, nest_type)");
+            select.Append("SELECT ");
+
+            PropertyDef property;
+            List<PropertyDef> properties = definition.GetProperties();
+
+            string versionColumn = string.Empty;
+            string identityColumn = string.Empty;
+            
+            for (int i = 0; i < properties.Count; i++)
+            {
+                property = properties[i];
+
+                if (property.IsVersion) { versionColumn = property.ColumnName; continue; }
+                if (property.IsIdentity) { identityColumn = property.ColumnName; continue; }
+
+                if (i > 0) { insert.Append(','); select.Append(','); }
+
+                insert.Append(property.ColumnName);
+                select.Append('@').Append(property.ColumnName);
+            }
+            insert.Append(')');
+            select.Append(';');
+
+            script.Append(insert);
+
+            if (string.IsNullOrEmpty(versionColumn) && string.IsNullOrEmpty(identityColumn))
+            {
+                return script.AppendLine().Append(select).ToString();
+            }
+
+            script.AppendLine().Append("OUTPUT ");
+
+            if (!string.IsNullOrEmpty(identityColumn))
+            {
+                script.Append("INSERTED.").Append(identityColumn).Append(" AS ").Append(identityColumn);
+            }
+
+            if (!string.IsNullOrEmpty(versionColumn))
+            {
+                if (!string.IsNullOrEmpty(identityColumn)) { script.Append(','); }
+
+                script.Append("INSERTED.").Append(versionColumn).Append(" AS ").Append(identityColumn);
+            }
+            
+            return script.AppendLine().Append(select).ToString();
+        }
+        private string BuildCreatePropertyScript(in TypeDef definition)
+        {
+            StringBuilder script = new();
+            StringBuilder insert = new();
+            StringBuilder select = new();
+
+            insert.Append("INSERT md_properties (_ref");
+            select.Append("SELECT ");
+
+            PropertyDef property;
+            List<PropertyDef> properties = definition.GetProperties();
+
+            string versionColumn = string.Empty;
+            string identityColumn = string.Empty;
+
+            for (int i = 0; i < properties.Count; i++)
+            {
+                property = properties[i];
+
+                if (property.IsVersion) { versionColumn = property.ColumnName; continue; }
+                if (property.IsIdentity) { identityColumn = property.ColumnName; continue; }
+
+                if (i > 0) { insert.Append(','); select.Append(','); }
+
+                insert.Append(property.ColumnName);
+                select.Append('@').Append(property.ColumnName);
+            }
+            insert.Append(')');
+            select.Append(';');
+
+            script.Append(insert);
+
+            if (string.IsNullOrEmpty(versionColumn) && string.IsNullOrEmpty(identityColumn))
+            {
+                return script.AppendLine().Append(select).ToString();
+            }
+
+            script.AppendLine().Append("OUTPUT ");
+
+            if (!string.IsNullOrEmpty(identityColumn))
+            {
+                script.Append("INSERTED.").Append(identityColumn).Append(" AS ").Append(identityColumn);
+            }
+
+            if (!string.IsNullOrEmpty(versionColumn))
+            {
+                if (!string.IsNullOrEmpty(identityColumn)) { script.Append(','); }
+
+                script.Append("INSERTED.").Append(versionColumn).Append(" AS ").Append(identityColumn);
+            }
+
+            return script.AppendLine().Append(select).ToString();
+        }
+
         private void GetRelations(in PropertyDef property)
         {
             //UnionType type = property.DataType;

@@ -11,8 +11,8 @@ namespace DaJet.Model
         {
             ENTITY = new()
             {
-                Ref = Guid.Empty,
-                Code = 0,
+                Ref = Guid.NewGuid(),
+                Code = 1,
                 Name = "ENTITY"
             };
 
@@ -25,6 +25,7 @@ namespace DaJet.Model
                 Ordinal = 1,
                 ColumnName = "_ref",
                 IsPrimaryKey = true,
+                Qualifier1 = 16,
                 DataType = new UnionType() { IsUuid = true }
             });
         }
@@ -65,16 +66,41 @@ namespace DaJet.Model
 
             return properties;
         }
-        private void GetProperties(in TypeDef type, in List<PropertyDef> properties)
+        private void GetProperties(in TypeDef definition, in List<PropertyDef> properties)
         {
-            if (type is null) { return; }
+            if (definition is null) { return; }
 
-            if (type.BaseType is not null)
+            if (definition.BaseType is not null)
             {
-                GetProperties(type.BaseType, in properties);
+                GetProperties(definition.BaseType, in properties);
             }
 
-            properties.AddRange(type.Properties);
+            properties.AddRange(definition.Properties);
+        }
+        public List<PropertyDef> GetPrimaryKey()
+        {
+            List<PropertyDef> columns = new();
+
+            GetPrimaryKey(this, in columns);
+
+            return columns;
+        }
+        private void GetPrimaryKey(in TypeDef definition, in List<PropertyDef> columns)
+        {
+            if (definition is null) { return; }
+
+            if (definition.BaseType is not null)
+            {
+                GetPrimaryKey(definition.BaseType, in columns);
+            }
+
+            foreach (PropertyDef property in definition.Properties)
+            {
+                if (property.IsPrimaryKey)
+                {
+                    columns.Add(property);
+                }
+            }
         }
     }
 }

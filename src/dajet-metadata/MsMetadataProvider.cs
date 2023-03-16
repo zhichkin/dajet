@@ -60,75 +60,7 @@ namespace DaJet.Metadata.SqlServer
         {
             info = MetadataItemEx.Empty; return false;
         }
-        public MetadataObject GetMetadataObject(string metadataName)
-        {
-            Catalog table = new()
-            {
-                Name = metadataName,
-                TableName = metadataName, 
-            };
 
-            foreach (SqlFieldInfo column in SQLHelper.GetSqlFields(_connectionString, metadataName))
-            {
-                MetadataProperty property = new()
-                {
-                    Name = column.COLUMN_NAME,
-                    DbName = column.COLUMN_NAME,
-                    PropertyType = InferDataType(column.COLUMN_NAME, column.DATA_TYPE, column.CHARACTER_MAXIMUM_LENGTH)
-                };
-
-                property.Columns.Add(new MetadataColumn()
-                {
-                    Name = column.COLUMN_NAME,
-                    TypeName = column.DATA_TYPE,
-                    Purpose = ColumnPurpose.Default,
-                    IsNullable = column.IS_NULLABLE,
-                    Scale = column.NUMERIC_SCALE,
-                    Length = column.CHARACTER_MAXIMUM_LENGTH,
-                    Precision = column.NUMERIC_PRECISION
-                });
-
-                table.Properties.Add(property);
-            }
-
-            return table;
-        }
-        private DataTypeSet InferDataType(string columnName, string typeName, int typeSize)
-        {
-            DataTypeSet type = new();
-
-            if (typeName == "binary" || typeName == "varbinary") // boolean
-            {
-                return InferBinaryType(columnName, typeSize);
-            }
-            else if (typeName == "numeric") // numeric
-            {
-
-            }
-            else if (typeName == "datetime2") // timestamp without time zone
-            {
-
-            }
-            else if (typeName == "nchar" || typeName == "nvarchar") // mchar | mvarchar
-            {
-
-            }
-            else if (typeName == "timestamp") // _Version binary(8) | _version integer
-            {
-
-            }
-
-
-            return type;
-        }
-        private DataTypeSet InferBinaryType(string columnName, int typeSize)
-        {
-            DataTypeSet type = new();
-
-
-
-            return type;
-        }
 
 
         public IDbConfigurator GetDbConfigurator()
@@ -137,87 +69,124 @@ namespace DaJet.Metadata.SqlServer
         }
         public TypeDef GetTypeDefinition(in string identifier)
         {
-            throw new NotImplementedException(); //TODO: IMetadataProvider.GetTypeDefinition(...)
+            MsDbConfigurator configurator = new(CreateQueryExecutor());
+
+            return configurator.SelectTypeDef(in identifier);
+        }
+        public MetadataObject GetMetadataObject(string metadataName)
+        {
+            TypeDef definition = GetTypeDefinition(in metadataName);
+
+            Catalog table = new()
+            {
+                Name = definition.Name,
+                TableName = definition.TableName
+            };
+
+            foreach (PropertyDef propdef in definition.GetProperties())
+            {
+                MetadataProperty property = new()
+                {
+                    Name = propdef.Name,
+                    DbName = propdef.ColumnName,
+                    PropertyType = GetDataType(propdef)
+                };
+
+                UnionTag tag = propdef.DataType.GetSingleTagOrUndefined();
+
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = propdef.ColumnName,
+                    TypeName = MsDbConfigurator.GetDbTypeName(tag),
+                    Purpose = ColumnPurpose.Default,
+                    IsNullable = propdef.IsNullable,
+                    Scale = propdef.Qualifier2,
+                    Length = propdef.Qualifier1,
+                    Precision = propdef.Qualifier1
+                });
+
+                table.Properties.Add(property);
+            }
+
+            return table;
+        }
+        private DataTypeSet GetDataType(in PropertyDef property)
+        {
+            UnionType union = property.DataType;
+
+            DataTypeSet type = new();
+
+            if (union.IsUuid)
+            {
+                type.IsUuid = union.IsUuid; return type;
+            }
+
+            if (union.IsVersion)
+            {
+                type.IsBinary = union.IsVersion; return type;
+            }
+
+            if (union.IsInteger)
+            {
+                type.CanBeNumeric = union.IsInteger;
+                type.NumericPrecision = 19;
+                type.NumericScale = 0;
+                type.NumericKind = NumericKind.CanBeNegative;
+                return type;
+            }
+
+            if (union.IsBinary)
+            {
+                if (property.Qualifier1 > 0)
+                {
+                    type.IsBinary = union.IsBinary;
+                }
+                else
+                {
+                    type.IsValueStorage = union.IsBinary;
+                }
+                return type;
+            }
+
+            if (union.IsBoolean)
+            {
+                type.CanBeBoolean = union.IsBoolean;
+                if (!union.IsUnion) { return type; }
+            }
+
+            if (union.IsNumeric)
+            {
+                type.CanBeNumeric = union.IsNumeric;
+                type.NumericPrecision = property.Qualifier1;
+                type.NumericScale = property.Qualifier2;
+                type.NumericKind = NumericKind.CanBeNegative;
+                if (!union.IsUnion) { return type; }
+            }
+
+            if (union.IsDateTime)
+            {
+                type.CanBeDateTime = union.IsDateTime;
+                type.DateTimePart = DateTimePart.DateTime;
+                if (!union.IsUnion) { return type; }
+            }
+
+            if (union.IsString)
+            {
+                type.CanBeString = union.IsString;
+                type.StringLength = property.Qualifier1;
+                type.StringKind = StringKind.Variable;
+                if (!union.IsUnion) { return type; }
+            }
+
+            if (union.IsEntity)
+            {
+                type.CanBeReference = union.IsEntity;
+                type.TypeCode = union.TypeCode;
+                type.Reference = Guid.Empty;
+                if (!union.IsUnion) { return type; }
+            }
+
+            return type;
         }
     }
 }
-
-//    if (field.IsNullable)
-//    {
-//        return null;
-//    }
-//    else if (field.TypeName == "numeric"
-//        || field.TypeName == "decimal"
-//        || field.TypeName == "smallmoney"
-//        || field.TypeName == "money")
-//    {
-//        return 0;
-//    }
-//    else if (field.TypeName == "bit")
-//    {
-//        return false;
-//    }
-//    else if (field.TypeName == "tinyint")
-//    {
-//        return (byte)0;
-//    }
-//    else if (field.TypeName == "smallint")
-//    {
-//        return (short)0;
-//    }
-//    else if (field.TypeName == "int")
-//    {
-//        return 0;
-//    }
-//    else if (field.TypeName == "bigint")
-//    {
-//        return (long)0;
-//    }
-//    else if (field.TypeName == "float"
-//        || field.TypeName == "real")
-//    {
-//        return 0D;
-//    }
-//    else if (field.TypeName == "datetime"
-//        || field.TypeName == "date"
-//        || field.TypeName == "time"
-//        || field.TypeName == "datetime2"
-//        || field.TypeName == "datetimeoffset")
-//    {
-//        return new DateTime(1753, 1, 1);
-//    }
-//    else if (field.TypeName == "smalldatetime")
-//    {
-//        return new DateTime(1900, 1, 1);
-//    }
-//    else if (field.TypeName == "char"
-//        || field.TypeName == "varchar"
-//        || field.TypeName == "nchar"
-//        || field.TypeName == "nvarchar"
-//        || field.TypeName == "text"
-//        || field.TypeName == "ntext")
-//    {
-//        return string.Empty;
-//    }
-//    else if (field.TypeName == "binary")
-//    {
-//        return new byte[field.Length];
-//    }
-//    else if (field.TypeName == "varbinary"
-//        || field.TypeName == "image")
-//    {
-//        return Guid.Empty.ToByteArray();
-//    }
-//    else if (field.TypeName == "timestamp"
-//        || field.TypeName == "rowversion")
-//    {
-//        return null; // the value is auto generated by database engine
-//    }
-//    else if (field.TypeName == "uniqueidentifier")
-//    {
-//        return Guid.Empty;
-//    }
-//    else
-//    {
-//        return null;
-//    }

@@ -280,14 +280,6 @@ namespace DaJet.Scripting
             IDbConfigurator configurator = _metadata.GetDbConfigurator();
 
             configurator.CreateSystemDatabase();
-
-            //foreach (SyntaxNode node in script.Statements)
-            //{
-            //    if (node is CreateTypeStatement statement)
-            //    {
-            //        TypeDef type = GetSystemTypeDef(in statement);
-            //    }
-            //}
         }
         private bool IsRegularDatabase
         {
@@ -360,9 +352,12 @@ namespace DaJet.Scripting
                     DataType = ResolveDataType(column.Type, out List<TypeDef> references),
                     Qualifier1 = column.Type.Qualifier1,
                     Qualifier2 = column.Type.Qualifier2,
+                    IsVersion = column.IsVersion,
                     IsNullable = column.IsNullable,
                     IsPrimaryKey = statement.PrimaryKey.Contains(column.Name),
-                    IsDbGenerated = column.IsIdentity
+                    IsIdentity = column.IsIdentity,
+                    IdentitySeed = column.IdentitySeed,
+                    IdentityIncrement = column.IdentityIncrement
                 };
                 definition.Properties.Add(property);
 

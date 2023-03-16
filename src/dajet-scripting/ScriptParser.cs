@@ -1,6 +1,5 @@
 ﻿using DaJet.Metadata;
 using DaJet.Scripting.Model;
-using static System.Formats.Asn1.AsnWriter;
 
 namespace DaJet.Scripting
 {
@@ -1638,9 +1637,35 @@ namespace DaJet.Scripting
             if (!Match(TokenType.Identifier)) { throw new FormatException("Data type identifier expected."); }
 
             column.Type = type();
+            
+            column.IsVersion = (column.Type.Identifier.ToLowerInvariant() == "version");
 
             column.IsNullable = Match(TokenType.NULL);
+
             column.IsIdentity = Match(TokenType.IDENTITY);
+
+            if (column.IsIdentity)
+            {
+                if (Match(TokenType.OpenRoundBracket))
+                {
+                    if (!Match(TokenType.Number)) { throw new FormatException("Number literal expected."); }
+                    if (!int.TryParse(Previous().Lexeme, out int seed)) { throw new FormatException("Number literal expected."); }
+
+                    column.IdentitySeed = seed;
+
+                    if (!Match(TokenType.Comma))
+                    {
+                        throw new FormatException("Comma token expected.");
+                    }
+                    
+                    if (!Match(TokenType.Number)) { throw new FormatException("Number literal expected."); }
+                    if (!int.TryParse(Previous().Lexeme, out int increment)) { throw new FormatException("Number literal expected."); }
+                    
+                    column.IdentityIncrement = increment;
+
+                    if (!Match(TokenType.CloseRoundBracket)) { throw new FormatException("Close round bracket expected."); }
+                }
+            }
 
             return column;
         }
