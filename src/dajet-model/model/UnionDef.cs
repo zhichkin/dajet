@@ -5,7 +5,7 @@ namespace DaJet.Model
 {
     public sealed class UnionDef
     {
-        public Guid Ref { get; set; }
+        public Entity Ref { get; set; }
         public int Code { get; set; }
         public string Name { get; set; }
         public UnionType DataType { get; set; }

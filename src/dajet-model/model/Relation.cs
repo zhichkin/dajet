@@ -4,7 +4,7 @@ namespace DaJet.Model
 {
     public sealed class Relation
     {
-        public Entity Source { get; set; }
-        public TypeDef Target { get; set; }
+        public Union Source { get; set; } // PropertyDef | UnionDef
+        public Entity Target { get; set; } // TypeDef
     }
 }

@@ -83,7 +83,7 @@ namespace DaJet.Metadata.SqlServer
                 TableName = definition.TableName
             };
 
-            foreach (PropertyDef propdef in definition.GetProperties())
+            foreach (PropertyDef propdef in definition.Properties)
             {
                 MetadataProperty property = new()
                 {

@@ -12,26 +12,55 @@ namespace DaJet.Model
         public MsDbConfigurator(IQueryExecutor executor)
         {
             _executor = executor;
-        }
 
-        private TypeDef GetMetadataType()
+            _entity = CreateEntity();
+            _metadata = CreateMetadataType();
+            _definition = CreateTypeDefinition();
+        }
+        private TypeDef _entity;
+        private TypeDef _metadata;
+        private TypeDef _definition;
+        private TypeDef CreateEntity()
         {
-            int ordinal = TypeDef.Entity.Properties.Count;
+            TypeDef entity = new()
+            {
+                Ref = new Entity(1, Guid.NewGuid()),
+                Code = 1,
+                Name = "ENTITY"
+            };
+
+            entity.Properties.Add(new PropertyDef()
+            {
+                Ref = new Entity(4, Guid.NewGuid()),
+                Code = 4,
+                Name = "Ref",
+                Owner = entity.Ref,
+                Ordinal = 1,
+                ColumnName = "_ref",
+                IsPrimaryKey = true,
+                Qualifier1 = 16,
+                DataType = new UnionType() { IsEntity = true, TypeCode = entity.Code }
+            });
+
+            return entity;
+        }
+        private TypeDef CreateMetadataType()
+        {
+            int ordinal = 0;
 
             TypeDef metadata = new()
             {
-                Ref = Guid.NewGuid(),
+                Ref = new Entity(2, Guid.NewGuid()),
                 Code = 2,
                 Name = "Metadata",
-                BaseType = TypeDef.Entity
+                BaseType = _entity.Ref
             };
 
             metadata.Properties.Add(new PropertyDef()
             {
-                Ref = Guid.Empty,
-                Code = 0,
+                Ref = new Entity(4, Guid.NewGuid()),
                 Name = "Name",
-                Owner = metadata,
+                Owner = metadata.Ref,
                 Ordinal = ++ordinal,
                 ColumnName = "name",
                 Qualifier1 = 64,
@@ -40,10 +69,9 @@ namespace DaJet.Model
 
             metadata.Properties.Add(new PropertyDef()
             {
-                Ref = Guid.Empty,
-                Code = 0,
+                Ref = new Entity(4, Guid.NewGuid()),
                 Name = "Code",
-                Owner = metadata,
+                Owner = metadata.Ref,
                 Ordinal = ++ordinal,
                 ColumnName = "type_code",
                 IsIdentity = true,
@@ -52,24 +80,65 @@ namespace DaJet.Model
 
             return metadata;
         }
-        private TypeDef GetTypeDef()
+        private TypeDef CreateTypeDefinition()
         {
-            TypeDef metadata = GetMetadataType();
-            int ordinal = metadata.Properties.Count + metadata.BaseType.Properties.Count;
+            int ordinal = 0;
 
             TypeDef definition = new()
             {
-                Ref = Guid.NewGuid(),
+                Ref = new Entity(3, Guid.NewGuid()),
+                Code = 3,
                 Name = "TypeDef",
                 TableName = "md_types",
-                BaseType = metadata
+                BaseType = _metadata.Ref
             };
+
+            // Ref property derived from ENTITY
 
             definition.Properties.Add(new PropertyDef()
             {
-                Ref = Guid.NewGuid(),
+                Ref = new Entity(4, Guid.NewGuid()),
+                Code = 4,
+                Name = "Ref",
+                Owner = definition.Ref,
+                Ordinal = ++ordinal,
+                ColumnName = "_ref",
+                IsPrimaryKey = true,
+                Qualifier1 = 16,
+                DataType = new UnionType() { IsEntity = true, TypeCode = definition.Code }
+            });
+
+            // Properties derived from Metadata class
+
+            definition.Properties.Add(new PropertyDef()
+            {
+                Ref = new Entity(4, Guid.NewGuid()),
+                Name = "Name",
+                Owner = definition.Ref,
+                Ordinal = ++ordinal,
+                ColumnName = "name",
+                Qualifier1 = 64,
+                DataType = new UnionType() { IsString = true }
+            });
+
+            definition.Properties.Add(new PropertyDef()
+            {
+                Ref = new Entity(4, Guid.NewGuid()),
+                Name = "Code",
+                Owner = definition.Ref,
+                Ordinal = ++ordinal,
+                ColumnName = "type_code",
+                IsIdentity = true,
+                DataType = new UnionType() { IsInteger = true }
+            });
+
+            // TypeDef class own properties
+
+            definition.Properties.Add(new PropertyDef()
+            {
+                Ref = new Entity(4, Guid.NewGuid()),
                 Name = "TableName",
-                Owner = definition,
+                Owner = definition.Ref,
                 Ordinal = ++ordinal,
                 ColumnName = "table_name",
                 Qualifier1 = 32,
@@ -78,9 +147,9 @@ namespace DaJet.Model
 
             definition.Properties.Add(new PropertyDef()
             {
-                Ref = Guid.NewGuid(),
+                Ref = new Entity(4, Guid.NewGuid()),
                 Name = "BaseType",
-                Owner = definition,
+                Owner = definition.Ref,
                 Ordinal = ++ordinal,
                 ColumnName = "base_type",
                 Qualifier1 = 16,
@@ -89,9 +158,9 @@ namespace DaJet.Model
 
             definition.Properties.Add(new PropertyDef()
             {
-                Ref = Guid.NewGuid(),
+                Ref = new Entity(4, Guid.NewGuid()),
                 Name = "NestType",
-                Owner = definition,
+                Owner = definition.Ref,
                 Ordinal = ++ordinal,
                 ColumnName = "nest_type",
                 Qualifier1 = 16,
@@ -102,21 +171,17 @@ namespace DaJet.Model
         }
         public void CreateSystemDatabase()
         {
-            TypeDef definition = GetTypeDef();
-
             List<string> sql = new()
             {
-                BuildCreateTableScript(in definition),
-                BuildCreateIndexScript(in definition)
+                BuildCreateTableScript(in _definition),
+                BuildCreateIndexScript(in _definition)
             };
 
             _executor.TxExecuteNonQuery(in sql, 10);
 
-            CreateTypeDef(TypeDef.Entity); // ENTITY
-
-            CreateTypeDef(definition.BaseType); // Metadata
-            
-            CreateTypeDef(in definition); // TypeDef
+            CreateTypeDef(in _entity); // ENTITY
+            CreateTypeDef(in _metadata); // Metadata
+            CreateTypeDef(in _definition); // TypeDef
         }
         public static string GetDbTypeName(UnionTag tag)
         {
@@ -141,7 +206,7 @@ namespace DaJet.Model
             script.Append("CREATE TABLE ").AppendLine(definition.TableName).Append('(').AppendLine();
 
             PropertyDef property;
-            List<PropertyDef> properties = definition.GetProperties();
+            List<PropertyDef> properties = definition.Properties;
 
             for (int i = 0; i < properties.Count; i++)
             {
@@ -219,11 +284,11 @@ namespace DaJet.Model
 
             Dictionary<string, object> parameters = new()
             {
-                { "_ref", definition.Ref.ToByteArray() },
+                { "_ref", definition.Ref.Identity.ToByteArray() },
                 { "name", definition.Name is null ? string.Empty : definition.Name },
                 { "table_name", definition.TableName is null ? string.Empty : definition.TableName },
-                { "base_type", definition.BaseType is null ? Guid.Empty.ToByteArray() : definition.BaseType.Ref.ToByteArray() },
-                { "nest_type", definition.NestType is null ? Guid.Empty.ToByteArray() : definition.NestType.Ref.ToByteArray() }
+                { "base_type", definition.BaseType.IsUndefined ? Guid.Empty.ToByteArray() : definition.BaseType.Identity.ToByteArray() },
+                { "nest_type", definition.NestType.IsUndefined ? Guid.Empty.ToByteArray() : definition.NestType.Identity.ToByteArray() }
             };
 
             foreach (IDataReader reader in _executor.ExecuteReader(script, 10, parameters))
@@ -256,15 +321,15 @@ namespace DaJet.Model
 
             foreach (IDataReader reader in _executor.ExecuteReader(script, 10, parameters))
             {
-                definition.Ref = new Guid((byte[])reader["_ref"]);
+                definition.Ref = new Entity(3, new Guid((byte[])reader["_ref"]));
                 definition.Code = (int)reader["type_code"];
                 definition.Name = (string)reader["name"];
                 definition.TableName = (string)reader["table_name"];
-                definition.BaseType = new TypeDef() { Ref = new Guid((byte[])reader["base_type"]), Code = 3 };
-                definition.NestType = new TypeDef() { Ref = new Guid((byte[])reader["nest_type"]), Code = 3 };
+                definition.BaseType = new Entity(3, new Guid((byte[])reader["base_type"]));
+                definition.NestType = new Entity(3, new Guid((byte[])reader["nest_type"]));
             }
 
-            definition.BaseType = GetMetadataType();
+            definition.BaseType = _metadata.Ref;
 
             SelectProperties(in definition);
 
@@ -272,13 +337,54 @@ namespace DaJet.Model
         }
         private void SelectProperties(in TypeDef definition)
         {
-            int ordinal = definition.BaseType.Properties.Count + definition.BaseType.BaseType.Properties.Count;
+            int ordinal = 0;
+
+            // Ref property derived from ENTITY
 
             definition.Properties.Add(new PropertyDef()
             {
-                Ref = Guid.NewGuid(),
+                Ref = new Entity(4, Guid.NewGuid()),
+                Code = 4,
+                Name = "Ref",
+                Owner = definition.Ref,
+                Ordinal = ++ordinal,
+                ColumnName = "_ref",
+                IsPrimaryKey = true,
+                Qualifier1 = 16,
+                DataType = new UnionType() { IsEntity = true, TypeCode = definition.Code }
+            });
+
+            // Properties derived from Metadata class
+
+            definition.Properties.Add(new PropertyDef()
+            {
+                Ref = new Entity(4, Guid.NewGuid()),
+                Name = "Name",
+                Owner = definition.Ref,
+                Ordinal = ++ordinal,
+                ColumnName = "name",
+                Qualifier1 = 64,
+                DataType = new UnionType() { IsString = true }
+            });
+
+            definition.Properties.Add(new PropertyDef()
+            {
+                Ref = new Entity(4, Guid.NewGuid()),
+                Name = "Code",
+                Owner = definition.Ref,
+                Ordinal = ++ordinal,
+                ColumnName = "type_code",
+                IsIdentity = true,
+                DataType = new UnionType() { IsInteger = true }
+            });
+
+            // TypeDef class own properties
+
+            definition.Properties.Add(new PropertyDef()
+            {
+                Ref = new Entity(4, Guid.NewGuid()),
                 Name = "TableName",
-                Owner = definition,
+                Owner = definition.Ref,
                 Ordinal = ++ordinal,
                 ColumnName = "table_name",
                 Qualifier1 = 32,
@@ -287,9 +393,9 @@ namespace DaJet.Model
 
             definition.Properties.Add(new PropertyDef()
             {
-                Ref = Guid.NewGuid(),
+                Ref = new Entity(4, Guid.NewGuid()),
                 Name = "BaseType",
-                Owner = definition,
+                Owner = definition.Ref,
                 Ordinal = ++ordinal,
                 ColumnName = "base_type",
                 Qualifier1 = 16,
@@ -298,9 +404,9 @@ namespace DaJet.Model
 
             definition.Properties.Add(new PropertyDef()
             {
-                Ref = Guid.NewGuid(),
+                Ref = new Entity(4, Guid.NewGuid()),
                 Name = "NestType",
-                Owner = definition,
+                Owner = definition.Ref,
                 Ordinal = ++ordinal,
                 ColumnName = "nest_type",
                 Qualifier1 = 16,
@@ -318,7 +424,7 @@ namespace DaJet.Model
             select.Append("SELECT ");
 
             PropertyDef property;
-            List<PropertyDef> properties = definition.GetProperties();
+            List<PropertyDef> properties = definition.Properties;
 
             string versionColumn = string.Empty;
             string identityColumn = string.Empty;
@@ -371,7 +477,7 @@ namespace DaJet.Model
             select.Append("SELECT ");
 
             PropertyDef property;
-            List<PropertyDef> properties = definition.GetProperties();
+            List<PropertyDef> properties = definition.Properties;
 
             string versionColumn = string.Empty;
             string identityColumn = string.Empty;

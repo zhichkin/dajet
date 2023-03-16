@@ -330,23 +330,23 @@ namespace DaJet.Scripting
             //if (TableExists("md-types")) { return; }
 
             TypeDef metadata = _metadata.GetTypeDefinition("Metadata");
-            int ordinal = metadata.Properties.Count + metadata.BaseType.Properties.Count;
+            int ordinal = metadata.Properties.Count;
 
             TypeDef definition = new()
             {
-                Ref = Guid.NewGuid(),
+                Ref = new Entity(3, Guid.NewGuid()),
                 Name = statement.Name,
                 TableName = "md-types",
-                BaseType = metadata
+                BaseType = metadata.Ref
             };
 
             foreach (ColumnDefinition column in statement.Columns)
             {
                 PropertyDef property = new()
                 {
-                    Ref = Guid.NewGuid(),
+                    Ref = new Entity(4, Guid.NewGuid()),
                     Name = column.Name,
-                    Owner = definition,
+                    Owner = definition.Ref,
                     Ordinal = ++ordinal,
                     ColumnName = column.Name,
                     DataType = ResolveDataType(column.Type, out List<TypeDef> references),
@@ -366,11 +366,14 @@ namespace DaJet.Scripting
                 if (type.IsEntity)
                 {
                     List<Relation> relations = new();
-                    Entity source = new(property.Code, property.Ref);
 
                     foreach (TypeDef target in references)
                     {
-                        relations.Add(new Relation() { Source = source, Target = target });
+                        relations.Add(new Relation()
+                        {
+                            Source = property.Ref,
+                            Target = target.Ref
+                        });
                     }
                 }
             }

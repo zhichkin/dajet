@@ -1,14 +1,13 @@
 ﻿using DaJet.Data;
-using System;
 
 namespace DaJet.Model
 {
     public sealed class PropertyDef
     {
-        public Guid Ref { get; set; }
+        public Entity Ref { get; set; }
         public int Code { get; set; }
         public string Name { get; set; }
-        public TypeDef Owner { get; set; }
+        public Entity Owner { get; set; } = Entity.Undefined;
         public int Ordinal { get; set; }
         public UnionType DataType { get; set; }
         public int Qualifier1 { get; set; }
