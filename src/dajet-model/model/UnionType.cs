@@ -29,6 +29,7 @@ namespace DaJet.Data
         {
             return (_flags & (1U << position)) == (1U << position);
         }
+        public UnionType Copy() { return new UnionType() { _flags = _flags, _typeCode = _typeCode }; }
         public bool Is(UnionTag tag) { return IsBitSet((int)tag); }
         public void Add(UnionTag type)
         {

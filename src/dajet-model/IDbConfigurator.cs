@@ -2,6 +2,6 @@
 {
     public interface IDbConfigurator
     {
-        void CreateSystemDatabase();
+        void CreateDatabase();
     }
 }

@@ -24,8 +24,7 @@ namespace DaJet.Data
         {
             entity = Entity.Undefined;
 
-            string[] parts = value.TrimStart('{').TrimEnd('}')
-                .Split(':', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            string[] parts = value.TrimStart('{').TrimEnd('}').Split(':', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
             if (parts.Length < 2)
             {

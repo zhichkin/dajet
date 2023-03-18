@@ -8,68 +8,74 @@ namespace DaJet.Model
 {
     public sealed class MsDbConfigurator : IDbConfigurator
     {
+        private readonly TypeDef ENTITY;
+        private readonly TypeDef METADATA;
+        private readonly TypeDef TYPE_DEF;
+        
         private readonly IQueryExecutor _executor;
         public MsDbConfigurator(IQueryExecutor executor)
         {
             _executor = executor;
 
-            _entity = CreateEntity();
-            _metadata = CreateMetadataType();
-            _definition = CreateTypeDefinition();
+            ENTITY = CreateEntity();
+            METADATA = CreateMetadataType();
+            TYPE_DEF = CreateTypeDefinition();
         }
-        private TypeDef _entity;
-        private TypeDef _metadata;
-        private TypeDef _definition;
+
+        public void CreateDatabase()
+        {
+            List<string> sql = new()
+            {
+                BuildCreateTableScript(in TYPE_DEF),
+                BuildCreateIndexScript(in TYPE_DEF)
+            };
+
+            _executor.TxExecuteNonQuery(in sql, 10);
+
+            CreateTypeDef(in ENTITY);
+            CreateTypeDef(in METADATA);
+            CreateTypeDef(in TYPE_DEF);
+        }
         private TypeDef CreateEntity()
         {
             TypeDef entity = new()
             {
-                Ref = new Entity(1, Guid.NewGuid()),
-                Code = 1,
-                Name = "ENTITY"
+                Name = "ENTITY", Ref = new Entity(1, new Guid("B34412E3-B9BA-46B4-887D-961204543E91"))
             };
 
             entity.Properties.Add(new PropertyDef()
             {
-                Ref = new Entity(4, Guid.NewGuid()),
-                Code = 4,
                 Name = "Ref",
                 Owner = entity.Ref,
                 Ordinal = 1,
-                ColumnName = "_ref",
+                ColumnName = "type_ref",
                 IsPrimaryKey = true,
-                Qualifier1 = 16,
-                DataType = new UnionType() { IsEntity = true, TypeCode = entity.Code }
+                DataType = new UnionType() { IsEntity = true, TypeCode = entity.Ref.TypeCode }
             });
 
             return entity;
         }
         private TypeDef CreateMetadataType()
         {
-            int ordinal = 0;
+            int ordinal = ENTITY.Properties.Count;
 
             TypeDef metadata = new()
             {
-                Ref = new Entity(2, Guid.NewGuid()),
-                Code = 2,
-                Name = "Metadata",
-                BaseType = _entity.Ref
+                Name = "METADATA", BaseType = ENTITY.Ref, Ref = new Entity(1, new Guid("43ED3777-C00B-4E45-9D8B-5783771C184B"))
             };
 
             metadata.Properties.Add(new PropertyDef()
             {
-                Ref = new Entity(4, Guid.NewGuid()),
                 Name = "Name",
                 Owner = metadata.Ref,
                 Ordinal = ++ordinal,
-                ColumnName = "name",
+                ColumnName = "type_name",
                 Qualifier1 = 64,
                 DataType = new UnionType() { IsString = true }
             });
 
             metadata.Properties.Add(new PropertyDef()
             {
-                Ref = new Entity(4, Guid.NewGuid()),
                 Name = "Code",
                 Owner = metadata.Ref,
                 Ordinal = ++ordinal,
@@ -82,61 +88,38 @@ namespace DaJet.Model
         }
         private TypeDef CreateTypeDefinition()
         {
-            int ordinal = 0;
-
             TypeDef definition = new()
             {
-                Ref = new Entity(3, Guid.NewGuid()),
-                Code = 3,
                 Name = "TypeDef",
-                TableName = "md_types",
-                BaseType = _metadata.Ref
+                BaseType = METADATA.Ref,
+                TableName = "dajet_types",
+                Ref = new Entity(1, new Guid("B910A137-D045-4C74-9BF5-D8C781F36C2C"))
             };
 
-            // Ref property derived from ENTITY
+            // Properties derived from ENTITY
 
-            definition.Properties.Add(new PropertyDef()
+            foreach (PropertyDef property in ENTITY.Properties)
             {
-                Ref = new Entity(4, Guid.NewGuid()),
-                Code = 4,
-                Name = "Ref",
-                Owner = definition.Ref,
-                Ordinal = ++ordinal,
-                ColumnName = "_ref",
-                IsPrimaryKey = true,
-                Qualifier1 = 16,
-                DataType = new UnionType() { IsEntity = true, TypeCode = definition.Code }
-            });
+                PropertyDef new_prop = property.Copy();
+                new_prop.Owner = definition.Ref;
+                definition.Properties.Add(new_prop);
+            }
 
-            // Properties derived from Metadata class
+            // Properties derived from METADATA
 
-            definition.Properties.Add(new PropertyDef()
+            foreach (PropertyDef property in METADATA.Properties)
             {
-                Ref = new Entity(4, Guid.NewGuid()),
-                Name = "Name",
-                Owner = definition.Ref,
-                Ordinal = ++ordinal,
-                ColumnName = "name",
-                Qualifier1 = 64,
-                DataType = new UnionType() { IsString = true }
-            });
+                PropertyDef new_prop = property.Copy();
+                new_prop.Owner = definition.Ref;
+                definition.Properties.Add(new_prop);
+            }
 
-            definition.Properties.Add(new PropertyDef()
-            {
-                Ref = new Entity(4, Guid.NewGuid()),
-                Name = "Code",
-                Owner = definition.Ref,
-                Ordinal = ++ordinal,
-                ColumnName = "type_code",
-                IsIdentity = true,
-                DataType = new UnionType() { IsInteger = true }
-            });
+            int ordinal = ENTITY.Properties.Count + METADATA.Properties.Count;
 
             // TypeDef class own properties
 
             definition.Properties.Add(new PropertyDef()
             {
-                Ref = new Entity(4, Guid.NewGuid()),
                 Name = "TableName",
                 Owner = definition.Ref,
                 Ordinal = ++ordinal,
@@ -147,53 +130,46 @@ namespace DaJet.Model
 
             definition.Properties.Add(new PropertyDef()
             {
-                Ref = new Entity(4, Guid.NewGuid()),
                 Name = "BaseType",
                 Owner = definition.Ref,
                 Ordinal = ++ordinal,
                 ColumnName = "base_type",
-                Qualifier1 = 16,
-                DataType = new UnionType() { IsEntity = true, TypeCode = definition.Code }
+                DataType = new UnionType() { IsEntity = true, TypeCode = definition.Ref.TypeCode }
             });
 
             definition.Properties.Add(new PropertyDef()
             {
-                Ref = new Entity(4, Guid.NewGuid()),
                 Name = "NestType",
                 Owner = definition.Ref,
                 Ordinal = ++ordinal,
                 ColumnName = "nest_type",
-                Qualifier1 = 16,
-                DataType = new UnionType() { IsEntity = true, TypeCode = definition.Code }
+                DataType = new UnionType() { IsEntity = true, TypeCode = definition.Ref.TypeCode }
             });
 
             return definition;
         }
-        public void CreateSystemDatabase()
+        private TypeDef CreatePropertyDefinition()
         {
-            List<string> sql = new()
-            {
-                BuildCreateTableScript(in _definition),
-                BuildCreateIndexScript(in _definition)
-            };
-
-            _executor.TxExecuteNonQuery(in sql, 10);
-
-            CreateTypeDef(in _entity); // ENTITY
-            CreateTypeDef(in _metadata); // Metadata
-            CreateTypeDef(in _definition); // TypeDef
+            //TODO: PropertyDef database table
+            throw new NotImplementedException();
         }
+        private TypeDef CreateRelationDefinition()
+        {
+            //TODO: Relation database table
+            throw new NotImplementedException();
+        }
+
         public static string GetDbTypeName(UnionTag tag)
         {
             if (tag == UnionTag.Tag) { return "binary"; }
-            else if (tag == UnionTag.Boolean) { return "binary"; }
+            else if (tag == UnionTag.Boolean) { return "binary(1)"; }
             else if (tag == UnionTag.Numeric) { return "numeric"; }
             else if (tag == UnionTag.DateTime) { return "datetime2"; }
             else if (tag == UnionTag.String) { return "nvarchar"; }
             else if (tag == UnionTag.Binary) { return "varbinary"; }
-            else if (tag == UnionTag.Uuid) { return "binary"; }
-            else if (tag == UnionTag.TypeCode) { return "binary"; }
-            else if (tag == UnionTag.Entity) { return "binary"; }
+            else if (tag == UnionTag.Uuid) { return "binary(16)"; }
+            else if (tag == UnionTag.TypeCode) { return "binary(4)"; }
+            else if (tag == UnionTag.Entity) { return "binary(16)"; }
             else if (tag == UnionTag.Version) { return "rowversion"; }
             else if (tag == UnionTag.Integer) { return "int"; }
 
@@ -272,23 +248,24 @@ namespace DaJet.Model
 
             return script.ToString();
         }
+        
         private void CreateTypeDef(in TypeDef definition)
         {
             string script = new StringBuilder()
-                .Append("INSERT md_types (_ref, name, table_name, base_type, nest_type)")
+                .Append("INSERT dajet_types(type_ref, type_name, table_name, base_type, nest_type)")
                 .AppendLine()
                 .Append("OUTPUT INSERTED.type_code AS type_code")
                 .AppendLine()
-                .Append("SELECT @_ref, @name, @table_name, @base_type, @nest_type")
+                .Append("SELECT @type_ref, @type_name, @table_name, @base_type, @nest_type")
                 .ToString();
 
             Dictionary<string, object> parameters = new()
             {
-                { "_ref", definition.Ref.Identity.ToByteArray() },
-                { "name", definition.Name is null ? string.Empty : definition.Name },
+                { "type_ref", definition.Ref.Identity.ToByteArray() },
+                { "type_name", definition.Name is null ? string.Empty : definition.Name },
                 { "table_name", definition.TableName is null ? string.Empty : definition.TableName },
-                { "base_type", definition.BaseType.IsUndefined ? Guid.Empty.ToByteArray() : definition.BaseType.Identity.ToByteArray() },
-                { "nest_type", definition.NestType.IsUndefined ? Guid.Empty.ToByteArray() : definition.NestType.Identity.ToByteArray() }
+                { "base_type", definition.BaseType.Identity.ToByteArray() },
+                { "nest_type", definition.NestType.Identity.ToByteArray() }
             };
 
             foreach (IDataReader reader in _executor.ExecuteReader(script, 10, parameters))
@@ -307,11 +284,11 @@ namespace DaJet.Model
             TypeDef definition = new();
 
             string script = new StringBuilder()
-                .Append("SELECT _ref, name, type_code, table_name, base_type, nest_type")
+                .Append("SELECT type_ref, type_name, type_code, table_name, base_type, nest_type")
                 .AppendLine()
-                .Append("FROM md_types")
+                .Append("FROM dajet_types")
                 .AppendLine()
-                .Append("WHERE name = @name")
+                .Append("WHERE type_name = @name")
                 .ToString();
 
             Dictionary<string, object> parameters = new()
@@ -321,97 +298,18 @@ namespace DaJet.Model
 
             foreach (IDataReader reader in _executor.ExecuteReader(script, 10, parameters))
             {
-                definition.Ref = new Entity(3, new Guid((byte[])reader["_ref"]));
+                definition.Ref = new Entity(definition.Ref.TypeCode, new Guid((byte[])reader["type_ref"]));
+                definition.Name = (string)reader["type_name"];
                 definition.Code = (int)reader["type_code"];
-                definition.Name = (string)reader["name"];
                 definition.TableName = (string)reader["table_name"];
-                definition.BaseType = new Entity(3, new Guid((byte[])reader["base_type"]));
-                definition.NestType = new Entity(3, new Guid((byte[])reader["nest_type"]));
+                definition.BaseType = new Entity(definition.Ref.TypeCode, new Guid((byte[])reader["base_type"]));
+                definition.NestType = new Entity(definition.Ref.TypeCode, new Guid((byte[])reader["nest_type"]));
             }
 
-            definition.BaseType = _metadata.Ref;
-
-            SelectProperties(in definition);
+            //TODO: SELECT properties FROM dajet_props WHERE owner = definition.Ref
+            definition.Properties.AddRange(TYPE_DEF.Properties);
 
             return definition;
-        }
-        private void SelectProperties(in TypeDef definition)
-        {
-            int ordinal = 0;
-
-            // Ref property derived from ENTITY
-
-            definition.Properties.Add(new PropertyDef()
-            {
-                Ref = new Entity(4, Guid.NewGuid()),
-                Code = 4,
-                Name = "Ref",
-                Owner = definition.Ref,
-                Ordinal = ++ordinal,
-                ColumnName = "_ref",
-                IsPrimaryKey = true,
-                Qualifier1 = 16,
-                DataType = new UnionType() { IsEntity = true, TypeCode = definition.Code }
-            });
-
-            // Properties derived from Metadata class
-
-            definition.Properties.Add(new PropertyDef()
-            {
-                Ref = new Entity(4, Guid.NewGuid()),
-                Name = "Name",
-                Owner = definition.Ref,
-                Ordinal = ++ordinal,
-                ColumnName = "name",
-                Qualifier1 = 64,
-                DataType = new UnionType() { IsString = true }
-            });
-
-            definition.Properties.Add(new PropertyDef()
-            {
-                Ref = new Entity(4, Guid.NewGuid()),
-                Name = "Code",
-                Owner = definition.Ref,
-                Ordinal = ++ordinal,
-                ColumnName = "type_code",
-                IsIdentity = true,
-                DataType = new UnionType() { IsInteger = true }
-            });
-
-            // TypeDef class own properties
-
-            definition.Properties.Add(new PropertyDef()
-            {
-                Ref = new Entity(4, Guid.NewGuid()),
-                Name = "TableName",
-                Owner = definition.Ref,
-                Ordinal = ++ordinal,
-                ColumnName = "table_name",
-                Qualifier1 = 32,
-                DataType = new UnionType() { IsString = true }
-            });
-
-            definition.Properties.Add(new PropertyDef()
-            {
-                Ref = new Entity(4, Guid.NewGuid()),
-                Name = "BaseType",
-                Owner = definition.Ref,
-                Ordinal = ++ordinal,
-                ColumnName = "base_type",
-                Qualifier1 = 16,
-                DataType = new UnionType() { IsEntity = true, TypeCode = definition.Code }
-            });
-
-            definition.Properties.Add(new PropertyDef()
-            {
-                Ref = new Entity(4, Guid.NewGuid()),
-                Name = "NestType",
-                Owner = definition.Ref,
-                Ordinal = ++ordinal,
-                ColumnName = "nest_type",
-                Qualifier1 = 16,
-                DataType = new UnionType() { IsEntity = true, TypeCode = definition.Code }
-            });
         }
 
         private string BuildCreateTypeScript(in TypeDef definition)

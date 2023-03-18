@@ -279,7 +279,7 @@ namespace DaJet.Scripting
         {
             IDbConfigurator configurator = _metadata.GetDbConfigurator();
 
-            configurator.CreateSystemDatabase();
+            configurator.CreateDatabase();
         }
         private bool IsRegularDatabase
         {
