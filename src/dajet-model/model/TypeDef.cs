@@ -6,7 +6,7 @@ namespace DaJet.Model
 {
     public sealed class TypeDef
     {
-        public Entity Ref { get; set; } = new Entity(1, Guid.NewGuid());
+        public Entity Ref { get; set; } = new Entity(1, Guid.NewGuid()); // self reference
         public string Name { get; set; } = string.Empty;
         public int Code { get; set; } // database generated
         public string TableName { get; set; } = string.Empty;

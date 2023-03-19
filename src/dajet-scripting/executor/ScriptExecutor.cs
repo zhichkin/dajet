@@ -365,11 +365,11 @@ namespace DaJet.Scripting
 
                 if (type.IsEntity)
                 {
-                    List<Relation> relations = new();
+                    List<RelationDef> relations = new();
 
                     foreach (TypeDef target in references)
                     {
-                        relations.Add(new Relation()
+                        relations.Add(new RelationDef()
                         {
                             Source = property.Ref,
                             Target = target.Ref

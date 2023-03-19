@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace DaJet.Data
@@ -29,6 +30,7 @@ namespace DaJet.Data
         {
             return (_flags & (1U << position)) == (1U << position);
         }
+        public int Flags { get { return Convert.ToInt32(_flags); } }
         public UnionType Copy() { return new UnionType() { _flags = _flags, _typeCode = _typeCode }; }
         public bool Is(UnionTag tag) { return IsBitSet((int)tag); }
         public void Add(UnionTag type)
