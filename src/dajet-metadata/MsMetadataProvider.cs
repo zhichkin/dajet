@@ -182,7 +182,7 @@ namespace DaJet.Metadata.SqlServer
             {
                 type.CanBeReference = union.IsEntity;
                 type.TypeCode = union.TypeCode;
-                type.Reference = Guid.Empty;
+                type.Reference = Guid.Empty; //TODO: get uuid from relations
                 if (!union.IsUnion) { return type; }
             }
 

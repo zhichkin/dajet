@@ -10,8 +10,8 @@ namespace DaJet.Model
         public string Name { get; set; } = string.Empty;
         public int Code { get; set; } // database generated
         public string TableName { get; set; } = string.Empty;
-        public Entity BaseType { get; set; } = Entity.Undefined;
-        public Entity NestType { get; set; } = Entity.Undefined;
+        public Entity BaseType { get; set; } = Entity.Undefined; // TypeDef
+        public Entity NestType { get; set; } = Entity.Undefined; // TypeDef
         #region " Переопределение методов сравнения "
         public override int GetHashCode() { return Ref.GetHashCode(); }
         public override bool Equals(object target)

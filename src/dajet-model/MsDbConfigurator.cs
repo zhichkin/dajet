@@ -15,6 +15,8 @@ namespace DaJet.Model
         private readonly TypeDef PROPERTY_DEF;
         private readonly TypeDef RELATION_DEF;
 
+        private readonly Dictionary<int, TypeDef> TYPES;
+
         private readonly IQueryExecutor _executor;
         public MsDbConfigurator(IQueryExecutor executor)
         {
@@ -25,6 +27,13 @@ namespace DaJet.Model
             TYPE_DEF = CreateTypeDefinition();
             PROPERTY_DEF = CreatePropertyDefinition();
             RELATION_DEF = CreateRelationDefinition();
+
+            TYPES = new Dictionary<int, TypeDef>()
+            {
+                { 0, ENTITY },
+                { 1, TYPE_DEF },
+                { 2, PROPERTY_DEF }
+            };
         }
 
         public void CreateDatabase()
@@ -72,7 +81,11 @@ namespace DaJet.Model
                 };
                 _executor.TxExecuteNonQuery(in sql, 10);
 
-                //TODO: RelationDef for properties
+                CreateRelationDef(in ENTITY);
+                CreateRelationDef(in METADATA);
+                CreateRelationDef(in TYPE_DEF);
+                CreateRelationDef(in PROPERTY_DEF);
+                CreateRelationDef(in RELATION_DEF);
             }
         }
         private TypeDef CreateEntity()
@@ -89,7 +102,7 @@ namespace DaJet.Model
                 Ordinal = 1,
                 ColumnName = "entity_ref",
                 IsPrimaryKey = true,
-                DataType = new UnionType() { IsEntity = true, TypeCode = entity.Ref.TypeCode }
+                DataType = new UnionType() { IsEntity = true, TypeCode = 0 } //NOTE: TypeCode must be overridden by a derived class !!!
             });
 
             return entity;
@@ -144,6 +157,10 @@ namespace DaJet.Model
                 PropertyDef new_prop = property.Copy();
                 new_prop.Owner = definition.Ref;
                 new_prop.Ordinal = ++ordinal;
+                if (property.IsPrimaryKey) // Ref - override TypeCode = self reference
+                {
+                    new_prop.DataType = new UnionType() { IsEntity = true, TypeCode = 1 };
+                }
                 definition.Properties.Add(new_prop);
             }
 
@@ -208,6 +225,10 @@ namespace DaJet.Model
                 PropertyDef new_prop = property.Copy();
                 new_prop.Owner = definition.Ref;
                 new_prop.Ordinal = ++ordinal;
+                if (property.IsPrimaryKey) // Ref - override TypeCode = self reference
+                {
+                    new_prop.DataType = new UnionType() { IsEntity = true, TypeCode = 2 };
+                }
                 definition.Properties.Add(new_prop);
             }
 
@@ -221,7 +242,7 @@ namespace DaJet.Model
                 definition.Properties.Add(new_prop);
             }
 
-            // PropertyDef class own properties
+            #region "PropertyDef class own properties"
 
             definition.Properties.Add(new PropertyDef()
             {
@@ -332,6 +353,8 @@ namespace DaJet.Model
                 DataType = new UnionType() { IsInteger = true }
             });
 
+            #endregion
+
             return definition;
         }
         private TypeDef CreateRelationDefinition()
@@ -392,11 +415,15 @@ namespace DaJet.Model
 
                 script.Append(property.ColumnName);
 
-                UnionTag tag = property.DataType.GetSingleTagOrUndefined();
-
-                if (property.DataType.IsUnion)
+                UnionTag tag;
+                if (definition == ENTITY && property.IsPrimaryKey) // Ref
+                {
+                    tag = UnionTag.Entity;
+                }
+                else if (property.DataType.IsUnion)
                 {
                     //TODO: create multiple columns with postfixes
+                    tag = property.DataType.GetSingleTagOrUndefined();
                 }
                 else
                 {
@@ -686,6 +713,45 @@ namespace DaJet.Model
             return script.AppendLine().Append(select).ToString();
         }
 
+        private void CreateRelationDef(in TypeDef definition)
+        {
+            string script = new StringBuilder()
+                .Append("INSERT dajet_relations(source, target)")
+                .AppendLine()
+                .Append("SELECT @source, @target")
+                .ToString();
+
+            TypeDef target;
+            Dictionary<string, object> parameters = new();
+
+            foreach (PropertyDef property in definition.Properties)
+            {
+                //if (property.Name == "Ref") { continue; } // self reference
+
+                if (!property.DataType.IsEntity) { continue; }
+
+                if (definition == ENTITY && property.IsPrimaryKey) // Ref: TypeCode == 0
+                {
+                    //do nothing
+                }
+                else if (property.DataType.TypeCode == 0) { continue; } //TODO: multiple references
+
+                if (!TYPES.TryGetValue(property.DataType.TypeCode, out target))
+                {
+                    throw new InvalidOperationException($"TypeDef code [{property.DataType.TypeCode}] not found.");
+                }
+
+                parameters.Clear();
+                parameters.Add("source", property.Ref);
+                parameters.Add("target", target.Ref);
+                FormatQueryParameters(in parameters);
+
+                foreach (IDataReader reader in _executor.ExecuteReader(script, 10, parameters))
+                {
+                    // do nothing
+                }
+            }
+        }
         private void GetRelations(in PropertyDef property)
         {
             //UnionType type = property.DataType;
