@@ -30,9 +30,11 @@ namespace DaJet.Model
 
             TYPES = new Dictionary<int, TypeDef>()
             {
-                { 0, ENTITY },
-                { 1, TYPE_DEF },
-                { 2, PROPERTY_DEF }
+                { SystemTypeCode.Entity, ENTITY },
+                { SystemTypeCode.Metadata, METADATA },
+                { SystemTypeCode.TypeDef, TYPE_DEF },
+                { SystemTypeCode.PropertyDef, PROPERTY_DEF },
+                { SystemTypeCode.RelationDef, RELATION_DEF }
             };
         }
 
@@ -92,7 +94,8 @@ namespace DaJet.Model
         {
             TypeDef entity = new()
             {
-                Name = "ENTITY", Ref = new Entity(1, new Guid("B34412E3-B9BA-46B4-887D-961204543E91"))
+                Code = SystemTypeCode.Entity, Name = "ENTITY",
+                Ref = new Entity(SystemTypeCode.TypeDef, SystemTypeUuid.Entity)
             };
 
             entity.Properties.Add(new PropertyDef()
@@ -102,7 +105,8 @@ namespace DaJet.Model
                 Ordinal = 1,
                 ColumnName = "entity_ref",
                 IsPrimaryKey = true,
-                DataType = new UnionType() { IsEntity = true, TypeCode = 0 } //NOTE: TypeCode must be overridden by a derived class !!!
+                DataType = new UnionType() { IsEntity = true, TypeCode = SystemTypeCode.Entity }
+                //IMPORTANT: TypeCode must be overridden by a derived class !!!
             });
 
             return entity;
@@ -111,7 +115,8 @@ namespace DaJet.Model
         {
             TypeDef metadata = new()
             {
-                Name = "METADATA", BaseType = ENTITY.Ref, Ref = new Entity(1, new Guid("43ED3777-C00B-4E45-9D8B-5783771C184B"))
+                Code = SystemTypeCode.Metadata, Name = "Metadata", BaseType = ENTITY.Ref,
+                Ref = new Entity(SystemTypeCode.TypeDef, SystemTypeUuid.Metadata)
             };
 
             int ordinal = 0;
@@ -132,7 +137,6 @@ namespace DaJet.Model
                 Owner = metadata.Ref,
                 Ordinal = ++ordinal,
                 ColumnName = "meta_code",
-                IsIdentity = true,
                 DataType = new UnionType() { IsInteger = true }
             });
 
@@ -142,10 +146,11 @@ namespace DaJet.Model
         {
             TypeDef definition = new()
             {
+                Code = SystemTypeCode.TypeDef,
                 Name = "TypeDef",
                 BaseType = METADATA.Ref,
                 TableName = "dajet_types",
-                Ref = new Entity(1, new Guid("B910A137-D045-4C74-9BF5-D8C781F36C2C"))
+                Ref = new Entity(SystemTypeCode.TypeDef, SystemTypeUuid.TypeDef)
             };
 
             int ordinal = 0;
@@ -159,7 +164,7 @@ namespace DaJet.Model
                 new_prop.Ordinal = ++ordinal;
                 if (property.IsPrimaryKey) // Ref - override TypeCode = self reference
                 {
-                    new_prop.DataType = new UnionType() { IsEntity = true, TypeCode = 1 };
+                    new_prop.DataType = new UnionType() { IsEntity = true, TypeCode = SystemTypeCode.TypeDef };
                 }
                 definition.Properties.Add(new_prop);
             }
@@ -192,7 +197,7 @@ namespace DaJet.Model
                 Owner = definition.Ref,
                 Ordinal = ++ordinal,
                 ColumnName = "base_type",
-                DataType = new UnionType() { IsEntity = true, TypeCode = definition.Ref.TypeCode }
+                DataType = new UnionType() { IsEntity = true, TypeCode = SystemTypeCode.TypeDef }
             });
 
             definition.Properties.Add(new PropertyDef()
@@ -201,7 +206,7 @@ namespace DaJet.Model
                 Owner = definition.Ref,
                 Ordinal = ++ordinal,
                 ColumnName = "nest_type",
-                DataType = new UnionType() { IsEntity = true, TypeCode = definition.Ref.TypeCode }
+                DataType = new UnionType() { IsEntity = true, TypeCode = SystemTypeCode.TypeDef }
             });
 
             return definition;
@@ -210,10 +215,11 @@ namespace DaJet.Model
         {
             TypeDef definition = new()
             {
+                Code = SystemTypeCode.PropertyDef,
                 Name = "PropertyDef",
                 BaseType = METADATA.Ref,
                 TableName = "dajet_properties",
-                Ref = new Entity(1, new Guid("DF207406-A318-4AD8-858A-2250D0B485B8"))
+                Ref = new Entity(SystemTypeCode.TypeDef, SystemTypeUuid.PropertyDef)
             };
 
             int ordinal = 0;
@@ -227,7 +233,7 @@ namespace DaJet.Model
                 new_prop.Ordinal = ++ordinal;
                 if (property.IsPrimaryKey) // Ref - override TypeCode = self reference
                 {
-                    new_prop.DataType = new UnionType() { IsEntity = true, TypeCode = 2 };
+                    new_prop.DataType = new UnionType() { IsEntity = true, TypeCode = SystemTypeCode.PropertyDef };
                 }
                 definition.Properties.Add(new_prop);
             }
@@ -239,6 +245,12 @@ namespace DaJet.Model
                 PropertyDef new_prop = property.Copy();
                 new_prop.Owner = definition.Ref;
                 new_prop.Ordinal = ++ordinal;
+                if (property.Name == "Code") // override Code property
+                {
+                    new_prop.IsIdentity = true;
+                    new_prop.IdentitySeed = 1;
+                    new_prop.IdentityIncrement = 1;
+                }
                 definition.Properties.Add(new_prop);
             }
 
@@ -250,7 +262,7 @@ namespace DaJet.Model
                 Owner = definition.Ref,
                 Ordinal = ++ordinal,
                 ColumnName = "owner_ref",
-                DataType = new UnionType() { IsEntity = true, TypeCode = TYPE_DEF.Ref.TypeCode }
+                DataType = new UnionType() { IsEntity = true, TypeCode = SystemTypeCode.TypeDef }
             });
 
             definition.Properties.Add(new PropertyDef()
@@ -361,9 +373,10 @@ namespace DaJet.Model
         {
             TypeDef definition = new()
             {
+                Code = SystemTypeCode.RelationDef,
                 Name = "RelationDef",
                 TableName = "dajet_relations",
-                Ref = new Entity(1, new Guid("4945B787-20CB-4CDF-AAE8-6E00A19A4CD8"))
+                Ref = new Entity(SystemTypeCode.TypeDef, SystemTypeUuid.RelationDef)
             };
 
             int ordinal = 0;
@@ -377,7 +390,7 @@ namespace DaJet.Model
                 Ordinal = ++ordinal,
                 ColumnName = "source",
                 IsPrimaryKey = true,
-                DataType = new UnionType() { IsEntity = true, TypeCode = PROPERTY_DEF.Ref.TypeCode } // TODO: PropertyDef | UnionDef
+                DataType = new UnionType() { IsEntity = true, TypeCode = SystemTypeCode.PropertyDef } // TODO: PropertyDef | UnionDef
             });
 
             definition.Properties.Add(new PropertyDef()
@@ -387,7 +400,7 @@ namespace DaJet.Model
                 Ordinal = ++ordinal,
                 ColumnName = "target",
                 IsPrimaryKey = true,
-                DataType = new UnionType() { IsEntity = true, TypeCode = TYPE_DEF.Ref.TypeCode }
+                DataType = new UnionType() { IsEntity = true, TypeCode = SystemTypeCode.TypeDef }
             });
 
             return definition;
@@ -548,17 +561,16 @@ namespace DaJet.Model
         private void CreateTypeDef(in TypeDef definition)
         {
             string script = new StringBuilder()
-                .Append("INSERT dajet_types(entity_ref, meta_name, table_name, base_type, nest_type)")
+                .Append("INSERT dajet_types(entity_ref, meta_name, meta_code, table_name, base_type, nest_type)")
                 .AppendLine()
-                .Append("OUTPUT INSERTED.meta_code AS meta_code")
-                .AppendLine()
-                .Append("SELECT @entity_ref, @meta_name, @table_name, @base_type, @nest_type")
+                .Append("SELECT @entity_ref, @meta_name, @meta_code, @table_name, @base_type, @nest_type")
                 .ToString();
 
             Dictionary<string, object> parameters = new()
             {
                 { "entity_ref", definition.Ref.Identity.ToByteArray() },
                 { "meta_name", definition.Name is null ? string.Empty : definition.Name },
+                { "meta_code", definition.Code },
                 { "table_name", definition.TableName is null ? string.Empty : definition.TableName },
                 { "base_type", definition.BaseType.Identity.ToByteArray() },
                 { "nest_type", definition.NestType.Identity.ToByteArray() }
@@ -566,41 +578,33 @@ namespace DaJet.Model
 
             foreach (IDataReader reader in _executor.ExecuteReader(script, 10, parameters))
             {
-                for (int i = 0; i < reader.FieldCount; i++)
-                {
-                    if (reader.GetName(i) == "meta_code")
-                    {
-                        definition.Code = reader.GetInt32(i); break;
-                    }
-                }
+                //do nothing
             }
         }
         public TypeDef SelectTypeDef(in string identifier)
         {
+            int count = 0;
             TypeDef definition = new();
+            Dictionary<string, object> parameters = new();
 
-            string script = new StringBuilder()
-                .Append("SELECT entity_ref, meta_name, meta_code, table_name, base_type, nest_type")
-                .AppendLine()
-                .Append("FROM dajet_types")
-                .AppendLine()
-                .Append("WHERE meta_name = @name")
-                .ToString();
-
-            Dictionary<string, object> parameters = new()
-            {
-                { "name", identifier }
-            };
+            string script = BuildSelectTypeDefScript(in identifier, in parameters);
 
             foreach (IDataReader reader in _executor.ExecuteReader(script, 10, parameters))
             {
-                definition.Ref = new Entity(definition.Ref.TypeCode, new Guid((byte[])reader["entity_ref"]));
+                count++;
+                definition.Ref = new Entity(SystemTypeCode.TypeDef, new Guid((byte[])reader["entity_ref"]));
                 definition.Code = (int)reader["meta_code"];
                 definition.Name = (string)reader["meta_name"];
                 definition.TableName = (string)reader["table_name"];
-                definition.BaseType = new Entity(definition.Ref.TypeCode, new Guid((byte[])reader["base_type"]));
-                definition.NestType = new Entity(definition.Ref.TypeCode, new Guid((byte[])reader["nest_type"]));
+                definition.BaseType = new Entity(SystemTypeCode.TypeDef, new Guid((byte[])reader["base_type"]));
+                definition.NestType = new Entity(SystemTypeCode.TypeDef, new Guid((byte[])reader["nest_type"]));
             }
+
+            if (count == 0) { return null; } // TypeDef is not found by identifier
+            
+            if (count > 1) { throw new InvalidOperationException($"Ambiguous name: [{identifier}]"); }
+
+            //TODO: SELECT properties OF type_def
 
             if (definition.Ref == TYPE_DEF.Ref)
             {
@@ -616,6 +620,51 @@ namespace DaJet.Model
             }
 
             return definition;
+        }
+        private string BuildSelectTypeDefScript(in string identifier, in Dictionary<string, object> parameters)
+        {
+            parameters.Clear();
+            List<string> tables = new();
+
+            string[] names = identifier.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            for (int i = 0; i < names.Length; i++)
+            {
+                tables.Add($"t{i}");
+                parameters.Add($"name{i}", names[i]);
+            }
+
+            int countdown = names.Length;
+
+            StringBuilder script = new();
+
+            (--countdown).ToString();
+            script.Append("SELECT ");
+            script.Append(tables[countdown]).Append(".entity_ref, ");
+            script.Append(tables[countdown]).Append(".meta_name, ");
+            script.Append(tables[countdown]).Append(".meta_code, ");
+            script.Append(tables[countdown]).Append(".table_name, ");
+            script.Append(tables[countdown]).Append(".base_type, ");
+            script.Append(tables[countdown]).Append(".nest_type");
+            script.AppendLine();
+            script.Append("FROM (SELECT entity_ref, meta_name, meta_code, table_name, base_type, nest_type");
+            script.Append(" FROM ").Append(TYPE_DEF.TableName).Append(" WHERE meta_name = @name").Append(countdown);
+            script.Append(") AS ").Append(tables[countdown]);
+
+            while (countdown > 0)
+            {
+                (--countdown).ToString();
+                script.AppendLine();
+                script.Append("INNER JOIN ").Append(TYPE_DEF.TableName).Append(" AS ").Append(tables[countdown]);
+                script.Append(" ON ").Append(tables[countdown]).Append(".meta_name = @name").Append(countdown);
+                script.Append(" AND (");
+                script.Append(tables[countdown + 1]).Append(".base_type = ").Append(tables[countdown]).Append(".entity_ref");
+                script.Append(" OR ");
+                script.Append(tables[countdown + 1]).Append(".nest_type = ").Append(tables[countdown]).Append(".entity_ref");
+                script.Append(')');
+            }
+
+            return script.ToString();
         }
 
         private void CreatePropertyDef(in TypeDef owner)
@@ -754,6 +803,8 @@ namespace DaJet.Model
         }
         private void GetRelations(in PropertyDef property)
         {
+            //TODO: GetRelations(in PropertyDef property)
+
             //UnionType type = property.DataType;
 
             //if (type.IsEntity)

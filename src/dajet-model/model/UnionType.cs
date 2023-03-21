@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace DaJet.Data
@@ -19,18 +18,18 @@ namespace DaJet.Data
             { "integer",  UnionTag.Integer }
         };
 
-        private uint _flags = uint.MinValue;
+        private int _flags = 0;
         private int _typeCode = -1;
         public UnionType() { }
         private void SetBit(int position, bool value)
         {
-            if (value) { _flags |= (1U << position); } else { _flags &= ~(1U << position); }
+            if (value) { _flags |= (1 << position); } else { _flags &= ~(1 << position); }
         }
         private bool IsBitSet(int position)
         {
-            return (_flags & (1U << position)) == (1U << position);
+            return (_flags & (1 << position)) == (1 << position);
         }
-        public int Flags { get { return Convert.ToInt32(_flags); } }
+        public int Flags { get { return _flags; } }
         public UnionType Copy() { return new UnionType() { _flags = _flags, _typeCode = _typeCode }; }
         public bool Is(UnionTag tag) { return IsBitSet((int)tag); }
         public void Add(UnionTag type)
@@ -79,7 +78,7 @@ namespace DaJet.Data
         }
         public void Clear()
         {
-            _flags = uint.MinValue;
+            _flags = 0;
             _typeCode = -1;
         }
         public int TypeCode
@@ -130,7 +129,7 @@ namespace DaJet.Data
                 return (count > 1 || IsEntity && TypeCode == 0); // TYPE
             }
         }
-        public bool IsUndefined { get { return (_flags == uint.MinValue); } }
+        public bool IsUndefined { get { return (_flags == 0); } }
         public bool UseTag { get { return IsBitSet((int)UnionTag.Tag); } set { SetBit((int)UnionTag.Tag, value); } }
         public bool UseTypeCode { get { return TypeCode == 0; } }
         public bool IsBoolean { get { return IsBitSet((int)UnionTag.Boolean); } set { SetBit((int)UnionTag.Boolean, value); } }
@@ -189,87 +188,30 @@ namespace DaJet.Data
         }
         public static Type MapToType(in UnionType union)
         {
-            if (union.IsUnion)
-            {
-                return typeof(Union);
-            }
-            else if (union.IsBoolean)
-            {
-                return typeof(bool);
-            }
-            else if (union.IsNumeric)
-            {
-                return typeof(decimal);
-            }
-            else if (union.IsDateTime)
-            {
-                return typeof(DateTime);
-            }
-            else if (union.IsString)
-            {
-                return typeof(string);
-            }
-            else if (union.IsBinary)
-            {
-                return typeof(byte[]);
-            }
-            else if (union.IsUuid)
-            {
-                return typeof(Guid);
-            }
-            else if (union.IsEntity)
-            {
-                return typeof(Entity);
-            }
-            else if (union.IsVersion)
-            {
-                return typeof(ulong);
-            }
-            else if (union.IsInteger)
-            {
-                return typeof(int);
-            }
+            if (union.IsUnion) { return typeof(Union); }
+            else if (union.IsBoolean) { return typeof(bool); }
+            else if (union.IsNumeric) { return typeof(decimal); }
+            else if (union.IsDateTime) { return typeof(DateTime); }
+            else if (union.IsString) { return typeof(string); }
+            else if (union.IsBinary) { return typeof(byte[]); }
+            else if (union.IsUuid) { return typeof(Guid); }
+            else if (union.IsEntity) { return typeof(Entity); }
+            else if (union.IsVersion) { return typeof(ulong); }
+            else if (union.IsInteger) { return typeof(int); }
 
             return null;
         }
         public static object GetDefaultValue(in Type type)
         {
-            if (type == typeof(bool))
-            {
-                return false;
-            }
-            else if (type == typeof(decimal))
-            {
-                return 0.00M;
-            }
-            else if (type == typeof(DateTime))
-            {
-                return new DateTime(1, 1, 1);
-            }
-            else if (type == typeof(string))
-            {
-                return string.Empty;
-            }
-            else if (type == typeof(byte[]))
-            {
-                return Array.Empty<byte>();
-            }
-            else if (type == typeof(Guid))
-            {
-                return Guid.Empty;
-            }
-            else if (type == typeof(Entity))
-            {
-                return Entity.Undefined;
-            }
-            else if (type == typeof(ulong))
-            {
-                return 0UL;
-            }
-            else if (type == typeof(int))
-            {
-                return 0;
-            }
+            if (type == typeof(bool)) { return false; }
+            else if (type == typeof(decimal)) { return 0.00M; }
+            else if (type == typeof(DateTime)) { return new DateTime(1, 1, 1); }
+            else if (type == typeof(string)) { return string.Empty; }
+            else if (type == typeof(byte[])) { return Array.Empty<byte>(); }
+            else if (type == typeof(Guid)) { return Guid.Empty; }
+            else if (type == typeof(Entity)) { return Entity.Undefined; }
+            else if (type == typeof(ulong)) { return 0UL; }
+            else if (type == typeof(int)) { return 0; }
 
             return null;
         }
@@ -422,50 +364,17 @@ namespace DaJet.Data
         }
         public static string GetLiteral(UnionTag tag)
         {
-            if (tag == UnionTag.Tag)
-            {
-                return "TYPE";
-            }
-            else if (tag == UnionTag.Boolean)
-            {
-                return "L";
-            }
-            else if (tag == UnionTag.Numeric)
-            {
-                return "N";
-            }
-            else if (tag == UnionTag.DateTime)
-            {
-                return "T";
-            }
-            else if (tag == UnionTag.String)
-            {
-                return "S";
-            }
-            else if (tag == UnionTag.Binary)
-            {
-                return "B";
-            }
-            else if (tag == UnionTag.Uuid)
-            {
-                return "U";
-            }
-            else if (tag == UnionTag.Entity)
-            {
-                return "RRef";
-            }
-            else if (tag == UnionTag.TypeCode)
-            {
-                return "TRef";
-            }
-            else if (tag == UnionTag.Version)
-            {
-                return "V";
-            }
-            else if (tag == UnionTag.Integer)
-            {
-                return "I";
-            }
+            if (tag == UnionTag.Tag) { return "TYPE"; }
+            else if (tag == UnionTag.Boolean) { return "L"; }
+            else if (tag == UnionTag.Numeric) { return "N"; }
+            else if (tag == UnionTag.DateTime) { return "T"; }
+            else if (tag == UnionTag.String) { return "S"; }
+            else if (tag == UnionTag.Binary) { return "B"; }
+            else if (tag == UnionTag.Uuid) { return "U"; }
+            else if (tag == UnionTag.Entity) { return "RRef"; }
+            else if (tag == UnionTag.TypeCode) { return "TRef"; }
+            else if (tag == UnionTag.Version) { return "V"; }
+            else if (tag == UnionTag.Integer) { return "I"; }
 
             return string.Empty; // UnionTag.Undefined
         }

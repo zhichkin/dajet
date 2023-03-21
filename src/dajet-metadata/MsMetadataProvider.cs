@@ -77,6 +77,8 @@ namespace DaJet.Metadata.SqlServer
         {
             TypeDef definition = GetTypeDefinition(in metadataName);
 
+            if (definition is null) { return null; }
+
             Catalog table = new()
             {
                 Name = definition.Name,

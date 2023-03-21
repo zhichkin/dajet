@@ -5,7 +5,7 @@ namespace DaJet.Model
 {
     public sealed class PropertyDef
     {
-        public Entity Ref { get; set; } = new Entity(2, Guid.NewGuid()); // self reference
+        public Entity Ref { get; set; } = new Entity(SystemTypeCode.PropertyDef, Guid.NewGuid()); // self reference
         public string Name { get; set; }
         public int Code { get; set; } // database generated
         public Entity Owner { get; set; } = Entity.Undefined; // TypeDef
