@@ -67,6 +67,12 @@ namespace DaJet.Metadata.SqlServer
         {
             return new MsDbConfigurator(CreateQueryExecutor());
         }
+        public TypeDef GetTypeDefinition(Entity entity)
+        {
+            MsDbConfigurator configurator = new(CreateQueryExecutor());
+
+            return configurator.SelectTypeDef(entity);
+        }
         public TypeDef GetTypeDefinition(in string identifier)
         {
             MsDbConfigurator configurator = new(CreateQueryExecutor());

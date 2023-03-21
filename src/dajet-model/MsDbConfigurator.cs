@@ -38,6 +38,7 @@ namespace DaJet.Model
             };
         }
 
+        #region "CREATE AND CONFIGURE SYSTEM DATABASE"
         public void CreateDatabase()
         {
             List<string> sql;
@@ -581,6 +582,37 @@ namespace DaJet.Model
                 //do nothing
             }
         }
+        public TypeDef SelectTypeDef(Entity entity)
+        {
+            TypeDef definition = null;
+
+            string script = new StringBuilder()
+                .Append("SELECT entity_ref, meta_name, meta_code, table_name, base_type, nest_type")
+                .AppendLine()
+                .Append("FROM ").Append(TYPE_DEF.TableName)
+                .AppendLine()
+                .Append("WHERE entity_ref = @entity_ref")
+                .ToString();
+
+            Dictionary<string, object> parameters = new() { { "entity_ref", entity.Identity.ToByteArray() } };
+
+            foreach (IDataReader reader in _executor.ExecuteReader(script, 10, parameters))
+            {
+                definition = new()
+                {
+                    Ref = new Entity(SystemTypeCode.TypeDef, new Guid((byte[])reader["entity_ref"])),
+                    Code = (int)reader["meta_code"],
+                    Name = (string)reader["meta_name"],
+                    TableName = (string)reader["table_name"],
+                    BaseType = new Entity(SystemTypeCode.TypeDef, new Guid((byte[])reader["base_type"])),
+                    NestType = new Entity(SystemTypeCode.TypeDef, new Guid((byte[])reader["nest_type"]))
+                };
+            }
+
+            if (definition is not null) { definition.Properties.AddRange(SelectPropertyDef(in definition)); }
+
+            return definition;
+        }
         public TypeDef SelectTypeDef(in string identifier)
         {
             int count = 0;
@@ -604,9 +636,11 @@ namespace DaJet.Model
             
             if (count > 1) { throw new InvalidOperationException($"Ambiguous name: [{identifier}]"); }
 
-            //TODO: SELECT properties OF type_def
-
-            if (definition.Ref == TYPE_DEF.Ref)
+            if (definition.Ref == ENTITY.Ref)
+            {
+                definition.Properties.AddRange(ENTITY.Properties);
+            }
+            else if (definition.Ref == TYPE_DEF.Ref)
             {
                 definition.Properties.AddRange(TYPE_DEF.Properties);
             }
@@ -617,6 +651,10 @@ namespace DaJet.Model
             else if (definition.Ref == RELATION_DEF.Ref)
             {
                 definition.Properties.AddRange(RELATION_DEF.Properties);
+            }
+            else
+            {
+                definition.Properties.AddRange(SelectPropertyDef(in definition));
             }
 
             return definition;
@@ -761,6 +799,46 @@ namespace DaJet.Model
 
             return script.AppendLine().Append(select).ToString();
         }
+        private List<PropertyDef> SelectPropertyDef(in TypeDef owner)
+        {
+            List<PropertyDef> properties = new();
+
+            string script = new StringBuilder()
+                .Append("SELECT entity_ref, meta_name, meta_code, owner_ref, ordinal, data_type, qualifier1, qualifier2, ")
+                .Append("column_name, is_nullable, is_primary_key, is_version, is_identity, identity_seed, identity_increment")
+                .AppendLine()
+                .Append("FROM ").Append(PROPERTY_DEF.TableName)
+                .AppendLine()
+                .Append("WHERE owner_ref = @owner_ref")
+                .ToString();
+
+            Dictionary<string, object> parameters = new() { { "owner_ref", owner.Ref.Identity.ToByteArray() } };
+
+            foreach (IDataReader reader in _executor.ExecuteReader(script, 10, parameters))
+            {
+                PropertyDef property = new()
+                {
+                    Ref = new Entity(SystemTypeCode.PropertyDef, new Guid((byte[])reader["entity_ref"])),
+                    Code = (int)reader["meta_code"],
+                    Name = (string)reader["meta_name"],
+                    Owner = new Entity(owner.Code, new Guid((byte[])reader["owner_ref"])),
+                    Ordinal = (int)reader["ordinal"],
+                    DataType = new UnionType() { Flags = (int)reader["data_type"], TypeCode = 0 },
+                    Qualifier1 = (int)reader["qualifier1"],
+                    Qualifier2 = (int)reader["qualifier2"],
+                    ColumnName = (string)reader["column_name"],
+                    IsNullable = (((byte[])reader["is_nullable"])[0] == 1),
+                    IsPrimaryKey = (((byte[])reader["is_primary_key"])[0] == 1),
+                    IsVersion = (((byte[])reader["is_version"])[0] == 1),
+                    IsIdentity = (((byte[])reader["is_identity"])[0] == 1),
+                    IdentitySeed = (int)reader["identity_seed"],
+                    IdentityIncrement = (int)reader["identity_increment"]
+                };
+                properties.Add(property);
+            }
+
+            return properties;
+        }
 
         private void CreateRelationDef(in TypeDef definition)
         {
@@ -817,6 +895,12 @@ namespace DaJet.Model
             //        relations.Add(new Relation() { Source = source, Target = target });
             //    }
             //}
+        }
+        #endregion
+
+        public void CreateUserType(in TypeDef definition)
+        {
+            //TODO: create user type
         }
     }
 }

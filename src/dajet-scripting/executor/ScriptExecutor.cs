@@ -5,6 +5,7 @@ using DaJet.Model;
 using DaJet.Scripting.Model;
 using System.Data;
 using System.Globalization;
+using System.Text;
 
 namespace DaJet.Scripting
 {
@@ -273,30 +274,31 @@ namespace DaJet.Scripting
                 }
             }
 
-            ProcessCreateStatements(in model);
+            ProcessStatements(in model);
         }
-        private void ProcessCreateStatements(in ScriptModel script)
+        private void ProcessStatements(in ScriptModel script)
         {
-            IDbConfigurator configurator = _metadata.GetDbConfigurator();
-
-            configurator.CreateDatabase();
-        }
-        private bool IsRegularDatabase
-        {
-            get
+            foreach (SyntaxNode statement in script.Statements)
             {
-                IQueryExecutor executor = _metadata.CreateQueryExecutor();
-                string script = SQLHelper.GetTableExistsScript("_yearoffset");
-                return !(executor.ExecuteScalar<int>(in script, 10) == 1);
+                if (statement is CreateTypeStatement createType)
+                {
+                    ProcessStatement(in createType);
+                }
+                else if (statement is CreateTableStatement createTable)
+                {
+                    ProcessStatement(in createTable);
+                }
             }
         }
-        private bool TableExists(in string name)
+        private void ProcessStatement(in CreateTypeStatement statement)
         {
-            IQueryExecutor executor = _metadata.CreateQueryExecutor();
-            string script = SQLHelper.GetTableExistsScript(name);
-            return (executor.ExecuteScalar<int>(in script, 10) == 1);
+            TypeDef type = TransformStatement(in statement);
+            _metadata.GetDbConfigurator().CreateUserType(type);
         }
-        
+        private void ProcessStatement(in CreateTableStatement statement)
+        {
+
+        }
         private UnionType ResolveDataType(TypeIdentifier type, out List<TypeDef> references)
         {
             UnionType union = new();
@@ -325,26 +327,40 @@ namespace DaJet.Scripting
 
             return type;
         }
-        private TypeDef GetSystemTypeDef(in CreateTypeStatement statement)
+        private TypeDef TransformStatement(in CreateTypeStatement statement)
         {
-            //if (TableExists("md-types")) { return; }
+            TypeDef definition = new() { Name = statement.Name };
 
-            TypeDef metadata = _metadata.GetTypeDefinition("Metadata");
-            int ordinal = metadata.Properties.Count;
+            TypeDef parent;
 
-            TypeDef definition = new()
+            if (!string.IsNullOrEmpty(statement.BaseType))
             {
-                Ref = new Entity(3, Guid.NewGuid()),
-                Name = statement.Name,
-                TableName = "md-types",
-                BaseType = metadata.Ref
-            };
+                parent = _metadata.GetTypeDefinition(statement.BaseType);
+
+                if (parent is null) { throw new InvalidOperationException($"Base type [{statement.BaseType}] not found."); }
+
+                definition.BaseType = parent.Ref;
+
+                ApplyParentType(in definition, in parent);
+            }
+            
+            if (!string.IsNullOrEmpty(statement.NestType))
+            {
+                parent = _metadata.GetTypeDefinition(statement.NestType);
+
+                if (parent is null) { throw new InvalidOperationException($"Nesting type [{statement.NestType}] not found."); }
+
+                definition.NestType = parent.Ref;
+
+                ApplyNestingType(in definition, in parent);
+            }
+
+            int ordinal = 0;
 
             foreach (ColumnDefinition column in statement.Columns)
             {
                 PropertyDef property = new()
                 {
-                    Ref = new Entity(4, Guid.NewGuid()),
                     Name = column.Name,
                     Owner = definition.Ref,
                     Ordinal = ++ordinal,
@@ -378,9 +394,35 @@ namespace DaJet.Scripting
                 }
             }
 
-            //IQueryExecutor executor = _metadata.CreateQueryExecutor();
-
             return definition;
+        }
+        private void ApplyParentType(in TypeDef definition, in TypeDef parent)
+        {
+            TypeDef type = _metadata.GetTypeDefinition(parent.BaseType);
+
+            if (type is not null)
+            {
+                ApplyParentType(in definition, in type);
+            }
+
+            foreach (PropertyDef property in parent.Properties)
+            {
+                PropertyDef new_prop = property.Copy();
+                
+                new_prop.Owner = definition.Ref;
+                new_prop.Ordinal = property.Ordinal;
+
+                if (property.IsPrimaryKey) // ENTITY.Ref: override self reference TypeCode
+                {
+                    new_prop.DataType = new UnionType() { IsEntity = true, TypeCode = definition.Code };
+                }
+
+                definition.Properties.Add(new_prop);
+            }
+        }
+        private void ApplyNestingType(in TypeDef definition, in TypeDef nesting)
+        {
+            //TODO: apply nesting type properties
         }
     }
 }

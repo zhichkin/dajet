@@ -29,7 +29,7 @@ namespace DaJet.Data
         {
             return (_flags & (1 << position)) == (1 << position);
         }
-        public int Flags { get { return _flags; } }
+        public int Flags { get { return _flags; } set { _flags = value; _typeCode = -1; } }
         public UnionType Copy() { return new UnionType() { _flags = _flags, _typeCode = _typeCode }; }
         public bool Is(UnionTag tag) { return IsBitSet((int)tag); }
         public void Add(UnionTag type)

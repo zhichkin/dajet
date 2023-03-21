@@ -311,9 +311,13 @@ namespace DaJet.Metadata
         {
             throw new NotImplementedException(); //TODO: IMetadataProvider.Configure(...)
         }
+        public TypeDef GetTypeDefinition(Entity entity)
+        {
+            throw new NotImplementedException(); //TODO: IMetadataProvider.GetTypeDefinition(entity)
+        }
         public TypeDef GetTypeDefinition(in string identifier)
         {
-            throw new NotImplementedException(); //TODO: IMetadataProvider.GetTypeDefinition(...)
+            throw new NotImplementedException(); //TODO: IMetadataProvider.GetTypeDefinition(identifier)
         }
         internal MetadataCache(MetadataCacheOptions options)
         {

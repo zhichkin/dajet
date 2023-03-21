@@ -19,6 +19,7 @@ namespace DaJet.Metadata
         bool TryGetEnumValue(in string identifier, out EnumValue value);
 
         IDbConfigurator GetDbConfigurator();
+        TypeDef GetTypeDefinition(Entity entity);
         TypeDef GetTypeDefinition(in string identifier);
     }
 }
