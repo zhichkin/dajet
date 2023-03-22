@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 using System.Text.Json.Serialization;
 
 namespace DaJet.Data
@@ -35,6 +36,7 @@ namespace DaJet.Data
         [JsonIgnore] public bool IsUndefined { get { return _tag == UnionTag.Undefined; } }
         public UnionTag Tag { get { return _tag; } } // TYPE
         public abstract object Value { get; }
+        public abstract Union Copy();
         public abstract bool GetBoolean(); // L
         public abstract decimal GetNumeric(); // N
         public abstract DateTime GetDateTime(); // T
@@ -61,6 +63,7 @@ namespace DaJet.Data
         {
             public CaseUndefined() : base(UnionTag.Undefined) { }
             public override object Value { get { return null!; } }
+            public override Union Copy() { return new CaseUndefined(); }
             public override bool GetBoolean()
             {
                 throw new BadUnionAccessException(typeof(bool), typeof(CaseUndefined));
@@ -103,6 +106,7 @@ namespace DaJet.Data
             private readonly bool _value;
             public CaseBoolean(bool value) : base(UnionTag.Boolean) { _value = value; }
             public override object Value { get { return _value; } }
+            public override Union Copy() { return new CaseBoolean(_value); }
             public override bool GetBoolean()
             {
                 return _value;
@@ -145,6 +149,7 @@ namespace DaJet.Data
             private readonly decimal _value;
             public CaseNumeric(decimal value) : base(UnionTag.Numeric) { _value = value; }
             public override object Value { get { return _value; } }
+            public override Union Copy() { return new CaseNumeric(_value); }
             public override bool GetBoolean()
             {
                 throw new BadUnionAccessException(typeof(bool), typeof(CaseNumeric));
@@ -187,6 +192,7 @@ namespace DaJet.Data
             private readonly DateTime _value;
             public CaseDateTime(DateTime value) : base(UnionTag.DateTime) { _value = value; }
             public override object Value { get { return _value; } }
+            public override Union Copy() { return new CaseDateTime(_value); }
             public override bool GetBoolean()
             {
                 throw new BadUnionAccessException(typeof(bool), typeof(CaseDateTime));
@@ -229,6 +235,7 @@ namespace DaJet.Data
             private readonly string _value;
             public CaseString(string value) : base(UnionTag.String) { _value = value; }
             public override object Value { get { return _value; } }
+            public override Union Copy() { return new CaseString(_value); } //TODO: make copy of string ?
             public override bool GetBoolean()
             {
                 throw new BadUnionAccessException(typeof(bool), typeof(CaseString));
@@ -271,6 +278,7 @@ namespace DaJet.Data
             private readonly byte[] _value;
             public CaseBinary(byte[] value) : base(UnionTag.Binary) { _value = value; }
             public override object Value { get { return _value; } }
+            public override Union Copy() { return new CaseBinary(_value); } //TODO: make copy of byte[] ?
             public override bool GetBoolean()
             {
                 throw new BadUnionAccessException(typeof(bool), typeof(CaseBinary));
@@ -313,6 +321,7 @@ namespace DaJet.Data
             private readonly Guid _value;
             public CaseUuid(Guid value) : base(UnionTag.Uuid) { _value = value; }
             public override object Value { get { return _value; } }
+            public override Union Copy() { return new CaseUuid(_value); }
             public override bool GetBoolean()
             {
                 throw new BadUnionAccessException(typeof(bool), typeof(CaseUuid));
@@ -355,6 +364,7 @@ namespace DaJet.Data
             private readonly Entity _value;
             public CaseEntity(Entity value) : base(UnionTag.Entity) { _value = value; }
             public override object Value { get { return _value; } }
+            public override Union Copy() { return new CaseEntity(_value.Copy()); }
             public override bool GetBoolean()
             {
                 throw new BadUnionAccessException(typeof(bool), typeof(CaseEntity));
@@ -397,6 +407,7 @@ namespace DaJet.Data
             private readonly ulong _value;
             public CaseVersion(ulong value) : base(UnionTag.Version) { _value = value; }
             public override object Value { get { return _value; } }
+            public override Union Copy() { return new CaseVersion(_value); }
             public override bool GetBoolean()
             {
                 throw new BadUnionAccessException(typeof(bool), typeof(CaseVersion));
@@ -439,6 +450,7 @@ namespace DaJet.Data
             private readonly int _value;
             public CaseInteger(int value) : base(UnionTag.Integer) { _value = value; }
             public override object Value { get { return _value; } }
+            public override Union Copy() { return new CaseInteger(_value); }
             public override bool GetBoolean()
             {
                 throw new BadUnionAccessException(typeof(bool), typeof(CaseInteger));

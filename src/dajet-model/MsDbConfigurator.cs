@@ -151,6 +151,7 @@ namespace DaJet.Model
                 Name = "TypeDef",
                 BaseType = METADATA.Ref,
                 TableName = "dajet_types",
+                IsTemplate = false,
                 Ref = new Entity(SystemTypeCode.TypeDef, SystemTypeUuid.TypeDef)
             };
 
@@ -181,6 +182,15 @@ namespace DaJet.Model
             }
 
             // TypeDef class own properties
+
+            definition.Properties.Add(new PropertyDef()
+            {
+                Name = "IsTemplate",
+                Owner = definition.Ref,
+                Ordinal = ++ordinal,
+                ColumnName = "is_template",
+                DataType = new UnionType() { IsBoolean = true }
+            });
 
             definition.Properties.Add(new PropertyDef()
             {
@@ -220,6 +230,7 @@ namespace DaJet.Model
                 Name = "PropertyDef",
                 BaseType = METADATA.Ref,
                 TableName = "dajet_properties",
+                IsTemplate = false,
                 Ref = new Entity(SystemTypeCode.TypeDef, SystemTypeUuid.PropertyDef)
             };
 
@@ -377,6 +388,7 @@ namespace DaJet.Model
                 Code = SystemTypeCode.RelationDef,
                 Name = "RelationDef",
                 TableName = "dajet_relations",
+                IsTemplate = false,
                 Ref = new Entity(SystemTypeCode.TypeDef, SystemTypeUuid.RelationDef)
             };
 
@@ -562,20 +574,23 @@ namespace DaJet.Model
         private void CreateTypeDef(in TypeDef definition)
         {
             string script = new StringBuilder()
-                .Append("INSERT dajet_types(entity_ref, meta_name, meta_code, table_name, base_type, nest_type)")
+                .Append("INSERT dajet_types(entity_ref, is_template, meta_name, meta_code, table_name, base_type, nest_type)")
                 .AppendLine()
-                .Append("SELECT @entity_ref, @meta_name, @meta_code, @table_name, @base_type, @nest_type")
+                .Append("SELECT @entity_ref, @is_template, @meta_name, @meta_code, @table_name, @base_type, @nest_type")
                 .ToString();
 
             Dictionary<string, object> parameters = new()
             {
-                { "entity_ref", definition.Ref.Identity.ToByteArray() },
+                { "entity_ref", definition.Ref },
+                { "is_template", definition.IsTemplate },
                 { "meta_name", definition.Name is null ? string.Empty : definition.Name },
                 { "meta_code", definition.Code },
                 { "table_name", definition.TableName is null ? string.Empty : definition.TableName },
-                { "base_type", definition.BaseType.Identity.ToByteArray() },
-                { "nest_type", definition.NestType.Identity.ToByteArray() }
+                { "base_type", definition.BaseType },
+                { "nest_type", definition.NestType }
             };
+
+            FormatQueryParameters(in parameters);
 
             foreach (IDataReader reader in _executor.ExecuteReader(script, 10, parameters))
             {
@@ -587,7 +602,7 @@ namespace DaJet.Model
             TypeDef definition = null;
 
             string script = new StringBuilder()
-                .Append("SELECT entity_ref, meta_name, meta_code, table_name, base_type, nest_type")
+                .Append("SELECT entity_ref, is_template, meta_name, meta_code, table_name, base_type, nest_type")
                 .AppendLine()
                 .Append("FROM ").Append(TYPE_DEF.TableName)
                 .AppendLine()
@@ -604,6 +619,7 @@ namespace DaJet.Model
                     Code = (int)reader["meta_code"],
                     Name = (string)reader["meta_name"],
                     TableName = (string)reader["table_name"],
+                    IsTemplate = (((byte[])reader["is_template"])[0] == 1),
                     BaseType = new Entity(SystemTypeCode.TypeDef, new Guid((byte[])reader["base_type"])),
                     NestType = new Entity(SystemTypeCode.TypeDef, new Guid((byte[])reader["nest_type"]))
                 };
@@ -628,6 +644,7 @@ namespace DaJet.Model
                 definition.Code = (int)reader["meta_code"];
                 definition.Name = (string)reader["meta_name"];
                 definition.TableName = (string)reader["table_name"];
+                definition.IsTemplate = (((byte[])reader["is_template"])[0] == 1);
                 definition.BaseType = new Entity(SystemTypeCode.TypeDef, new Guid((byte[])reader["base_type"]));
                 definition.NestType = new Entity(SystemTypeCode.TypeDef, new Guid((byte[])reader["nest_type"]));
             }
@@ -679,13 +696,14 @@ namespace DaJet.Model
             (--countdown).ToString();
             script.Append("SELECT ");
             script.Append(tables[countdown]).Append(".entity_ref, ");
+            script.Append(tables[countdown]).Append(".is_template, ");
             script.Append(tables[countdown]).Append(".meta_name, ");
             script.Append(tables[countdown]).Append(".meta_code, ");
             script.Append(tables[countdown]).Append(".table_name, ");
             script.Append(tables[countdown]).Append(".base_type, ");
             script.Append(tables[countdown]).Append(".nest_type");
             script.AppendLine();
-            script.Append("FROM (SELECT entity_ref, meta_name, meta_code, table_name, base_type, nest_type");
+            script.Append("FROM (SELECT entity_ref, is_template, meta_name, meta_code, table_name, base_type, nest_type");
             script.Append(" FROM ").Append(TYPE_DEF.TableName).Append(" WHERE meta_name = @name").Append(countdown);
             script.Append(") AS ").Append(tables[countdown]);
 
@@ -834,6 +852,9 @@ namespace DaJet.Model
                     IdentitySeed = (int)reader["identity_seed"],
                     IdentityIncrement = (int)reader["identity_increment"]
                 };
+
+                property.Relations.AddRange(SelectRelationDef(in property));
+
                 properties.Add(property);
             }
 
@@ -879,28 +900,81 @@ namespace DaJet.Model
                 }
             }
         }
-        private void GetRelations(in PropertyDef property)
+        private List<RelationDef> SelectRelationDef(in PropertyDef property)
         {
-            //TODO: GetRelations(in PropertyDef property)
+            List<RelationDef> relations = new();
 
-            //UnionType type = property.DataType;
+            string script = new StringBuilder()
+                .Append("SELECT source, target")
+                .AppendLine()
+                .Append("FROM ").Append(RELATION_DEF.TableName)
+                .AppendLine()
+                .Append("WHERE source = @source")
+                .ToString();
 
-            //if (type.IsEntity)
-            //{
-            //    List<Relation> relations = new();
-            //    Entity source = new(property.Code, property.Ref);
+            Dictionary<string, object> parameters = new() { { "source", property.Ref.Identity.ToByteArray() } };
 
-            //    foreach (TypeDef target in references)
-            //    {
-            //        relations.Add(new Relation() { Source = source, Target = target });
-            //    }
-            //}
+            foreach (IDataReader reader in _executor.ExecuteReader(script, 10, parameters))
+            {
+                RelationDef relation = new()
+                {
+                    Source = new Entity(SystemTypeCode.PropertyDef, new Guid((byte[])reader["source"])),
+                    Target = new Entity(SystemTypeCode.TypeDef, new Guid((byte[])reader["target"]))
+                };
+
+                relations.Add(relation);
+            }
+
+            return relations;
         }
         #endregion
 
+        public int GenerateTypeCode()
+        {
+            string script = new StringBuilder()
+                .Append("SELECT MAX(meta_code) + 1 FROM ")
+                .Append(TYPE_DEF.TableName)
+                .Append(" WITH (TABLOCKX)")
+                .ToString();
+
+            return _executor.ExecuteScalar<int>(in script, 10);
+        }
         public void CreateUserType(in TypeDef definition)
         {
-            //TODO: create user type
+            string identifier = GetFullName(in definition);
+
+            if (SelectTypeDef(in identifier) is null)
+            {
+                CreateTypeDef(in definition);
+            }
+        }
+        public void CreateProperties(in TypeDef definition)
+        {
+            CreatePropertyDef(in definition);
+        }
+        public void CreateRelations(in TypeDef definition)
+        {
+            CreateRelationDef(in definition);
+        }
+        public string GetFullName(in TypeDef definition)
+        {
+            StringBuilder name = new();
+            
+            GetFullName(in definition, in name);
+
+            name.Remove(0, 1); // leading dot
+
+            return name.ToString();
+        }
+        private void GetFullName(in TypeDef definition, in StringBuilder name)
+        {
+            if (definition.BaseType == Entity.Undefined) { return; }
+
+            TypeDef parent = SelectTypeDef(definition.BaseType);
+
+            if (parent is not null) { GetFullName(in parent, in name); }
+
+            name.Append('.').Append(definition.Name);
         }
     }
 }

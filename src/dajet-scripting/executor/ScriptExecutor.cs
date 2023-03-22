@@ -3,6 +3,7 @@ using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Model;
 using DaJet.Scripting.Model;
+using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.Text;
@@ -274,6 +275,8 @@ namespace DaJet.Scripting
                 }
             }
 
+            _metadata.GetDbConfigurator().CreateDatabase(); //TODO: refactor this !!!
+
             ProcessStatements(in model);
         }
         private void ProcessStatements(in ScriptModel script)
@@ -292,12 +295,81 @@ namespace DaJet.Scripting
         }
         private void ProcessStatement(in CreateTypeStatement statement)
         {
-            TypeDef type = TransformStatement(in statement);
-            _metadata.GetDbConfigurator().CreateUserType(type);
+            // 1. Сгенерировать код нового типа (Metadata.Code)
+            // 2. Разрешить ссылки на NestType и BaseType.
+            // 3. Записать объявление типа в таблицу dajet_types
+            // 4. Обработать первичный ключ, наследуемый от NestType.
+            // 5. Обработать первичный ключ, наследуемый от BaseType (переопределить TypeCode свойства ENTITY.Ref).
+            // 6. Обработать инструкцию DROP COLUMN.
+            // 7. Обработать инструкцию ALTER COLUMN.
+            // 8. Обработать собственные свойства типа.
+            // 9. Заполнить свойство PropertyDef.Ordinal последовательными значениями.
+            // 10. Записать объявления свойств типа в таблицу dajet_properties.
+            // 11. Для ссылочных типов свойств заполнить таблицу dajet_relations.
+
+            TypeDef definition = new()
+            {
+                Name = statement.Name,
+                IsTemplate = statement.IsTemplate,
+                Code = _metadata.GetDbConfigurator().GenerateTypeCode()
+            };
+
+            ResolveNestType(in definition, statement.NestType);
+            ResolveBaseType(in definition, statement.BaseType);
+            _metadata.GetDbConfigurator().CreateUserType(in definition);
+
+            if (!definition.IsTemplate)
+            {
+                DropColumns(in definition, statement.DropColumns);
+                AlterColumns(in definition, statement.AlterColumns);
+            }
+
+            foreach (ColumnDefinition column in statement.Columns)
+            {
+                PropertyDef property = new()
+                {
+                    Name = column.Name,
+                    Owner = definition.Ref,
+                    ColumnName = column.Name,
+                    DataType = ResolveDataType(column.Type, out List<TypeDef> references),
+                    Qualifier1 = column.Type.Qualifier1,
+                    Qualifier2 = column.Type.Qualifier2,
+                    IsVersion = column.IsVersion,
+                    IsNullable = column.IsNullable,
+                    IsPrimaryKey = statement.PrimaryKey.Contains(column.Name),
+                    IsIdentity = column.IsIdentity,
+                    IdentitySeed = column.IdentitySeed,
+                    IdentityIncrement = column.IdentityIncrement
+                };
+                definition.Properties.Add(property);
+
+                UnionType type = property.DataType;
+
+                foreach (TypeDef target in references)
+                {
+                    property.Relations.Add(new RelationDef()
+                    {
+                        Source = property.Ref,
+                        Target = target.Ref
+                    });
+                }
+            }
+
+            for (int ordinal = 0; ordinal < definition.Properties.Count; ordinal++)
+            {
+                definition.Properties[ordinal].Ordinal = (ordinal + 1);
+            }
+
+            //TODO: save properties and relations !!!
+
+            //_metadata.GetDbConfigurator().CreateProperties(in definition);
+            //_metadata.GetDbConfigurator().CreateRelations(in definition);
         }
         private void ProcessStatement(in CreateTableStatement statement)
         {
-
+            // 1. Разрешить ссылку на тип.
+            // 2. Создать таблицу для типа.
+            // 3. Обновить свойство типа TypeDef.TableName в базе данных.
         }
         private UnionType ResolveDataType(TypeIdentifier type, out List<TypeDef> references)
         {
@@ -327,102 +399,138 @@ namespace DaJet.Scripting
 
             return type;
         }
-        private TypeDef TransformStatement(in CreateTypeStatement statement)
+        private void ResolveNestType(in TypeDef definition, in string identifier)
         {
-            TypeDef definition = new() { Name = statement.Name };
+            if (string.IsNullOrEmpty(identifier)) { return; }
 
-            TypeDef parent;
+            TypeDef parent = _metadata.GetTypeDefinition(identifier) ?? throw new InvalidOperationException($"Nesting type [{identifier}] not found.");
 
-            if (!string.IsNullOrEmpty(statement.BaseType))
+            definition.NestType = parent.Ref;
+
+            if (definition.IsTemplate) { return; }
+
+            List<PropertyDef> primaryKey = new();
+
+            GetNestTypePrimaryKey(in definition, in primaryKey);
+
+            foreach (PropertyDef property in primaryKey)
             {
-                parent = _metadata.GetTypeDefinition(statement.BaseType);
+                PropertyDef copy = property.Copy();
 
-                if (parent is null) { throw new InvalidOperationException($"Base type [{statement.BaseType}] not found."); }
+                copy.Owner = definition.Ref;
 
-                definition.BaseType = parent.Ref;
-
-                ApplyParentType(in definition, in parent);
+                definition.Properties.Add(copy);
             }
-            
-            if (!string.IsNullOrEmpty(statement.NestType))
+        }
+        private void GetNestTypePrimaryKey(in TypeDef definition, in List<PropertyDef> primaryKey)
+        {
+            if (definition.NestType == Entity.Undefined) { return; }
+
+            TypeDef parent = _metadata.GetTypeDefinition(definition.NestType);
+
+            if (parent is not null) { GetNestTypePrimaryKey(in parent, in primaryKey); }
+
+            foreach (PropertyDef property in definition.Properties)
             {
-                parent = _metadata.GetTypeDefinition(statement.NestType);
-
-                if (parent is null) { throw new InvalidOperationException($"Nesting type [{statement.NestType}] not found."); }
-
-                definition.NestType = parent.Ref;
-
-                ApplyNestingType(in definition, in parent);
-            }
-
-            int ordinal = 0;
-
-            foreach (ColumnDefinition column in statement.Columns)
-            {
-                PropertyDef property = new()
+                if (property.IsPrimaryKey)
                 {
-                    Name = column.Name,
-                    Owner = definition.Ref,
-                    Ordinal = ++ordinal,
-                    ColumnName = column.Name,
-                    DataType = ResolveDataType(column.Type, out List<TypeDef> references),
-                    Qualifier1 = column.Type.Qualifier1,
-                    Qualifier2 = column.Type.Qualifier2,
-                    IsVersion = column.IsVersion,
-                    IsNullable = column.IsNullable,
-                    IsPrimaryKey = statement.PrimaryKey.Contains(column.Name),
-                    IsIdentity = column.IsIdentity,
-                    IdentitySeed = column.IdentitySeed,
-                    IdentityIncrement = column.IdentityIncrement
-                };
-                definition.Properties.Add(property);
+                    primaryKey.Add(property);
+                }
+            }
+        }
+        private void ResolveBaseType(in TypeDef definition, in string identifier)
+        {
+            TypeDef type = _metadata.GetTypeDefinition(identifier) ?? throw new InvalidOperationException($"Base type [{identifier}] not found.");
+
+            definition.BaseType = type.Ref;
+
+            if (definition.IsTemplate) { return; }
+
+            List<PropertyDef> properties = new();
+
+            GetBaseTypeProperties(in definition, in properties);
+
+            foreach (PropertyDef property in properties)
+            {
+                PropertyDef copy = property.Copy();
+
+                copy.Owner = definition.Ref;
+
+                if (property.Owner.TypeCode == 0 && property.Name == "Ref") // system type ENTITY
+                {
+                    copy.DataType = new UnionType() { IsEntity = true, TypeCode = definition.Code };
+                }
+
+                definition.Properties.Add(copy);
+            }
+        }
+        private void GetBaseTypeProperties(in TypeDef definition, in List<PropertyDef> properties)
+        {
+            if (definition.BaseType == Entity.Undefined) { return; }
+
+            TypeDef parent = _metadata.GetTypeDefinition(definition.BaseType);
+
+            if (parent is not null) { GetBaseTypeProperties(in parent, in properties); }
+
+            foreach (PropertyDef property in definition.Properties)
+            {
+                properties.Add(property);
+            }
+        }
+        private void DropColumns(in TypeDef definition, in List<string> columns)
+        {
+            if (columns is null) { return; }
+
+            foreach (string column in columns)
+            {
+                int next = 0;
+                int count = definition.Properties.Count;
+
+                while (next < count)
+                {
+                    if (definition.Properties[next].Name == column)
+                    {
+                        definition.Properties.RemoveAt(next); break;
+                    }
+                    
+                    next++;
+                }
+            }
+        }
+        private void AlterColumns(in TypeDef definition, in List<ColumnDefinition> columns)
+        {
+            if (columns is null) { return; }
+
+            foreach (ColumnDefinition column in columns)
+            {
+                PropertyDef property = definition.Properties
+                    .Where(p => p.Name == column.Name)
+                    .FirstOrDefault();
+
+                if (property is null) { continue; }
+
+                property.DataType = ResolveDataType(column.Type, out List<TypeDef> references);
+                property.Qualifier1 = column.Type.Qualifier1;
+                property.Qualifier2 = column.Type.Qualifier2;
+                property.IsVersion = column.IsVersion;
+                property.IsNullable = column.IsNullable;
+                property.IsIdentity = column.IsIdentity;
+                property.IdentitySeed = column.IdentitySeed;
+                property.IdentityIncrement = column.IdentityIncrement;
 
                 UnionType type = property.DataType;
 
-                if (type.IsEntity)
-                {
-                    List<RelationDef> relations = new();
+                property.Relations.Clear();
 
-                    foreach (TypeDef target in references)
+                foreach (TypeDef target in references)
+                {
+                    property.Relations.Add(new RelationDef()
                     {
-                        relations.Add(new RelationDef()
-                        {
-                            Source = property.Ref,
-                            Target = target.Ref
-                        });
-                    }
+                        Source = property.Ref,
+                        Target = target.Ref
+                    });
                 }
             }
-
-            return definition;
-        }
-        private void ApplyParentType(in TypeDef definition, in TypeDef parent)
-        {
-            TypeDef type = _metadata.GetTypeDefinition(parent.BaseType);
-
-            if (type is not null)
-            {
-                ApplyParentType(in definition, in type);
-            }
-
-            foreach (PropertyDef property in parent.Properties)
-            {
-                PropertyDef new_prop = property.Copy();
-                
-                new_prop.Owner = definition.Ref;
-                new_prop.Ordinal = property.Ordinal;
-
-                if (property.IsPrimaryKey) // ENTITY.Ref: override self reference TypeCode
-                {
-                    new_prop.DataType = new UnionType() { IsEntity = true, TypeCode = definition.Code };
-                }
-
-                definition.Properties.Add(new_prop);
-            }
-        }
-        private void ApplyNestingType(in TypeDef definition, in TypeDef nesting)
-        {
-            //TODO: apply nesting type properties
         }
     }
 }

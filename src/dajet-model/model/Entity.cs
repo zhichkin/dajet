@@ -51,6 +51,7 @@ namespace DaJet.Data
         }
         public int TypeCode { get; } = 0;
         public Guid Identity { get; } = Guid.Empty;
+        public Entity Copy() { return new Entity(TypeCode, Identity); }
         [JsonIgnore] public bool IsEmpty { get { return Identity == Guid.Empty; } } // TypeCode > 0 && Identity == Guid.Empty
         [JsonIgnore] public bool IsUndefined { get { return this == Undefined; } } // TypeCode == 0 && Identity == Guid.Empty
         public override string ToString()

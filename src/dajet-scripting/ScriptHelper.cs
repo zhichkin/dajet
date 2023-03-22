@@ -77,6 +77,7 @@ namespace DaJet.Scripting
             { "IGNORE", TokenType.IGNORE },
             { "TYPE", TokenType.TYPE },
             { "ENTITY", TokenType.ENTITY },
+            { "TEMPLATE", TokenType.TEMPLATE },
             { "IDENTITY", TokenType.IDENTITY },
             { "PRIMARY", TokenType.PRIMARY },
             { "KEY", TokenType.KEY },

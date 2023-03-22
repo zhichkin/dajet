@@ -6,5 +6,13 @@ namespace DaJet.Model
     {
         public Union Source { get; set; } // PropertyDef | UnionDef
         public Entity Target { get; set; } // TypeDef
+        public RelationDef Copy()
+        {
+            return new RelationDef()
+            {
+                Source = Source.Copy(),
+                Target = Target
+            };
+        }
     }
 }

@@ -1031,6 +1031,11 @@ namespace DaJet.Scripting
                 Identifier = Previous().Lexeme
             };
 
+            if (Check(TokenType.EndOfStatement))
+            {
+                return type;
+            }
+
             if (Match(TokenType.OpenRoundBracket))
             {
                 if (!Match(TokenType.Number)) { throw new FormatException("Number literal expected."); }
@@ -1530,6 +1535,11 @@ namespace DaJet.Scripting
         #region "CREATE TYPE STATEMENT"
         private SyntaxNode create_type()
         {
+            CreateTypeStatement statement = new()
+            {
+                IsTemplate = Match(TokenType.TEMPLATE)
+            };
+
             if (Match(TokenType.ENTITY))
             {
                 // SYSTEM TYPE ENTITY DEFINITION
@@ -1539,13 +1549,8 @@ namespace DaJet.Scripting
                 throw new FormatException("Type identifier expected.");
             }
 
-            CreateTypeStatement statement = new()
-            {
-                Name = Previous().Lexeme,
-                BaseType = base_type(),
-                DropColumns = drop_columns(),
-                AlterColumns = alter_columns()
-            };
+            statement.Name = Previous().Lexeme;
+            statement.BaseType = base_type();
 
             if (Match(TokenType.PRIMARY))
             {
@@ -1554,7 +1559,15 @@ namespace DaJet.Scripting
                 statement.PrimaryKey = column_identifiers();
             }
 
+            statement.DropColumns = drop_columns();
+            statement.AlterColumns = alter_columns();
+
             if (!Match(TokenType.OpenRoundBracket)) { throw new FormatException("Open round bracket expected."); }
+
+            if (Match(TokenType.CloseRoundBracket))
+            {
+                return statement; // column definitions are optional
+            }
 
             statement.Columns.Add(column_definition());
 
@@ -1637,6 +1650,8 @@ namespace DaJet.Scripting
             if (!Match(TokenType.Identifier)) { throw new FormatException("Data type identifier expected."); }
 
             column.Type = type();
+
+            _ = Match(TokenType.EndOfStatement); // Костыль для CREATE TYPE ... ALTER COLUMN
             
             column.IsVersion = (column.Type.Identifier.ToLowerInvariant() == "version");
 

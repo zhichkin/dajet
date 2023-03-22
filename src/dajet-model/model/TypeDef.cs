@@ -9,6 +9,7 @@ namespace DaJet.Model
         public Entity Ref { get; set; } = new Entity(SystemTypeCode.TypeDef, Guid.NewGuid()); // self reference
         public string Name { get; set; } = string.Empty;
         public int Code { get; set; } // database generated
+        public bool IsTemplate { get; set; } = true; // abstract class
         public string TableName { get; set; } = string.Empty;
         public Entity BaseType { get; set; } = Entity.Undefined; // TypeDef
         public Entity NestType { get; set; } = Entity.Undefined; // TypeDef
