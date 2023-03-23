@@ -9,7 +9,7 @@
 
 Платформа реализована на C# (.NET 7.0) и состоит из **сервера DaJet**, который работает под управлением
 [web сервера Kestrel](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/servers/kestrel?view=aspnetcore-7.0)
-и графического интерфейса пользователя - **DaJet Studio** (Blazor Web Assembly).
+и встроенного графического интерфейса пользователя - **DaJet Studio** (Blazor Web Assembly).
 
 **Сервер DaJet** реализует web api для доступа к основным библиотекам платформы, а именно:
 - **DaJet.Metadata** - описание прикладной модели и её схемы данных
@@ -19,7 +19,8 @@
 [Microsoft Blazor](https://learn.microsoft.com/en-us/ASPNET/core/blazor/?view=aspnetcore-7.0)
 Web Assembly (wasm) и интегрированно непосредственно в сервер DaJet.
 DaJet Studio является средой разработки хранимых скриптов на SQL-подобном языке **DaJet QL**.
-Вызов этих скриптов доступен для внешних систем как web api сервера DaJet.
+
+>Вызов скриптов DaJet доступен для внешних систем как **web api сервера DaJet**.
 
 На текущий момент времени поддерживается работа с СУБД Microsoft SQL Server и PostgreSQL,
 а также брокерами сообщений RabbitMQ и Apache Kafka.
