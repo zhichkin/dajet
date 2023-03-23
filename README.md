@@ -7,18 +7,18 @@
 >Название **DaJet** (даджет) образовано от слов **data** (данные) и **jet** (реактивный).
 >Кроме этого является модификацией слова gadget (гаджет) и может быть интерпретировано как "инструмент для работы с данными".
 
-Платформа состоит из сервера DaJet, который работает под управлением
+Платформа состоит из **сервера DaJet**, который работает под управлением
 [web сервера Kestrel](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/servers/kestrel?view=aspnetcore-7.0)
-и графического интерфейса пользователя - DaJet Studio.
+и графического интерфейса пользователя - **DaJet Studio**.
 
 **Сервер DaJet** реализует web api для доступа к основным библиотекам платформы, а именно:
-- DaJet.Metadata
-- DaJet.Scripting
+- **DaJet.Metadata** - описание прикладной модели и её схемы данных
+- **DaJet.Scripting** - SQL-подобный язык запросов DaJet (DDL + DML)
 
 **DaJet Studio** реализовано как приложение
 [Microsoft Blazor](https://learn.microsoft.com/en-us/ASPNET/core/blazor/?view=aspnetcore-7.0)
 Web Assembly (wasm) и интегрированно непосредственно в сервер DaJet.
-DaJet Studio является средой разработки хранимых скриптов на SQL-подобном языке **DaJet QL** (DJQL).
+DaJet Studio является средой разработки хранимых скриптов на SQL-подобном языке **DaJet QL**.
 Вызов этих скриптов доступен для внешних систем как web api сервера DaJet.
 
 На текущий момент времени поддерживается работа с СУБД Microsoft SQL Server и PostgreSQL,
