@@ -9,5 +9,6 @@ namespace DaJet.Data
         void CreateUserType(in TypeDef definition);
         void CreateProperties(in TypeDef definition); // ?
         void CreateRelations(in TypeDef definition); // ?
+        void CreateTableOfType(in string identifier, in string tableName);
     }
 }

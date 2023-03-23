@@ -36,6 +36,8 @@ namespace DaJet.Model
                 { SystemTypeCode.PropertyDef, PROPERTY_DEF },
                 { SystemTypeCode.RelationDef, RELATION_DEF }
             };
+
+            //TODO: cache type definitions and their type codes from database !!!
         }
 
         #region "CREATE AND CONFIGURE SYSTEM DATABASE"
@@ -597,6 +599,38 @@ namespace DaJet.Model
                 //do nothing
             }
         }
+        public TypeDef SelectTypeDef(int typeCode)
+        {
+            TypeDef definition = null;
+
+            string script = new StringBuilder()
+                .Append("SELECT entity_ref, is_template, meta_name, meta_code, table_name, base_type, nest_type")
+                .AppendLine()
+                .Append("FROM ").Append(TYPE_DEF.TableName)
+                .AppendLine()
+                .Append("WHERE meta_code = @meta_code")
+                .ToString();
+
+            Dictionary<string, object> parameters = new() { { "meta_code", typeCode } };
+
+            foreach (IDataReader reader in _executor.ExecuteReader(script, 10, parameters))
+            {
+                definition = new()
+                {
+                    Ref = new Entity(SystemTypeCode.TypeDef, new Guid((byte[])reader["entity_ref"])),
+                    Code = (int)reader["meta_code"],
+                    Name = (string)reader["meta_name"],
+                    TableName = (string)reader["table_name"],
+                    IsTemplate = (((byte[])reader["is_template"])[0] == 1),
+                    BaseType = new Entity(SystemTypeCode.TypeDef, new Guid((byte[])reader["base_type"])),
+                    NestType = new Entity(SystemTypeCode.TypeDef, new Guid((byte[])reader["nest_type"]))
+                };
+            }
+
+            if (definition is not null) { definition.Properties.AddRange(SelectPropertyDef(in definition)); }
+
+            return definition;
+        }
         public TypeDef SelectTypeDef(Entity entity)
         {
             TypeDef definition = null;
@@ -721,6 +755,27 @@ namespace DaJet.Model
             }
 
             return script.ToString();
+        }
+        private void UpdateTypeDefTableName(in TypeDef definition)
+        {
+            string script = new StringBuilder()
+                .Append("UPDATE dajet_types ")
+                .Append("SET table_name = @table_name ")
+                .Append("WHERE entity_ref = @entity_ref")
+                .ToString();
+
+            Dictionary<string, object> parameters = new()
+            {
+                { "entity_ref", definition.Ref },
+                { "table_name", definition.TableName is null ? string.Empty : definition.TableName }
+            };
+
+            FormatQueryParameters(in parameters);
+
+            foreach (IDataReader reader in _executor.ExecuteReader(script, 10, parameters))
+            {
+                //TODO: UPDATE TypeDef ... OUTPUT INSERTED.table_name ?
+            }
         }
 
         private void CreatePropertyDef(in TypeDef owner)
@@ -886,7 +941,12 @@ namespace DaJet.Model
 
                 if (!TYPES.TryGetValue(property.DataType.TypeCode, out target))
                 {
-                    throw new InvalidOperationException($"TypeDef code [{property.DataType.TypeCode}] not found.");
+                    target = SelectTypeDef(property.DataType.TypeCode);
+
+                    if (target is null)
+                    {
+                        throw new InvalidOperationException($"TypeDef code [{property.DataType.TypeCode}] not found.");
+                    }
                 }
 
                 parameters.Clear();
@@ -946,6 +1006,8 @@ namespace DaJet.Model
             if (SelectTypeDef(in identifier) is null)
             {
                 CreateTypeDef(in definition);
+
+                //TODO: cache type definition in TYPES dictionary !!!
             }
         }
         public void CreateProperties(in TypeDef definition)
@@ -955,6 +1017,32 @@ namespace DaJet.Model
         public void CreateRelations(in TypeDef definition)
         {
             CreateRelationDef(in definition);
+        }
+        public void CreateTableOfType(in string identifier, in string tableName)
+        {
+            TypeDef definition = SelectTypeDef(in identifier);
+
+            //TODO: data types entity_ref = binary(1) !!! must be binary(16)
+
+            if (definition is null)
+            {
+                throw new InvalidOperationException($"Type definition for [{identifier}] is not found.");
+            }
+
+            if (!TableExists(tableName))
+            {
+                definition.TableName = tableName;
+
+                List<string> sql = new()
+                {
+                    BuildCreateTableScript(in definition),
+                    BuildCreateIndexScript(in definition)
+                };
+
+                _executor.TxExecuteNonQuery(in sql, 10);
+
+                UpdateTypeDefTableName(in definition); //TODO: update TypeDef table name in transaction !!!
+            }
         }
         public string GetFullName(in TypeDef definition)
         {

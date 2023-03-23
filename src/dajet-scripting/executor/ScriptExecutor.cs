@@ -3,10 +3,8 @@ using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Model;
 using DaJet.Scripting.Model;
-using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
-using System.Text;
 
 namespace DaJet.Scripting
 {
@@ -360,16 +358,14 @@ namespace DaJet.Scripting
                 definition.Properties[ordinal].Ordinal = (ordinal + 1);
             }
 
-            //TODO: save properties and relations !!!
+            //TODO: save TypeDef, properties and relations in transaction !!!
 
-            //_metadata.GetDbConfigurator().CreateProperties(in definition);
-            //_metadata.GetDbConfigurator().CreateRelations(in definition);
+            _metadata.GetDbConfigurator().CreateProperties(in definition);
+            _metadata.GetDbConfigurator().CreateRelations(in definition);
         }
         private void ProcessStatement(in CreateTableStatement statement)
         {
-            // 1. Разрешить ссылку на тип.
-            // 2. Создать таблицу для типа.
-            // 3. Обновить свойство типа TypeDef.TableName в базе данных.
+            _metadata.GetDbConfigurator().CreateTableOfType(statement.Type, statement.Name);
         }
         private UnionType ResolveDataType(TypeIdentifier type, out List<TypeDef> references)
         {
