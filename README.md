@@ -4,6 +4,9 @@
 
 ![dajet-studio](https://github.com/zhichkin/dajet/blob/main/doc/dajet-studio/dajet-architecture.png)
 
+>Название **DaJet** (даджет) образовано от слов **data** (данные) и **jet** (реактивный).
+>Кроме этого является модификацией слова gadget (гаджет) и может быть интерпретировано как "инструмент для работы с данными".
+
 Платформа состоит из сервера DaJet, который работает под управлением
 [web сервера Kestrel](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/servers/kestrel?view=aspnetcore-7.0)
 и графического интерфейса пользователя - DaJet Studio.
