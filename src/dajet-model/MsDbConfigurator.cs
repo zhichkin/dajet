@@ -663,6 +663,27 @@ namespace DaJet.Model
 
             return definition;
         }
+        private int SelectTypeDefCode(Entity entity)
+        {
+            int code = -1;
+
+            string script = new StringBuilder()
+                .Append("SELECT meta_code")
+                .AppendLine()
+                .Append("FROM ").Append(TYPE_DEF.TableName)
+                .AppendLine()
+                .Append("WHERE entity_ref = @entity_ref")
+                .ToString();
+
+            Dictionary<string, object> parameters = new() { { "entity_ref", entity.Identity.ToByteArray() } };
+
+            foreach (IDataReader reader in _executor.ExecuteReader(script, 10, parameters))
+            {
+                code = (int)reader["meta_code"];
+            }
+
+            return code;
+        }
         public TypeDef SelectTypeDef(in string identifier)
         {
             int count = 0;
@@ -882,7 +903,7 @@ namespace DaJet.Model
                 .AppendLine()
                 .Append("FROM ").Append(PROPERTY_DEF.TableName)
                 .AppendLine()
-                .Append("WHERE owner_ref = @owner_ref")
+                .Append("WHERE owner_ref = @owner_ref ORDER BY ordinal ASC")
                 .ToString();
 
             Dictionary<string, object> parameters = new() { { "owner_ref", owner.Ref.Identity.ToByteArray() } };
@@ -896,7 +917,7 @@ namespace DaJet.Model
                     Name = (string)reader["meta_name"],
                     Owner = new Entity(owner.Code, new Guid((byte[])reader["owner_ref"])),
                     Ordinal = (int)reader["ordinal"],
-                    DataType = new UnionType() { Flags = (int)reader["data_type"], TypeCode = 0 },
+                    DataType = new UnionType() { Flags = (int)reader["data_type"] },
                     Qualifier1 = (int)reader["qualifier1"],
                     Qualifier2 = (int)reader["qualifier2"],
                     ColumnName = (string)reader["column_name"],
@@ -908,7 +929,20 @@ namespace DaJet.Model
                     IdentityIncrement = (int)reader["identity_increment"]
                 };
 
-                property.Relations.AddRange(SelectRelationDef(in property));
+                List<RelationDef> relations = SelectRelationDef(in property);
+
+                property.Relations.AddRange(relations);
+
+                if (relations.Count == 1)
+                {
+                    int typeCode = SelectTypeDefCode(relations[0].Target);
+
+                    if (typeCode > -1) { property.DataType.TypeCode = typeCode; }
+                }
+                else if (relations.Count > 1)
+                {
+                    property.DataType.TypeCode = 0; // multiple reference type
+                }
 
                 properties.Add(property);
             }
@@ -1021,8 +1055,6 @@ namespace DaJet.Model
         public void CreateTableOfType(in string identifier, in string tableName)
         {
             TypeDef definition = SelectTypeDef(in identifier);
-
-            //TODO: data types entity_ref = binary(1) !!! must be binary(16)
 
             if (definition is null)
             {

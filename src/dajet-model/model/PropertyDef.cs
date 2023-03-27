@@ -21,6 +21,10 @@ namespace DaJet.Model
         public bool IsIdentity { get; set; }
         public int IdentitySeed { get; set; } = 1;
         public int IdentityIncrement { get; set; } = 1;
+        public override string ToString()
+        {
+            return $"({Code}) {Name} [{ColumnName}]";
+        }
         public List<RelationDef> Relations { get; } = new();
         public PropertyDef Copy()
         {
