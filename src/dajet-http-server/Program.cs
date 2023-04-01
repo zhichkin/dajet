@@ -1,8 +1,10 @@
 using DaJet.Data;
+using DaJet.Flow;
 using DaJet.Http.DataMappers;
 using DaJet.Http.Model;
 using DaJet.Metadata;
 using Microsoft.AspNetCore.Cors.Infrastructure;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.FileProviders;
 
 namespace DaJet.Http.Server
@@ -10,7 +12,7 @@ namespace DaJet.Http.Server
     public static class Program
     {
         public static string DATABASE_FILE_NAME = "dajet.db";
-        private static readonly string[] webapi = new string[] { "/api", "/md", "/mdex", "/db", "/query" };
+        private static readonly string[] webapi = new string[] { "/api", "/md", "/mdex", "/db", "/query", "/flow" };
         public static void Main(string[] args)
         {
             WebApplicationOptions options = new()
@@ -25,7 +27,8 @@ namespace DaJet.Http.Server
             builder.Host.UseWindowsService();
             builder.Services.AddControllers();
             builder.Services.AddCors(ConfigureCors);
-            ConfigureServices(builder.Services);
+            ConfigureFlowService(builder.Services);
+            ConfigureMetadataService(builder.Services);
             ConfigureFileProvider(builder.Services);
 
             WebApplication app = builder.Build();
@@ -78,7 +81,24 @@ namespace DaJet.Http.Server
                 endpoints.MapFallbackToFile("/index.html");
             });
         }
-        private static void ConfigureServices(IServiceCollection services)
+        private static void ConfigureFlowService(IServiceCollection services)
+        {
+            string databaseFileFullPath = Path.Combine(AppContext.BaseDirectory, DATABASE_FILE_NAME);
+
+            string connectionString = new SqliteConnectionStringBuilder()
+            {
+                DataSource = databaseFileFullPath,
+                Mode = SqliteOpenMode.ReadWriteCreate
+            }
+            .ToString();
+
+            PipelineOptionsProvider provider = new(connectionString);
+
+            services.AddSingleton(provider);
+            services.AddSingleton<IPipelineManager, PipelineManager>();
+            services.AddHostedService<DaJetFlowService>();
+        }
+        private static void ConfigureMetadataService(IServiceCollection services)
         {
             MetadataService metadataService = new();
 
