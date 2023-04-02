@@ -3,7 +3,7 @@
     public abstract class ProcessorBlock<TInput> : IInputBlock<TInput>, IOutputBlock<TInput>
     {
         private IInputBlock<TInput> _next;
-        public void LinkTo(IInputBlock<TInput> next) { _next = next; }
+        public void LinkTo(in IInputBlock<TInput> next) { _next = next; }
         public void Process(in TInput input)
         {
             _Process(in input);

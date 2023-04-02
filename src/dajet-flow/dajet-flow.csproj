@@ -19,12 +19,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\dajet-model\dajet-model.csproj" />
+    <Folder Include="SqlServer\" />
+    <Folder Include="PostgreSql\" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="SqlServer\" />
-    <Folder Include="PostgreSql\" />
+    <ProjectReference Include="..\dajet-scripting\dajet-scripting.csproj" />
   </ItemGroup>
 
 </Project>

@@ -11,12 +11,10 @@ namespace DaJet.Flow
     }
     public sealed class PipelineBlock
     {
-        [JsonPropertyName(nameof(Uuid))] public Guid Uuid { get; set; } = Guid.NewGuid();
-        [JsonPropertyName(nameof(Ordinal))] public int Ordinal { get; set; } = 0;
-        [JsonPropertyName(nameof(Script))] public string Script { get; set; } = string.Empty;
+        [JsonIgnore] public Guid Uuid { get; set; } = Guid.NewGuid();
+        [JsonIgnore] public int Ordinal { get; set; } = 0;
+        [JsonIgnore] public string Script { get; set; } = string.Empty;
         [JsonPropertyName(nameof(Handler))] public string Handler { get; set; } = string.Empty;
         [JsonPropertyName(nameof(Options))] public Dictionary<string, string> Options { get; set; } = new();
-        [JsonIgnore] internal Type HandlerType { get; set; }
-        [JsonIgnore] internal object HandlerInstance { get; set; }
     }
 }

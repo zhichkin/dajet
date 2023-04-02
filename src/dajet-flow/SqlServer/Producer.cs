@@ -17,38 +17,6 @@ namespace DaJet.Flow.SqlServer
         }
         public override void Process(in DbDataReader input)
         {
-            if (_options?["TurboMode"] == "true")
-            {
-                ProcessTurbo(in input);
-            }
-            else
-            {
-                ProcessOrdinary(in input);
-            }
-        }
-        private void ProcessTurbo(in DbDataReader input)
-        {
-            if (_connection == null)
-            {
-                _connection = new SqlConnection(_options?["ConnectionString"]);
-            }
-
-            if (_connection.State != ConnectionState.Open)
-            {
-                _connection.Open();
-            }
-
-            if (_command == null)
-            {
-                _command = _connection.CreateCommand();
-            }
-
-            ConfigureCommand(_command, in input);
-
-            _ = _command.ExecuteNonQuery();
-        }
-        private void ProcessOrdinary(in DbDataReader input)
-        {
             using (SqlConnection connection = new(_options?["ConnectionString"]))
             {
                 connection.Open();
@@ -65,7 +33,7 @@ namespace DaJet.Flow.SqlServer
         {
             command.CommandType = CommandType.Text;
             command.CommandTimeout = 10; // seconds
-            command.CommandText = _options?["TargetScript"];
+            command.CommandText = _options?["CommandText"];
 
             command.Parameters.Clear();
 
@@ -98,6 +66,27 @@ namespace DaJet.Flow.SqlServer
                 _connection.Dispose();
                 _connection = null;
             }
+        }
+        private void ProcessTurbo(in DbDataReader input)
+        {
+            if (_connection == null)
+            {
+                _connection = new SqlConnection(_options?["ConnectionString"]);
+            }
+
+            if (_connection.State != ConnectionState.Open)
+            {
+                _connection.Open();
+            }
+
+            if (_command == null)
+            {
+                _command = _connection.CreateCommand();
+            }
+
+            ConfigureCommand(_command, in input);
+
+            _ = _command.ExecuteNonQuery();
         }
     }
 }

@@ -1,23 +1,73 @@
-﻿using System.Reflection;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using System.Reflection;
+using System.Runtime.Loader;
 
 namespace DaJet.Flow
 {
-    public sealed class PipelineBuilder
+    public interface IPipelineBuilder
     {
-        private readonly IPipelineManager _manager;
-        public PipelineBuilder(IPipelineManager manager)
+        IPipeline Build(in PipelineOptions options);
+    }
+    public sealed class PipelineBuilder : IPipelineBuilder
+    {
+        private readonly ILogger _logger;
+        private readonly IServiceProvider _services;
+        private readonly Dictionary<string, Assembly> _assemblies = new();
+        public PipelineBuilder(IServiceProvider services, ILogger<PipelineBuilder> logger)
         {
-            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
+            _logger = logger;
+            _services = services;
+        }
+        private void InitializeAssemblies()
+        {
+            foreach (string filePath in Directory.GetFiles(AppContext.BaseDirectory, "DaJet.Flow.*"))
+            {
+                if (_assemblies.ContainsKey(filePath))
+                {
+                    continue;
+                }
+
+                if (Path.GetExtension(filePath) == ".dll")
+                {
+                    Assembly assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(filePath);
+
+                    if (assembly is not null)
+                    {
+                        _assemblies.Add(filePath, assembly);
+                    }
+
+                    _logger?.LogInformation($"[{assembly.FullName}] loaded successfully.");
+                }
+            }
+        }
+        public Type ResolveHandler(string name)
+        {
+            Type type;
+
+            foreach (Assembly assembly in _assemblies.Values)
+            {
+                type = assembly.GetType(name);
+
+                if (type is not null)
+                {
+                    return type;
+                }
+            }
+
+            throw new InvalidOperationException($"Failed to resolve handler [{name}]");
         }
         public IPipeline Build(in PipelineOptions options)
         {
+            InitializeAssemblies();
+
             List<object> blocks = ResolvePipelineBlocks(options.Blocks);
 
             if (blocks.Count == 0)
             {
                 throw new InvalidOperationException($"Pipeline does not have any blocks.");
             }
-
+            
             AssemblePipeline(blocks);
 
             if (blocks[0] is not ISourceBlock source)
@@ -25,7 +75,7 @@ namespace DaJet.Flow
                 throw new InvalidOperationException($"Pipeline source type does not implement DaJet.Flow.ISourceBlock interface.");
             }
 
-            IPipeline pipeline = new Pipeline(source);
+            IPipeline pipeline = ActivatorUtilities.CreateInstance(_services, typeof(Pipeline), options.Uuid, source) as IPipeline;
 
             pipeline.Configure(options.Options);
 
@@ -37,9 +87,9 @@ namespace DaJet.Flow
 
             foreach (PipelineBlock block in blocks)
             {
-                Type handler = _manager.ResolveHandler(block.Handler);
+                Type handler = ResolveHandler(block.Handler);
 
-                object instance = Activator.CreateInstance(handler);
+                object instance = ActivatorUtilities.CreateInstance(_services, handler);
 
                 if (instance is IConfigurable configurable)
                 {

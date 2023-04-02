@@ -12,7 +12,7 @@ namespace DaJet.Flow.SqlServer
         {
             _options = options;
         }
-        public override void Pump(CancellationToken token)
+        public override void Execute()
         {
             int consumed;
 
@@ -55,7 +55,7 @@ namespace DaJet.Flow.SqlServer
         {
             command.CommandType = CommandType.Text;
             command.CommandTimeout = 60; // seconds
-            command.CommandText = _options?["SourceScript"];
+            command.CommandText = _options?["CommandText"];
 
             command.Parameters.Clear();
 
@@ -65,10 +65,6 @@ namespace DaJet.Flow.SqlServer
             };
 
             command.Parameters.Add(parameter);
-        }
-        public override void Dispose()
-        {
-            // TODO
         }
     }
 }

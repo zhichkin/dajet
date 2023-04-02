@@ -16,19 +16,22 @@ namespace DaJet.Http.Controllers
             WriteIndented = true,
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
-        private readonly PipelineOptionsProvider _provider;
-        public FlowController(PipelineOptionsProvider provider) { _provider = provider; }
+        private readonly IPipelineManager _manager;
+        public FlowController(IPipelineManager manager)
+        {
+            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
+        }
         [HttpGet("")] public ActionResult Select()
         {
-            List<PipelineOptions> list = _provider.Select();
+            List<PipelineOptions> list = _manager.Select();
 
             string json = JsonSerializer.Serialize(list, _options);
 
             return Content(json);
         }
-        [HttpGet("{pipeline:guid}")] public ActionResult Select([FromRoute] string pipeline)
+        [HttpGet("{pipeline:guid}")] public ActionResult Select([FromRoute] Guid pipeline)
         {
-            PipelineOptions options = _provider.Select(new Guid(pipeline));
+            PipelineOptions options = _manager.Select(pipeline);
 
             if (options is null) { return NotFound(); }
 
@@ -36,34 +39,34 @@ namespace DaJet.Http.Controllers
 
             return Content(json);
         }
-        [HttpPost("")] public ActionResult Insert([FromBody] PipelineOptions entity)
+        [HttpPost("")] public ActionResult Insert([FromBody] PipelineOptions options)
         {
-            if (string.IsNullOrWhiteSpace(entity.Name))
+            if (string.IsNullOrWhiteSpace(options.Name))
             {
                 return BadRequest("Неверно указаны параметры!");
             }
 
-            _provider.Insert(entity);
+            _ = _manager.Insert(in options);
 
-            return Created($"{entity.Name}", $"{entity.Uuid}");
+            return Created($"{options.Name}", $"{options.Uuid}");
         }
-        [HttpPut("")] public ActionResult Update([FromBody] PipelineOptions entity)
+        [HttpPut("")] public ActionResult Update([FromBody] PipelineOptions options)
         {
-            PipelineOptions options = _provider.Select(entity.Uuid);
+            PipelineOptions current = _manager.Select(options.Uuid);
 
-            if (options is null) { return NotFound(); }
+            if (current is null) { return NotFound(); }
 
-            _provider.Update(entity);
+            _ = _manager.Update(in options);
 
             return Ok();
         }
-        [HttpDelete("{pipeline:guid}")] public ActionResult Delete([FromRoute] string pipeline)
+        [HttpDelete("{pipeline:guid}")] public ActionResult Delete([FromRoute] Guid pipeline)
         {
-            PipelineOptions options = _provider.Select(new Guid(pipeline));
+            PipelineOptions options = _manager.Select(pipeline);
 
             if (options is null) { return NotFound(); }
 
-            _provider.Delete(options);
+            _ = _manager.Delete(in options);
 
             return Ok();
         }

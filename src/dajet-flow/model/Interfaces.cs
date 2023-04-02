@@ -7,10 +7,10 @@
     }
     public interface IOutputBlock<TOutput>
     {
-        void LinkTo(IInputBlock<TOutput> next);
+        void LinkTo(in IInputBlock<TOutput> next);
     }
-    public interface ISourceBlock : IDisposable
+    public interface ISourceBlock
     {
-        void Pump(CancellationToken cancellationToken);
+        void Execute();
     }
 }

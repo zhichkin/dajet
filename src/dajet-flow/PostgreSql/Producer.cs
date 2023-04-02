@@ -31,7 +31,7 @@ namespace DaJet.Flow.PostgreSql
         {
             command.CommandType = CommandType.Text;
             command.CommandTimeout = 10; // seconds
-            command.CommandText = _options?["TargetScript"];
+            command.CommandText = _options?["CommandText"];
 
             command.Parameters.Clear();
 
