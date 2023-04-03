@@ -35,4 +35,8 @@
     <PackageReference Include="MudBlazor" Version="6.1.6" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\dajet-flow-model\dajet-flow-model.csproj" />
+  </ItemGroup>
+
 </Project>

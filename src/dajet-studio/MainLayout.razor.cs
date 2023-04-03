@@ -151,5 +151,10 @@ namespace DaJet.Studio
         {
             Navigator.NavigateTo("/script-editor");
         }
+
+        protected void OpenPipelineList(MouseEventArgs args)
+        {
+            Navigator.NavigateTo("/dajet-flow");
+        }
     }
 }

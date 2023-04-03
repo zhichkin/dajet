@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\dajet-dbview-generator\dajet-dbview-generator.csproj" />
+    <ProjectReference Include="..\dajet-flow-model\dajet-flow-model.csproj" />
     <ProjectReference Include="..\dajet-flow\dajet-flow.csproj" />
     <ProjectReference Include="..\dajet-scripting\dajet-scripting.csproj" />
   </ItemGroup>

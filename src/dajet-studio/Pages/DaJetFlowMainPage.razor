@@ -1,0 +1,56 @@
+﻿@page "/dajet-flow"
+
+@inject HttpClient Http;
+@inject AppState AppState;
+@inject NavigationManager Navigator;
+
+<div class="script-editor-layout">
+
+    <div class="script-editor-action">
+
+        <div style="margin:5px;">
+            <span style="font-weight:bold;">DaJet Flow (конвейеры данных)</span>
+            <MudTooltip Text="Создать новый">
+                <MudIconButton Icon="@Icons.Material.Outlined.Add" Color="Color.Success" Size="Size.Small" OnClick="CreatePipelinePage" />
+            </MudTooltip>
+            <MudTooltip Text="Обновить список">
+                <MudIconButton Icon="@Icons.Material.Outlined.Refresh" Color="Color.Info" Size="Size.Small" OnClick="RefreshPipelineList" />
+            </MudTooltip>
+            <MudTooltip Text="Закрыть страницу">
+                <MudIconButton Icon="@Icons.Material.Outlined.Close" Color="Color.Error" Size="Size.Small" OnClick="NavigateToHomePage" />
+            </MudTooltip>
+        </div>
+
+    </div>
+
+    <div class="script-editor-result">
+
+        @if (!string.IsNullOrEmpty(ErrorText))
+        {
+            <span style="color:red;margin:5px">@ErrorText</span>
+        }
+        else if (Pipelines is not null && Pipelines.Count > 0)
+        {
+            <table style="border: 1px solid black">
+
+                <tr>
+                    <td style="padding: 2px; border: 1px solid black; font-weight: bold;">Name</td>
+                    <td style="padding: 2px; border: 1px solid black; font-weight: bold;">Uuid</td>
+                </tr>
+
+                @foreach (PipelineOptions pipeline in Pipelines)
+                {
+                    <tr>
+                        <td style="padding: 2px; border: 1px solid black;">
+                            <MudLink Href=@("/dajet-flow/pipeline/" + pipeline.Uuid.ToString().ToLower())>@pipeline.Name</MudLink>
+                        </td>
+                        <td style="padding: 2px; border: 1px solid black;">@pipeline.Uuid</td>
+                    </tr>
+                }
+
+            </table>
+        }
+
+    </div>
+
+</div>

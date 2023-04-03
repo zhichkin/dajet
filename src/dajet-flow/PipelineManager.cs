@@ -1,4 +1,5 @@
-﻿using Microsoft.Data.Sqlite;
+﻿using DaJet.Flow.Model;
+using Microsoft.Data.Sqlite;
 
 namespace DaJet.Flow
 {
