@@ -71,26 +71,26 @@ namespace DaJet.Flow
         }
         private void AssemblePipelines()
         {
-            List<PipelineOptions> pipelines = _manager.Select();
+            List<PipelineInfo> pipelines = _manager.Select();
 
-            foreach (PipelineOptions options in pipelines)
+            foreach (PipelineInfo info in pipelines)
             {
-                if (_pipelines.ContainsKey(options.Uuid))
+                if (_pipelines.ContainsKey(info.Uuid))
                 {
                     continue;
                 }
 
                 try
                 {
-                    PipelineOptions entity = _manager.Select(options.Uuid);
+                    PipelineOptions options = _manager.Select(info.Uuid);
 
-                    IPipeline pipeline = _builder.Build(in entity);
+                    IPipeline pipeline = _builder.Build(in options);
 
                     if (pipeline is not null)
                     {
-                        _pipelines.Add(options.Uuid, pipeline);
+                        _pipelines.Add(info.Uuid, pipeline);
 
-                        _logger?.LogInformation($"Pipeline [{options.Name}] created successfully.");
+                        _logger?.LogInformation($"Pipeline [{info.Name}] created successfully.");
                     }
                 }
                 catch (Exception error)

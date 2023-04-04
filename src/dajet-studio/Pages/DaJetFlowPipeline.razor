@@ -11,42 +11,7 @@
 
 <div style="margin:5px;">
 
-<span style="font-weight:bold;">[@Model.Name] {@Model.Uuid}</span>
-
-@if (Model.Blocks is not null && Model.Blocks.Count > 0)
-{
-    int counter = 0;
-
-    <table style="border: 1px solid black">
-        
-        <tr>
-            <td style="padding: 2px; border: 1px solid black; font-weight: bold;">#</td>
-            <td style="padding: 2px; border: 1px solid black; font-weight: bold;">Обработчик</td>
-            <td style="padding: 2px; border: 1px solid black; font-weight: bold;">Параметры</td>
-        </tr>
-        
-        @foreach (PipelineBlock block in Model.Blocks)
-        {
-            counter++;
-
-            <tr>
-
-                <td style="padding: 2px; border: 1px solid black;">@counter</td>
-                <td style="padding: 2px; border: 1px solid black;">@block.Handler</td>
-                <td style="padding: 2px; border: 1px solid black;">
-
-                    @foreach (var option in block.Options)
-                    {
-                        @(option.Key + " = " + option.Value + "<br/>")
-                    }
-
-                </td>
-                
-            </tr>
-        }
-        
-    </table>
-}
+    <span style="font-weight:bold;">[@Model.Name] {@Model.Uuid}</span>
 
     <MudExpansionPanels MultiExpansion="true" Dense="true">
         <MudExpansionPanel Dense="true">
@@ -78,7 +43,7 @@
                 </TitleContent>
 
                 <ChildContent>
-                    
+
                     <table style="border: 1px solid black">
 
                         @foreach (var option in block.Options)

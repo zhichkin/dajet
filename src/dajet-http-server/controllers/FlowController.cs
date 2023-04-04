@@ -24,7 +24,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("")] public ActionResult Select()
         {
-            List<PipelineOptions> list = _manager.Select();
+            List<PipelineInfo> list = _manager.Select();
 
             string json = JsonSerializer.Serialize(list, _options);
 

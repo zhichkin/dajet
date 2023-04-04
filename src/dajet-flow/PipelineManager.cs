@@ -5,7 +5,7 @@ namespace DaJet.Flow
 {
     public interface IPipelineManager
     {
-        List<PipelineOptions> Select();
+        List<PipelineInfo> Select();
         PipelineOptions Select(Guid uuid);
         bool Insert(in PipelineOptions options);
         bool Update(in PipelineOptions options);
@@ -88,9 +88,9 @@ namespace DaJet.Flow
 
         #region "CRUD COMMANDS"
 
-        public List<PipelineOptions> Select()
+        public List<PipelineInfo> Select()
         {
-            List<PipelineOptions> list = new();
+            List<PipelineInfo> list = new();
 
             using (SqliteConnection connection = new(_connectionString))
             {
@@ -104,7 +104,7 @@ namespace DaJet.Flow
                     {
                         while (reader.Read())
                         {
-                            PipelineOptions item = new()
+                            PipelineInfo item = new()
                             {
                                 Uuid = new Guid(reader.GetString(0)),
                                 Name = reader.GetString(1)
