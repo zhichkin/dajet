@@ -5,19 +5,17 @@ using System.Data.Common;
 
 namespace DaJet.Flow.PostgreSql
 {
-    public sealed class Consumer : SourceBlock<DbDataReader>, IConfigurable
+    public sealed class Consumer : SourceBlock<DbDataReader>
     {
-        private Dictionary<string, string> _options;
         public Consumer() { }
-        public void Configure(in Dictionary<string, string> options)
-        {
-            _options = options;
-        }
+        [Option] public string ConnectionString { get; set; } = string.Empty;
+        [Option] public string CommandText { get; set; } = string.Empty;
+        [Option] public int MessagesPerTransaction { get; set; } = 1000;
         public override void Execute()
         {
             int consumed;
 
-            using (NpgsqlConnection connection = new(_options?["ConnectionString"]))
+            using (NpgsqlConnection connection = new(ConnectionString))
             {
                 connection.Open();
 
@@ -56,13 +54,13 @@ namespace DaJet.Flow.PostgreSql
         {
             command.CommandType = CommandType.Text;
             command.CommandTimeout = 60; // seconds
-            command.CommandText = _options?["CommandText"];
+            command.CommandText = CommandText;
 
             command.Parameters.Clear();
 
-            NpgsqlParameter parameter = new("MessagesPerTransaction", NpgsqlDbType.Integer)
+            NpgsqlParameter parameter = new(nameof(MessagesPerTransaction), NpgsqlDbType.Integer)
             {
-                Value = int.Parse(_options?["MessagesPerTransaction"])
+                Value = MessagesPerTransaction
             };
 
             command.Parameters.Add(parameter);

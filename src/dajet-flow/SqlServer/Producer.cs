@@ -4,20 +4,16 @@ using System.Data.Common;
 
 namespace DaJet.Flow.SqlServer
 {
-    public sealed class Producer : TargetBlock<DbDataReader>, IConfigurable
+    public sealed class Producer : TargetBlock<DbDataReader>
     {
         private SqlConnection _connection;
         private SqlCommand _command;
-
-        private Dictionary<string, string> _options;
         public Producer() { }
-        public void Configure(in Dictionary<string, string> options)
-        {
-            _options = options;
-        }
+        [Option] public string CommandText { get; set; } = string.Empty;
+        [Option] public string ConnectionString { get; set; } = string.Empty;
         public override void Process(in DbDataReader input)
         {
-            using (SqlConnection connection = new(_options?["ConnectionString"]))
+            using (SqlConnection connection = new(ConnectionString))
             {
                 connection.Open();
 
@@ -33,7 +29,7 @@ namespace DaJet.Flow.SqlServer
         {
             command.CommandType = CommandType.Text;
             command.CommandTimeout = 10; // seconds
-            command.CommandText = _options?["CommandText"];
+            command.CommandText = CommandText;
 
             command.Parameters.Clear();
 
@@ -50,28 +46,17 @@ namespace DaJet.Flow.SqlServer
         }
         protected override void _Synchronize()
         {
-            if (_options?["TurboMode"] != "true")
-            {
-                return;
-            }
+            _command?.Dispose();
+            _command = null;
 
-            if (_command != null)
-            {
-                _command.Dispose();
-                _command = null;
-            }
-
-            if (_connection != null)
-            {
-                _connection.Dispose();
-                _connection = null;
-            }
+            _connection?.Dispose();
+            _connection = null;
         }
         private void ProcessTurbo(in DbDataReader input)
         {
             if (_connection == null)
             {
-                _connection = new SqlConnection(_options?["ConnectionString"]);
+                _connection = new SqlConnection(ConnectionString);
             }
 
             if (_connection.State != ConnectionState.Open)

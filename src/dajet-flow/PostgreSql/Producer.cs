@@ -5,17 +5,14 @@ using System.Data.Common;
 
 namespace DaJet.Flow.PostgreSql
 {
-    public sealed class Producer : TargetBlock<DbDataReader>, IConfigurable
+    public sealed class Producer : TargetBlock<DbDataReader>
     {
-        private Dictionary<string, string> _options;
         public Producer() { }
-        public void Configure(in Dictionary<string, string> options)
-        {
-            _options = options;
-        }
+        [Option] public string CommandText { get; set; } = string.Empty;
+        [Option] public string ConnectionString { get; set; } = string.Empty;
         public override void Process(in DbDataReader input)
         {
-            using (NpgsqlConnection connection = new(_options?["ConnectionString"]))
+            using (NpgsqlConnection connection = new(ConnectionString))
             {
                 connection.Open();
 
@@ -31,7 +28,7 @@ namespace DaJet.Flow.PostgreSql
         {
             command.CommandType = CommandType.Text;
             command.CommandTimeout = 10; // seconds
-            command.CommandText = _options?["CommandText"];
+            command.CommandText = CommandText;
 
             command.Parameters.Clear();
 

@@ -18,9 +18,11 @@ namespace DaJet.Http.Controllers
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
         private readonly IPipelineManager _manager;
-        public FlowController(IPipelineManager manager)
+        private readonly IPipelineBuilder _builder;
+        public FlowController(IPipelineManager manager, IPipelineBuilder builder)
         {
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
+            _builder = builder ?? throw new ArgumentNullException(nameof(builder));
         }
         [HttpGet("")] public ActionResult Select()
         {
@@ -40,6 +42,15 @@ namespace DaJet.Http.Controllers
 
             return Content(json);
         }
+        [HttpGet("options/{owner}")] public ActionResult SelectOptions([FromRoute] string owner)
+        {
+            List<OptionInfo> list = _builder.GetOptions(owner);
+
+            string json = JsonSerializer.Serialize(list, _options);
+
+            return Content(json);
+        }
+
         [HttpPost("")] public ActionResult Insert([FromBody] PipelineOptions options)
         {
             if (string.IsNullOrWhiteSpace(options.Name))

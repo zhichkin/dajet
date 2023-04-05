@@ -4,19 +4,17 @@ using System.Data.Common;
 
 namespace DaJet.Flow.SqlServer
 {
-    public sealed class Consumer : SourceBlock<DbDataReader>, IConfigurable
+    public sealed class Consumer : SourceBlock<DbDataReader>
     {
-        private Dictionary<string, string> _options;
         public Consumer() { }
-        public void Configure(in Dictionary<string, string> options)
-        {
-            _options = options;
-        }
+        [Option] public string ConnectionString { get; set; } = string.Empty;
+        [Option] public string CommandText { get; set; } = string.Empty;
+        [Option] public int MessagesPerTransaction { get; set; } = 1000;
         public override void Execute()
         {
             int consumed;
 
-            using (SqlConnection connection = new(_options?["ConnectionString"]))
+            using (SqlConnection connection = new(ConnectionString))
             {
                 connection.Open();
 
@@ -55,13 +53,13 @@ namespace DaJet.Flow.SqlServer
         {
             command.CommandType = CommandType.Text;
             command.CommandTimeout = 60; // seconds
-            command.CommandText = _options?["CommandText"];
+            command.CommandText = CommandText;
 
             command.Parameters.Clear();
 
-            SqlParameter parameter = new("MessagesPerTransaction", SqlDbType.Int)
+            SqlParameter parameter = new(nameof(MessagesPerTransaction), SqlDbType.Int)
             {
-                Value = int.Parse(_options?["MessagesPerTransaction"])
+                Value = MessagesPerTransaction
             };
 
             command.Parameters.Add(parameter);

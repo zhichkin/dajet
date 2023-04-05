@@ -9,6 +9,7 @@ namespace DaJet.Flow
     public interface IPipelineBuilder
     {
         IPipeline Build(in PipelineOptions options);
+        List<OptionInfo> GetOptions(string typeName);
     }
     public sealed class PipelineBuilder : IPipelineBuilder
     {
@@ -56,7 +57,7 @@ namespace DaJet.Flow
                 }
             }
 
-            throw new InvalidOperationException($"Failed to resolve handler [{name}]");
+            throw new InvalidOperationException($"Failed to resolve type by name [{name}]");
         }
         public IPipeline Build(in PipelineOptions options)
         {
@@ -76,7 +77,7 @@ namespace DaJet.Flow
                 throw new InvalidOperationException($"Pipeline source type does not implement DaJet.Flow.ISourceBlock interface.");
             }
 
-            IPipeline pipeline = ActivatorUtilities.CreateInstance(_services, typeof(Pipeline), options.Uuid, source) as IPipeline;
+            Pipeline pipeline = ActivatorUtilities.CreateInstance(_services, typeof(Pipeline), options.Uuid, source) as Pipeline;
 
             pipeline.Configure(options.Options);
 
@@ -92,7 +93,7 @@ namespace DaJet.Flow
 
                 object instance = ActivatorUtilities.CreateInstance(_services, handler);
 
-                if (instance is IConfigurable configurable)
+                if (instance is Configurable configurable)
                 {
                     configurable.Configure(block.Options);
                 }
@@ -130,6 +131,46 @@ namespace DaJet.Flow
 
                 current = next;
             }
+        }
+
+        //
+
+        public List<OptionInfo> GetOptions(string typeName)
+        {
+            List<OptionInfo> options = new();
+
+            Type type = ResolveHandler(typeName);
+
+            foreach (PropertyInfo property in type.GetProperties())
+            {
+                if (property.GetCustomAttribute<OptionAttribute>() is not null)
+                {
+                    options.Add(new OptionInfo()
+                    {
+                        Name = property.Name,
+                        Type = property.PropertyType.ToString()
+                    });
+                }
+            }
+
+            return options;
+        }
+
+        public static Type GetPipelineSourceBlockMessageType(Type sourceType)
+        {
+            if (sourceType.IsGenericType)
+            {
+                return sourceType.GetGenericArguments()[0];
+            }
+
+            Type baseType = sourceType.BaseType;
+
+            if (baseType is null || baseType.GetGenericTypeDefinition() != typeof(SourceBlock<>))
+            {
+                throw new InvalidOperationException($"Pipeline source type does not inherit from DaJet.Flow.SourceBlock<T> abstract class.");
+            }
+
+            return baseType.GetGenericArguments()[0];
         }
     }
 }

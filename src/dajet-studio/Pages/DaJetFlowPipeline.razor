@@ -20,10 +20,11 @@
             </TitleContent>
             <ChildContent>
                 <table style="border: 1px solid black">
-                    @foreach (var option in Model.Options)
+                    @foreach (OptionInfo option in OptionsInfo["DaJet.Flow.Pipeline"])
                     {
                         <tr>
-                            <td style="padding: 2px">@option.Key</td>
+                            <td style="padding: 2px">@option.Name</td>
+                            <td style="padding: 2px">@option.Type</td>
                             <td style="padding: 2px">@option.Value</td>
                         </tr>
                     }
@@ -46,10 +47,11 @@
 
                     <table style="border: 1px solid black">
 
-                        @foreach (var option in block.Options)
+                        @foreach (OptionInfo option in OptionsInfo[block.Handler])
                         {
                             <tr>
-                                <td style="padding: 2px">@option.Key</td>
+                                <td style="padding: 2px">@option.Name</td>
+                                <td style="padding: 2px">@option.Type</td>
                                 <td style="padding: 2px">@option.Value</td>
                             </tr>
                         }
