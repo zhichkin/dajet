@@ -3,61 +3,82 @@
 @inject HttpClient Http;
 @inject AppState AppState;
 @inject NavigationManager Navigator;
+@inject IDialogService DialogService;
 
 <style>
     .mud-expand-panel-icon { order: 1; }
     .mud-expand-panel-text { order: 2; }
 </style>
 
-<div style="margin:5px;">
+<div style="margin:5px;overflow:scroll;">
 
-    <span style="font-weight:bold;">[@Model.Name] {@Model.Uuid}</span>
+    <MudToolBar>
+        <MudButton OnClick="CreatePipeline" Size="Size.Small">Save</MudButton>
+        <MudButton OnClick="SelectPipelineBlock" Size="Size.Small">Add block</MudButton>
+    </MudToolBar>
+
+    <MudTextField T="string" Label="Pipeline" @bind-Value="@Model.Name" Variant="Variant.Outlined" Margin="Margin.Dense" />
 
     <MudExpansionPanels MultiExpansion="true" Dense="true">
+
         <MudExpansionPanel Dense="true">
             <TitleContent>
-                <MudTextField T="string" @bind-Value="@Model.Name" Margin="Margin.Dense" />
+                <span style="font-weight:bold;">Pipeline Options</span>
             </TitleContent>
             <ChildContent>
-                <table style="border: 1px solid black">
-                    @foreach (OptionInfo option in OptionsInfo["DaJet.Flow.Pipeline"])
-                    {
-                        <tr>
-                            <td style="padding: 2px">@option.Name</td>
-                            <td style="padding: 2px">@option.Type</td>
-                            <td style="padding: 2px">@option.Value</td>
-                        </tr>
-                    }
-                </table>
+                @if (OptionsInfo.Count == 0 || OptionsInfo["DaJet.Flow.Pipeline"].Count == 0)
+                {
+                    <MudField Variant="Variant.Text" DisableUnderLine="true" FullWidth="false" Margin="Margin.Dense">No options</MudField>
+                }
+                else
+                {
+                    <MudTable T="OptionInfo" Items="@OptionsInfo["DaJet.Flow.Pipeline"]" Hover="true" Dense="true">
+                        <HeaderContent>
+                            <MudTh>Name</MudTh>
+                            <MudTh>Type</MudTh>
+                            <MudTh>Value</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Name">@context.Name</MudTd>
+                            <MudTd DataLabel="Type">@context.Type</MudTd>
+                            <MudTd DataLabel="Value">
+                                <MudTextField T="string" @bind-Value="@context.Value" Variant="Variant.Text" DisableUnderLine="true" Margin="Margin.Dense" />
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
             </ChildContent>
         </MudExpansionPanel>
-    </MudExpansionPanels>
-
-    <MudExpansionPanels MultiExpansion="true" Dense="true">
-
+    
         @foreach (PipelineBlock block in Model.Blocks)
         {
             <MudExpansionPanel Dense="true">
-
                 <TitleContent>
-                    <span style="font-weight:bold;">@block.Handler</span>
+                    <span style="font-weight:bold;">@block.Handler</span><span>&nbsp;&lt;</span>
+                    <span style="font-weight:bold;">@block.Message</span><span>&nbsp;&gt;</span>
                 </TitleContent>
-
                 <ChildContent>
-
-                    <table style="border: 1px solid black">
-
-                        @foreach (OptionInfo option in OptionsInfo[block.Handler])
-                        {
-                            <tr>
-                                <td style="padding: 2px">@option.Name</td>
-                                <td style="padding: 2px">@option.Type</td>
-                                <td style="padding: 2px">@option.Value</td>
-                            </tr>
-                        }
-
-                    </table>
-
+                    @if (OptionsInfo.Count == 0 || OptionsInfo[block.Handler].Count == 0)
+                    {
+                        <MudField Variant="Variant.Text" DisableUnderLine="true" FullWidth="false" Margin="Margin.Dense">No options</MudField>
+                    }
+                    else
+                    {
+                        <MudTable T="OptionInfo" Items="@OptionsInfo[block.Handler]" Hover="true" Dense="true">
+                            <HeaderContent>
+                                <MudTh>Name</MudTh>
+                                <MudTh>Type</MudTh>
+                                <MudTh>Value</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Name">@context.Name</MudTd>
+                                <MudTd DataLabel="Type">@context.Type</MudTd>
+                                <MudTd DataLabel="Value">
+                                    <MudTextField T="string" @bind-Value="@context.Value" Variant="Variant.Text" DisableUnderLine="true" Margin="Margin.Dense" />
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
                 </ChildContent>
 
             </MudExpansionPanel>

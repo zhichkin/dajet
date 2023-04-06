@@ -50,6 +50,14 @@ namespace DaJet.Http.Controllers
 
             return Content(json);
         }
+        [HttpGet("blocks")] public ActionResult SelectPipelineBlocks()
+        {
+            List<PipelineBlock> list = _builder.GetPipelineBlocks();
+
+            string json = JsonSerializer.Serialize(list, _options);
+
+            return Content(json);
+        }
 
         [HttpPost("")] public ActionResult Insert([FromBody] PipelineOptions options)
         {

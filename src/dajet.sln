@@ -54,7 +54,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-model", "dajet-model\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-flow", "dajet-flow\dajet-flow.csproj", "{0DFE7098-33C6-4572-B974-A7B99B9BB72D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-flow-model", "dajet-flow-model\dajet-flow-model.csproj", "{9CE5529A-1730-4EAC-9EF9-C0D39BD6C8D7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-flow-model", "dajet-flow-model\dajet-flow-model.csproj", "{9CE5529A-1730-4EAC-9EF9-C0D39BD6C8D7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

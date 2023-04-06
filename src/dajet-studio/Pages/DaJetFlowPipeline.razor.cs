@@ -1,5 +1,8 @@
 ﻿using DaJet.Flow.Model;
+using DaJet.Studio.Controllers;
 using Microsoft.AspNetCore.Components;
+using MudBlazor;
+using System.Net;
 using System.Net.Http.Json;
 
 namespace DaJet.Studio.Pages
@@ -102,6 +105,46 @@ namespace DaJet.Studio.Pages
             }
 
             return options;
+        }
+        protected async Task SelectPipelineBlock()
+        {
+            var settings = new DialogOptions() { CloseButton = true };
+            var dialog = DialogService.Show<SelectPipelineBlockDialog>("Select pipeline block", settings);
+            var result = await dialog.Result;
+            if (result.Cancelled) { return; }
+            if (result.Data is not PipelineBlock block) { return; }
+
+            if (!OptionsInfo.ContainsKey(block.Handler))
+            {
+                List<OptionInfo> options = await SelectOptions(block.Handler);
+
+                foreach (OptionInfo option in options)
+                {
+                    if (block.Options.TryGetValue(option.Name, out string value))
+                    {
+                        option.Value = value;
+                    }
+                }
+
+                OptionsInfo.Add(block.Handler, options);
+            }
+            
+            Model.Blocks.Add(block);
+
+            StateHasChanged();
+        }
+        protected async Task CreatePipeline()
+        {
+            try
+            {
+                HttpResponseMessage response = await Http.PostAsJsonAsync("/flow", Model);
+
+                Navigator.NavigateTo("/dajet-flow");
+            }
+            catch
+            {
+                throw;
+            }
         }
     }
 }
