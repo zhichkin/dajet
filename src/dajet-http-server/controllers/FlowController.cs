@@ -12,41 +12,25 @@ namespace DaJet.Http.Controllers
     [Produces("application/json")]
     public class FlowController : ControllerBase
     {
-        private readonly JsonSerializerOptions _options = new()
+        private readonly JsonSerializerOptions _settings = new()
         {
             WriteIndented = true,
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
         private readonly IPipelineManager _manager;
         private readonly IPipelineBuilder _builder;
-        public FlowController(IPipelineManager manager, IPipelineBuilder builder)
+        private readonly IPipelineOptionsProvider _options;
+        public FlowController(IPipelineOptionsProvider options, IPipelineManager manager, IPipelineBuilder builder)
         {
+            _options = options ?? throw new ArgumentNullException(nameof(options));
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
             _builder = builder ?? throw new ArgumentNullException(nameof(builder));
         }
-        [HttpGet("")] public ActionResult Select()
+        [HttpGet("")] public ActionResult SelectPipelines()
         {
-            List<PipelineInfo> list = _manager.Select();
+            List<PipelineInfo> list = _manager.GetMonitorInfo();
 
-            string json = JsonSerializer.Serialize(list, _options);
-
-            return Content(json);
-        }
-        [HttpGet("{pipeline:guid}")] public ActionResult Select([FromRoute] Guid pipeline)
-        {
-            PipelineOptions options = _manager.Select(pipeline);
-
-            if (options is null) { return NotFound(); }
-
-            string json = JsonSerializer.Serialize(options, _options);
-
-            return Content(json);
-        }
-        [HttpGet("options/{owner}")] public ActionResult SelectOptions([FromRoute] string owner)
-        {
-            List<OptionInfo> list = _builder.GetOptions(owner);
-
-            string json = JsonSerializer.Serialize(list, _options);
+            string json = JsonSerializer.Serialize(list, _settings);
 
             return Content(json);
         }
@@ -54,9 +38,67 @@ namespace DaJet.Http.Controllers
         {
             List<PipelineBlock> list = _builder.GetPipelineBlocks();
 
-            string json = JsonSerializer.Serialize(list, _options);
+            string json = JsonSerializer.Serialize(list, _settings);
 
             return Content(json);
+        }
+        [HttpGet("{pipeline:guid}")] public ActionResult SelectPipeline([FromRoute] Guid pipeline)
+        {
+            PipelineOptions entity = _options.Select(pipeline);
+
+            if (entity is null) { return NotFound(); }
+
+            foreach (OptionItem option in _builder.GetOptions(typeof(Pipeline)))
+            {
+                if (entity.Options.Where(item => item.Name == option.Name).FirstOrDefault() is null)
+                {
+                    entity.Options.Add(option);
+                }
+            }
+
+            foreach (PipelineBlock block in entity.Blocks)
+            {
+                foreach (OptionItem option in _builder.GetOptions(block.Handler))
+                {
+                    if (block.Options.Where(item => item.Name == option.Name).FirstOrDefault() is null)
+                    {
+                        block.Options.Add(option);
+                    }
+                }
+            }
+
+            string json = JsonSerializer.Serialize(entity, _settings);
+
+            return Content(json);
+        }
+        [HttpGet("options/{owner}")] public ActionResult SelectOwnerOptions([FromRoute] string owner)
+        {
+            List<OptionItem> list = _builder.GetOptions(owner);
+
+            string json = JsonSerializer.Serialize(list, _settings);
+
+            return Content(json);
+        }
+
+        [HttpPut("execute/{pipeline:guid}")] public ActionResult ExecutePipeline([FromRoute] Guid pipeline)
+        {
+            PipelineOptions entity = _options.Select(pipeline);
+
+            if (entity is null) { return NotFound(); }
+
+            _manager.ExecutePipeline(entity.Uuid);
+
+            return Ok();
+        }
+        [HttpPut("dispose/{pipeline:guid}")] public ActionResult DisposePipeline([FromRoute] Guid pipeline)
+        {
+            PipelineOptions entity = _options.Select(pipeline);
+
+            if (entity is null) { return NotFound(); }
+
+            _manager.DisposePipeline(entity.Uuid);
+
+            return Ok();
         }
 
         [HttpPost("")] public ActionResult Insert([FromBody] PipelineOptions options)
@@ -66,27 +108,27 @@ namespace DaJet.Http.Controllers
                 return BadRequest("Неверно указаны параметры!");
             }
 
-            _ = _manager.Insert(in options);
+            _ = _options.Insert(in options);
 
             return Created($"{options.Name}", $"{options.Uuid}");
         }
         [HttpPut("")] public ActionResult Update([FromBody] PipelineOptions options)
         {
-            PipelineOptions current = _manager.Select(options.Uuid);
+            PipelineOptions current = _options.Select(options.Uuid);
 
             if (current is null) { return NotFound(); }
 
-            _ = _manager.Update(in options);
+            _ = _options.Update(in options);
 
             return Ok();
         }
         [HttpDelete("{pipeline:guid}")] public ActionResult Delete([FromRoute] Guid pipeline)
         {
-            PipelineOptions options = _manager.Select(pipeline);
+            PipelineOptions options = _options.Select(pipeline);
 
             if (options is null) { return NotFound(); }
 
-            _ = _manager.Delete(in options);
+            _ = _options.Delete(in options);
 
             return Ok();
         }

@@ -13,8 +13,9 @@
 <div style="margin:5px;overflow:scroll;">
 
     <MudToolBar>
-        <MudButton OnClick="CreatePipeline" Size="Size.Small">Save</MudButton>
         <MudButton OnClick="SelectPipelineBlock" Size="Size.Small">Add block</MudButton>
+        <MudButton OnClick="CreateUpdatePipeline" Size="Size.Small">Save</MudButton>
+        <MudButton OnClick="DeletePipeline" Size="Size.Small">Delete</MudButton>
     </MudToolBar>
 
     <MudTextField T="string" Label="Pipeline" @bind-Value="@Model.Name" Variant="Variant.Outlined" Margin="Margin.Dense" />
@@ -26,13 +27,13 @@
                 <span style="font-weight:bold;">Pipeline Options</span>
             </TitleContent>
             <ChildContent>
-                @if (OptionsInfo.Count == 0 || OptionsInfo["DaJet.Flow.Pipeline"].Count == 0)
+                @if (@Model.Options.Count == 0)
                 {
                     <MudField Variant="Variant.Text" DisableUnderLine="true" FullWidth="false" Margin="Margin.Dense">No options</MudField>
                 }
                 else
                 {
-                    <MudTable T="OptionInfo" Items="@OptionsInfo["DaJet.Flow.Pipeline"]" Hover="true" Dense="true">
+                    <MudTable T="OptionItem" Items="@Model.Options" Hover="true" Dense="true">
                         <HeaderContent>
                             <MudTh>Name</MudTh>
                             <MudTh>Type</MudTh>
@@ -58,13 +59,13 @@
                     <span style="font-weight:bold;">@block.Message</span><span>&nbsp;&gt;</span>
                 </TitleContent>
                 <ChildContent>
-                    @if (OptionsInfo.Count == 0 || OptionsInfo[block.Handler].Count == 0)
+                    @if (@block.Options.Count == 0)
                     {
                         <MudField Variant="Variant.Text" DisableUnderLine="true" FullWidth="false" Margin="Margin.Dense">No options</MudField>
                     }
                     else
                     {
-                        <MudTable T="OptionInfo" Items="@OptionsInfo[block.Handler]" Hover="true" Dense="true">
+                        <MudTable T="OptionItem" Items="@block.Options" Hover="true" Dense="true">
                             <HeaderContent>
                                 <MudTh>Name</MudTh>
                                 <MudTh>Type</MudTh>

@@ -4,6 +4,7 @@ using System.Data.Common;
 
 namespace DaJet.Flow.SqlServer
 {
+    [PipelineBlock]
     public sealed class Producer : TargetBlock<DbDataReader>
     {
         private SqlConnection _connection;

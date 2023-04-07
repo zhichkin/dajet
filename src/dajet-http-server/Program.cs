@@ -92,9 +92,10 @@ namespace DaJet.Http.Server
             }
             .ToString();
 
-            PipelineManager manager = new(connectionString);
-            services.AddSingleton<IPipelineManager>(manager);
+            PipelineOptionsProvider options = new(connectionString);
+            services.AddSingleton<IPipelineOptionsProvider>(options);
             services.AddSingleton<IPipelineBuilder, PipelineBuilder>();
+            services.AddSingleton<IPipelineManager, PipelineManager>();
             services.AddHostedService<DaJetFlowService>();
         }
         private static void ConfigureMetadataService(IServiceCollection services)

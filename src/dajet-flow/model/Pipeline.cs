@@ -1,77 +1,90 @@
-﻿using DaJet.Metadata;
+﻿using DaJet.Flow.Model;
+using DaJet.Metadata;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace DaJet.Flow
 {
     public interface IPipeline : IDisposable
     {
-        bool IsRunning { get; }
+        Guid Uuid { get; }
+        string Name { get; }
+        PipelineState State { get; }
+        ActivationMode Activation { get; }
         Task ExecuteAsync(CancellationToken cancellationToken);
     }
     public sealed class Pipeline : Configurable, IPipeline
     {
-        private readonly Guid _uuid;
-        private bool _disposed = false;
-        private bool _executing = false;
+        private Task _task;
         private CancellationToken _token;
-        private readonly ILogger _logger;
         private readonly ISourceBlock _source;
-        [ActivatorUtilitiesConstructor] public Pipeline(Guid uuid, ISourceBlock source, ILogger<Pipeline> logger)
+        private readonly IPipelineManager _manager;
+        [ActivatorUtilitiesConstructor] public Pipeline(PipelineOptions options, ISourceBlock source, IPipelineManager manager)
         {
-            _uuid = uuid;
+            Uuid = options.Uuid;
+            Name = options.Name;
+            State = PipelineState.Stopped;
+            Activation = options.Activation;
             _source = source ?? throw new ArgumentNullException(nameof(source));
-            _logger = logger;
+            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
         }
-        [Option] public int IdleTimeout { get; set; } = 60; // seconds
-        public bool IsRunning { get { return _executing; } }
+        public Guid Uuid { get; private set; }
+        public string Name { get; private set; }
+        public PipelineState State { get; private set; }
+        public ActivationMode Activation { get; private set; } = ActivationMode.Manual;
+        [Option] public int SleepTimeout { get; set; } = 60; // seconds
         public Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            if (_executing) { throw new InvalidOperationException("Already executing"); }
-
-            _executing = true;
-
             _token = cancellationToken;
 
-            return Task.Factory.StartNew(ExecutePipeline, TaskCreationOptions.LongRunning);
+            if (State == PipelineState.Working || State == PipelineState.Sleeping) { return _task; }
+
+            State = PipelineState.Working;
+
+            _task = Task.Factory.StartNew(ExecutePipeline, TaskCreationOptions.LongRunning);
+
+            return _task;
         }
         private void ExecutePipeline()
         {
-            _logger?.LogInformation($"Pipeline {{{_uuid}}} is running ...");
-
-            while (!_token.IsCancellationRequested && !_disposed)
+            while (!_token.IsCancellationRequested)
             {
+                _manager.UpdatePipelineStatus(Uuid, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+
                 try
                 {
+                    State = PipelineState.Working;
                     _source.Execute();
+                    _manager.UpdatePipelineStatus(Uuid, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                 }
                 catch (Exception error)
                 {
-                    _logger?.LogError(ExceptionHelper.GetErrorMessageAndStackTrace(error));
+                    string status = string.Format("[{0}] {1}",
+                        DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                        ExceptionHelper.GetErrorMessageAndStackTrace(error));
+
+                    _manager.UpdatePipelineStatus(Uuid, status);
                 }
 
-                if (IdleTimeout == 0) { break; } // run once
+                if (State == PipelineState.Stopped) { break; } // stopped by calling Dispose
+
+                if (SleepTimeout <= 0) { State = PipelineState.Completed; break; } // run once
 
                 try
                 {
-                    _logger?.LogInformation($"Pipeline {{{_uuid}}} {IdleTimeout} seconds delay.");
-
-                    Task.Delay(TimeSpan.FromSeconds(IdleTimeout)).Wait(_token);
+                    State = PipelineState.Sleeping;
+                    Task.Delay(TimeSpan.FromSeconds(SleepTimeout)).Wait(_token);
                 }
-                catch // (OperationCanceledException)
+                catch // OperationCanceledException
                 {
-                    // do nothing - the wait task has been canceled
+                    State = PipelineState.Stopped;
                 }
+
+                if (State == PipelineState.Stopped) { break; } // stopped by calling Dispose
             }
         }
         public void Dispose()
         {
-            if (_disposed) { return; }
-
-            _disposed = true;
-            _executing = false;
-
-            _logger?.LogInformation($"Pipeline {{{_uuid}}} disposed");
+            State = PipelineState.Stopped;
         }
     }
 }

@@ -1,16 +1,17 @@
-﻿using System.Reflection;
+﻿using DaJet.Flow.Model;
+using System.Reflection;
 
 namespace DaJet.Flow
 {
     public abstract class Configurable
     {
-        public void Configure(in Dictionary<string, string> options)
+        public virtual void Configure(in List<OptionItem> options)
         {
             Type type = GetType();
 
             foreach (var option in options)
             {
-                PropertyInfo property = type.GetProperty(option.Key);
+                PropertyInfo property = type.GetProperty(option.Name);
 
                 if (property is null) { continue; }
 
@@ -21,7 +22,11 @@ namespace DaJet.Flow
         }
         private static object GetOptionValue(Type type, string value)
         {
-            if (type == typeof(int))
+            if (type == typeof(bool))
+            {
+                return (value.ToLower() == "true");
+            }
+            else if (type == typeof(int))
             {
                 if (int.TryParse(value, out int result))
                 {

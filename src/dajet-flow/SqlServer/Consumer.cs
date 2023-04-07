@@ -4,6 +4,7 @@ using System.Data.Common;
 
 namespace DaJet.Flow.SqlServer
 {
+    [PipelineBlock]
     public sealed class Consumer : SourceBlock<DbDataReader>
     {
         public Consumer() { }

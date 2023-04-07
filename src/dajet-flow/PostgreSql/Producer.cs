@@ -5,6 +5,7 @@ using System.Data.Common;
 
 namespace DaJet.Flow.PostgreSql
 {
+    [PipelineBlock]
     public sealed class Producer : TargetBlock<DbDataReader>
     {
         public Producer() { }

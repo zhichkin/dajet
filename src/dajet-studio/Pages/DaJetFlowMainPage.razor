@@ -21,12 +21,18 @@
     <MudTable Items="@Pipelines" T="PipelineInfo" OnRowClick="RowClickEvent"
               Loading="@IsLoading" LoadingProgressColor="Color.Info" Hover="true">
         <HeaderContent>
-            <MudTh>Name</MudTh>
             <MudTh>Uuid</MudTh>
+            <MudTh>Name</MudTh>
+            <MudTh>Activation</MudTh>
+            <MudTh>State</MudTh>
+            <MudTh>Status</MudTh>
         </HeaderContent>
         <RowTemplate>
-            <MudTd DataLabel="Name"><MudLink Href=@("/dajet-flow/pipeline/" + context.Uuid.ToString().ToLower())>@context.Name</MudLink></MudTd>
             <MudTd DataLabel="Uuid">@context.Uuid</MudTd>
+            <MudTd DataLabel="Name"><MudLink Href=@("/dajet-flow/pipeline/" + context.Uuid.ToString().ToLower())>@context.Name</MudLink></MudTd>
+            <MudTd DataLabel="Activation">@context.Activation.ToString()</MudTd>
+            <MudTd DataLabel="State">@context.State.ToString()</MudTd>
+            <MudTd DataLabel="Status">@context.Status</MudTd>
         </RowTemplate>
     </MudTable>
 

@@ -1,5 +1,4 @@
-﻿using DaJet.Flow.Model;
-using DaJet.Metadata;
+﻿using DaJet.Metadata;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -9,14 +8,11 @@ namespace DaJet.Flow
     {
         private readonly ILogger _logger;
         private readonly IPipelineManager _manager;
-        private readonly IPipelineBuilder _builder;
-        private readonly Dictionary<Guid, IPipeline> _pipelines = new();
         private CancellationToken _cancellationToken;
-        public DaJetFlowService(IPipelineManager manager, IPipelineBuilder builder, ILogger<DaJetFlowService> logger)
+        public DaJetFlowService(IPipelineManager manager, ILogger<DaJetFlowService> logger)
         {
             _logger = logger;
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
-            _builder = builder ?? throw new ArgumentNullException(nameof(builder));
         }
         protected override Task ExecuteAsync(CancellationToken cancellationToken)
         {
@@ -53,69 +49,17 @@ namespace DaJet.Flow
                 }
             }
         }
-        public override void Dispose()
-        {
-            foreach (IPipeline pipeline in _pipelines.Values)
-            {
-                pipeline.Dispose();
-            }
-
-            _logger?.LogInformation("[DaJetFlowService] disposed");
-
-            base.Dispose();
-        }
         private void DoWork()
         {
-            AssemblePipelines();
-            ExecutePipelines();
+            _manager.ActivatePipelines(_cancellationToken);
         }
-        private void AssemblePipelines()
+        public override void Dispose()
         {
-            List<PipelineInfo> pipelines = _manager.Select();
+            _manager.Dispose();
 
-            foreach (PipelineInfo info in pipelines)
-            {
-                if (_pipelines.ContainsKey(info.Uuid))
-                {
-                    continue;
-                }
+            base.Dispose();
 
-                try
-                {
-                    PipelineOptions options = _manager.Select(info.Uuid);
-
-                    IPipeline pipeline = _builder.Build(in options);
-
-                    if (pipeline is not null)
-                    {
-                        _pipelines.Add(info.Uuid, pipeline);
-
-                        _logger?.LogInformation($"Pipeline [{info.Name}] created successfully.");
-                    }
-                }
-                catch (Exception error)
-                {
-                    _logger?.LogError(ExceptionHelper.GetErrorMessageAndStackTrace(error));
-                }
-            }
-        }
-        private void ExecutePipelines()
-        {
-            foreach (var item in _pipelines)
-            {
-                IPipeline pipeline = item.Value;
-
-                if (pipeline.IsRunning) { continue; }
-
-                Task task = pipeline.ExecuteAsync(_cancellationToken);
-
-                _logger?.LogInformation($"Pipeline [{item.Key}] is executing ...");
-
-                if (task.Status == TaskStatus.RanToCompletion)
-                {
-                    //TODO
-                }
-            }
+            _logger?.LogInformation("[DaJetFlowService] disposed");
         }
     }
 }

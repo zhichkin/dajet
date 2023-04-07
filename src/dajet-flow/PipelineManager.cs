@@ -1,417 +1,131 @@
 ﻿using DaJet.Flow.Model;
-using Microsoft.Data.Sqlite;
+using DaJet.Metadata;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace DaJet.Flow
 {
-    public interface IPipelineManager
+    public interface IPipelineManager : IDisposable
     {
-        List<PipelineInfo> Select();
-        PipelineOptions Select(Guid uuid);
-        bool Insert(in PipelineOptions options);
-        bool Update(in PipelineOptions options);
-        bool Delete(in PipelineOptions options);
+        void ExecutePipeline(Guid uuid);
+        void DisposePipeline(Guid uuid);
+        List<PipelineInfo> GetMonitorInfo();
+        void ActivatePipelines(CancellationToken token);
+        void UpdatePipelineStatus(Guid uuid, in string status);
     }
     public sealed class PipelineManager : IPipelineManager
     {
-        #region "SQL: CREATE TABLES"
-
-        private const string CREATE_PIPELINE_TABLE_SCRIPT =
-            "CREATE TABLE IF NOT EXISTS " +
-            "pipelines (uuid TEXT NOT NULL, name TEXT NOT NULL UNIQUE, " +
-            "PRIMARY KEY (uuid)) WITHOUT ROWID;";
-
-        private const string CREATE_PIPELINE_BLOCKS_TABLE_SCRIPT =
-            "CREATE TABLE IF NOT EXISTS " +
-            "pipeline_blocks (uuid TEXT NOT NULL, " +
-            "pipeline TEXT NOT NULL, ordinal INTEGER NOT NULL, " +
-            "handler TEXT NOT NULL, message TEXT NOT NULL, " +
-            "PRIMARY KEY (uuid)) WITHOUT ROWID;";
-
-        private const string CREATE_OPTIONS_TABLE_SCRIPT =
-            "CREATE TABLE IF NOT EXISTS " +
-            "options (owner TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, " +
-            "PRIMARY KEY (owner, key)) WITHOUT ROWID;";
-
-        #endregion
-
-        #region "SQL: CRUD SCRIPTS"
-
-        private const string SELECT_PIPELINES_SCRIPT = "SELECT uuid, name FROM pipelines ORDER BY name ASC;";
-        private const string SELECT_BY_UUID_SCRIPT = "SELECT uuid, name FROM pipelines WHERE uuid = @uuid;";
-        private const string INSERT_SCRIPT = "INSERT INTO pipelines (uuid, name) VALUES (@uuid, @name);";
-        private const string UPDATE_SCRIPT = "UPDATE pipelines SET name = @name WHERE uuid = @uuid;";
-        private const string DELETE_SCRIPT = "DELETE FROM pipelines WHERE uuid = @uuid;";
-
-        private const string SELECT_OPTIONS_SCRIPT =
-            "SELECT key, value FROM options WHERE owner = @owner ORDER BY key ASC;";
-        private const string INSERT_OPTION_SCRIPT =
-            "INSERT INTO options (owner, key, value) VALUES (@owner, @key, @value);";
-        private const string DELETE_OPTIONS_SCRIPT =
-            "DELETE FROM options WHERE owner = @owner;";
-
-        private const string SELECT_PIPELINE_BLOCKS_SCRIPT =
-            "SELECT uuid, ordinal, handler, message FROM pipeline_blocks " +
-            "WHERE pipeline = @pipeline ORDER BY ordinal ASC;";
-        private const string INSERT_PIPELINE_BLOCK_SCRIPT =
-            "INSERT INTO pipeline_blocks (uuid, pipeline, ordinal, handler, message) " +
-            "VALUES (@uuid, @pipeline, @ordinal, @handler, @message);";
-        private const string DELETE_PIPELINE_BLOCKS_SCRIPT =
-            "DELETE FROM pipeline_blocks WHERE pipeline = @pipeline;";
-
-        #endregion
-
-        private readonly string _connectionString;
-        public PipelineManager(string connectionString)
+        private CancellationToken _token;
+        private readonly ILogger _logger;
+        private readonly IPipelineBuilder _builder;
+        private readonly IPipelineOptionsProvider _options;
+        private readonly Dictionary<Guid, IPipeline> _pipelines = new();
+        private readonly Dictionary<Guid, PipelineInfo> _monitor = new();
+        public PipelineManager(IPipelineOptionsProvider options, IPipelineBuilder builder, ILogger<PipelineManager> logger)
         {
-            _connectionString = connectionString; InitializeDatabase();
+            _logger = logger;
+            _options = options ?? throw new ArgumentNullException(nameof(options));
+            _builder = builder ?? throw new ArgumentNullException(nameof(builder));
         }
-        private void InitializeDatabase()
+        public void ActivatePipelines(CancellationToken token)
         {
-            using (SqliteConnection connection = new(_connectionString))
+            _token = token;
+
+            List<PipelineInfo> pipelines = _options.Select();
+
+            foreach (PipelineInfo info in pipelines)
             {
-                connection.Open();
+                if (_pipelines.ContainsKey(info.Uuid)) { continue; }
 
-                using (SqliteCommand command = connection.CreateCommand())
+                try
                 {
-                    command.CommandText = CREATE_PIPELINE_TABLE_SCRIPT;
-                    _ = command.ExecuteNonQuery();
+                    PipelineOptions options = _options.Select(info.Uuid);
 
-                    command.CommandText = CREATE_PIPELINE_BLOCKS_TABLE_SCRIPT;
-                    _ = command.ExecuteNonQuery();
+                    IPipeline pipeline = _builder.Build(in options);
 
-                    command.CommandText = CREATE_OPTIONS_TABLE_SCRIPT;
-                    _ = command.ExecuteNonQuery();
-                }
-            }
-        }
-
-        #region "CRUD COMMANDS"
-
-        public List<PipelineInfo> Select()
-        {
-            List<PipelineInfo> list = new();
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = SELECT_PIPELINES_SCRIPT;
-
-                    using (SqliteDataReader reader = command.ExecuteReader())
+                    if (pipeline is not null)
                     {
-                        while (reader.Read())
+                        _pipelines.Add(info.Uuid, pipeline);
+                        _monitor.Add(info.Uuid, CreatePipelineInfo(in pipeline));
+
+                        _logger?.LogInformation($"Pipeline [{info.Name}] created successfully.");
+
+                        if (pipeline.Activation == ActivationMode.Auto)
                         {
-                            PipelineInfo item = new()
-                            {
-                                Uuid = new Guid(reader.GetString(0)),
-                                Name = reader.GetString(1)
-                            };
-                            list.Add(item);
+                            Task task = pipeline.ExecuteAsync(_token);
                         }
-                        reader.Close();
                     }
                 }
-            }
-
-            return list;
-        }
-        public PipelineOptions Select(Guid uuid)
-        {
-            PipelineOptions options = null;
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
+                catch (Exception error)
                 {
-                    command.CommandText = SELECT_BY_UUID_SCRIPT;
-
-                    command.Parameters.AddWithValue("uuid", uuid.ToString().ToLower());
-
-                    using (SqliteDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            options = new PipelineOptions()
-                            {
-                                Uuid = new Guid(reader.GetString(0)),
-                                Name = reader.GetString(1)
-                            };
-                        }
-                        reader.Close();
-                    }
-                }
-            }
-
-            if (options is not null)
-            {
-                options.Blocks = SelectPipelineBlocks(options.Uuid);
-                options.Options = SelectOptions(options.Uuid);
-            }
-
-            return options;
-        }
-        private Dictionary<string, string> SelectOptions(Guid owner)
-        {
-            Dictionary<string, string> options = new();
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = SELECT_OPTIONS_SCRIPT;
-
-                    command.Parameters.AddWithValue("owner", owner.ToString().ToLower());
-
-                    using (SqliteDataReader reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            options.Add(reader.GetString(0), reader.GetString(1));
-                        }
-                        reader.Close();
-                    }
-                }
-            }
-
-            return options;
-        }
-        private List<PipelineBlock> SelectPipelineBlocks(Guid pipeline)
-        {
-            List<PipelineBlock> list = new();
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = SELECT_PIPELINE_BLOCKS_SCRIPT;
-
-                    command.Parameters.AddWithValue("pipeline", pipeline.ToString().ToLower());
-
-                    using (SqliteDataReader reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            PipelineBlock item = new()
-                            {
-                                Uuid = new Guid(reader.GetString(0)),
-                                Ordinal = reader.GetInt32(1),
-                                Handler = reader.GetString(2),
-                                Message = reader.GetString(3)
-                            };
-                            list.Add(item);
-                        }
-                        reader.Close();
-                    }
-                }
-            }
-
-            foreach (PipelineBlock block in list)
-            {
-                block.Options = SelectOptions(block.Uuid);
-            }
-
-            return list;
-        }
-
-        public bool Insert(in PipelineOptions entity)
-        {
-            int result;
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = INSERT_SCRIPT;
-
-                    command.Parameters.AddWithValue("uuid", entity.Uuid.ToString().ToLower());
-                    command.Parameters.AddWithValue("name", entity.Name);
-
-                    result = command.ExecuteNonQuery();
-                }
-            }
-
-            InsertOptions(entity);
-            InsertPipelineBlocks(entity);
-
-            return (result == 1);
-        }
-        private void InsertOptions(PipelineOptions entity)
-        {
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = INSERT_OPTION_SCRIPT;
-
-                    foreach (var option in entity.Options)
-                    {
-                        command.Parameters.Clear();
-                        command.Parameters.AddWithValue("owner", entity.Uuid.ToString().ToLower());
-                        command.Parameters.AddWithValue("key", option.Key);
-                        command.Parameters.AddWithValue("value", option.Value);
-                        _ = command.ExecuteNonQuery();
-                    }
+                    _logger?.LogError(ExceptionHelper.GetErrorMessageAndStackTrace(error));
                 }
             }
         }
-        private void InsertOptions(PipelineBlock entity)
+        private PipelineInfo CreatePipelineInfo(in IPipeline pipeline)
         {
-            using (SqliteConnection connection = new(_connectionString))
+            return new PipelineInfo()
             {
-                connection.Open();
+                Uuid = pipeline.Uuid,
+                Name = pipeline.Name,
+                State = pipeline.State,
+                Status = string.Empty,
+                Activation = pipeline.Activation
+            };
+        }
+        public List<PipelineInfo> GetMonitorInfo()
+        {
+            List<PipelineInfo> monitor = new();
 
-                using (SqliteCommand command = connection.CreateCommand())
+            foreach (PipelineInfo info in _monitor.Values)
+            {
+                if (_pipelines.TryGetValue(info.Uuid, out IPipeline pipeline))
                 {
-                    command.CommandText = INSERT_OPTION_SCRIPT;
+                    info.State = pipeline.State;
+                }
 
-                    foreach (var option in entity.Options)
-                    {
-                        command.Parameters.Clear();
-                        command.Parameters.AddWithValue("owner", entity.Uuid.ToString().ToLower());
-                        command.Parameters.AddWithValue("key", option.Key);
-                        command.Parameters.AddWithValue("value", option.Value);
-                        _ = command.ExecuteNonQuery();
-                    }
+                monitor.Add(info);
+            }
+
+            return monitor;
+        }
+        public void UpdatePipelineStatus(Guid uuid, in string status)
+        {
+            if (_monitor.TryGetValue(uuid, out PipelineInfo info))
+            {
+                info.Status = status;
+            }
+        }
+        public void ExecutePipeline(Guid uuid)
+        {
+            if (_pipelines.TryGetValue(uuid, out IPipeline pipeline))
+            {
+                if (pipeline.State == PipelineState.Stopped || pipeline.State == PipelineState.Completed)
+                {
+                    Task task = pipeline.ExecuteAsync(_token);
                 }
             }
         }
-        private void InsertPipelineBlocks(PipelineOptions entity)
+        public void DisposePipeline(Guid uuid)
         {
-            using (SqliteConnection connection = new(_connectionString))
+            if (_pipelines.TryGetValue(uuid, out IPipeline pipeline))
             {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
+                if (pipeline.State == PipelineState.Working || pipeline.State == PipelineState.Sleeping)
                 {
-                    command.CommandText = INSERT_PIPELINE_BLOCK_SCRIPT;
-
-                    int ordinal = 0;
-
-                    foreach (PipelineBlock block in entity.Blocks)
-                    {
-                        command.Parameters.Clear();
-                        command.Parameters.AddWithValue("uuid", block.Uuid.ToString().ToLower());
-                        command.Parameters.AddWithValue("pipeline", entity.Uuid.ToString().ToLower());
-                        command.Parameters.AddWithValue("ordinal", ordinal++);
-                        command.Parameters.AddWithValue("handler", block.Handler);
-                        command.Parameters.AddWithValue("message", block.Message);
-                        _ = command.ExecuteNonQuery();
-                    }
-                }
-            }
-
-            foreach (PipelineBlock block in entity.Blocks)
-            {
-                InsertOptions(block);
-            }
-        }
-
-        public bool Update(in PipelineOptions entity)
-        {
-            int result;
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = UPDATE_SCRIPT;
-
-                    command.Parameters.AddWithValue("uuid", entity.Uuid.ToString().ToLower());
-                    command.Parameters.AddWithValue("name", entity.Name);
-
-                    result = command.ExecuteNonQuery();
-                }
-            }
-
-            DeleteOptions(entity.Uuid);
-            foreach (PipelineBlock block in entity.Blocks)
-            {
-                DeleteOptions(block.Uuid);
-            }
-            DeletePipelineBlocks(entity.Uuid);
-
-            InsertOptions(entity);
-            InsertPipelineBlocks(entity);
-
-            return (result == 1);
-        }
-
-        public bool Delete(in PipelineOptions entity)
-        {
-            int result;
-
-            DeleteOptions(entity.Uuid);
-
-            foreach (PipelineBlock block in entity.Blocks)
-            {
-                DeleteOptions(block.Uuid);
-            }
-
-            DeletePipelineBlocks(entity.Uuid);
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = DELETE_SCRIPT;
-
-                    command.Parameters.AddWithValue("uuid", entity.Uuid.ToString().ToLower());
-
-                    result = command.ExecuteNonQuery();
-                }
-            }
-
-            return (result > 0);
-        }
-        private void DeleteOptions(Guid owner)
-        {
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = DELETE_OPTIONS_SCRIPT;
-
-                    command.Parameters.AddWithValue("owner", owner.ToString().ToLower());
-
-                    int result = command.ExecuteNonQuery();
+                    pipeline.Dispose();
                 }
             }
         }
-        private void DeletePipelineBlocks(Guid pipeline)
+        public void Dispose()
         {
-            using (SqliteConnection connection = new(_connectionString))
+            foreach (IPipeline pipeline in _pipelines.Values)
             {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = DELETE_PIPELINE_BLOCKS_SCRIPT;
-
-                    command.Parameters.AddWithValue("pipeline", pipeline.ToString().ToLower());
-
-                    int result = command.ExecuteNonQuery();
-                }
+                pipeline.Dispose();
             }
+            _monitor.Clear();
+            _pipelines.Clear();
         }
-
-        #endregion
     }
 }

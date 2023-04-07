@@ -10,8 +10,8 @@ namespace DaJet.Flow
     {
         IPipeline Build(in PipelineOptions options);
         List<PipelineBlock> GetPipelineBlocks();
-        List<OptionInfo> GetOptions(Type ownerType);
-        List<OptionInfo> GetOptions(string ownerTypeName);
+        List<OptionItem> GetOptions(Type ownerType);
+        List<OptionItem> GetOptions(string ownerTypeName);
     }
     public sealed class PipelineBuilder : IPipelineBuilder
     {
@@ -79,7 +79,7 @@ namespace DaJet.Flow
                 throw new InvalidOperationException($"Pipeline source type does not implement DaJet.Flow.ISourceBlock interface.");
             }
 
-            Pipeline pipeline = ActivatorUtilities.CreateInstance(_services, typeof(Pipeline), options.Uuid, source) as Pipeline;
+            Pipeline pipeline = ActivatorUtilities.CreateInstance(_services, typeof(Pipeline), options, source) as Pipeline;
 
             pipeline.Configure(options.Options);
 
@@ -145,28 +145,13 @@ namespace DaJet.Flow
             {
                 foreach (Type type in assembly.GetTypes())
                 {
-                    if (!(type.IsPublic && type.IsSealed))
-                    {
-                        continue;
-                    }
-
-                    //TODO: PipelineBlockAttribute ???
-
-                    //if (type.IsSubclassOf(typeof(SourceBlock<>)) ||
-                    //    type.IsSubclassOf(typeof(TargetBlock<>)) ||
-                    //    type.IsSubclassOf(typeof(ProcessorBlock<>)) ||
-                    //    type.IsSubclassOf(typeof(TransformerBlock<,>)))
-                    //{
-                    //}
-
-                    if (type == typeof(Pipeline)) { continue; } // is also Configurable
-
-                    if (type.IsSubclassOf(typeof(Configurable)))
+                    if (type.GetCustomAttribute<PipelineBlockAttribute>() is not null)
                     {
                         blocks.Add(new PipelineBlock()
                         {
                             Handler = type.ToString(),
-                            Message = GetPipelineBlockMessageType(type).ToString()
+                            Message = GetPipelineBlockMessageType(type).ToString(),
+                            Options = GetOptions(type)
                         });
                     }
                 }
@@ -174,15 +159,15 @@ namespace DaJet.Flow
 
             return blocks;
         }
-        public List<OptionInfo> GetOptions(Type ownerType)
+        public List<OptionItem> GetOptions(Type ownerType)
         {
-            List<OptionInfo> options = new();
+            List<OptionItem> options = new();
 
             foreach (PropertyInfo property in ownerType.GetProperties())
             {
                 if (property.GetCustomAttribute<OptionAttribute>() is not null)
                 {
-                    options.Add(new OptionInfo()
+                    options.Add(new OptionItem()
                     {
                         Name = property.Name,
                         Type = property.PropertyType.ToString()
@@ -192,7 +177,7 @@ namespace DaJet.Flow
 
             return options;
         }
-        public List<OptionInfo> GetOptions(string ownerTypeName)
+        public List<OptionItem> GetOptions(string ownerTypeName)
         {
             Type ownerType = ResolveHandler(ownerTypeName);
 
