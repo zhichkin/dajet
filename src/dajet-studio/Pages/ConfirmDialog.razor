@@ -1,0 +1,14 @@
+﻿
+<MudDialog>
+    <DialogActions>
+        <MudButton OnClick="Submit" Color="Color.Success">Submit</MudButton>
+        <MudButton OnClick="Cancel" Color="Color.Error">Cancel</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code
+{
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    void Submit() => MudDialog.Close(DialogResult.Ok(true));
+    void Cancel() => MudDialog.Cancel();
+}

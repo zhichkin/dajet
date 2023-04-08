@@ -44,30 +44,29 @@ namespace DaJet.Flow
 
             return _task;
         }
+        public void Dispose() { State = PipelineState.Stopped; }
         private void ExecutePipeline()
         {
             while (!_token.IsCancellationRequested)
             {
-                _manager.UpdatePipelineStatus(Uuid, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-
                 try
                 {
                     State = PipelineState.Working;
+                    _manager.UpdatePipelineStatus(Uuid, string.Empty);
+                    _manager.UpdatePipelineStartTime(Uuid, DateTime.Now);
+                    
                     _source.Execute();
-                    _manager.UpdatePipelineStatus(Uuid, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                 }
                 catch (Exception error)
                 {
-                    string status = string.Format("[{0}] {1}",
-                        DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                        ExceptionHelper.GetErrorMessageAndStackTrace(error));
-
-                    _manager.UpdatePipelineStatus(Uuid, status);
+                    _manager.UpdatePipelineStatus(Uuid, ExceptionHelper.GetErrorMessageAndStackTrace(error));
                 }
 
-                if (State == PipelineState.Stopped) { break; } // stopped by calling Dispose
+                _manager.UpdatePipelineFinishTime(Uuid, DateTime.Now);
 
-                if (SleepTimeout <= 0) { State = PipelineState.Completed; break; } // run once
+                if (State == PipelineState.Stopped) { return; } // stopped by calling Dispose
+
+                if (SleepTimeout <= 0) { State = PipelineState.Completed; return; } // run once
 
                 try
                 {
@@ -79,12 +78,8 @@ namespace DaJet.Flow
                     State = PipelineState.Stopped;
                 }
 
-                if (State == PipelineState.Stopped) { break; } // stopped by calling Dispose
+                if (State == PipelineState.Stopped) { return; } // stopped by calling Dispose
             }
-        }
-        public void Dispose()
-        {
-            State = PipelineState.Stopped;
         }
     }
 }

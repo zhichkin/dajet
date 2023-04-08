@@ -9,7 +9,7 @@ namespace DaJet.Studio.Pages
     {
         [Parameter] public Guid Uuid { get; set; }
         protected PipelineOptions Model { get; set; } = new();
-        private bool _is_new_pipeline = true;
+        private bool IsNewPipeline { get; set; } = true;
         protected override async Task OnParametersSetAsync()
         {
             if (Uuid == Guid.Empty)
@@ -19,7 +19,7 @@ namespace DaJet.Studio.Pages
             }
             else
             {
-                _is_new_pipeline = false;
+                IsNewPipeline = false;
                 Model = await SelectPipeline(Uuid); //TODO: handle error if Model is not found by uuid
             }
         }
@@ -97,9 +97,9 @@ namespace DaJet.Studio.Pages
         {
             try
             {
-                HttpResponseMessage response = _is_new_pipeline
-                    ? await Http.PostAsJsonAsync("/flow", Model)
-                    : await Http.PutAsJsonAsync("/flow", Model);
+                HttpResponseMessage response = IsNewPipeline
+                    ? await Http.PostAsJsonAsync("/flow", Model) // create
+                    : await Http.PutAsJsonAsync("/flow", Model); // update
             }
             catch
             {
@@ -110,8 +110,10 @@ namespace DaJet.Studio.Pages
         }
         protected async Task DeletePipeline()
         {
-            if (_is_new_pipeline) { return; }
-
+            var dialog = DialogService.Show<ConfirmDialog>($"Delete [{Model.Name}] pipeline ?");
+            var result = await dialog.Result;
+            if (result.Cancelled) { return; }
+            
             try
             {
                 HttpResponseMessage response = await Http.DeleteAsync($"/flow/{Model.Uuid.ToString().ToLower()}");

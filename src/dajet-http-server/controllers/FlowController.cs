@@ -130,6 +130,8 @@ namespace DaJet.Http.Controllers
 
             _ = _options.Delete(in options);
 
+            // TODO: _manager.RemovePipeline(pipeline); // synchronize in-memory monitor
+
             return Ok();
         }
     }

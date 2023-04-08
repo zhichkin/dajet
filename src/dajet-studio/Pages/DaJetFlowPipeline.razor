@@ -12,14 +12,34 @@
 
 <div style="margin:5px;overflow:scroll;">
 
-    <MudToolBar>
-        <MudButton OnClick="SelectPipelineBlock" Size="Size.Small">Add block</MudButton>
-        <MudButton OnClick="CreateUpdatePipeline" Size="Size.Small">Save</MudButton>
-        <MudButton OnClick="DeletePipeline" Size="Size.Small">Delete</MudButton>
-    </MudToolBar>
+    <div style="margin: 0px 0px 15px 0px;">
 
-    <MudTextField T="string" Label="Pipeline" @bind-Value="@Model.Name" Variant="Variant.Outlined" Margin="Margin.Dense" />
+        <MudButton OnClick="CreateUpdatePipeline" Size="Size.Small" Variant="Variant.Filled" Color="Color.Info">Save</MudButton>
+        
+        @if (IsNewPipeline)
+        {
+            <MudButton OnClick="SelectPipelineBlock" Size="Size.Small" Variant="Variant.Filled" Color="Color.Success">Add block</MudButton>
+        }
+        else
+        {
+            <MudButton OnClick="DeletePipeline" Size="Size.Small" Variant="Variant.Filled" Color="Color.Error">Delete</MudButton>
+        }
 
+    </div>
+
+    <div style="margin: 0px 0px 10px 0px;">
+        <MudTextField T="string" Label="Pipeline" @bind-Value="@Model.Name" Variant="Variant.Outlined" Margin="Margin.Dense" />
+    </div>
+
+    <MudSelect T="ActivationMode" Label="Activation" @bind-Value="@Model.Activation" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+        
+        @foreach(var value in Enum.GetValues<ActivationMode>())
+        {
+            <MudSelectItem Value="@value" />
+        }
+
+    </MudSelect>
+    
     <MudExpansionPanels MultiExpansion="true" Dense="true">
 
         <MudExpansionPanel Dense="true">

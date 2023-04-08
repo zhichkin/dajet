@@ -14,6 +14,8 @@ namespace DaJet.Flow
         List<PipelineInfo> GetMonitorInfo();
         void ActivatePipelines(CancellationToken token);
         void UpdatePipelineStatus(Guid uuid, in string status);
+        void UpdatePipelineStartTime(Guid uuid, DateTime value);
+        void UpdatePipelineFinishTime(Guid uuid, DateTime value);
     }
     public sealed class PipelineManager : IPipelineManager
     {
@@ -37,30 +39,46 @@ namespace DaJet.Flow
 
             foreach (PipelineInfo info in pipelines)
             {
-                if (_pipelines.ContainsKey(info.Uuid)) { continue; }
-
-                try
+                if (_pipelines.ContainsKey(info.Uuid))
                 {
-                    PipelineOptions options = _options.Select(info.Uuid);
-
-                    IPipeline pipeline = _builder.Build(in options);
-
-                    if (pipeline is not null)
-                    {
-                        _pipelines.Add(info.Uuid, pipeline);
-                        _monitor.Add(info.Uuid, CreatePipelineInfo(in pipeline));
-
-                        _logger?.LogInformation($"Pipeline [{info.Name}] created successfully.");
-
-                        if (pipeline.Activation == ActivationMode.Auto)
-                        {
-                            Task task = pipeline.ExecuteAsync(_token);
-                        }
-                    }
+                    continue; // TODO: check if pipeline options has been changed and re-run it
                 }
-                catch (Exception error)
+                else
                 {
-                    _logger?.LogError(ExceptionHelper.GetErrorMessageAndStackTrace(error));
+                    TryCreatePipeline(in info);
+                }
+            }
+        }
+        private void TryCreatePipeline(in PipelineInfo info)
+        {
+            try
+            {
+                PipelineOptions options = _options.Select(info.Uuid);
+
+                if (options is not null)
+                {
+                    CreatePipeline(in options);
+                }
+            }
+            catch (Exception error)
+            {
+                _logger?.LogError(ExceptionHelper.GetErrorMessageAndStackTrace(error));
+            }
+        }
+        private void CreatePipeline(in PipelineOptions options)
+        {
+            IPipeline pipeline = _builder.Build(in options);
+
+            if (pipeline is not null)
+            {
+                _pipelines.Add(pipeline.Uuid, pipeline);
+                _monitor.Add(pipeline.Uuid, CreatePipelineInfo(in pipeline));
+
+                _logger?.LogInformation($"Pipeline [{pipeline.Name}] created successfully.");
+
+                if (pipeline.Activation == ActivationMode.Auto)
+                {
+                    Task task = pipeline.ExecuteAsync(_token);
                 }
             }
         }
@@ -91,13 +109,6 @@ namespace DaJet.Flow
 
             return monitor;
         }
-        public void UpdatePipelineStatus(Guid uuid, in string status)
-        {
-            if (_monitor.TryGetValue(uuid, out PipelineInfo info))
-            {
-                info.Status = status;
-            }
-        }
         public void ExecutePipeline(Guid uuid)
         {
             if (_pipelines.TryGetValue(uuid, out IPipeline pipeline))
@@ -126,6 +137,30 @@ namespace DaJet.Flow
             }
             _monitor.Clear();
             _pipelines.Clear();
+        }
+
+        //
+
+        public void UpdatePipelineStatus(Guid uuid, in string status)
+        {
+            if (_monitor.TryGetValue(uuid, out PipelineInfo info))
+            {
+                info.Status = status;
+            }
+        }
+        public void UpdatePipelineStartTime(Guid uuid, DateTime value)
+        {
+            if (_monitor.TryGetValue(uuid, out PipelineInfo info))
+            {
+                info.Start = value;
+            }
+        }
+        public void UpdatePipelineFinishTime(Guid uuid, DateTime value)
+        {
+            if (_monitor.TryGetValue(uuid, out PipelineInfo info))
+            {
+                info.Finish = value;
+            }
         }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using DaJet.Flow.Model;
 using Microsoft.AspNetCore.Components;
-using MudBlazor;
 using System.Net.Http.Json;
 
 namespace DaJet.Studio.Pages
@@ -49,12 +48,51 @@ namespace DaJet.Studio.Pages
 
             IsLoading = false;
         }
-        protected void RowClickEvent(TableRowClickEventArgs<PipelineInfo> args)
+        protected async Task ExecutePipeline(Guid uuid)
         {
-            //if (args.Item is PipelineOptions pipeline)
-            //{
-            //    Navigator.NavigateTo("/dajet-flow/pipeline/" + pipeline.Uuid.ToString().ToLower());
-            //}
+            try
+            {
+                HttpResponseMessage response = await Http.PutAsync($"/flow/execute/{uuid.ToString().ToLower()}", null);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    string result = await response.Content.ReadAsStringAsync();
+
+                    ErrorText = response.ReasonPhrase
+                        + (string.IsNullOrEmpty(result)
+                        ? string.Empty
+                        : Environment.NewLine + result);
+                }
+            }
+            catch (Exception error)
+            {
+                ErrorText = error.Message;
+            }
+
+            await RefreshPipelineList();
+        }
+        protected async Task DisposePipeline(Guid uuid)
+        {
+            try
+            {
+                HttpResponseMessage response = await Http.PutAsync($"/flow/dispose/{uuid.ToString().ToLower()}", null);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    string result = await response.Content.ReadAsStringAsync();
+
+                    ErrorText = response.ReasonPhrase
+                        + (string.IsNullOrEmpty(result)
+                        ? string.Empty
+                        : Environment.NewLine + result);
+                }
+            }
+            catch (Exception error)
+            {
+                ErrorText = error.Message;
+            }
+
+            await RefreshPipelineList();
         }
     }
 }

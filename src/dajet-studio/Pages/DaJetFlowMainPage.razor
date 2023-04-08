@@ -6,32 +6,54 @@
 
 <div style="margin:5px;">
 
-    <MudField Variant="Variant.Text" DisableUnderLine="true" FullWidth="false" Margin="Margin.Dense">DaJet Flow (конвейеры данных)</MudField>
+    <MudField Variant="Variant.Text" DisableUnderLine="true" FullWidth="false" Margin="Margin.Dense">DaJet Flow (pipelines)
+        <MudTooltip Text="Close page">
+            <MudIconButton Icon="@Icons.Material.Outlined.Close" Color="Color.Error" Size="Size.Small" OnClick="NavigateToHomePage" />
+        </MudTooltip>
+    </MudField>
+    
 
-    <MudTooltip Text="Создать новый">
-        <MudIconButton Icon="@Icons.Material.Outlined.Add" Color="Color.Success" Size="Size.Small" OnClick="CreatePipelinePage" />
-    </MudTooltip>
-    <MudTooltip Text="Обновить список">
-        <MudIconButton Icon="@Icons.Material.Outlined.Refresh" Color="Color.Info" Size="Size.Small" OnClick="RefreshPipelineList" />
-    </MudTooltip>
-    <MudTooltip Text="Закрыть страницу">
-        <MudIconButton Icon="@Icons.Material.Outlined.Close" Color="Color.Error" Size="Size.Small" OnClick="NavigateToHomePage" />
-    </MudTooltip>
-
-    <MudTable Items="@Pipelines" T="PipelineInfo" OnRowClick="RowClickEvent"
-              Loading="@IsLoading" LoadingProgressColor="Color.Info" Hover="true">
+    <MudTable Items="@Pipelines" T="PipelineInfo" HorizontalScrollbar="true" Hover="true"
+              Loading="@IsLoading" LoadingProgressColor="Color.Info"> @*FixedHeader="true" Height="500px"*@
+        <ColGroup>
+            <col style="width:56px;" />
+            <col />
+            <col style="width:100px;" />
+            <col style="width:100px;" />
+            <col style="width:120px;" />
+            <col style="width:120px;" />
+            <col />
+        </ColGroup>
         <HeaderContent>
-            <MudTh>Uuid</MudTh>
+            <MudTh style="padding:0px;">
+                <MudTooltip Text="Create">
+                    <MudIconButton Icon="@Icons.Material.Outlined.AddCircleOutline" Color="Color.Success" Size="Size.Small" OnClick="CreatePipelinePage" />
+                </MudTooltip>
+                <MudTooltip Text="Refresh">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Refresh" Color="Color.Info" Size="Size.Small" OnClick="RefreshPipelineList" />
+                </MudTooltip>
+            </MudTh>
             <MudTh>Name</MudTh>
             <MudTh>Activation</MudTh>
             <MudTh>State</MudTh>
+            <MudTh>Start</MudTh>
+            <MudTh>Finish</MudTh>
             <MudTh>Status</MudTh>
         </HeaderContent>
         <RowTemplate>
-            <MudTd DataLabel="Uuid">@context.Uuid</MudTd>
+            <MudTd style="padding:0px;">
+                <MudTooltip Text="Execute">
+                    <MudIconButton Icon="@Icons.Material.Outlined.NotStarted" Color="Color.Success" Size="Size.Small" OnClick="@(() => ExecutePipeline(context.Uuid))" />
+                </MudTooltip>
+                <MudTooltip Text="Dispose">
+                    <MudIconButton Icon="@Icons.Material.Outlined.StopCircle" Color="Color.Error" Size="Size.Small" OnClick="@(() => DisposePipeline(context.Uuid))" />
+                </MudTooltip>
+            </MudTd>
             <MudTd DataLabel="Name"><MudLink Href=@("/dajet-flow/pipeline/" + context.Uuid.ToString().ToLower())>@context.Name</MudLink></MudTd>
             <MudTd DataLabel="Activation">@context.Activation.ToString()</MudTd>
             <MudTd DataLabel="State">@context.State.ToString()</MudTd>
+            <MudTd DataLabel="Start">@context.Start.ToString("dd-MM-yyyy HH:mm:ss")</MudTd>
+            <MudTd DataLabel="Finish">@context.Finish.ToString("dd-MM-yyyy HH:mm:ss")</MudTd>
             <MudTd DataLabel="Status">@context.Status</MudTd>
         </RowTemplate>
     </MudTable>
