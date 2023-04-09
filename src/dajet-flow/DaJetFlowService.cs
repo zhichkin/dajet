@@ -41,7 +41,7 @@ namespace DaJet.Flow
 
                 try
                 {
-                    Task.Delay(TimeSpan.FromSeconds(10)).Wait(_cancellationToken);
+                    Task.Delay(TimeSpan.FromSeconds(3)).Wait(_cancellationToken);
                 }
                 catch // (OperationCanceledException)
                 {

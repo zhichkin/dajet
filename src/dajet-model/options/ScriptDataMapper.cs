@@ -1,8 +1,9 @@
-﻿using DaJet.Http.Model;
-using DaJet.Http.Server;
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace DaJet.Http.DataMappers
+namespace DaJet.Options
 {
     public sealed class ScriptDataMapper
     {
@@ -22,16 +23,9 @@ namespace DaJet.Http.DataMappers
         #endregion
 
         private readonly string _connectionString;
-        public ScriptDataMapper()
+        public ScriptDataMapper(string connectionString)
         {
-            string databaseFileFullPath = Path.Combine(AppContext.BaseDirectory, Program.DATABASE_FILE_NAME);
-
-            _connectionString = new SqliteConnectionStringBuilder()
-            {
-                DataSource = databaseFileFullPath,
-                Mode = SqliteOpenMode.ReadWriteCreate
-            }
-            .ToString();
+            _connectionString = connectionString;
 
             InitializeDatabase();
         }
@@ -285,5 +279,42 @@ namespace DaJet.Http.DataMappers
             return (result > 0);
         }
         #endregion
+
+        public ScriptModel SelectScriptByPath(Guid database, string path)
+        {
+            string[] segments = path.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+            int counter = 0;
+            ScriptModel current = null;
+            List<ScriptModel> list = Select(database);
+
+            foreach (string segment in segments)
+            {
+                current = list.Where(item => item.Name == segment).FirstOrDefault();
+
+                if (current == null) { break; }
+
+                counter++;
+
+                if (counter < segments.Length)
+                {
+                    list = Select(current);
+                }
+            }
+
+            if (counter == segments.Length && current != null)
+            {
+                if (TrySelect(current.Uuid, out ScriptModel script))
+                {
+                    return script;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+
+            return null; // not found
+        }
     }
 }

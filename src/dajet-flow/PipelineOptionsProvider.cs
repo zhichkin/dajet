@@ -49,7 +49,7 @@ namespace DaJet.Flow
 
         private const string CREATE_PIPELINE_BLOCKS_TABLE_SCRIPT =
             "CREATE TABLE IF NOT EXISTS " +
-            "pipeline_blocks (uuid TEXT NOT NULL, " +
+            "blocks (uuid TEXT NOT NULL, " +
             "pipeline TEXT NOT NULL, ordinal INTEGER NOT NULL, " +
             "handler TEXT NOT NULL, message TEXT NOT NULL, " +
             "PRIMARY KEY (uuid)) WITHOUT ROWID;";
@@ -77,13 +77,13 @@ namespace DaJet.Flow
             "DELETE FROM options WHERE owner = @owner;";
 
         private const string SELECT_PIPELINE_BLOCKS_SCRIPT =
-            "SELECT uuid, ordinal, handler, message FROM pipeline_blocks " +
+            "SELECT uuid, ordinal, handler, message FROM blocks " +
             "WHERE pipeline = @pipeline ORDER BY ordinal ASC;";
         private const string INSERT_PIPELINE_BLOCK_SCRIPT =
-            "INSERT INTO pipeline_blocks (uuid, pipeline, ordinal, handler, message) " +
+            "INSERT INTO blocks (uuid, pipeline, ordinal, handler, message) " +
             "VALUES (@uuid, @pipeline, @ordinal, @handler, @message);";
         private const string DELETE_PIPELINE_BLOCKS_SCRIPT =
-            "DELETE FROM pipeline_blocks WHERE pipeline = @pipeline;";
+            "DELETE FROM blocks WHERE pipeline = @pipeline;";
 
         #endregion
 
@@ -350,12 +350,13 @@ namespace DaJet.Flow
                 }
             }
 
-            DeleteOptions(entity.Uuid);
-            foreach (PipelineBlock block in entity.Blocks)
+            PipelineOptions current = Select(entity.Uuid);
+            DeleteOptions(current.Uuid);
+            foreach (PipelineBlock block in current.Blocks)
             {
                 DeleteOptions(block.Uuid);
             }
-            DeletePipelineBlocks(entity.Uuid);
+            DeletePipelineBlocks(current.Uuid);
 
             InsertOptions(entity);
             InsertPipelineBlocks(entity);

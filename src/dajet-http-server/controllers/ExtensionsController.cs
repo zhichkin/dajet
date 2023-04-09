@@ -1,9 +1,8 @@
-﻿using DaJet.Http.DataMappers;
-using DaJet.Http.Model;
-using DaJet.Metadata;
+﻿using DaJet.Metadata;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Extensions;
 using DaJet.Metadata.Model;
+using DaJet.Options;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -16,11 +15,12 @@ namespace DaJet.Http.Controllers
     [Produces("application/json")]
     public sealed class ExtensionsController : ControllerBase
     {
-        private readonly InfoBaseDataMapper _mapper = new();
+        private readonly InfoBaseDataMapper _mapper;
         private readonly IMetadataService _metadataService;
-        public ExtensionsController(IMetadataService metadataService)
+        public ExtensionsController(InfoBaseDataMapper mapper, IMetadataService metadataService)
         {
-            _metadataService = metadataService;
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _metadataService = metadataService ?? throw new ArgumentNullException(nameof(metadataService));
         }
         [HttpGet("{infobase}")] public ActionResult Select([FromRoute] string infobase)
         {

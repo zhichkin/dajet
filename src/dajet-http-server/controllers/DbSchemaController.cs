@@ -1,7 +1,6 @@
-﻿using DaJet.Http.DataMappers;
-using DaJet.Http.Model;
-using DaJet.Metadata;
+﻿using DaJet.Metadata;
 using DaJet.Metadata.Services;
+using DaJet.Options;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -16,11 +15,12 @@ namespace DaJet.Http.Controllers
     {
         private const string INFOBASE_IS_NOT_FOUND_ERROR = "InfoBase [{0}] is not found. Try register it with the /md service first.";
 
+        private readonly InfoBaseDataMapper _mapper;
         private readonly IMetadataService _metadataService;
-        private readonly InfoBaseDataMapper _mapper = new();
-        public DbSchemaController(IMetadataService metadataService)
+        public DbSchemaController(InfoBaseDataMapper mapper, IMetadataService metadataService)
         {
-            _metadataService = metadataService;
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _metadataService = metadataService ?? throw new ArgumentNullException(nameof(metadataService));
         }
         [HttpGet("{infobase}")] public ActionResult Select([FromRoute] string infobase)
         {

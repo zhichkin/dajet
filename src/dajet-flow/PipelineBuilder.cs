@@ -22,6 +22,7 @@ namespace DaJet.Flow
         {
             _logger = logger;
             _services = services;
+            InitializeAssemblies();
         }
         private void InitializeAssemblies()
         {
@@ -63,8 +64,6 @@ namespace DaJet.Flow
         }
         public IPipeline Build(in PipelineOptions options)
         {
-            InitializeAssemblies();
-
             List<object> blocks = ResolvePipelineBlocks(options.Blocks);
 
             if (blocks.Count == 0)

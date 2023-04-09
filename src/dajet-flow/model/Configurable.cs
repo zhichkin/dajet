@@ -5,7 +5,7 @@ namespace DaJet.Flow
 {
     public abstract class Configurable
     {
-        public virtual void Configure(in List<OptionItem> options)
+        public void Configure(in List<OptionItem> options)
         {
             Type type = GetType();
 
@@ -19,7 +19,10 @@ namespace DaJet.Flow
 
                 if (value is not null) { property.SetValue(this, value); }
             }
+
+            _Configure();
         }
+        protected virtual void _Configure() { }
         private static object GetOptionValue(Type type, string value)
         {
             if (type == typeof(bool))
@@ -28,9 +31,31 @@ namespace DaJet.Flow
             }
             else if (type == typeof(int))
             {
-                if (int.TryParse(value, out int result))
+                if (int.TryParse(value, out int number))
                 {
-                    return result;
+                    return number;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            else if (type == typeof(Guid))
+            {
+                if (Guid.TryParse(value, out Guid uuid))
+                {
+                    return uuid;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            else if (type == typeof(DateTime))
+            {
+                if (DateTime.TryParse(value, out DateTime datetime))
+                {
+                    return datetime;
                 }
                 else
                 {

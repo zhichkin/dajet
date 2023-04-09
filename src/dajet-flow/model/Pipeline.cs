@@ -7,6 +7,7 @@ namespace DaJet.Flow
     public interface IPipeline : IDisposable
     {
         Guid Uuid { get; }
+        Task Task { get; }
         string Name { get; }
         PipelineState State { get; }
         ActivationMode Activation { get; }
@@ -28,15 +29,16 @@ namespace DaJet.Flow
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
         }
         public Guid Uuid { get; private set; }
+        public Task Task { get { return _task; } }
         public string Name { get; private set; }
         public PipelineState State { get; private set; }
         public ActivationMode Activation { get; private set; } = ActivationMode.Manual;
         [Option] public int SleepTimeout { get; set; } = 60; // seconds
         public Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            _token = cancellationToken;
-
             if (State == PipelineState.Working || State == PipelineState.Sleeping) { return _task; }
+
+            _token = cancellationToken;
 
             State = PipelineState.Working;
 

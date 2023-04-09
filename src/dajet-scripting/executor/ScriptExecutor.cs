@@ -260,6 +260,7 @@ namespace DaJet.Scripting
             }
         }
 
+        #region "DaJet DDL"
         public void ExecuteNonQuery(in string script)
         {
             string error;
@@ -528,5 +529,6 @@ namespace DaJet.Scripting
                 }
             }
         }
+        #endregion
     }
 }

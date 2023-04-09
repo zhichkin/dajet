@@ -1,9 +1,8 @@
-﻿using DaJet.Http.DataMappers;
-using DaJet.Http.Model;
-using DaJet.Metadata;
+﻿using DaJet.Metadata;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Metadata.Services;
+using DaJet.Options;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.FileProviders;
 using System.Text;
@@ -20,13 +19,14 @@ namespace DaJet.Http.Controllers
     {
         private const string INFOBASE_IS_NOT_FOUND_ERROR = "InfoBase [{0}] is not found. Try register it with the /md service first.";
 
+        private readonly InfoBaseDataMapper _mapper;
         private readonly IFileProvider _fileProvider;
         private readonly IMetadataService _metadataService;
-        private readonly InfoBaseDataMapper _mapper = new();
-        public DbViewController(IMetadataService metadataService, IFileProvider fileProvider)
+        public DbViewController(InfoBaseDataMapper mapper, IMetadataService metadataService, IFileProvider fileProvider)
         {
-            _fileProvider = fileProvider;
-            _metadataService = metadataService;
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _fileProvider = fileProvider ?? throw new ArgumentNullException(nameof(fileProvider));
+            _metadataService = metadataService ?? throw new ArgumentNullException(nameof(metadataService));
         }
 
         [HttpGet("select/{infobase}")] public ActionResult Select([FromRoute] string infobase, [FromQuery] string schema = null)

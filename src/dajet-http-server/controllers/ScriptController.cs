@@ -1,8 +1,7 @@
 ﻿using DaJet.Data;
-using DaJet.Http.DataMappers;
-using DaJet.Http.Model;
 using DaJet.Json;
 using DaJet.Metadata;
+using DaJet.Options;
 using DaJet.Scripting;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Encodings.Web;
@@ -15,12 +14,14 @@ namespace DaJet.Http.Controllers
     [Route("api")]
     public class ScriptController : ControllerBase
     {
-        private readonly ScriptDataMapper _scripts = new();
-        private readonly InfoBaseDataMapper _mapper = new();
+        private readonly ScriptDataMapper _scripts;
+        private readonly InfoBaseDataMapper _mapper;
         private readonly IMetadataService _metadataService;
-        public ScriptController(IMetadataService metadataService)
+        public ScriptController(InfoBaseDataMapper mapper, ScriptDataMapper scripts, IMetadataService metadataService)
         {
-            _metadataService = metadataService;
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
+            _metadataService = metadataService ?? throw new ArgumentNullException(nameof(metadataService));
         }
         [HttpGet("select/{infobase}")]
         public ActionResult Select([FromRoute] string infobase)
@@ -182,7 +183,7 @@ namespace DaJet.Http.Controllers
             InfoBaseModel database = _mapper.Select(infobase);
             if (database is null) { return NotFound(); }
 
-            ScriptModel script = SelectScriptByPath(database.Uuid, path);
+            ScriptModel script = _scripts.SelectScriptByPath(database.Uuid, path);
             if (script is null) { return NotFound(); }
 
             if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(script.Script))
@@ -235,42 +236,6 @@ namespace DaJet.Http.Controllers
             string json = JsonSerializer.Serialize(result, options);
 
             return Content(json);
-        }
-        private ScriptModel SelectScriptByPath(Guid database, string path)
-        {
-            string[] segments = path.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-
-            int counter = 0;
-            ScriptModel current = null;
-            List<ScriptModel> list = _scripts.Select(database);
-
-            foreach (string segment in segments)
-            {
-                current = list.Where(item => item.Name == segment).FirstOrDefault();
-
-                if (current == null) { break; }
-
-                counter++;
-
-                if (counter < segments.Length)
-                {
-                    list = _scripts.Select(current);
-                }
-            }
-
-            if (counter == segments.Length && current != null)
-            {
-                if (_scripts.TrySelect(current.Uuid, out ScriptModel script))
-                {
-                    return script;
-                }
-                else
-                {
-                    return null;
-                }
-            }
-
-            return null; // not found
         }
         private async Task<Dictionary<string, object>> ParseScriptParametersFromBody()
         {

@@ -1,6 +1,7 @@
-﻿using System.Text.Json.Serialization;
+﻿using System;
+using System.Text.Json.Serialization;
 
-namespace DaJet.Http.Model
+namespace DaJet.Options
 {
     public sealed class InfoBaseModel
     {

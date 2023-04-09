@@ -1,7 +1,7 @@
 ﻿using DaJet.Data;
-using DaJet.Http.DataMappers;
 using DaJet.Http.Model;
 using DaJet.Metadata;
+using DaJet.Options;
 using DaJet.Scripting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,11 +14,12 @@ namespace DaJet.Http.Controllers
     [ApiController][Route("query")]
     public class QueryController : ControllerBase
     {
-        private readonly InfoBaseDataMapper _mapper = new();
+        private readonly InfoBaseDataMapper _mapper;
         private readonly IMetadataService _metadataService;
-        public QueryController(IMetadataService metadataService)
+        public QueryController(InfoBaseDataMapper mapper, IMetadataService metadataService)
         {
-            _metadataService = metadataService;
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _metadataService = metadataService ?? throw new ArgumentNullException(nameof(metadataService));
         }
         [HttpPost("prepare")] public ActionResult Generate([FromBody] QueryModel query)
         {

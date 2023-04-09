@@ -1,8 +1,8 @@
-﻿using DaJet.Http.Model;
-using DaJet.Http.Server;
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
+using System;
+using System.Collections.Generic;
 
-namespace DaJet.Http.DataMappers
+namespace DaJet.Options
 {
     public sealed class InfoBaseDataMapper
     {
@@ -28,22 +28,15 @@ namespace DaJet.Http.DataMappers
         #endregion
 
         private readonly string _connectionString;
-        public InfoBaseDataMapper()
+        public InfoBaseDataMapper(string connectionString)
         {
-            string databaseFileFullPath = Path.Combine(AppContext.BaseDirectory, Program.DATABASE_FILE_NAME);
-
-            _connectionString = new SqliteConnectionStringBuilder()
-            {
-                DataSource = databaseFileFullPath,
-                Mode = SqliteOpenMode.ReadWriteCreate
-            }
-            .ToString();
+            _connectionString = connectionString;
 
             InitializeDatabase();
         }
         private void InitializeDatabase()
         {
-            using (SqliteConnection connection = new SqliteConnection(_connectionString))
+            using (SqliteConnection connection = new(_connectionString))
             {
                 connection.Open();
 

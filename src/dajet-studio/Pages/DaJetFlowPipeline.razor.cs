@@ -1,5 +1,6 @@
 ﻿using DaJet.Flow.Model;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using MudBlazor;
 using System.Net.Http.Json;
 
@@ -10,6 +11,8 @@ namespace DaJet.Studio.Pages
         [Parameter] public Guid Uuid { get; set; }
         protected PipelineOptions Model { get; set; } = new();
         private bool IsNewPipeline { get; set; } = true;
+        protected void NavigateToPipelineList() { Navigator.NavigateTo("/dajet-flow"); }
+        protected async Task CopyUuidToClipboard() { await JSRuntime.InvokeVoidAsync("BlazorCopyToClipboard", Model.Uuid.ToString().ToLower()); }
         protected override async Task OnParametersSetAsync()
         {
             if (Uuid == Guid.Empty)

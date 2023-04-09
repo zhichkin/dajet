@@ -112,7 +112,7 @@ namespace DaJet.Http.Controllers
 
             return Created($"{options.Name}", $"{options.Uuid}");
         }
-        [HttpPut("")] public ActionResult Update([FromBody] PipelineOptions options)
+        [HttpPut("")] public async Task<ActionResult> Update([FromBody] PipelineOptions options)
         {
             PipelineOptions current = _options.Select(options.Uuid);
 
@@ -120,19 +120,13 @@ namespace DaJet.Http.Controllers
 
             _ = _options.Update(in options);
 
+            await _manager.ReStartPipeline(options.Uuid);
+
             return Ok();
         }
-        [HttpDelete("{pipeline:guid}")] public ActionResult Delete([FromRoute] Guid pipeline)
+        [HttpDelete("{pipeline:guid}")] public async Task<ActionResult> Delete([FromRoute] Guid pipeline)
         {
-            PipelineOptions options = _options.Select(pipeline);
-
-            if (options is null) { return NotFound(); }
-
-            _ = _options.Delete(in options);
-
-            // TODO: _manager.RemovePipeline(pipeline); // synchronize in-memory monitor
-
-            return Ok();
+            await _manager.DeletePipeline(pipeline); return Ok();
         }
     }
 }

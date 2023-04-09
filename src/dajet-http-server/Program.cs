@@ -1,8 +1,7 @@
 using DaJet.Data;
 using DaJet.Flow;
-using DaJet.Http.DataMappers;
-using DaJet.Http.Model;
 using DaJet.Metadata;
+using DaJet.Options;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.FileProviders;
@@ -11,8 +10,22 @@ namespace DaJet.Http.Server
 {
     public static class Program
     {
-        public static string DATABASE_FILE_NAME = "dajet.db";
+        private static readonly string DATABASE_FILE_NAME = "dajet.db";
         private static readonly string[] webapi = new string[] { "/api", "/md", "/mdex", "/db", "/query", "/flow" };
+        private static string OptionsFileConnectionString
+        {
+            get
+            {
+                string databaseFileFullPath = Path.Combine(AppContext.BaseDirectory, DATABASE_FILE_NAME);
+
+                return new SqliteConnectionStringBuilder()
+                {
+                    DataSource = databaseFileFullPath,
+                    Mode = SqliteOpenMode.ReadWriteCreate
+                }
+                .ToString();
+            }
+        }
         public static void Main(string[] args)
         {
             WebApplicationOptions options = new()
@@ -27,9 +40,11 @@ namespace DaJet.Http.Server
             builder.Host.UseWindowsService();
             builder.Services.AddControllers();
             builder.Services.AddCors(ConfigureCors);
-            ConfigureFlowService(builder.Services);
-            ConfigureMetadataService(builder.Services);
             ConfigureFileProvider(builder.Services);
+
+            ConfigureOptionProviders(builder.Services);
+            ConfigureMetadataService(builder.Services);
+            ConfigureDaJetFlowService(builder.Services);
 
             WebApplication app = builder.Build();
             //app.UseAuthentication();
@@ -81,29 +96,32 @@ namespace DaJet.Http.Server
                 endpoints.MapFallbackToFile("/index.html");
             });
         }
-        private static void ConfigureFlowService(IServiceCollection services)
+        private static void ConfigureFileProvider(IServiceCollection services)
         {
-            string databaseFileFullPath = Path.Combine(AppContext.BaseDirectory, DATABASE_FILE_NAME);
+            string catalogPath = AppContext.BaseDirectory;
 
-            string connectionString = new SqliteConnectionStringBuilder()
-            {
-                DataSource = databaseFileFullPath,
-                Mode = SqliteOpenMode.ReadWriteCreate
-            }
-            .ToString();
+            PhysicalFileProvider fileProvider = new(catalogPath);
+
+            services.AddSingleton<IFileProvider>(fileProvider);
+        }
+        private static void ConfigureOptionProviders(IServiceCollection services)
+        {
+            string connectionString = OptionsFileConnectionString;
+
+            services.AddSingleton(new ScriptDataMapper(connectionString));
+            services.AddSingleton(new InfoBaseDataMapper(connectionString));
 
             PipelineOptionsProvider options = new(connectionString);
             services.AddSingleton<IPipelineOptionsProvider>(options);
-            services.AddSingleton<IPipelineBuilder, PipelineBuilder>();
-            services.AddSingleton<IPipelineManager, PipelineManager>();
-            services.AddHostedService<DaJetFlowService>();
         }
         private static void ConfigureMetadataService(IServiceCollection services)
         {
             MetadataService metadataService = new();
 
-            InfoBaseDataMapper mapper = new();
+            InfoBaseDataMapper mapper = new(OptionsFileConnectionString);
+            
             List<InfoBaseModel> list = mapper.Select();
+
             foreach (InfoBaseModel entity in list)
             {
                 if (!Enum.TryParse(entity.DatabaseProvider, out DatabaseProvider provider))
@@ -122,13 +140,11 @@ namespace DaJet.Http.Server
 
             services.AddSingleton<IMetadataService>(metadataService);
         }
-        private static void ConfigureFileProvider(IServiceCollection services)
+        private static void ConfigureDaJetFlowService(IServiceCollection services)
         {
-            string catalogPath = AppContext.BaseDirectory;
-            
-            PhysicalFileProvider fileProvider = new(catalogPath);
-
-            services.AddSingleton<IFileProvider>(fileProvider);
+            services.AddSingleton<IPipelineBuilder, PipelineBuilder>();
+            services.AddSingleton<IPipelineManager, PipelineManager>();
+            services.AddHostedService<DaJetFlowService>();
         }
     }
 }

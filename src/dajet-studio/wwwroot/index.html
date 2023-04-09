@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DaJet Studio © 2.0.0</title>
+    <title>DaJet Studio © 2.1.0</title>
     <link rel="icon" href="/img/vuk.png" type="image/png">
     <base href="/" />
     <link href="css/app.css" rel="stylesheet" />
@@ -32,6 +32,18 @@
             element.download = fileName ?? '';
             element.click();
             element.remove();
+        }
+    </script>
+
+    <script>
+        function BlazorCopyToClipboard(text) {
+            navigator.clipboard.writeText(text)
+                .then(function () {
+                    alert("Copied to clipboard!");
+                })
+                .catch(function (error) {
+                    alert(error);
+                });
         }
     </script>
 

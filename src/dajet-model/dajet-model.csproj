@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <Folder Include="data\" />
+    <Folder Include="options\" />
   </ItemGroup>
 
 </Project>
