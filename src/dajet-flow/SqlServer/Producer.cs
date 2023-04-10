@@ -1,26 +1,28 @@
 ﻿using DaJet.Data;
+using DaJet.Options;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using System.Data;
-using System.Data.Common;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using System.Text.Unicode;
 
 namespace DaJet.Flow.SqlServer
 {
     [PipelineBlock] public sealed class Producer : TargetBlock<Dictionary<string, object>>
     {
-        private SqlCommand _command;
-        private SqlConnection _connection;
-        private readonly ILogger _logger;
+        private readonly InfoBaseDataMapper _databases;
+        private string ConnectionString { get; set; }
         [Option] public Guid Pipeline { get; set; } = Guid.Empty;
-        [Option] public string CommandText { get; set; } = string.Empty;
-        [Option] public string ConnectionString { get; set; } = string.Empty;
-        [ActivatorUtilitiesConstructor] public Producer(ILogger<Producer> logger)
+        [Option] public string Target { get; set; } = string.Empty;
+        [Option] public string Script { get; set; } = string.Empty;
+        [ActivatorUtilitiesConstructor] public Producer(InfoBaseDataMapper databases)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _databases = databases ?? throw new ArgumentNullException(nameof(databases));
+        }
+        protected override void _Configure()
+        {
+            InfoBaseModel database = _databases.Select(Target);
+            if (database is null) { throw new Exception($"Target not found: {Target}"); }
+
+            ConnectionString = database.ConnectionString;
         }
         public override void Process(in Dictionary<string, object> input)
         {
@@ -28,69 +30,34 @@ namespace DaJet.Flow.SqlServer
             {
                 if (item.Value is Entity value)
                 {
-                    input[item.Key] = value.ToString();
+                    input[item.Key] = value.Identity;
                 }
             }
 
-            JsonSerializerOptions options = new()
+            using (SqlConnection connection = new(ConnectionString))
             {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-            };
-            string json = JsonSerializer.Serialize(input, options);
+                connection.Open();
 
-            _logger.LogInformation(json);
+                using (SqlCommand command = connection.CreateCommand())
+                {
+                    ConfigureCommand(command, in input);
 
-            //using (SqlConnection connection = new(ConnectionString))
-            //{
-            //    connection.Open();
-
-            //    using (SqlCommand command = connection.CreateCommand())
-            //    {
-            //        ConfigureCommand(command, in input);
-
-            //        _ = command.ExecuteNonQuery();
-            //    }
-            //}
-
-            
+                    _ = command.ExecuteNonQuery();
+                }
+            }
         }
-        private void ConfigureCommand(in SqlCommand command, in DbDataReader input)
+        private void ConfigureCommand(in SqlCommand command, in Dictionary<string, object> input)
         {
             command.CommandType = CommandType.Text;
-            command.CommandText = CommandText;
+            command.CommandText = Script;
             command.CommandTimeout = 10; // seconds
 
-            //Dictionary<string, object> parameters = await ParseScriptParametersFromBody();
+            command.Parameters.Clear();
 
-            //if (parameters != null)
-            //{
-            //    foreach (var parameter in parameters)
-            //    {
-            //        executor.Parameters.Add(parameter.Key, parameter.Value);
-            //    }
-            //}
-
-            //command.Parameters.Clear();
-
-            //command.Parameters.Add(new SqlParameter("МоментВремени", SqlDbType.Decimal) { Value = input["МоментВремени"] });
-            //command.Parameters.Add(new SqlParameter("Идентификатор", SqlDbType.Binary) { Value = input["Идентификатор"] });
-            //command.Parameters.Add(new SqlParameter("Заголовки", SqlDbType.NVarChar) { Value = input["Заголовки"] });
-            //command.Parameters.Add(new SqlParameter("Отправитель", SqlDbType.NVarChar) { Value = input["Отправитель"] });
-            //command.Parameters.Add(new SqlParameter("ТипСообщения", SqlDbType.NVarChar) { Value = input["ТипСообщения"] });
-            //command.Parameters.Add(new SqlParameter("ТелоСообщения", SqlDbType.NVarChar) { Value = input["ТелоСообщения"] });
-            //command.Parameters.Add(new SqlParameter("ДатаВремя", SqlDbType.DateTime2) { Value = input["ДатаВремя"] });
-            //command.Parameters.Add(new SqlParameter("ТипОперации", SqlDbType.NVarChar) { Value = input["ТипОперации"] });
-            //command.Parameters.Add(new SqlParameter("ОписаниеОшибки", SqlDbType.NVarChar) { Value = string.Empty });
-            //command.Parameters.Add(new SqlParameter("КоличествоОшибок", SqlDbType.Int) { Value = 0 });
-        }
-        protected override void _Synchronize()
-        {
-            _command?.Dispose();
-            _command = null;
-
-            _connection?.Dispose();
-            _connection = null;
+            foreach (var parameter in input)
+            {
+                command.Parameters.AddWithValue(parameter.Key, parameter.Value);
+            }
         }
     }
 }

@@ -9,6 +9,7 @@ namespace DaJet.Flow.SqlServer
 {
     [PipelineBlock] public sealed class Consumer : SourceBlock<Dictionary<string, object>>
     {
+        #region "PRIVATE VARIABLES"
         private readonly IPipelineManager _manager;
         private readonly IMetadataService _metadata;
         private readonly ScriptDataMapper _scripts;
@@ -17,10 +18,12 @@ namespace DaJet.Flow.SqlServer
         private string ConnectionString { get; set; }
         private GeneratorResult ScriptGenerator { get; set; }
         private Dictionary<string, object> ScriptParameters { get; set; }
+        #endregion
         [Option] public Guid Pipeline { get; set; } = Guid.Empty;
         [Option] public string Source { get; set; } = string.Empty;
         [Option] public string Script { get; set; } = string.Empty;
-        [ActivatorUtilitiesConstructor] public Consumer(InfoBaseDataMapper databases, ScriptDataMapper scripts, IPipelineManager manager, IMetadataService metadata)
+        [ActivatorUtilitiesConstructor] public Consumer(
+            InfoBaseDataMapper databases, ScriptDataMapper scripts, IPipelineManager manager, IMetadataService metadata)
         {
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
             _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
