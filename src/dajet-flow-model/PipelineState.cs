@@ -2,10 +2,10 @@
 {
     public enum PipelineState
     {
-        None,
-        Stopped,
+        None, // broken pipeline
         Working,
+        Stopped,
         Sleeping,
-        Completed
+        Stopping
     }
 }

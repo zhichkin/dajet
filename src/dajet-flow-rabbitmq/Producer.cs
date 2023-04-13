@@ -3,6 +3,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Buffers;
 using System.Text;
+using System.Web;
 
 namespace DaJet.Flow.RabbitMQ
 {
@@ -13,17 +14,43 @@ namespace DaJet.Flow.RabbitMQ
         private IBasicProperties _properties;
         private bool _connectionIsBlocked = false;
         private byte[] _buffer; // message body buffer
-        private PublishTracker _tracker = new(1000); // publisher confirms tracker
+        private readonly PublishTracker _tracker = new(1000); // publisher confirms tracker
         [Option] public Guid Pipeline { get; set; } = Guid.Empty;
-        [Option] public string HostName { get; set; } = "localhost";
-        [Option] public int PortNumber { get; set; } = 5672;
-        [Option] public string VirtualHost { get; set; } = "/";
-        [Option] public string UserName { get; set; } = "guest";
-        [Option] public string Password { get; set; } = "guest";
-        [Option] public string Exchange { get; set; } = string.Empty;
-        [Option] public string RoutingKey { get; set; } = string.Empty;
-        [Option] public bool Mandatory { get; set; } = false;
+        [Option] public string Target { get; set; } = "amqp://guest:guest@localhost:5672/%2F";
+        [Option] public string Exchange { get; set; } = string.Empty; // if exchange name is empty, then RoutingKey is a queue name to send directly
+        [Option] public string RoutingKey { get; set; } = string.Empty; // if exchange name is not empty, then this is routing key value
+        [Option] public bool Mandatory { get; set; } = false; // helps to detect unroutable messages, firing BasicReturn event on producer
         [ActivatorUtilitiesConstructor] public Producer() { }
+        private string HostName { get; set; } = "localhost";
+        private int HostPort { get; set; } = 5672;
+        private string VirtualHost { get; set; } = "/";
+        private string UserName { get; set; } = "guest";
+        private string Password { get; set; } = "guest";
+        private void ParseTargetUri()
+        {
+            if (string.IsNullOrWhiteSpace(Target)) { return; }
+
+            Uri uri = new(Target);
+
+            if (uri.Scheme != "amqp") { return; }
+
+            HostName = uri.Host;
+            HostPort = uri.Port;
+
+            string[] userpass = uri.UserInfo.Split(':');
+
+            if (userpass != null && userpass.Length == 2)
+            {
+                UserName = HttpUtility.UrlDecode(userpass[0], Encoding.UTF8);
+                Password = HttpUtility.UrlDecode(userpass[1], Encoding.UTF8);
+            }
+
+            if (uri.Segments != null && uri.Segments.Length > 1)
+            {
+                VirtualHost = HttpUtility.UrlDecode(uri.Segments[1].TrimEnd('/'), Encoding.UTF8);
+            }
+        }
+        protected override void _Configure() { ParseTargetUri(); }
 
         #region "RABBITMQ CONNECTION AND CHANNEL SETUP"
         private void InitializeConnection()
@@ -35,7 +62,7 @@ namespace DaJet.Flow.RabbitMQ
             IConnectionFactory factory = new ConnectionFactory()
             {
                 HostName = HostName,
-                Port = PortNumber,
+                Port = HostPort,
                 VirtualHost = VirtualHost,
                 UserName = UserName,
                 Password = Password
@@ -161,17 +188,11 @@ namespace DaJet.Flow.RabbitMQ
         {
             if (_channel is null) { throw new InvalidOperationException(nameof(_channel)); }
 
-            if (_channel.WaitForConfirms())
-            {
-                //_Dispose(); ? or wait for source consumer to dispose ?
-                return;
-            }
+            if (_channel.WaitForConfirms()) { return; }
 
             if (_tracker.HasErrors()) { throw new InvalidOperationException(_tracker.ErrorReason); }
 
             _tracker.Clear(); // prepare for the next publish session
-
-            Dispose();
         }
 
         private void CopyMessageProperties(in Message message)
@@ -245,13 +266,13 @@ namespace DaJet.Flow.RabbitMQ
                 _channel!.BasicPublish(Exchange, RoutingKey, Mandatory, _properties, messageBody);
             }
         }
-        public void Dispose()
+        protected override void _Dispose()
         {
             _properties = null;
+            if (_tracker is not null) { _tracker.Clear(); }
+            if (_buffer is not null) { ArrayPool<byte>.Shared.Return(_buffer); }
             if (_channel is not null) { _channel.Dispose(); _channel = null; }
             if (_connection is not null) { _connection.Dispose(); _connection = null; }
-            if (_tracker is not null) { _tracker.Clear(); _tracker = null; }
-            if (_buffer is not null) { ArrayPool<byte>.Shared.Return(_buffer); }
         }
     }
 }

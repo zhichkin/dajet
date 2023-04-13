@@ -149,21 +149,14 @@ namespace DaJet.Flow
         {
             if (_pipelines.TryGetValue(uuid, out IPipeline pipeline))
             {
-                if (pipeline.State == PipelineState.Stopped || pipeline.State == PipelineState.Completed)
-                {
-                    _ = pipeline.ExecuteAsync(_token);
-                }
+                _ = pipeline.ExecuteAsync(_token);
             }
         }
         public void DisposePipeline(Guid uuid)
         {
             if (_pipelines.TryGetValue(uuid, out IPipeline pipeline))
             {
-                if (pipeline.State == PipelineState.Working || pipeline.State == PipelineState.Sleeping)
-                {
-                    pipeline.Dispose();
-                }
-                pipeline.Task?.Wait(_token);
+                pipeline.Dispose();
             }
         }
         public async Task DeletePipeline(Guid uuid)
@@ -184,12 +177,13 @@ namespace DaJet.Flow
         
         public void Dispose()
         {
+            _monitor.Clear();
+            _pipelines.Clear();
+
             foreach (IPipeline pipeline in _pipelines.Values)
             {
                 pipeline.Dispose();
             }
-            _monitor.Clear();
-            _pipelines.Clear();
         }
 
         //

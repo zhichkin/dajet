@@ -9,18 +9,12 @@
             _Process(in input); _next?.Process(in input);
         }
         protected abstract void _Process(in TInput input);
-        public void Synchronize()
-        {
-            _next?.Synchronize(); _Synchronize();
-        }
-        public void Dispose()
-        {
-            _next?.Dispose(); _Dispose();
-        }
+        public void Synchronize() { _next?.Synchronize(); _Synchronize(); }
         protected virtual void _Synchronize()
         {
             // do nothing by default
         }
+        public void Dispose() { _next?.Dispose(); _Dispose(); }
         protected virtual void _Dispose()
         {
             // do nothing by default

@@ -3,6 +3,7 @@ using RabbitMQ.Client;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 using System.Text;
+using System.Web;
 
 namespace DaJet.Flow.RabbitMQ
 {
@@ -16,20 +17,44 @@ namespace DaJet.Flow.RabbitMQ
         private int _consumed = 0;
         private string _consumerTag;
         [Option] public Guid Pipeline { get; set; } = Guid.Empty;
-        [Option] public string HostName { get; set; } = "localhost";
-        [Option] public int PortNumber { get; set; } = 5672;
-        [Option] public string VirtualHost { get; set; } = "/";
-        [Option] public string UserName { get; set; } = "guest";
-        [Option] public string Password { get; set; } = "guest";
+        [Option] public string Source { get; set; } = "amqp://guest:guest@localhost:5672/%2F";
         [Option] public string Queue { get; set; } = string.Empty;
         [ActivatorUtilitiesConstructor] public Consumer(IPipelineManager manager)
         {
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
         }
+        private string HostName { get; set; } = "localhost";
+        private int HostPort { get; set; } = 5672;
+        private string VirtualHost { get; set; } = "/";
+        private string UserName { get; set; } = "guest";
+        private string Password { get; set; } = "guest";
+        private void ParseSourceUri()
+        {
+            if (string.IsNullOrWhiteSpace(Source)) { return; }
+
+            Uri uri = new(Source);
+
+            if (uri.Scheme != "amqp") { return; }
+
+            HostName = uri.Host;
+            HostPort = uri.Port;
+
+            string[] userpass = uri.UserInfo.Split(':');
+
+            if (userpass is not null && userpass.Length == 2)
+            {
+                UserName = HttpUtility.UrlDecode(userpass[0], Encoding.UTF8);
+                Password = HttpUtility.UrlDecode(userpass[1], Encoding.UTF8);
+            }
+
+            if (uri.Segments is not null && uri.Segments.Length > 1)
+            {
+                VirtualHost = HttpUtility.UrlDecode(uri.Segments[1].TrimEnd('/'), Encoding.UTF8);
+            }
+        }
+        protected override void _Configure() { ParseSourceUri(); }
         public override void Execute()
         {
-            //TODO: _token = token;
-
             while (!_token.IsCancellationRequested)
             {
                 try
@@ -48,9 +73,9 @@ namespace DaJet.Flow.RabbitMQ
                 }
             }
         }
-        public void Dispose()
+        protected override void _Dispose()
         {
-            if (_consumer != null)
+            if (_consumer is not null)
             {
                 _consumer.Received -= ProcessMessage;
                 _consumer.Model = null;
@@ -87,7 +112,7 @@ namespace DaJet.Flow.RabbitMQ
             IConnectionFactory factory = new ConnectionFactory()
             {
                 HostName = HostName,
-                Port = PortNumber,
+                Port = HostPort,
                 VirtualHost = VirtualHost,
                 UserName = UserName,
                 Password = Password

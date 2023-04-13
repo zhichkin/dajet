@@ -16,7 +16,7 @@ namespace DaJet.Flow
     public sealed class Pipeline : Configurable, IPipeline
     {
         private Task _task;
-        private bool _disposed;
+        private int _state; // 0 == idle, 1 == starting, 2 == working, 3 == disposing
         private CancellationToken _token;
         private readonly ISourceBlock _source;
         private readonly IPipelineManager _manager;
@@ -25,7 +25,6 @@ namespace DaJet.Flow
         {
             Uuid = options.Uuid;
             Name = options.Name;
-            State = PipelineState.Stopped;
             Activation = options.Activation;
             _source = source ?? throw new ArgumentNullException(nameof(source));
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
@@ -33,26 +32,34 @@ namespace DaJet.Flow
         public Guid Uuid { get; private set; }
         public Task Task { get { return _task; } }
         public string Name { get; private set; }
-        public PipelineState State { get; private set; }
+        public PipelineState State { get; private set; } = PipelineState.Stopped;
         public ActivationMode Activation { get; private set; } = ActivationMode.Manual;
+        protected override void _Configure()
+        {
+            if (SleepTimeout < 0) { SleepTimeout = 0; } // run once
+        }
         public Task ExecuteAsync(CancellationToken token)
         {
+            if (IsBusy) { return _task; }
+
             _token = token;
-
-            if (State == PipelineState.Working || State == PipelineState.Sleeping) { return _task; }
-
-            _disposed = false;
             
             _task = Task.Factory.StartNew(ExecutePipeline, TaskCreationOptions.LongRunning);
 
+            SetWorkingState();
+
             return _task;
         }
+        private void SetIdleState() { _state = 0; }
+        private void SetWorkingState() { _state = 2; }
+        private bool IsBusy { get { return Interlocked.CompareExchange(ref _state, 1, 0) > 0; } }
+        private bool CanDispose { get { return Interlocked.CompareExchange(ref _state, 3, 2) == 2; } }
+        private bool IsStopRequested { get { return Interlocked.CompareExchange(ref _state, 2, 2) != 2; } }
         private void ExecutePipeline()
         {
             while (!_token.IsCancellationRequested)
             {
                 State = PipelineState.Working;
-
                 _manager.UpdatePipelineStatus(Uuid, string.Empty);
                 _manager.UpdatePipelineStartTime(Uuid, DateTime.Now);
 
@@ -67,9 +74,7 @@ namespace DaJet.Flow
 
                 _manager.UpdatePipelineFinishTime(Uuid, DateTime.Now);
 
-                if (State == PipelineState.Stopped) { break; } // stopped by calling Dispose
-
-                if (SleepTimeout <= 0) { State = PipelineState.Completed; break; } // run once
+                if (IsStopRequested || SleepTimeout == 0) { break; }
 
                 try
                 {
@@ -78,22 +83,25 @@ namespace DaJet.Flow
                 }
                 catch // OperationCanceledException
                 {
-                    State = PipelineState.Stopped;
+                    break; // host shutdown requested
                 }
 
-                if (State == PipelineState.Stopped) { break; } // stopped by calling Dispose
+                if (IsStopRequested) { break; }
             }
 
             Dispose();
         }
         public void Dispose()
         {
-            if (_disposed) { return; }
-
-            if (State == PipelineState.Working || State == PipelineState.Sleeping)
+            if (CanDispose)
             {
-                State = PipelineState.Stopped;
+                DisposePipeline();
+                SetIdleState();
             }
+        }
+        private void DisposePipeline()
+        {
+            State = PipelineState.Stopping;
 
             try
             {
@@ -108,12 +116,16 @@ namespace DaJet.Flow
             {
                 _task.Wait(_token);
             }
+            catch
+            {
+                // OperationCanceledException
+            }
             finally
             {
                 if (_task.IsCompleted) { _task.Dispose(); }
             }
 
-            _disposed = true;
+            State = PipelineState.Stopped;
         }
     }
 }

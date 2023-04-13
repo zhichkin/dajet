@@ -5,7 +5,7 @@ namespace DaJet.Metadata
 {
     public sealed class RWLockSlim : IDisposable
     {
-        private readonly ReaderWriterLockSlim _lock = new ReaderWriterLockSlim();
+        private readonly ReaderWriterLockSlim _lock = new();
         public ReadLockToken ReadLock()
         {
             return new ReadLockToken(this);
@@ -22,7 +22,7 @@ namespace DaJet.Metadata
         {
             _lock.Dispose();
         }
-        public struct ReadLockToken : IDisposable
+        public readonly struct ReadLockToken : IDisposable
         {
             private readonly RWLockSlim _this;
             public ReadLockToken(in RWLockSlim @this)
@@ -35,7 +35,7 @@ namespace DaJet.Metadata
                 _this._lock.ExitReadLock();
             }
         }
-        public struct WriteLockToken : IDisposable
+        public readonly struct WriteLockToken : IDisposable
         {
             private readonly RWLockSlim _this;
             public WriteLockToken(in RWLockSlim @this)
@@ -48,7 +48,7 @@ namespace DaJet.Metadata
                 _this._lock.ExitWriteLock();
             }
         }
-        public struct UpgradeableLockToken : IDisposable
+        public readonly struct UpgradeableLockToken : IDisposable
         {
             private readonly RWLockSlim _this;
             public UpgradeableLockToken(in RWLockSlim @this)
