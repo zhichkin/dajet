@@ -16,9 +16,11 @@ namespace DaJet.Flow
     public sealed class Pipeline : Configurable, IPipeline
     {
         private Task _task;
+        private bool _disposed;
         private CancellationToken _token;
         private readonly ISourceBlock _source;
         private readonly IPipelineManager _manager;
+        [Option] public int SleepTimeout { get; set; } = 60; // seconds
         [ActivatorUtilitiesConstructor] public Pipeline(PipelineOptions options, ISourceBlock source, IPipelineManager manager)
         {
             Uuid = options.Uuid;
@@ -33,30 +35,29 @@ namespace DaJet.Flow
         public string Name { get; private set; }
         public PipelineState State { get; private set; }
         public ActivationMode Activation { get; private set; } = ActivationMode.Manual;
-        [Option] public int SleepTimeout { get; set; } = 60; // seconds
-        public Task ExecuteAsync(CancellationToken cancellationToken)
+        public Task ExecuteAsync(CancellationToken token)
         {
+            _token = token;
+
             if (State == PipelineState.Working || State == PipelineState.Sleeping) { return _task; }
 
-            _token = cancellationToken;
-
-            State = PipelineState.Working;
-
+            _disposed = false;
+            
             _task = Task.Factory.StartNew(ExecutePipeline, TaskCreationOptions.LongRunning);
 
             return _task;
         }
-        public void Dispose() { State = PipelineState.Stopped; }
         private void ExecutePipeline()
         {
             while (!_token.IsCancellationRequested)
             {
+                State = PipelineState.Working;
+
+                _manager.UpdatePipelineStatus(Uuid, string.Empty);
+                _manager.UpdatePipelineStartTime(Uuid, DateTime.Now);
+
                 try
                 {
-                    State = PipelineState.Working;
-                    _manager.UpdatePipelineStatus(Uuid, string.Empty);
-                    _manager.UpdatePipelineStartTime(Uuid, DateTime.Now);
-                    
                     _source.Execute();
                 }
                 catch (Exception error)
@@ -66,9 +67,9 @@ namespace DaJet.Flow
 
                 _manager.UpdatePipelineFinishTime(Uuid, DateTime.Now);
 
-                if (State == PipelineState.Stopped) { return; } // stopped by calling Dispose
+                if (State == PipelineState.Stopped) { break; } // stopped by calling Dispose
 
-                if (SleepTimeout <= 0) { State = PipelineState.Completed; return; } // run once
+                if (SleepTimeout <= 0) { State = PipelineState.Completed; break; } // run once
 
                 try
                 {
@@ -80,8 +81,39 @@ namespace DaJet.Flow
                     State = PipelineState.Stopped;
                 }
 
-                if (State == PipelineState.Stopped) { return; } // stopped by calling Dispose
+                if (State == PipelineState.Stopped) { break; } // stopped by calling Dispose
             }
+
+            Dispose();
+        }
+        public void Dispose()
+        {
+            if (_disposed) { return; }
+
+            if (State == PipelineState.Working || State == PipelineState.Sleeping)
+            {
+                State = PipelineState.Stopped;
+            }
+
+            try
+            {
+                _source.Dispose();
+            }
+            catch
+            {
+                // TODO: log error
+            }
+
+            try
+            {
+                _task.Wait(_token);
+            }
+            finally
+            {
+                if (_task.IsCompleted) { _task.Dispose(); }
+            }
+
+            _disposed = true;
         }
     }
 }

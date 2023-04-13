@@ -11,5 +11,9 @@
         {
             // do nothing by default
         }
+        public virtual void Dispose()
+        {
+            // do nothing by default
+        }
     }
 }

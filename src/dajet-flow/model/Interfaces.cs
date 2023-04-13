@@ -1,16 +1,16 @@
 ﻿namespace DaJet.Flow
 {
-    public interface IInputBlock<TInput>
+    public interface ISourceBlock : IDisposable
     {
-        void Process(in TInput input);
-        void Synchronize();
+        void Execute();
     }
     public interface IOutputBlock<TOutput>
     {
         void LinkTo(in IInputBlock<TOutput> next);
     }
-    public interface ISourceBlock
+    public interface IInputBlock<TInput> : IDisposable
     {
-        void Execute();
+        void Process(in TInput input);
+        void Synchronize();
     }
 }
