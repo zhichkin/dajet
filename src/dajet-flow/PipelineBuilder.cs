@@ -26,7 +26,20 @@ namespace DaJet.Flow
         }
         private void InitializeAssemblies()
         {
-            foreach (string filePath in Directory.GetFiles(AppContext.BaseDirectory, "DaJet.Flow.*"))
+            // load DaJet Flow main assembly
+
+            Assembly assembly = typeof(Pipeline).Assembly;
+
+            if (!_assemblies.ContainsKey(assembly.Location))
+            {
+                _assemblies.Add(assembly.Location, assembly);
+            }
+
+            // load DaJet Flow plugin blocks
+
+            string catalogPath = Path.Combine(AppContext.BaseDirectory, "flow");
+
+            foreach (string filePath in Directory.GetFiles(catalogPath, "DaJet.Flow.*"))
             {
                 if (_assemblies.ContainsKey(filePath))
                 {
@@ -35,14 +48,14 @@ namespace DaJet.Flow
 
                 if (Path.GetExtension(filePath) == ".dll")
                 {
-                    Assembly assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(filePath);
+                    assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(filePath);
 
                     if (assembly is not null)
                     {
                         _assemblies.Add(filePath, assembly);
                     }
 
-                    _logger?.LogInformation($"[{assembly.FullName}] loaded successfully.");
+                    _logger?.LogInformation("[{AssemblyFullName}] loaded successfully.", assembly.FullName);
                 }
             }
         }
@@ -201,12 +214,6 @@ namespace DaJet.Flow
             }
 
             return null;
-        }
-        private Type GetPipelineBlockMessageType(string blockTypeName)
-        {
-            Type blockType = ResolveHandler(blockTypeName);
-            
-            return GetPipelineBlockMessageType(blockType);
         }
     }
 }

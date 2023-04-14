@@ -1,16 +1,12 @@
 ﻿using DaJet.Flow.Model;
-using DaJet.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DaJet.Flow
 {
-    public interface IPipeline : IDisposable
+    public interface IPipeline : IDisposable, IAsyncDisposable
     {
         Guid Uuid { get; }
-        Task Task { get; }
         string Name { get; }
-        PipelineState State { get; }
-        ActivationMode Activation { get; }
         Task ExecuteAsync(CancellationToken cancellationToken);
     }
     public sealed class Pipeline : Configurable, IPipeline
@@ -25,43 +21,38 @@ namespace DaJet.Flow
         {
             Uuid = options.Uuid;
             Name = options.Name;
-            Activation = options.Activation;
             _source = source ?? throw new ArgumentNullException(nameof(source));
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
         }
         public Guid Uuid { get; private set; }
-        public Task Task { get { return _task; } }
         public string Name { get; private set; }
-        public PipelineState State { get; private set; } = PipelineState.Stopped;
-        public ActivationMode Activation { get; private set; } = ActivationMode.Manual;
         protected override void _Configure()
         {
             if (SleepTimeout < 0) { SleepTimeout = 0; } // run once
         }
+        private bool IsBusy { get { return Interlocked.CompareExchange(ref _state, 1, 0) > 0; } }
+        private bool CanDispose { get { return Interlocked.CompareExchange(ref _state, 3, 2) == 2; } }
+        private bool IsStopRequested { get { return Interlocked.CompareExchange(ref _state, 2, 2) != 2; } }
+        private void SetPipelineState(PipelineState state) { _ = Interlocked.Exchange(ref _state, (int)state); }
         public Task ExecuteAsync(CancellationToken token)
         {
             if (IsBusy) { return _task; }
 
             _token = token;
-            
+
             _task = Task.Factory.StartNew(ExecutePipeline, TaskCreationOptions.LongRunning);
 
-            SetWorkingState();
+            SetPipelineState(PipelineState.Working);
 
             return _task;
         }
-        private void SetIdleState() { _state = 0; }
-        private void SetWorkingState() { _state = 2; }
-        private bool IsBusy { get { return Interlocked.CompareExchange(ref _state, 1, 0) > 0; } }
-        private bool CanDispose { get { return Interlocked.CompareExchange(ref _state, 3, 2) == 2; } }
-        private bool IsStopRequested { get { return Interlocked.CompareExchange(ref _state, 2, 2) != 2; } }
         private void ExecutePipeline()
         {
             while (!_token.IsCancellationRequested)
             {
-                State = PipelineState.Working;
                 _manager.UpdatePipelineStatus(Uuid, string.Empty);
                 _manager.UpdatePipelineStartTime(Uuid, DateTime.Now);
+                _manager.UpdatePipelineState(Uuid, PipelineState.Working);
 
                 try
                 {
@@ -78,7 +69,7 @@ namespace DaJet.Flow
 
                 try
                 {
-                    State = PipelineState.Sleeping;
+                    _manager.UpdatePipelineState(Uuid, PipelineState.Sleeping);
                     Task.Delay(TimeSpan.FromSeconds(SleepTimeout)).Wait(_token);
                 }
                 catch // OperationCanceledException
@@ -96,12 +87,12 @@ namespace DaJet.Flow
             if (CanDispose)
             {
                 DisposePipeline();
-                SetIdleState();
+                SetPipelineState(PipelineState.Idle);
             }
         }
         private void DisposePipeline()
         {
-            State = PipelineState.Stopping;
+            _manager.UpdatePipelineState(Uuid, PipelineState.Disposing);
 
             try
             {
@@ -114,7 +105,7 @@ namespace DaJet.Flow
 
             try
             {
-                _task.Wait(_token);
+                //TODO: _task.Wait(_token); !!!
             }
             catch
             {
@@ -122,10 +113,12 @@ namespace DaJet.Flow
             }
             finally
             {
-                if (_task.IsCompleted) { _task.Dispose(); }
+                //TODO: if (_task.IsCompleted) { _task.Dispose(); } ???
             }
 
-            State = PipelineState.Stopped;
+            _manager.UpdatePipelineState(Uuid, PipelineState.Idle);
         }
+        private ValueTask DisposeAsyncFake() { return ValueTask.CompletedTask; }
+        public async ValueTask DisposeAsync() { await DisposeAsyncFake(); Dispose(); }
     }
 }

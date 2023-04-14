@@ -1,5 +1,4 @@
 ﻿using DaJet.Flow.Model;
-using DaJet.Metadata;
 using Microsoft.Extensions.Logging;
 
 namespace DaJet.Flow
@@ -15,6 +14,7 @@ namespace DaJet.Flow
         void UpdatePipelineStatus(Guid uuid, in string status);
         void UpdatePipelineStartTime(Guid uuid, DateTime value);
         void UpdatePipelineFinishTime(Guid uuid, DateTime value);
+        void UpdatePipelineState(Guid uuid, in PipelineState state);
     }
     public sealed class PipelineManager : IPipelineManager
     {
@@ -92,59 +92,25 @@ namespace DaJet.Flow
 
             if (pipeline is not null)
             {
+                PipelineInfo info = new()
+                {
+                    Uuid = options.Uuid,
+                    Name = options.Name,
+                    Activation = options.Activation
+                };
+
+                _monitor.Add(pipeline.Uuid, info);
                 _pipelines.Add(pipeline.Uuid, pipeline);
-                _monitor.Add(pipeline.Uuid, CreatePipelineInfo(in pipeline));
 
-                _logger?.LogInformation($"Pipeline [{pipeline.Name}] created successfully.");
+                _logger?.LogInformation("Pipeline [{name}] created successfully.", options.Name);
 
-                if (pipeline.Activation == ActivationMode.Auto)
+                if (options.Activation == ActivationMode.Auto)
                 {
                     _ = pipeline.ExecuteAsync(_token);
                 }
             }
         }
-        private PipelineInfo CreatePipelineInfo(in IPipeline pipeline)
-        {
-            return new PipelineInfo()
-            {
-                Uuid = pipeline.Uuid,
-                Name = pipeline.Name,
-                State = pipeline.State,
-                Status = string.Empty,
-                Activation = pipeline.Activation
-            };
-        }
 
-        private async Task RemovePipeline(Guid uuid, bool waitForCompletion)
-        {
-            if (_pipelines.TryGetValue(uuid, out IPipeline pipeline))
-            {
-                if (pipeline.State == PipelineState.Working || pipeline.State == PipelineState.Sleeping)
-                {
-                    pipeline.Dispose();
-                }
-
-                if (waitForCompletion)
-                {
-                    try
-                    {
-                        if (pipeline.Task is not null)
-                        {
-                            await pipeline.Task?.WaitAsync(_token);
-                        }
-                    }
-                    catch
-                    {
-                        // do nothing
-                    }
-                }
-            }
-
-            // synchronize in-memory cache and monitor
-            _ = _monitor.Remove(uuid);
-            _ = _pipelines.Remove(uuid);
-        }
-        
         public void ExecutePipeline(Guid uuid)
         {
             if (_pipelines.TryGetValue(uuid, out IPipeline pipeline))
@@ -168,40 +134,38 @@ namespace DaJet.Flow
                 _ = _options.Delete(in options); // delete from database
             }
 
-            await RemovePipeline(uuid, false);
+            await RemovePipeline(uuid);
         }
         public async Task ReStartPipeline(Guid uuid)
         {
-            await RemovePipeline(uuid, true);
+            await RemovePipeline(uuid);
         }
-        
+        private async Task RemovePipeline(Guid uuid)
+        {
+            if (_pipelines.TryGetValue(uuid, out IPipeline pipeline))
+            {
+                await pipeline.DisposeAsync();
+            }
+
+            // synchronize in-memory cache and monitor
+            _ = _monitor.Remove(uuid);
+            _ = _pipelines.Remove(uuid);
+        }
+
         public void Dispose()
         {
-            _monitor.Clear();
-            _pipelines.Clear();
-
             foreach (IPipeline pipeline in _pipelines.Values)
             {
                 pipeline.Dispose();
             }
+            _monitor.Clear();
+            _pipelines.Clear();
         }
 
-        //
+        #region "PIPELINE MONITOR"
         public List<PipelineInfo> GetMonitorInfo()
         {
-            List<PipelineInfo> monitor = new();
-
-            foreach (PipelineInfo info in _monitor.Values)
-            {
-                if (_pipelines.TryGetValue(info.Uuid, out IPipeline pipeline))
-                {
-                    info.State = pipeline.State;
-                }
-
-                monitor.Add(info);
-            }
-
-            return monitor;
+            return _monitor.Values.ToList();
         }
         public void UpdatePipelineStatus(Guid uuid, in string status)
         {
@@ -224,5 +188,13 @@ namespace DaJet.Flow
                 info.Finish = value;
             }
         }
+        public void UpdatePipelineState(Guid uuid, in PipelineState state)
+        {
+            if (_monitor.TryGetValue(uuid, out PipelineInfo info))
+            {
+                info.State = state;
+            }
+        }
+        #endregion
     }
 }
