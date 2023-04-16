@@ -7,13 +7,15 @@ namespace DaJet.Flow
     {
         Guid Uuid { get; }
         string Name { get; }
-        Task ExecuteAsync(CancellationToken cancellationToken);
+        Task ExecuteAsync(CancellationToken token);
     }
     public sealed class Pipeline : Configurable, IPipeline
     {
         private Task _task;
         private int _state; // 0 == idle, 1 == starting, 2 == working, 3 == disposing
         private CancellationToken _token;
+        private CancellationTokenSource _cts;
+        private CancellationTokenRegistration _ctr;
         private readonly ISourceBlock _source;
         private readonly IPipelineManager _manager;
         [Option] public int SleepTimeout { get; set; } = 60; // seconds
@@ -30,19 +32,21 @@ namespace DaJet.Flow
         {
             if (SleepTimeout < 0) { SleepTimeout = 0; } // run once
         }
-        private bool IsBusy { get { return Interlocked.CompareExchange(ref _state, 1, 0) > 0; } }
+        private bool CanExecute { get { return Interlocked.CompareExchange(ref _state, 1, 0) == 0; } }
         private bool CanDispose { get { return Interlocked.CompareExchange(ref _state, 3, 2) == 2; } }
-        private bool IsStopRequested { get { return Interlocked.CompareExchange(ref _state, 2, 2) != 2; } }
         private void SetPipelineState(PipelineState state) { _ = Interlocked.Exchange(ref _state, (int)state); }
         public Task ExecuteAsync(CancellationToken token)
         {
-            if (IsBusy) { return _task; }
+            if (CanExecute)
+            {
+                _cts = CancellationTokenSource.CreateLinkedTokenSource(token);
 
-            _token = token;
+                _token = _cts.Token;
 
-            _task = Task.Factory.StartNew(ExecutePipeline, TaskCreationOptions.LongRunning);
+                _task = Task.Factory.StartNew(ExecutePipeline, TaskCreationOptions.LongRunning);
 
-            SetPipelineState(PipelineState.Working);
+                SetPipelineState(PipelineState.Working);
+            }
 
             return _task;
         }
@@ -65,7 +69,7 @@ namespace DaJet.Flow
 
                 _manager.UpdatePipelineFinishTime(Uuid, DateTime.Now);
 
-                if (IsStopRequested || SleepTimeout == 0) { break; }
+                if (SleepTimeout == 0) { break; } // run once
 
                 try
                 {
@@ -74,21 +78,11 @@ namespace DaJet.Flow
                 }
                 catch // OperationCanceledException
                 {
-                    break; // host shutdown requested
+                    break; // The pipeline Dispose method is called or host shutdown requested
                 }
-
-                if (IsStopRequested) { break; }
             }
 
             Dispose();
-        }
-        public void Dispose()
-        {
-            if (CanDispose)
-            {
-                DisposePipeline();
-                SetPipelineState(PipelineState.Idle);
-            }
         }
         private void DisposePipeline()
         {
@@ -103,20 +97,31 @@ namespace DaJet.Flow
                 // TODO: log error
             }
 
-            try
-            {
-                //TODO: _task.Wait(_token); !!!
-            }
-            catch
-            {
-                // OperationCanceledException
-            }
-            finally
-            {
-                //TODO: if (_task.IsCompleted) { _task.Dispose(); } ???
-            }
-
             _manager.UpdatePipelineState(Uuid, PipelineState.Idle);
+        }
+        private void CancellationHandler()
+        {
+            _ctr.Dispose(); // unregister handler from cancellation token
+            _cts.Dispose(); // dispose pipeline cancellation token source
+            _cts = null;
+            
+            DisposePipeline(); // dispose pipeline source block
+
+            SetPipelineState(PipelineState.Idle);
+        }
+        public void Dispose()
+        {
+            if (CanDispose)
+            {
+                try
+                {
+                    _cts.Cancel();
+                }
+                finally
+                {
+                    _ctr = _token.Register(CancellationHandler);
+                }
+            }
         }
         private ValueTask DisposeAsyncFake() { return ValueTask.CompletedTask; }
         public async ValueTask DisposeAsync() { await DisposeAsyncFake(); Dispose(); }

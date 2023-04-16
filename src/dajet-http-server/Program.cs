@@ -44,7 +44,8 @@ namespace DaJet.Http.Server
 
             ConfigureOptionProviders(builder.Services);
             ConfigureMetadataService(builder.Services);
-            ConfigureDaJetFlowService(builder.Services);
+
+            builder.Services.UseDaJetFlow(OptionsFileConnectionString);
 
             WebApplication app = builder.Build();
             //app.UseAuthentication();
@@ -110,9 +111,6 @@ namespace DaJet.Http.Server
 
             services.AddSingleton(new ScriptDataMapper(connectionString));
             services.AddSingleton(new InfoBaseDataMapper(connectionString));
-
-            PipelineOptionsProvider options = new(connectionString);
-            services.AddSingleton<IPipelineOptionsProvider>(options);
         }
         private static void ConfigureMetadataService(IServiceCollection services)
         {
@@ -139,12 +137,6 @@ namespace DaJet.Http.Server
             }
 
             services.AddSingleton<IMetadataService>(metadataService);
-        }
-        private static void ConfigureDaJetFlowService(IServiceCollection services)
-        {
-            services.AddSingleton<IPipelineBuilder, PipelineBuilder>();
-            services.AddSingleton<IPipelineManager, PipelineManager>();
-            services.AddHostedService<DaJetFlowService>();
         }
     }
 }
