@@ -53,56 +53,8 @@ namespace DaJet.Flow.RabbitMQ
             }
         }
         protected override void _Configure() { ParseSourceUri(); }
-        public override void Execute()
-        {
-            while (!_token.IsCancellationRequested)
-            {
-                try
-                {
-                    InitializeConsumer();
 
-                    Task.Delay(TimeSpan.FromSeconds(60), _token).Wait(_token);
-
-                    int consumed = Interlocked.Exchange(ref _consumed, 0);
-
-                    _manager.UpdatePipelineStatus(Pipeline, $"[{Pipeline}] Consumed {consumed} messages in 60 seconds.");
-                }
-                catch
-                {
-                    throw;
-                }
-            }
-        }
-        protected override void _Dispose()
-        {
-            if (_consumer is not null)
-            {
-                _consumer.Received -= ProcessMessage;
-                _consumer.Model = null;
-                _consumer = null;
-            }
-
-            try
-            {
-                _channel?.Dispose();
-            }
-            catch
-            {
-                // do nothing
-            }
-            _channel = null;
-
-            try
-            {
-                _connection?.Dispose();
-            }
-            catch
-            {
-                // do nothing
-            }
-            _connection = null;
-        }
-
+        #region "RABBITMQ CONNECTION, CHANNEL AND CONSUMER SETUP"
         private void InitializeConnection()
         {
             if (_connection is not null && _connection.IsOpen) { return; }
@@ -129,7 +81,7 @@ namespace DaJet.Flow.RabbitMQ
             InitializeConnection();
 
             _channel = _connection.CreateModel();
-            _channel.BasicQos(0, 1, false); // consume messages one-by-one at the channels scope
+            _channel.BasicQos(0, 1, false); // consume any size messages one-by-one at the channels scope
         }
         private void InitializeConsumer()
         {
@@ -153,6 +105,28 @@ namespace DaJet.Flow.RabbitMQ
             _consumerTag = _channel.BasicConsume(Queue, false, _consumer);
 
             //_consumer.Model.BasicCancel(_consumerTag); ?
+        }
+        #endregion
+
+        public override void Execute()
+        {
+            while (!_token.IsCancellationRequested)
+            {
+                try
+                {
+                    InitializeConsumer();
+
+                    Task.Delay(TimeSpan.FromSeconds(60), _token).Wait(_token);
+
+                    int consumed = Interlocked.Exchange(ref _consumed, 0);
+
+                    _manager.UpdatePipelineStatus(Pipeline, $"Consumed {consumed} messages in 60 seconds.");
+                }
+                catch
+                {
+                    throw;
+                }
+            }
         }
         private void ProcessMessage(object sender, BasicDeliverEventArgs args)
         {
@@ -186,7 +160,9 @@ namespace DaJet.Flow.RabbitMQ
         {
             try
             {
-                // defensive delay from forever cycle if producer is broken
+                // Defensive delay from forever cycle if producer is broken.
+                // Forever cycle occurs because the nacked message is returned
+                // to the queue head and received again and again repeatedly.
                 Task.Delay(TimeSpan.FromSeconds(60), _token).Wait(_token);
 
                 consumer.Model.BasicNack(args.DeliveryTag, false, true);
@@ -198,11 +174,13 @@ namespace DaJet.Flow.RabbitMQ
         }
         private Message CreateMessage(in BasicDeliverEventArgs args)
         {
-            Message message = new();
-
-            message.AppId = (args.BasicProperties.AppId ?? string.Empty);
-            message.Type = (args.BasicProperties.Type ?? string.Empty);
-            message.Body = (args.Body.IsEmpty ? string.Empty : Encoding.UTF8.GetString(args.Body.Span));
+            Message message = new()
+            {
+                AppId = (args.BasicProperties.AppId ?? string.Empty),
+                MessageId = (args.BasicProperties.MessageId ?? string.Empty),
+                Type = (args.BasicProperties.Type ?? string.Empty),
+                Body = (args.Body.IsEmpty ? string.Empty : Encoding.UTF8.GetString(args.Body.Span))
+            };
 
             if (args.BasicProperties.Headers is Dictionary<string, object> headers)
             {
@@ -245,6 +223,34 @@ namespace DaJet.Flow.RabbitMQ
             }
 
             return JsonSerializer.Serialize(headers);
+        }
+
+        protected override void _Dispose()
+        {
+            if (_consumer is not null)
+            {
+                _consumer.Received -= ProcessMessage;
+                _consumer.Model = null;
+                _consumer = null;
+            }
+
+            try
+            {
+                _channel?.Dispose();
+            }
+            finally
+            {
+                _channel = null;
+            }
+
+            try
+            {
+                _connection?.Dispose();
+            }
+            finally
+            {
+                _connection = null;
+            }
         }
     }
 }

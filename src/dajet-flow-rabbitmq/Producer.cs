@@ -192,7 +192,7 @@ namespace DaJet.Flow.RabbitMQ
 
             if (_tracker.HasErrors()) { throw new InvalidOperationException(_tracker.ErrorReason); }
 
-            _tracker.Clear(); // prepare for the next publish session
+            _tracker.Clear(); // prepare for the next publish session (batch of messages)
         }
 
         private void CopyMessageProperties(in Message message)
@@ -217,6 +217,8 @@ namespace DaJet.Flow.RabbitMQ
         }
         private ReadOnlyMemory<byte> EncodeMessageBody(in string message)
         {
+            //return Encoding.UTF8.GetBytes(message);
+
             int bufferSize = message.Length * 2; // char == 2 bytes
 
             if (_buffer == null)
@@ -242,7 +244,7 @@ namespace DaJet.Flow.RabbitMQ
 
             CopyMessageProperties(in input);
 
-            ReadOnlyMemory<byte> messageBody = EncodeMessageBody(input.Body); //Encoding.UTF8.GetBytes(input.Body);
+            ReadOnlyMemory<byte> messageBody = EncodeMessageBody(input.Body);
 
             _tracker.Track(_channel.NextPublishSeqNo);
 
@@ -253,17 +255,17 @@ namespace DaJet.Flow.RabbitMQ
                 _ = _properties?.Headers?.Remove("BCC"); // blind carbon copy
 
                 // send message directly to the specified queue
-                _channel!.BasicPublish(string.Empty, RoutingKey, Mandatory, _properties, messageBody);
+                _channel.BasicPublish(string.Empty, RoutingKey, Mandatory, _properties, messageBody);
             }
             else if (string.IsNullOrWhiteSpace(RoutingKey))
             {
                 // send message to the specified exchange and message type as a routing key 
-                _channel!.BasicPublish(Exchange, input.Type, Mandatory, _properties, messageBody);
+                _channel.BasicPublish(Exchange, input.Type, Mandatory, _properties, messageBody);
             }
             else
             {
                 // send message to the specified exchange and routing key
-                _channel!.BasicPublish(Exchange, RoutingKey, Mandatory, _properties, messageBody);
+                _channel.BasicPublish(Exchange, RoutingKey, Mandatory, _properties, messageBody);
             }
         }
         protected override void _Dispose()
@@ -273,6 +275,7 @@ namespace DaJet.Flow.RabbitMQ
             if (_buffer is not null) { ArrayPool<byte>.Shared.Return(_buffer); }
             if (_channel is not null) { _channel.Dispose(); _channel = null; }
             if (_connection is not null) { _connection.Dispose(); _connection = null; }
+            _connectionIsBlocked = false;
         }
     }
 }

@@ -56,7 +56,10 @@ namespace DaJet.Flow.SqlServer
 
             foreach (var parameter in input)
             {
-                command.Parameters.AddWithValue(parameter.Key, parameter.Value);
+                if (parameter.Value is not null)
+                {
+                    command.Parameters.AddWithValue(parameter.Key, parameter.Value);
+                }
             }
         }
     }
