@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using DaJet.Flow.Model;
+using Microsoft.Extensions.DependencyInjection;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Buffers;
@@ -9,23 +10,37 @@ namespace DaJet.Flow.RabbitMQ
 {
     [PipelineBlock] public sealed class Producer : TargetBlock<Message>
     {
+        private int _session;
+        private const int SESSION_IS_IDLE = 0;
+        private const int SESSION_IS_ACTIVE = 1;
+        private const int SESSION_HAS_ERROR = 2;
+        private string _last_error_text;
+
+        private int _disposing; // 0 == false, 1 == true
         private IModel _channel;
         private IConnection _connection;
         private IBasicProperties _properties;
-        private bool _connectionIsBlocked = false;
         private byte[] _buffer; // message body buffer
-        private readonly PublishTracker _tracker = new(1000); // publisher confirms tracker
+        private PublishTracker _tracker; // publisher confirms tracker
+        private readonly IPipelineManager _manager;
+        [ActivatorUtilitiesConstructor] public Producer(IPipelineManager manager)
+        {
+            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
+        }
+        
+        #region "CONFIGURATION OPTIONS"
         [Option] public Guid Pipeline { get; set; } = Guid.Empty;
         [Option] public string Target { get; set; } = "amqp://guest:guest@localhost:5672/%2F";
         [Option] public string Exchange { get; set; } = string.Empty; // if exchange name is empty, then RoutingKey is a queue name to send directly
         [Option] public string RoutingKey { get; set; } = string.Empty; // if exchange name is not empty, then this is routing key value
         [Option] public bool Mandatory { get; set; } = false; // helps to detect unroutable messages, firing BasicReturn event on producer
-        [ActivatorUtilitiesConstructor] public Producer() { }
+        
         private string HostName { get; set; } = "localhost";
         private int HostPort { get; set; } = 5672;
         private string VirtualHost { get; set; } = "/";
         private string UserName { get; set; } = "guest";
         private string Password { get; set; } = "guest";
+
         private void ParseTargetUri()
         {
             if (string.IsNullOrWhiteSpace(Target)) { return; }
@@ -51,14 +66,11 @@ namespace DaJet.Flow.RabbitMQ
             }
         }
         protected override void _Configure() { ParseTargetUri(); }
+        #endregion
 
-        #region "RABBITMQ CONNECTION AND CHANNEL SETUP"
+        #region "RABBITMQ CONNECTION AND CHANNEL"
         private void InitializeConnection()
         {
-            if (_connection is not null && _connection.IsOpen) { return; }
-
-            _connection?.Dispose(); // The connection might be closed, but not disposed yet.
-
             IConnectionFactory factory = new ConnectionFactory()
             {
                 HostName = HostName,
@@ -71,25 +83,20 @@ namespace DaJet.Flow.RabbitMQ
             _connection = factory.CreateConnection();
             _connection.ConnectionBlocked += HandleConnectionBlocked;
             _connection.ConnectionUnblocked += HandleConnectionUnblocked;
-
-            //TODO: _connection.ConnectionShutdown += HandleConnectionShutdown; ?
+            _connection.ConnectionShutdown += ConnectionShutdownHandler;
         }
         private void HandleConnectionBlocked(object sender, ConnectionBlockedEventArgs args)
         {
-            _connectionIsBlocked = true;
+            SetSessionToErrorState($"Connection is blocked: {args.Reason}");
         }
-        private void HandleConnectionUnblocked(object sender, EventArgs args)
+        private void HandleConnectionUnblocked(object sender, EventArgs args) { /* ? IGNORE ? */ }
+        private void ConnectionShutdownHandler(object sender, ShutdownEventArgs args)
         {
-            _connectionIsBlocked = false;
+            SetSessionToErrorState($"Connection shutdown: [{args.ReplyCode}] {args.ReplyText}");
         }
+
         private void InitializeChannel()
         {
-            if (_channel is not null && _channel.IsOpen) { return; }
-
-            _channel?.Dispose(); // The channel might be closed, but not disposed yet.
-
-            InitializeConnection();
-
             _channel = _connection.CreateModel();
             _channel.ConfirmSelect();
             _channel.BasicAcks += BasicAcksHandler;
@@ -108,10 +115,6 @@ namespace DaJet.Flow.RabbitMQ
         private void BasicAcksHandler(object sender, BasicAckEventArgs args)
         {
             _tracker?.SetAckStatus(args.DeliveryTag, args.Multiple);
-        }
-        private void BasicNacksHandler(object sender, BasicNackEventArgs args)
-        {
-            _tracker?.SetNackStatus(args.DeliveryTag, args.Multiple);
         }
         private string GetReturnReason(in BasicReturnEventArgs args)
         {
@@ -149,52 +152,180 @@ namespace DaJet.Flow.RabbitMQ
 
             return reason;
         }
+        private void BasicNacksHandler(object sender, BasicNackEventArgs args)
+        {
+            SetSessionToErrorState($"Nack received: [{args.DeliveryTag}]");
+        }
         private void BasicReturnHandler(object sender, BasicReturnEventArgs args)
         {
-            if (_tracker is not null && _tracker.IsReturned) { return; } // already marked as returned
-
-            string reason = GetReturnReason(in args);
-
-            _tracker?.SetReturnedStatus(reason);
+            SetSessionToErrorState(GetReturnReason(in args));
         }
         private void ModelShutdownHandler(object sender, ShutdownEventArgs args)
         {
-            _connectionIsBlocked = true;
-
-            _tracker?.SetShutdownStatus($"Channel shutdown ({args.ReplyCode}): {args.ReplyText}");
+            SetSessionToErrorState($"Channel shutdown: [{args.ReplyCode}] {args.ReplyText}");
         }
         #endregion
 
-        private void ThrowIfConnectionIsBlocked()
+        private void BeginSessionOrThrow()
         {
-            if (!_connectionIsBlocked) { return; }
+            if (Interlocked.CompareExchange(ref _session, SESSION_IS_ACTIVE, SESSION_IS_IDLE) == SESSION_IS_IDLE)
+            {
+                try
+                {
+                    InitializeConnection();
 
-            Dispose();
+                    InitializeChannel();
 
-            throw new Exception("Connection is blocked or channel is shutdown by broker.");
+                    _tracker = new PublishTracker(1000);
+                }
+                catch
+                {
+                    _ = Interlocked.Exchange(ref _session, SESSION_IS_IDLE);
+
+                    throw;
+                }
+            }
         }
-        private void ThrowIfChannelIsNotHealthy()
+        private void CloseSessionOrThrow()
         {
             try
             {
-                InitializeChannel();
+                if (!_channel.WaitForConfirms())
+                {
+                    throw new InvalidOperationException(nameof(Producer));
+                }
             }
             catch
             {
-                Dispose(); throw;
+                throw;
             }
+            finally
+            {
+                _ = Interlocked.Exchange(ref _session, SESSION_IS_IDLE);
+            }
+        }
+        private void ThrowIfSessionHasError()
+        {
+            if (Interlocked.CompareExchange(ref _session, SESSION_HAS_ERROR, SESSION_HAS_ERROR) == SESSION_HAS_ERROR)
+            {
+                throw new InvalidOperationException(_last_error_text);
+            }
+        }
+        private void SetSessionToErrorState(string error)
+        {
+            if (Interlocked.CompareExchange(ref _session, SESSION_HAS_ERROR, SESSION_IS_ACTIVE) == SESSION_IS_ACTIVE)
+            {
+                _last_error_text = error;
+            }
+        }
+        private void DisposeProducer()
+        {
+            _properties = null;
+
+            if (_channel is not null)
+            {
+                _channel.BasicAcks -= BasicAcksHandler;
+                _channel.BasicNacks -= BasicNacksHandler;
+                _channel.BasicReturn -= BasicReturnHandler;
+                _channel.ModelShutdown -= ModelShutdownHandler;
+            }
+
+            try { _channel?.Dispose(); } // causes the ModelShutdownHandler to fire
+            finally { _channel = null; } // which invokes SetShutdownStatus on _tracker
+
+            if (_connection is not null)
+            {
+                _connection.ConnectionBlocked -= HandleConnectionBlocked;
+                _connection.ConnectionUnblocked -= HandleConnectionUnblocked;
+                _connection.ConnectionShutdown -= ConnectionShutdownHandler;
+            }
+
+            try { _connection?.Dispose(); }
+            finally { _connection = null; }
+
+            if (_buffer is not null)
+            {
+                ArrayPool<byte>.Shared.Return(_buffer);
+                _buffer = null;
+            }
+
+            _tracker?.Clear();
+            _tracker = null;
         }
         protected override void _Synchronize()
         {
-            if (_channel is null) { throw new InvalidOperationException(nameof(_channel)); }
+            try
+            {
+                ThrowIfSessionHasError();
 
-            if (_channel.WaitForConfirms()) { return; }
+                CloseSessionOrThrow();
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                Dispose();
+            }
+        }
+        protected override void _Dispose()
+        {
+            if (Interlocked.CompareExchange(ref _disposing, 1, 0) == 0)
+            {
+                DisposeProducer();
 
-            if (_tracker.HasErrors()) { throw new InvalidOperationException(_tracker.ErrorReason); }
+                _ = Interlocked.Exchange(ref _session, SESSION_IS_IDLE);
 
-            _tracker.Clear(); // prepare for the next publish session (batch of messages)
+                _ = Interlocked.Exchange(ref _disposing, 0);
+            }
         }
 
+        public override void Process(in Message input)
+        {
+            try
+            {
+                ThrowIfSessionHasError();
+
+                BeginSessionOrThrow();
+
+                PublishMessage(in input);
+            }
+            catch
+            {
+                Dispose();
+                
+                throw;
+            }
+        }
+        private void PublishMessage(in Message input)
+        {
+            _tracker?.Track(_channel.NextPublishSeqNo);
+
+            CopyMessageProperties(in input);
+
+            ReadOnlyMemory<byte> messageBody = EncodeMessageBody(input.Body);
+
+            if (string.IsNullOrWhiteSpace(Exchange))
+            {
+                // clear CC and BCC headers if present
+                _ = _properties?.Headers?.Remove("CC"); // carbon copy
+                _ = _properties?.Headers?.Remove("BCC"); // blind carbon copy
+
+                // send message directly to the specified queue
+                _channel.BasicPublish(string.Empty, RoutingKey, Mandatory, _properties, messageBody);
+            }
+            else if (string.IsNullOrWhiteSpace(RoutingKey))
+            {
+                // send message to the specified exchange and message type as a routing key 
+                _channel.BasicPublish(Exchange, input.Type, Mandatory, _properties, messageBody);
+            }
+            else
+            {
+                // send message to the specified exchange and routing key
+                _channel.BasicPublish(Exchange, RoutingKey, Mandatory, _properties, messageBody);
+            }
+        }
         private void CopyMessageProperties(in Message message)
         {
             _properties.Type = message.Type;
@@ -221,13 +352,14 @@ namespace DaJet.Flow.RabbitMQ
 
             int bufferSize = message.Length * 2; // char == 2 bytes
 
-            if (_buffer == null)
+            if (_buffer is null)
             {
                 _buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
             }
             else if (_buffer.Length < bufferSize)
             {
                 ArrayPool<byte>.Shared.Return(_buffer);
+
                 _buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
             }
 
@@ -236,46 +368,6 @@ namespace DaJet.Flow.RabbitMQ
             ReadOnlyMemory<byte> messageBody = new(_buffer, 0, encoded);
 
             return messageBody;
-        }
-        public override void Process(in Message input)
-        {
-            ThrowIfConnectionIsBlocked();
-            ThrowIfChannelIsNotHealthy();
-
-            CopyMessageProperties(in input);
-
-            ReadOnlyMemory<byte> messageBody = EncodeMessageBody(input.Body);
-
-            _tracker.Track(_channel.NextPublishSeqNo);
-
-            if (string.IsNullOrWhiteSpace(Exchange))
-            {
-                // clear CC and BCC headers if present
-                _ = _properties?.Headers?.Remove("CC"); // carbon copy
-                _ = _properties?.Headers?.Remove("BCC"); // blind carbon copy
-
-                // send message directly to the specified queue
-                _channel.BasicPublish(string.Empty, RoutingKey, Mandatory, _properties, messageBody);
-            }
-            else if (string.IsNullOrWhiteSpace(RoutingKey))
-            {
-                // send message to the specified exchange and message type as a routing key 
-                _channel.BasicPublish(Exchange, input.Type, Mandatory, _properties, messageBody);
-            }
-            else
-            {
-                // send message to the specified exchange and routing key
-                _channel.BasicPublish(Exchange, RoutingKey, Mandatory, _properties, messageBody);
-            }
-        }
-        protected override void _Dispose()
-        {
-            _properties = null;
-            if (_tracker is not null) { _tracker.Clear(); }
-            if (_buffer is not null) { ArrayPool<byte>.Shared.Return(_buffer); }
-            if (_channel is not null) { _channel.Dispose(); _channel = null; }
-            if (_connection is not null) { _connection.Dispose(); _connection = null; }
-            _connectionIsBlocked = false;
         }
     }
 }

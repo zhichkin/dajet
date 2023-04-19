@@ -234,23 +234,11 @@ namespace DaJet.Flow.RabbitMQ
                 _consumer = null;
             }
 
-            try
-            {
-                _channel?.Dispose();
-            }
-            finally
-            {
-                _channel = null;
-            }
+            try { _channel?.Dispose(); }
+            finally { _channel = null; }
 
-            try
-            {
-                _connection?.Dispose();
-            }
-            finally
-            {
-                _connection = null;
-            }
+            try { _connection?.Dispose(); }
+            finally { _connection = null; }
         }
     }
 }
