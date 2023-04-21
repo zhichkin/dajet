@@ -10,29 +10,39 @@ namespace DaJet.Flow.RabbitMQ
 {
     [PipelineBlock] public sealed class Producer : TargetBlock<Message>
     {
+        #region "PRIVATE FIELDS AND CONSTANTS"
+
         private int _session;
         private const int SESSION_IS_IDLE = 0;
         private const int SESSION_IS_ACTIVE = 1;
         private const int SESSION_HAS_ERROR = 2;
-        private string _last_error_text;
 
         private int _disposing; // 0 == false, 1 == true
+        private byte[] _buffer; // message body buffer
+
+        private string _last_error_text;
+        private const string ERROR_CHANNEL_SHUTDOWN = "Channel shutdown: [{0}] {1}";
+        private const string ERROR_CONNECTION_SHUTDOWN = "Connection shutdown: [{0}] {1}";
+        private const string ERROR_CONNECTION_IS_BLOCKED = "Connection blocked: {0}";
+        private const string ERROR_WAIT_FOR_CONFIRMS = "Wait for confirms interrupted";
+        private const string ERROR_PUBLISHER_CONFIRMS = "Publisher confirms nacked";
+
+        private const string HEADER_CC = "CC";
+        private const string HEADER_BCC = "BCC";
+
+        #endregion
+
         private IModel _channel;
         private IConnection _connection;
         private IBasicProperties _properties;
-        private byte[] _buffer; // message body buffer
-        private PublishTracker _tracker; // publisher confirms tracker
-        private readonly IPipelineManager _manager;
-        [ActivatorUtilitiesConstructor] public Producer(IPipelineManager manager)
-        {
-            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
-        }
+        [ActivatorUtilitiesConstructor] public Producer() { }
         
         #region "CONFIGURATION OPTIONS"
-        [Option] public Guid Pipeline { get; set; } = Guid.Empty;
         [Option] public string Target { get; set; } = "amqp://guest:guest@localhost:5672/%2F";
         [Option] public string Exchange { get; set; } = string.Empty; // if exchange name is empty, then RoutingKey is a queue name to send directly
         [Option] public string RoutingKey { get; set; } = string.Empty; // if exchange name is not empty, then this is routing key value
+        [Option] public string CC { get; set; } = string.Empty; // additional routing keys not seen by consumers
+        [Option] public string BCC { get; set; } = string.Empty; // additional routing keys seen by consumers
         [Option] public bool Mandatory { get; set; } = false; // helps to detect unroutable messages, firing BasicReturn event on producer
         
         private string HostName { get; set; } = "localhost";
@@ -40,6 +50,8 @@ namespace DaJet.Flow.RabbitMQ
         private string VirtualHost { get; set; } = "/";
         private string UserName { get; set; } = "guest";
         private string Password { get; set; } = "guest";
+        private string[] CarbonCopy { get; set; }
+        private string[] BlindCarbonCopy { get; set; }
 
         private void ParseTargetUri()
         {
@@ -65,7 +77,38 @@ namespace DaJet.Flow.RabbitMQ
                 VirtualHost = HttpUtility.UrlDecode(uri.Segments[1].TrimEnd('/'), Encoding.UTF8);
             }
         }
-        protected override void _Configure() { ParseTargetUri(); }
+        protected override void _Configure()
+        {
+            ParseTargetUri();
+            ConfigureHeader_CarbonCopy();
+            ConfigureHeader_BlindCarbonCopy();
+        }
+        private void ConfigureHeader_CarbonCopy()
+        {
+            if (!string.IsNullOrWhiteSpace(CC))
+            {
+                CarbonCopy = CC.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                if (CarbonCopy is not null && CarbonCopy.Length == 0)
+                {
+                    CarbonCopy = null;
+                }
+            }
+            CC = null;
+        }
+        private void ConfigureHeader_BlindCarbonCopy()
+        {
+            if (!string.IsNullOrWhiteSpace(BCC))
+            {
+                BlindCarbonCopy = BCC.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                if (BlindCarbonCopy is not null && BlindCarbonCopy.Length == 0)
+                {
+                    BlindCarbonCopy = null;
+                }
+            }
+            BCC = null;
+        }
         #endregion
 
         #region "RABBITMQ CONNECTION AND CHANNEL"
@@ -87,12 +130,12 @@ namespace DaJet.Flow.RabbitMQ
         }
         private void HandleConnectionBlocked(object sender, ConnectionBlockedEventArgs args)
         {
-            SetSessionToErrorState($"Connection is blocked: {args.Reason}");
+            SetSessionToErrorState(string.Format(ERROR_CONNECTION_IS_BLOCKED, args.Reason));
         }
         private void HandleConnectionUnblocked(object sender, EventArgs args) { /* ? IGNORE ? */ }
         private void ConnectionShutdownHandler(object sender, ShutdownEventArgs args)
         {
-            SetSessionToErrorState($"Connection shutdown: [{args.ReplyCode}] {args.ReplyText}");
+            SetSessionToErrorState(string.Format(ERROR_CONNECTION_SHUTDOWN, args.ReplyCode.ToString(), args.ReplyText));
         }
 
         private void InitializeChannel()
@@ -112,49 +155,14 @@ namespace DaJet.Flow.RabbitMQ
             //_channel.FlowControl ? not implemented for C# by RabbitMQ team
             //_channel.BasicRecoverOk ???
         }
-        private void BasicAcksHandler(object sender, BasicAckEventArgs args)
-        {
-            _tracker?.SetAckStatus(args.DeliveryTag, args.Multiple);
-        }
+        private void BasicAcksHandler(object sender, BasicAckEventArgs args) { /* ? IGNORE ? */ }
+        private void BasicNacksHandler(object sender, BasicNackEventArgs args) { /* ? IGNORE ? */ }
         private string GetReturnReason(in BasicReturnEventArgs args)
         {
-            string reason = "Message return (" + args.ReplyCode.ToString() + "): " +
+            return "Message return (" + args.ReplyCode.ToString() + "): " +
                 (string.IsNullOrWhiteSpace(args.ReplyText) ? "(empty)" : args.ReplyText) + ". " +
                 "Exchange: " + (string.IsNullOrWhiteSpace(args.Exchange) ? "(empty)" : args.Exchange) + ". " +
                 "RoutingKey: " + (string.IsNullOrWhiteSpace(args.RoutingKey) ? "(empty)" : args.RoutingKey) + ".";
-
-            if (args.BasicProperties is not null &&
-                args.BasicProperties.Headers is not null &&
-                args.BasicProperties.Headers.TryGetValue("CC", out object value) && value is not null &&
-                value is List<object> recipients && recipients is not null && recipients.Count > 0)
-            {
-                string cc = string.Empty;
-
-                for (int i = 0; i < recipients.Count; i++)
-                {
-                    if (i == 10) { cc += ",..."; break; }
-
-                    if (recipients[i] is byte[] recipient)
-                    {
-                        if (string.IsNullOrEmpty(cc))
-                        {
-                            cc = Encoding.UTF8.GetString(recipient);
-                        }
-                        else
-                        {
-                            cc += "," + Encoding.UTF8.GetString(recipient);
-                        }
-                    }
-                }
-
-                if (!string.IsNullOrEmpty(cc)) { reason += " CC: " + cc; }
-            }
-
-            return reason;
-        }
-        private void BasicNacksHandler(object sender, BasicNackEventArgs args)
-        {
-            SetSessionToErrorState($"Nack received: [{args.DeliveryTag}]");
         }
         private void BasicReturnHandler(object sender, BasicReturnEventArgs args)
         {
@@ -162,7 +170,7 @@ namespace DaJet.Flow.RabbitMQ
         }
         private void ModelShutdownHandler(object sender, ShutdownEventArgs args)
         {
-            SetSessionToErrorState($"Channel shutdown: [{args.ReplyCode}] {args.ReplyText}");
+            SetSessionToErrorState(string.Format(ERROR_CHANNEL_SHUTDOWN, args.ReplyCode.ToString(), args.ReplyText));
         }
         #endregion
 
@@ -175,8 +183,6 @@ namespace DaJet.Flow.RabbitMQ
                     InitializeConnection();
 
                     InitializeChannel();
-
-                    _tracker = new PublishTracker(1000);
                 }
                 catch
                 {
@@ -188,23 +194,21 @@ namespace DaJet.Flow.RabbitMQ
         }
         private void CloseSessionOrThrow()
         {
-            try
+            if (_channel.WaitForConfirms())
             {
-                if (!_channel.WaitForConfirms())
+                int state = Interlocked.CompareExchange(ref _session, SESSION_IS_IDLE, SESSION_IS_ACTIVE);
+
+                if (state != SESSION_IS_ACTIVE)
                 {
-                    throw new InvalidOperationException(nameof(Producer));
+                    throw new OperationCanceledException(state == SESSION_HAS_ERROR ? _last_error_text : ERROR_WAIT_FOR_CONFIRMS);
                 }
             }
-            catch
+            else
             {
-                throw;
-            }
-            finally
-            {
-                _ = Interlocked.Exchange(ref _session, SESSION_IS_IDLE);
+                throw new OperationCanceledException(ERROR_PUBLISHER_CONFIRMS);
             }
         }
-        private void ThrowIfSessionHasError()
+        private void ThrowIfSessionHasErrors()
         {
             if (Interlocked.CompareExchange(ref _session, SESSION_HAS_ERROR, SESSION_HAS_ERROR) == SESSION_HAS_ERROR)
             {
@@ -220,6 +224,8 @@ namespace DaJet.Flow.RabbitMQ
         }
         private void DisposeProducer()
         {
+            _last_error_text = null;
+
             _properties = null;
 
             if (_channel is not null)
@@ -230,8 +236,8 @@ namespace DaJet.Flow.RabbitMQ
                 _channel.ModelShutdown -= ModelShutdownHandler;
             }
 
-            try { _channel?.Dispose(); } // causes the ModelShutdownHandler to fire
-            finally { _channel = null; } // which invokes SetShutdownStatus on _tracker
+            try { _channel?.Dispose(); }
+            finally { _channel = null; }
 
             if (_connection is not null)
             {
@@ -245,20 +251,22 @@ namespace DaJet.Flow.RabbitMQ
 
             if (_buffer is not null)
             {
-                ArrayPool<byte>.Shared.Return(_buffer);
-                _buffer = null;
+                ArrayPool<byte>.Shared.Return(_buffer); _buffer = null;
             }
 
-            _tracker?.Clear();
-            _tracker = null;
+            _ = Interlocked.Exchange(ref _session, SESSION_IS_IDLE);
         }
         protected override void _Synchronize()
         {
             try
             {
-                ThrowIfSessionHasError();
+                ThrowIfSessionHasErrors();
 
                 CloseSessionOrThrow();
+            }
+            catch (NullReferenceException)
+            {
+                throw new ObjectDisposedException(typeof(Producer).ToString());
             }
             catch
             {
@@ -275,8 +283,6 @@ namespace DaJet.Flow.RabbitMQ
             {
                 DisposeProducer();
 
-                _ = Interlocked.Exchange(ref _session, SESSION_IS_IDLE);
-
                 _ = Interlocked.Exchange(ref _disposing, 0);
             }
         }
@@ -285,11 +291,11 @@ namespace DaJet.Flow.RabbitMQ
         {
             try
             {
-                ThrowIfSessionHasError();
+                ThrowIfSessionHasErrors();
 
                 BeginSessionOrThrow();
 
-                PublishMessage(in input);
+                PublishMessageOrThrow(in input);
             }
             catch
             {
@@ -298,13 +304,27 @@ namespace DaJet.Flow.RabbitMQ
                 throw;
             }
         }
-        private void PublishMessage(in Message input)
+        private void PublishMessageOrThrow(in Message message)
         {
-            _tracker?.Track(_channel.NextPublishSeqNo);
+            try
+            {
+                PublishMessage(in message);
+            }
+            catch (NullReferenceException)
+            {
+                throw new ObjectDisposedException(typeof(Producer).ToString());
+            }
+            catch
+            {
+                throw;
+            }
+        }
+        private void PublishMessage(in Message message)
+        {
+            ConfigureMessageHeaders(in message);
+            ConfigureMessageProperties(in message);
 
-            CopyMessageProperties(in input);
-
-            ReadOnlyMemory<byte> messageBody = EncodeMessageBody(input.Body);
+            ReadOnlyMemory<byte> messageBody = EncodeMessageBody(message.Body);
 
             if (string.IsNullOrWhiteSpace(Exchange))
             {
@@ -318,7 +338,7 @@ namespace DaJet.Flow.RabbitMQ
             else if (string.IsNullOrWhiteSpace(RoutingKey))
             {
                 // send message to the specified exchange and message type as a routing key 
-                _channel.BasicPublish(Exchange, input.Type, Mandatory, _properties, messageBody);
+                _channel.BasicPublish(Exchange, message.Type, Mandatory, _properties, messageBody);
             }
             else
             {
@@ -326,11 +346,41 @@ namespace DaJet.Flow.RabbitMQ
                 _channel.BasicPublish(Exchange, RoutingKey, Mandatory, _properties, messageBody);
             }
         }
-        private void CopyMessageProperties(in Message message)
+        private void ConfigureMessageHeaders(in Message message)
+        {
+            if (CarbonCopy is null && BlindCarbonCopy is null && message.Headers.Count == 0) { return; }
+
+            _properties.Headers ??= new Dictionary<string, object>();
+
+            if (!message.Headers.TryGetValue(HEADER_CC, out object cc))
+            {
+                cc = CarbonCopy;
+            }
+
+            if (cc is not null)
+            {
+                if (!_properties.Headers.TryAdd(HEADER_CC, cc))
+                {
+                    _properties.Headers[HEADER_CC] = cc;
+                }
+            }
+
+            if (!message.Headers.TryGetValue(HEADER_BCC, out object bcc))
+            {
+                bcc = BlindCarbonCopy;
+            }
+
+            if (bcc is not null)
+            {
+                if (!_properties.Headers.TryAdd(HEADER_BCC, bcc))
+                {
+                    _properties.Headers[HEADER_BCC] = bcc;
+                }
+            }
+        }
+        private void ConfigureMessageProperties(in Message message)
         {
             _properties.Type = message.Type;
-            _properties.Headers = message.Headers;
-
             _properties.DeliveryMode = message.DeliveryMode;
             _properties.ContentType = message.ContentType;
             _properties.ContentEncoding = message.ContentEncoding;

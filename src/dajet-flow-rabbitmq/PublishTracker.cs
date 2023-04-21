@@ -116,7 +116,7 @@ namespace DaJet.Flow.RabbitMQ
         internal string ErrorReason { get { return string.IsNullOrWhiteSpace(_reason) ? NACKED_ERROR_MESSAGE : _reason; } }
         internal bool HasErrors()
         {
-            if (IsShutdown || IsNacked) { return true; }
+            if (IsShutdown || IsNacked || IsReturned) { return true; }
 
             if (!_tags.IsEmpty) { _reason = UNEXPECTED_ERROR_MESSAGE; return true; }
 

@@ -19,6 +19,7 @@ namespace DaJet.Flow
         private readonly ISourceBlock _source;
         private readonly IPipelineManager _manager;
         [Option] public int SleepTimeout { get; set; } = 60; // seconds
+        [Option] public bool ShowStackTrace { get; set; }
         [ActivatorUtilitiesConstructor] public Pipeline(PipelineOptions options, ISourceBlock source, IPipelineManager manager)
         {
             Uuid = options.Uuid;
@@ -64,13 +65,22 @@ namespace DaJet.Flow
                 }
                 catch (Exception error)
                 {
-                    _manager.UpdatePipelineStatus(Uuid, ExceptionHelper.GetErrorMessageAndStackTrace(error));
+                    if (ShowStackTrace)
+                    {
+                        _manager.UpdatePipelineStatus(Uuid, ExceptionHelper.GetErrorMessageAndStackTrace(error));
+                    }
+                    else
+                    {
+                        _manager.UpdatePipelineStatus(Uuid, ExceptionHelper.GetErrorMessage(error));
+                    }
                 }
 
                 _manager.UpdatePipelineFinishTime(Uuid, DateTime.Now);
 
                 if (SleepTimeout == 0) { break; } // run once
 
+                if (_token.IsCancellationRequested) { break; }
+                
                 try
                 {
                     _manager.UpdatePipelineState(Uuid, PipelineState.Sleeping);
