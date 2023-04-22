@@ -5,6 +5,7 @@ using DaJet.Options;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.IO;
 
 namespace DaJet.Http.Server
 {
@@ -46,6 +47,7 @@ namespace DaJet.Http.Server
             ConfigureMetadataService(builder.Services);
 
             builder.Services.UseDaJetFlow(OptionsFileConnectionString);
+            builder.Services.AddSingleton<RecyclableMemoryStreamManager>();
 
             WebApplication app = builder.Build();
             //app.UseAuthentication();

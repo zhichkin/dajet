@@ -5,79 +5,82 @@ using System.Data;
 
 namespace DaJet.Flow.PostgreSql
 {
-    [PipelineBlock] public sealed class QuerySource : SourceBlock<Dictionary<string, object>>
+    [PipelineBlock] public sealed class QuerySource : SourceBlock<IDataRecord>
     {
         private readonly IPipelineManager _manager;
+        private readonly ScriptDataMapper _scripts;
         private readonly InfoBaseDataMapper _databases;
-        private string ConnectionString { get; set; }
         [Option] public Guid Pipeline { get; set; } = Guid.Empty;
         [Option] public string Source { get; set; } = string.Empty;
         [Option] public string Script { get; set; } = string.Empty;
-        [ActivatorUtilitiesConstructor] public QuerySource(InfoBaseDataMapper databases, IPipelineManager manager)
+        [Option] public int Timeout { get; set; } = 10; // seconds (value of 0 indicates no limit)
+        [ActivatorUtilitiesConstructor] public QuerySource(InfoBaseDataMapper databases, ScriptDataMapper scripts, IPipelineManager manager)
         {
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
+            _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
             _databases = databases ?? throw new ArgumentNullException(nameof(databases));
         }
+        private string CommandText { get; set; }
+        private string ConnectionString { get; set; }
         protected override void _Configure()
         {
-            InfoBaseModel database = _databases.Select(Source) ?? throw new Exception($"Source not found: {Source}");
+            InfoBaseModel database = _databases.Select(Source) ?? throw new ArgumentException($"Source not found: {Source}");
+            ScriptModel script = _scripts.SelectScriptByPath(database.Uuid, Script) ?? throw new ArgumentException($"Script not found: {Script}");
 
+            CommandText = script.Script;
             ConnectionString = database.ConnectionString;
+
+            if (Timeout < 0) { Timeout = 10; }
         }
         public override void Execute()
         {
-            int consumed;
+            int consumed = 0;
 
             using (NpgsqlConnection connection = new(ConnectionString))
             {
                 connection.Open();
 
-                using (NpgsqlCommand command = connection.CreateCommand())
+                NpgsqlCommand command = connection.CreateCommand();
+                NpgsqlTransaction transaction = connection.BeginTransaction();
+
+                command.Connection = connection;
+                command.Transaction = transaction;
+                command.CommandText = CommandText;
+                command.CommandType = CommandType.Text;
+                command.CommandTimeout = Timeout;
+
+                try
                 {
-                    ConfigureCommand(in command);
-
-                    consumed = 0;
-
-                    using (NpgsqlTransaction transaction = connection.BeginTransaction())
+                    using (NpgsqlDataReader reader = command.ExecuteReader())
                     {
-                        command.Transaction = transaction;
-
-                        using (NpgsqlDataReader reader = command.ExecuteReader())
+                        while (reader.Read())
                         {
-                            while (reader.Read())
-                            {
-                                ProcessDataRecord(in reader); consumed++;
-                            }
-                            reader.Close();
+                            _next?.Process(reader); consumed++;
                         }
+                        reader.Close();
+                    }
 
-                        if (consumed > 0)
-                        {
-                            _next?.Synchronize();
-                            transaction.Commit();
-                        }
+                    if (consumed > 0)
+                    {
+                        _next?.Synchronize();
+                    }
+
+                    transaction.Commit();
+                }
+                catch (Exception error)
+                {
+                    try
+                    {
+                        transaction.Rollback(); throw;
+                    }
+                    catch
+                    {
+                        throw error;
                     }
                 }
             }
 
-            _manager.UpdatePipelineStatus(Pipeline, $"Processed {consumed} messages");
-        }
-        private void ConfigureCommand(in NpgsqlCommand command)
-        {
-            command.CommandText = Script;
-            command.CommandType = CommandType.Text;
-            command.CommandTimeout = 60; // seconds
-        }
-        private void ProcessDataRecord(in NpgsqlDataReader reader)
-        {
-            Dictionary<string, object> record = new();
-
-            for (int i = 0; i < reader.FieldCount; i++)
-            {
-                record.Add(reader.GetName(i), reader.GetValue(i));
-            }
-
-            _next?.Process(in record);
+            _manager.UpdatePipelineStatus(Pipeline, $"Processed {consumed} records");
         }
     }
 }

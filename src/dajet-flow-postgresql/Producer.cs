@@ -6,59 +6,87 @@ using System.Data;
 
 namespace DaJet.Flow.PostgreSql
 {
-    [PipelineBlock] public sealed class Producer : TargetBlock<Dictionary<string, object>>
+    [PipelineBlock] public sealed class Producer : TargetBlock<IDataRecord>
     {
+        private readonly ScriptDataMapper _scripts;
         private readonly InfoBaseDataMapper _databases;
-        private string ConnectionString { get; set; }
-        [Option] public Guid Pipeline { get; set; } = Guid.Empty;
         [Option] public string Target { get; set; } = string.Empty;
         [Option] public string Script { get; set; } = string.Empty;
-        [ActivatorUtilitiesConstructor] public Producer(InfoBaseDataMapper databases)
+        [Option] public int Timeout { get; set; } = 10; // seconds (value of 0 indicates no limit)
+        [ActivatorUtilitiesConstructor] public Producer(InfoBaseDataMapper databases, ScriptDataMapper scripts)
         {
+            _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
             _databases = databases ?? throw new ArgumentNullException(nameof(databases));
         }
+        private string CommandText { get; set; }
+        private string ConnectionString { get; set; }
         protected override void _Configure()
         {
-            InfoBaseModel database = _databases.Select(Target);
-            if (database is null) { throw new Exception($"Target not found: {Target}"); }
+            InfoBaseModel database = _databases.Select(Target) ?? throw new ArgumentException($"Source not found: {Target}");
+            ScriptModel script = _scripts.SelectScriptByPath(database.Uuid, Script) ?? throw new ArgumentException($"Script not found: {Script}");
 
+            CommandText = script.Script;
             ConnectionString = database.ConnectionString;
-        }
-        public override void Process(in Dictionary<string, object> input)
-        {
-            foreach (var item in input)
-            {
-                if (item.Value is Entity value)
-                {
-                    input[item.Key] = value.Identity;
-                }
-            }
 
+            if (Timeout < 0) { Timeout = 10; }
+        }
+        public override void Process(in IDataRecord input)
+        {
             using (NpgsqlConnection connection = new(ConnectionString))
             {
                 connection.Open();
 
-                using (NpgsqlCommand command = connection.CreateCommand())
+                NpgsqlCommand command = connection.CreateCommand();
+                NpgsqlTransaction transaction = connection.BeginTransaction();
+
+                command.Connection = connection;
+                command.Transaction = transaction;
+                command.CommandText = CommandText;
+                command.CommandType = CommandType.Text;
+                command.CommandTimeout = Timeout;
+
+                try
                 {
-                    ConfigureCommand(command, in input);
+                    ConfigureParameters(in command, in input);
 
                     _ = command.ExecuteNonQuery();
+
+                    transaction.Commit();
+                }
+                catch (Exception error)
+                {
+                    try
+                    {
+                        transaction.Rollback(); throw;
+                    }
+                    catch
+                    {
+                        throw error;
+                    }
                 }
             }
         }
-        private void ConfigureCommand(in NpgsqlCommand command, in Dictionary<string, object> input)
+        private void ConfigureParameters(in NpgsqlCommand command, in IDataRecord input)
         {
-            command.CommandType = CommandType.Text;
-            command.CommandText = Script;
-            command.CommandTimeout = 10; // seconds
-
             command.Parameters.Clear();
 
-            foreach (var parameter in input)
+            object value;
+
+            for (int i = 0; i < input.FieldCount; i++)
             {
-                if (parameter.Value is not null)
+                value = input.GetValue(i);
+
+                if (value is null)
                 {
-                    command.Parameters.AddWithValue(parameter.Key, parameter.Value);
+                    command.Parameters.AddWithValue(input.GetName(i), DBNull.Value);
+                }
+                else if (value is Entity entity)
+                {
+                    command.Parameters.AddWithValue(input.GetName(i), entity.Identity);
+                }
+                else
+                {
+                    command.Parameters.AddWithValue(input.GetName(i), value);
                 }
             }
         }

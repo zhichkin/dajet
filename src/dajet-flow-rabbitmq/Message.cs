@@ -16,5 +16,6 @@
         public string ReplyTo { get; set; }
         public string Expiration { get; set; }
         public Dictionary<string, object> Headers { get; set; } = new();
+        public ReadOnlyMemory<byte> MessageBody { get; set; }
     }
 }

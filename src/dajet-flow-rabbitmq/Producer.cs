@@ -44,7 +44,9 @@ namespace DaJet.Flow.RabbitMQ
         [Option] public string CC { get; set; } = string.Empty; // additional routing keys not seen by consumers
         [Option] public string BCC { get; set; } = string.Empty; // additional routing keys seen by consumers
         [Option] public bool Mandatory { get; set; } = false; // helps to detect unroutable messages, firing BasicReturn event on producer
-        
+        [Option] public string Sender { get; set; } = string.Empty; // Sender application identifier (AppId)
+        [Option] public string MessageType { get; set; } = string.Empty; // Message type identifier (Type)
+
         private string HostName { get; set; } = "localhost";
         private int HostPort { get; set; } = 5672;
         private string VirtualHost { get; set; } = "/";
@@ -324,7 +326,7 @@ namespace DaJet.Flow.RabbitMQ
             ConfigureMessageHeaders(in message);
             ConfigureMessageProperties(in message);
 
-            ReadOnlyMemory<byte> messageBody = EncodeMessageBody(message.Body);
+            ReadOnlyMemory<byte> payload = string.IsNullOrEmpty(message.Body) ? message.MessageBody : EncodeMessageBody(message.Body);
 
             if (string.IsNullOrWhiteSpace(Exchange))
             {
@@ -333,17 +335,17 @@ namespace DaJet.Flow.RabbitMQ
                 _ = _properties?.Headers?.Remove("BCC"); // blind carbon copy
 
                 // send message directly to the specified queue
-                _channel.BasicPublish(string.Empty, RoutingKey, Mandatory, _properties, messageBody);
+                _channel.BasicPublish(string.Empty, RoutingKey, Mandatory, _properties, payload);
             }
             else if (string.IsNullOrWhiteSpace(RoutingKey))
             {
-                // send message to the specified exchange and message type as a routing key 
-                _channel.BasicPublish(Exchange, message.Type, Mandatory, _properties, messageBody);
+                // send message to the specified exchange
+                _channel.BasicPublish(Exchange, string.Empty, Mandatory, _properties, payload);
             }
             else
             {
                 // send message to the specified exchange and routing key
-                _channel.BasicPublish(Exchange, RoutingKey, Mandatory, _properties, messageBody);
+                _channel.BasicPublish(Exchange, RoutingKey, Mandatory, _properties, payload);
             }
         }
         private void ConfigureMessageHeaders(in Message message)
@@ -380,21 +382,36 @@ namespace DaJet.Flow.RabbitMQ
         }
         private void ConfigureMessageProperties(in Message message)
         {
-            _properties.Type = message.Type;
+            if (!string.IsNullOrEmpty(message.AppId))
+            {
+                _properties.AppId = message.AppId;
+            }
+            else if (!string.IsNullOrEmpty(Sender))
+            {
+                _properties.AppId = Sender;
+            }
+
+            if (!string.IsNullOrEmpty(message.Type))
+            {
+                _properties.Type = message.Type;
+            }
+            else if (!string.IsNullOrEmpty(MessageType))
+            {
+                _properties.Type = MessageType;
+            }
+
+            if (message.MessageId is not null) { _properties.MessageId = message.MessageId; }
+            if (message.CorrelationId is not null) { _properties.CorrelationId = message.CorrelationId; }
+
+            _properties.Priority = message.Priority;
             _properties.DeliveryMode = message.DeliveryMode;
             _properties.ContentType = message.ContentType;
             _properties.ContentEncoding = message.ContentEncoding;
 
-            _properties.AppId = message.AppId;
-            _properties.UserId = message.UserId;
-            _properties.ClusterId = message.ClusterId;
-            _properties.MessageId = message.MessageId;
-
-            _properties.Priority = message.Priority;
-            _properties.Expiration = message.Expiration;
-
-            _properties.ReplyTo = message.ReplyTo;
-            _properties.CorrelationId = message.CorrelationId;
+            if (message.ReplyTo is not null) { _properties.ReplyTo = message.ReplyTo; }
+            if (message.Expiration is not null) { _properties.Expiration = message.Expiration; }
+            if (message.UserId is not null) { _properties.UserId = message.UserId; }
+            if (message.ClusterId is not null) { _properties.ClusterId = message.ClusterId; }
         }
         private ReadOnlyMemory<byte> EncodeMessageBody(in string message)
         {
@@ -415,9 +432,9 @@ namespace DaJet.Flow.RabbitMQ
 
             int encoded = Encoding.UTF8.GetBytes(message, 0, message.Length, _buffer, 0);
 
-            ReadOnlyMemory<byte> messageBody = new(_buffer, 0, encoded);
+            ReadOnlyMemory<byte> payload = new(_buffer, 0, encoded);
 
-            return messageBody;
+            return payload;
         }
     }
 }

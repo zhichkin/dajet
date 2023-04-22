@@ -313,8 +313,6 @@ namespace DaJet.Metadata.Core
         public int YearOffset { get; private set; }
         public int PlatformVersion { get; private set; }
 
-        //private readonly RecyclableMemoryStreamManager MemoryPool = new RecyclableMemoryStreamManager();
-
         #region "DATABASE READER CODE"
 
         private string GetSelectConfigFileScript(string tableName)
