@@ -1,14 +1,14 @@
 ﻿namespace DaJet.Flow.RabbitMQ
 {
     [PipelineBlock]
-    public sealed class JsonToMessageTransformer : TransformerBlock<ReadOnlyMemory<byte>, Message>
+    public sealed class PayloadToMessageTransformer : TransformerBlock<Payload, Message>
     {
         private Message _message; // buffer
-        protected override void _Transform(in ReadOnlyMemory<byte> input, out Message output)
+        protected override void _Transform(in Payload input, out Message output)
         {
             _message ??= new Message(); // create buffer
 
-            _message.MessageBody = input;
+            _message.Payload = input;
 
             output = _message; // return reference to buffer
         }

@@ -301,9 +301,11 @@ namespace DaJet.Flow.RabbitMQ
             }
             catch
             {
-                Dispose();
-                
-                throw;
+                Dispose(); throw;
+            }
+            finally
+            {
+                input.Payload.Dispose();
             }
         }
         private void PublishMessageOrThrow(in Message message)
@@ -326,7 +328,7 @@ namespace DaJet.Flow.RabbitMQ
             ConfigureMessageHeaders(in message);
             ConfigureMessageProperties(in message);
 
-            ReadOnlyMemory<byte> payload = string.IsNullOrEmpty(message.Body) ? message.MessageBody : EncodeMessageBody(message.Body);
+            ReadOnlyMemory<byte> payload = message.Payload.IsEmpty ? EncodeMessageBody(message.Body) : message.Payload.Data;
 
             if (string.IsNullOrWhiteSpace(Exchange))
             {

@@ -133,7 +133,21 @@ namespace DaJet.Flow
                 }
             }
         }
-        private ValueTask DisposeAsyncFake() { return ValueTask.CompletedTask; }
-        public async ValueTask DisposeAsync() { await DisposeAsyncFake(); Dispose(); }
+        private ValueTask DisposeAsyncCore()
+        {
+            try
+            {
+                Dispose();
+                return ValueTask.CompletedTask;
+            }
+            catch (Exception error)
+            {
+                return ValueTask.FromException(error);
+            }
+        }
+        public async ValueTask DisposeAsync()
+        {
+            await DisposeAsyncCore();
+        }
     }
 }
