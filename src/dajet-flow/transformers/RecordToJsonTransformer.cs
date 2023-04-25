@@ -17,9 +17,12 @@ namespace DaJet.Flow
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
         private MemoryStream _stream;
+        private readonly Action _callback;
         private readonly RecyclableMemoryStreamManager _memory;
         public RecordToJsonTransformer(RecyclableMemoryStreamManager manager)
         {
+            _callback = _Dispose;
+
             _memory = manager ?? throw new ArgumentNullException(nameof(manager));
         }
         protected override void _Transform(in IDataRecord input, out Payload output)
@@ -34,7 +37,7 @@ namespace DaJet.Flow
 
                 ReadOnlyMemory<byte> data = new(_stream.GetBuffer(), 0, (int)_stream.Length);
 
-                output = new Payload(data, _Dispose);
+                output = new Payload(data, _callback);
             }
         }
         protected override void _Synchronize() { _Dispose(); }

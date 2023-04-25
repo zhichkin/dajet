@@ -1,28 +1,41 @@
-﻿using RabbitMQ.Client.Events;
+﻿using Microsoft.Extensions.DependencyInjection;
 using RabbitMQ.Client;
-using Microsoft.Extensions.DependencyInjection;
-using System.Text.Json;
+using RabbitMQ.Client.Events;
 using System.Text;
+using System.Timers;
 using System.Web;
 
 namespace DaJet.Flow.RabbitMQ
 {
     [PipelineBlock] public sealed class Consumer : SourceBlock<Message>
     {
-        private CancellationToken _token;
-        private readonly IPipelineManager _manager;
+        private int _state;
+        private const int STATE_IS_IDLE = 0;
+        private const int STATE_IS_ACTIVE = 1;
+        private const int STATE_AUTORESET = 2;
+        private const int STATE_DISPOSING = 3;
+        private System.Timers.Timer _heartbeat;
+        private bool CanExecute { get { return Interlocked.CompareExchange(ref _state, STATE_IS_ACTIVE, STATE_IS_IDLE) == STATE_IS_IDLE; } }
+        private bool CanDispose { get { return Interlocked.CompareExchange(ref _state, STATE_DISPOSING, STATE_IS_ACTIVE) == STATE_IS_ACTIVE; } }
+        private bool CanAutoReset { get { return Interlocked.CompareExchange(ref _state, STATE_AUTORESET, STATE_IS_ACTIVE) == STATE_IS_ACTIVE; } }
+
         private IModel _channel;
         private IConnection _connection;
         private EventingBasicConsumer _consumer;
+        private Message _message;
         private int _consumed = 0;
         private string _consumerTag;
-        [Option] public Guid Pipeline { get; set; } = Guid.Empty;
-        [Option] public string Source { get; set; } = "amqp://guest:guest@localhost:5672/%2F";
-        [Option] public string Queue { get; set; } = string.Empty;
+        private readonly IPipelineManager _manager;
         [ActivatorUtilitiesConstructor] public Consumer(IPipelineManager manager)
         {
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
         }
+
+        #region "CONFIGURATION OPTIONS"
+        [Option] public Guid Pipeline { get; set; } = Guid.Empty;
+        [Option] public string Source { get; set; } = "amqp://guest:guest@localhost:5672/%2F";
+        [Option] public string Queue { get; set; } = string.Empty;
+        [Option] public int Heartbeat { get; set; } = 60; // seconds
         private string HostName { get; set; } = "localhost";
         private int HostPort { get; set; } = 5672;
         private string VirtualHost { get; set; } = "/";
@@ -52,15 +65,25 @@ namespace DaJet.Flow.RabbitMQ
                 VirtualHost = HttpUtility.UrlDecode(uri.Segments[1].TrimEnd('/'), Encoding.UTF8);
             }
         }
-        protected override void _Configure() { ParseSourceUri(); }
-
-        #region "RABBITMQ CONNECTION, CHANNEL AND CONSUMER SETUP"
-        private void InitializeConnection()
+        protected override void _Configure()
         {
-            if (_connection is not null && _connection.IsOpen) { return; }
+            ParseSourceUri();
 
-            _connection?.Dispose(); // The connection might be closed, but not disposed yet.
+            if (Heartbeat < 10) { Heartbeat = 10; }
+        }
+        #endregion
 
+        private void UpdatePipelineStatus()
+        {
+            int consumed = Interlocked.Exchange(ref _consumed, 0);
+            _manager.UpdatePipelineStatus(Pipeline, $"Consumed {consumed} messages in {Heartbeat} seconds.");
+        }
+        private bool ConsumerIsHealthy()
+        {
+            return (_consumer is not null && _consumer.Model is not null && _consumer.Model.IsOpen && _consumer.IsRunning);
+        }
+        private void InitializeConsumer()
+        {
             IConnectionFactory factory = new ConnectionFactory()
             {
                 HostName = HostName,
@@ -69,76 +92,78 @@ namespace DaJet.Flow.RabbitMQ
                 UserName = UserName,
                 Password = Password
             };
-
             _connection = factory.CreateConnection();
-        }
-        private void InitializeChannel()
-        {
-            if (_channel is not null && _channel.IsOpen) { return; }
-
-            _channel?.Dispose(); // The channel might be closed, but not disposed yet.
-
-            InitializeConnection();
 
             _channel = _connection.CreateModel();
             _channel.BasicQos(0, 1, false); // consume any size messages one-by-one at the channels scope
-        }
-        private void InitializeConsumer()
-        {
-            if (_consumer is not null && _consumer.Model is not null && _consumer.Model.IsOpen && _consumer.IsRunning)
-            {
-                return;
-            }
-
-            if (_consumer is not null)
-            {
-                _consumer.Received -= ProcessMessage;
-                _consumer.Model?.Dispose();
-                _consumer.Model = null;
-            }
-
-            InitializeChannel();
 
             _consumer = new EventingBasicConsumer(_channel);
             _consumer.Received += ProcessMessage;
-
             _consumerTag = _channel.BasicConsume(Queue, false, _consumer);
-
-            //_consumer.Model.BasicCancel(_consumerTag); ?
         }
-        #endregion
-
-        public override void Execute()
+        private void EnsureConsumerIsActive(object sender, ElapsedEventArgs args)
         {
-            while (!_token.IsCancellationRequested)
+            UpdatePipelineStatus();
+
+            if (CanAutoReset)
             {
                 try
                 {
-                    InitializeConsumer();
-
-                    Task.Delay(TimeSpan.FromSeconds(60), _token).Wait(_token);
-
-                    int consumed = Interlocked.Exchange(ref _consumed, 0);
-
-                    _manager.UpdatePipelineStatus(Pipeline, $"Consumed {consumed} messages in 60 seconds.");
+                    if (!ConsumerIsHealthy())
+                    {
+                        DisposeConsumer();
+                        InitializeConsumer();
+                    }
                 }
-                catch
+                catch (Exception error)
                 {
-                    throw;
+                    DisposeConsumer();
+                    _manager.UpdatePipelineStatus(Pipeline, error.Message);
+                }
+                finally
+                {
+                    _ = Interlocked.Exchange(ref _state, STATE_IS_ACTIVE);
                 }
             }
         }
+        public override void Execute()
+        {
+            if (CanExecute)
+            {
+                System.Timers.Timer timer = new();
+
+                if (Interlocked.CompareExchange(ref _heartbeat, timer, null) is not null)
+                {
+                    timer.Dispose();
+                }
+                else
+                {
+                    _heartbeat.AutoReset = true;
+                    _heartbeat.Elapsed += EnsureConsumerIsActive;
+                    _heartbeat.Interval = TimeSpan.FromSeconds(Heartbeat).TotalMilliseconds;
+                }
+
+                _heartbeat.Start();
+            }
+        }
+        
         private void ProcessMessage(object sender, BasicDeliverEventArgs args)
         {
-            if (sender is not EventingBasicConsumer consumer) return;
+            if (sender is not EventingBasicConsumer consumer) { return; }
 
-            bool success = true;
+            _message ??= new Message();
+            _message.Payload = new Payload(args.Body, null);
+            _message.AppId = args.BasicProperties.AppId;
+            _message.Type = args.BasicProperties.Type;
+            _message.ReplyTo = args.BasicProperties.ReplyTo;
+            _message.MessageId = args.BasicProperties.MessageId;
+            _message.CorrelationId = args.BasicProperties.CorrelationId;
+            _message.ContentType = args.BasicProperties.ContentType;
+            _message.ContentEncoding = args.BasicProperties.ContentEncoding;
 
             try
             {
-                Message message = CreateMessage(in args);
-
-                _next?.Process(in message);
+                _next?.Process(in _message);
 
                 _next?.Synchronize();
 
@@ -146,87 +171,25 @@ namespace DaJet.Flow.RabbitMQ
 
                 Interlocked.Increment(ref _consumed);
             }
-            catch
+            catch (Exception error)
             {
-                success = false;
-            }
-
-            if (!success)
-            {
-                NackMessage(in consumer, in args);
-            }
-        }
-        private void NackMessage(in EventingBasicConsumer consumer, in BasicDeliverEventArgs args)
-        {
-            try
-            {
-                // Defensive delay from forever cycle if producer is broken.
-                // Forever cycle occurs because the nacked message is returned
-                // to the queue head and received again and again repeatedly.
-                Task.Delay(TimeSpan.FromSeconds(60), _token).Wait(_token);
-
-                consumer.Model.BasicNack(args.DeliveryTag, false, true);
-            }
-            catch
-            {
-                // do nothing
-            }
-        }
-        private Message CreateMessage(in BasicDeliverEventArgs args)
-        {
-            Message message = new()
-            {
-                AppId = (args.BasicProperties.AppId ?? string.Empty),
-                MessageId = (args.BasicProperties.MessageId ?? string.Empty),
-                Type = (args.BasicProperties.Type ?? string.Empty),
-                Body = (args.Body.IsEmpty ? string.Empty : Encoding.UTF8.GetString(args.Body.Span))
-            };
-
-            if (args.BasicProperties.Headers is Dictionary<string, object> headers)
-            {
-                message.Headers = headers;
-            }
-
-            // TODO: process headers and other basic properties
-            // string headers = GetMessageHeaders(in args);
-
-            return message;
-        }
-        private string GetMessageHeaders(in BasicDeliverEventArgs args)
-        {
-            if (args.BasicProperties.Headers == null ||
-                args.BasicProperties.Headers.Count == 0)
-            {
-                return string.Empty;
-            }
-
-            Dictionary<string, string> headers = new();
-
-            foreach (var header in args.BasicProperties.Headers)
-            {
-                if (header.Value is byte[] value)
+                try
                 {
-                    try
-                    {
-                        headers.Add(header.Key, Encoding.UTF8.GetString(value));
-                    }
-                    catch
-                    {
-                        headers.Add(header.Key, string.Empty);
-                    }
+                    //consumer.Model.BasicNack(args.DeliveryTag, false, true);
+                    consumer.Model.BasicCancel(_consumerTag);
+                }
+                finally
+                {
+                    _manager.UpdatePipelineStatus(Pipeline, error.Message);
                 }
             }
-
-            if (headers.Count == 0)
-            {
-                return string.Empty;
-            }
-
-            return JsonSerializer.Serialize(headers);
         }
 
-        protected override void _Dispose()
+        private void DisposeConsumer()
         {
+            _message = null;
+            _consumerTag = null;
+
             if (_consumer is not null)
             {
                 _consumer.Received -= ProcessMessage;
@@ -239,6 +202,33 @@ namespace DaJet.Flow.RabbitMQ
 
             try { _connection?.Dispose(); }
             finally { _connection = null; }
+        }
+        private void DisposeHeartbeat()
+        {
+            try
+            {
+                _heartbeat?.Stop();
+                _heartbeat?.Dispose();
+            }
+            finally
+            {
+                _heartbeat = null;
+            }
+        }
+        protected override void _Dispose()
+        {
+            if (CanDispose)
+            {
+                DisposeHeartbeat();
+
+                DisposeConsumer();
+
+                _ = Interlocked.Exchange(ref _state, STATE_IS_IDLE);
+            }
+            else if (Interlocked.CompareExchange(ref _state, STATE_AUTORESET, STATE_AUTORESET) == STATE_AUTORESET)
+            {
+                Thread.Sleep(333); _Dispose();
+            }
         }
     }
 }

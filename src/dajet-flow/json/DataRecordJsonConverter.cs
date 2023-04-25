@@ -174,6 +174,10 @@ namespace DaJet.Flow.Json
                 else if (value is ushort uint2) { writer.WriteNumber(name, uint2); }
                 else if (value is uint uint4) { writer.WriteNumber(name, uint4); }
                 else if (value is ulong uint8) { writer.WriteNumber(name, uint8); }
+                else
+                {
+                    writer.WriteString(name, value.ToString());
+                }
             }
 
             writer.WriteEndObject();

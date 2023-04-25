@@ -4,7 +4,7 @@ using System.Reflection;
 namespace DaJet.Flow.RabbitMQ
 {
     [PipelineBlock]
-    public sealed class RecordToMessageTransformer : TransformerBlock<IDataRecord, Message>
+    public sealed class RecordToMessageMapper : TransformerBlock<IDataRecord, Message>
     {
         private Message _message; // buffer
         protected override void _Transform(in IDataRecord input, out Message output)

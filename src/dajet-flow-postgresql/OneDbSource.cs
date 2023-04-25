@@ -7,7 +7,7 @@ using System.Data;
 
 namespace DaJet.Flow.PostgreSql
 {
-    [PipelineBlock] public sealed class Consumer : SourceBlock<Dictionary<string, object>>
+    [PipelineBlock] public sealed class OneDbSource : SourceBlock<IDataRecord>
     {
         #region "PRIVATE VARIABLES"
         private readonly IPipelineManager _manager;
@@ -22,7 +22,7 @@ namespace DaJet.Flow.PostgreSql
         [Option] public Guid Pipeline { get; set; } = Guid.Empty;
         [Option] public string Source { get; set; } = string.Empty;
         [Option] public string Script { get; set; } = string.Empty;
-        [ActivatorUtilitiesConstructor] public Consumer(
+        [ActivatorUtilitiesConstructor] public OneDbSource(
             InfoBaseDataMapper databases, ScriptDataMapper scripts, IPipelineManager manager, IMetadataService metadata)
         {
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
@@ -77,7 +77,7 @@ namespace DaJet.Flow.PostgreSql
                         {
                             while (reader.Read())
                             {
-                                ProcessDataRecord(in reader); consumed++;
+                                Process(in reader); consumed++;
                             }
                             reader.Close();
                         }
@@ -106,11 +106,12 @@ namespace DaJet.Flow.PostgreSql
                 command.Parameters.AddWithValue(parameter.Key, parameter.Value);
             }
         }
-        private void ProcessDataRecord(in NpgsqlDataReader reader)
+        private void Process(in NpgsqlDataReader reader)
         {
-            Dictionary<string, object> record = ScriptGenerator.Mapper.Map(reader);
+            //ScriptGenerator.Mapper.Map(reader, out IDataRecord record);
+            //_next?.Process(record);
 
-            _next?.Process(in record);
+            _next?.Process(new OneDbDataRecord(reader, ScriptGenerator.Mapper));
         }
     }
 }

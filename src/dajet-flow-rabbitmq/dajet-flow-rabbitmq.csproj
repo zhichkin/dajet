@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\dajet-flow\dajet-flow.csproj" />
+    <ProjectReference Include="..\dajet-model\dajet-model.csproj" />
   </ItemGroup>
 
 </Project>

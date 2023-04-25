@@ -36,6 +36,17 @@ namespace DaJet.Scripting
         {
             //TODO: map IDbCommand for DML
         }
+        public void Map(in IDataReader reader, out IDataRecord record)
+        {
+            DataRecord data = new();
+
+            foreach (PropertyMap property in Properties)
+            {
+                data.SetValue(property.Name, property.GetValue(in reader));
+            }
+
+            record = data;
+        }
         public Dictionary<string, object> Map(in IDataReader reader)
         {
             Dictionary<string, object> entity = new();
