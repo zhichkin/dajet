@@ -239,6 +239,7 @@ namespace DaJet.Flow.RabbitMQ
             }
 
             try { _channel?.Dispose(); }
+            catch { /* IGNORE */}
             finally { _channel = null; }
 
             if (_connection is not null)
@@ -249,6 +250,7 @@ namespace DaJet.Flow.RabbitMQ
             }
 
             try { _connection?.Dispose(); }
+            catch { /* IGNORE */}
             finally { _connection = null; }
 
             if (_buffer is not null)
@@ -276,7 +278,7 @@ namespace DaJet.Flow.RabbitMQ
             }
             finally
             {
-                Dispose();
+                _Dispose();
             }
         }
         protected override void _Dispose()
@@ -301,7 +303,7 @@ namespace DaJet.Flow.RabbitMQ
             }
             catch
             {
-                Dispose(); throw;
+                _Dispose(); throw;
             }
             finally
             {

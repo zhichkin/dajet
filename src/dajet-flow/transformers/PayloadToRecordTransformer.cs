@@ -4,19 +4,18 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
 
-namespace DaJet.Flow.RabbitMQ
+namespace DaJet.Flow
 {
-    [PipelineBlock]
-    public sealed class MessageToRecordTransformer : TransformerBlock<Message, IDataRecord>
+    [PipelineBlock] public sealed class PayloadToRecordTransformer : TransformerBlock<Payload, IDataRecord>
     {
         private static readonly DataRecordJsonConverter _converter = new();
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
-        protected override void _Transform(in Message input, out IDataRecord output)
+        protected override void _Transform(in Payload input, out IDataRecord output)
         {
-            Utf8JsonReader reader = new(input.Payload.Data.Span, true, default);
+            Utf8JsonReader reader = new(input.Data.Span, true, default);
 
             output = _converter.Read(ref reader, typeof(IDataRecord), JsonOptions);
         }

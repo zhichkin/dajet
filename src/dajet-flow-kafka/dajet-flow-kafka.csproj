@@ -2,15 +2,15 @@
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
-    <RootNamespace>DaJet.Flow.RabbitMQ</RootNamespace>
+    <RootNamespace>DaJet.Flow.Kafka</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
-    <AssemblyName>DaJet.Flow.RabbitMQ</AssemblyName>
+    <AssemblyName>DaJet.Flow.Kafka</AssemblyName>
     <Version>1.0.0</Version>
     <Authors>Zhichkin</Authors>
     <Copyright>Zhichkin © 2022</Copyright>
     <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/zhichkin/dajet/tree/main/src/dajet-flow-rabbitmq</RepositoryUrl>
+    <RepositoryUrl>https://github.com/zhichkin/dajet/tree/main/src/dajet-flow-kafka</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 

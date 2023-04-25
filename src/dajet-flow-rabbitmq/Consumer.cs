@@ -15,6 +15,7 @@ namespace DaJet.Flow.RabbitMQ
         private const int STATE_AUTORESET = 2;
         private const int STATE_DISPOSING = 3;
         private System.Timers.Timer _heartbeat;
+        private ManualResetEvent _cancellation;
         private bool CanExecute { get { return Interlocked.CompareExchange(ref _state, STATE_IS_ACTIVE, STATE_IS_IDLE) == STATE_IS_IDLE; } }
         private bool CanDispose { get { return Interlocked.CompareExchange(ref _state, STATE_DISPOSING, STATE_IS_ACTIVE) == STATE_IS_ACTIVE; } }
         private bool CanAutoReset { get { return Interlocked.CompareExchange(ref _state, STATE_AUTORESET, STATE_IS_ACTIVE) == STATE_IS_ACTIVE; } }
@@ -77,6 +78,7 @@ namespace DaJet.Flow.RabbitMQ
         {
             int consumed = Interlocked.Exchange(ref _consumed, 0);
             _manager.UpdatePipelineStatus(Pipeline, $"Consumed {consumed} messages in {Heartbeat} seconds.");
+            _manager.UpdatePipelineFinishTime(Pipeline, DateTime.Now);
         }
         private bool ConsumerIsHealthy()
         {
@@ -143,7 +145,17 @@ namespace DaJet.Flow.RabbitMQ
                     _heartbeat.Interval = TimeSpan.FromSeconds(Heartbeat).TotalMilliseconds;
                 }
 
+                ManualResetEvent cancellation = new(false);
+
+                if (Interlocked.CompareExchange(ref _cancellation, cancellation, null) is not null)
+                {
+                    cancellation.Dispose();
+                }
+
+                EnsureConsumerIsActive(this, null);
+
                 _heartbeat.Start();
+                _cancellation.WaitOne();
             }
         }
         
@@ -163,9 +175,9 @@ namespace DaJet.Flow.RabbitMQ
 
             try
             {
-                _next?.Process(in _message);
+                _next.Process(in _message);
 
-                _next?.Synchronize();
+                _next.Synchronize();
 
                 consumer.Model.BasicAck(args.DeliveryTag, false);
 
@@ -173,35 +185,48 @@ namespace DaJet.Flow.RabbitMQ
             }
             catch (Exception error)
             {
-                try
-                {
-                    //consumer.Model.BasicNack(args.DeliveryTag, false, true);
-                    consumer.Model.BasicCancel(_consumerTag);
-                }
-                finally
-                {
-                    _manager.UpdatePipelineStatus(Pipeline, error.Message);
-                }
+                NackMessage(in consumer, in args, in error);
+            }
+        }
+        private void NackMessage(in EventingBasicConsumer consumer, in BasicDeliverEventArgs args, in Exception error)
+        {
+            _manager.UpdatePipelineStatus(Pipeline, error.Message);
+            _manager.UpdatePipelineFinishTime(Pipeline, DateTime.Now);
+
+            if (_cancellation is null)
+            {
+                return; // Consumer is most likely already disposed
+            }
+
+            bool signaled = _cancellation.WaitOne(TimeSpan.FromSeconds(Heartbeat));
+
+            if (!signaled) // Consumer is still active
+            {
+                consumer.Model.BasicNack(args.DeliveryTag, false, true);
             }
         }
 
         private void DisposeConsumer()
         {
-            _message = null;
-            _consumerTag = null;
-
             if (_consumer is not null)
             {
                 _consumer.Received -= ProcessMessage;
-                _consumer.Model = null;
-                _consumer = null;
             }
 
+            try { _consumer?.Model?.BasicCancel(_consumerTag); }
+            catch { /* IGNORE */ }
+            finally { _consumer = null; }
+
             try { _channel?.Dispose(); }
+            catch { /* IGNORE */ }
             finally { _channel = null; }
 
             try { _connection?.Dispose(); }
+            catch { /* IGNORE */ }
             finally { _connection = null; }
+
+            _message = null;
+            _consumerTag = null;
         }
         private void DisposeHeartbeat()
         {
@@ -215,6 +240,18 @@ namespace DaJet.Flow.RabbitMQ
                 _heartbeat = null;
             }
         }
+        private void SignalCancellation()
+        {
+            try
+            {
+                _cancellation?.Set();
+                _cancellation?.Dispose();
+            }
+            finally
+            {
+                _cancellation = null;
+            }
+        }
         protected override void _Dispose()
         {
             if (CanDispose)
@@ -223,11 +260,13 @@ namespace DaJet.Flow.RabbitMQ
 
                 DisposeConsumer();
 
+                SignalCancellation();
+
                 _ = Interlocked.Exchange(ref _state, STATE_IS_IDLE);
             }
             else if (Interlocked.CompareExchange(ref _state, STATE_AUTORESET, STATE_AUTORESET) == STATE_AUTORESET)
             {
-                Thread.Sleep(333); _Dispose();
+                Thread.Sleep(10); _Dispose();
             }
         }
     }

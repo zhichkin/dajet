@@ -1,0 +1,59 @@
+
+https://sharplab.io/ ILDASM online
+
+https://strimzi.io/blog/2020/10/15/producer-tuning/
+https://strimzi.io/blog/2021/01/07/consumer-tuning/
+
+https://docs.confluent.io/clients-confluent-kafka-dotnet/current/overview.html#dotnet-example-code
+
+https://www.confluent.io/blog/set-up-and-run-kafka-on-windows-linux-wsl-2/#enable-windows-subsystem
+
+https://medium.com/criteo-engineering/wsl-visual-studio-attaching-launching-a-linux-net-core-application-on-my-window-10-ab21c179702d
+
+https://docs.microsoft.com/en-us/windows/wsl/networking
+
+Kafka broker config
+auto.create.topics.enable
+Enable auto creation of topic on the server
+Type:         boolean
+Default:      true
+Valid Values: true|false
+Importance:   high
+Update Mode:  read-only
+
+cmd>ubuntu2004
+ip addr | grep eth0
+inet 172.31.174.93
+
+C:\Windows\System32\drivers\etc\hosts
+172.19.117.3 Zhichkin.localdomain
+
+Power-Shell
+netsh interface portproxy add v4tov4 listenport=9092 listenaddress=0.0.0.0 connectport=9092 connectaddress=172.28.219.253
+netsh advfirewall firewall add rule name= "Open Port 9092" dir=in action=allow protocol=TCP localport=9092
+netsh interface portproxy delete v4tov4 listenport=9092 listenaddres=0.0.0.0
+
+cmd>ubuntu2004
+
+cd kafka_2.13-3.0.0
+bin/zookeeper-server-start.sh config/zookeeper.properties
+bin/kafka-server-start.sh config/server.properties
+****************************************************************************************
+* $ sudo nano /путь/к/файлу/имя_файла                                                  *
+* Редактор nano очень прост, для перемещения по файлу используйте кнопки со стрелками, *
+* после того, как закончите редактировать файл ubuntu, нажмите чтобы сохранить Ctrl+O, *
+* а для выхода Ctrl+X.                                                                 *
+****************************************************************************************
+
+bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic test-topic --partitions 1 --replication-factor 1
+bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic test-topic
+bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic test-topic
+
+bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list
+bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group dajet --describe
+bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group dajet --execute --reset-offsets --to-earliest --topic test-topic
+
+https://www.baeldung.com/kafka-purge-topic
+bin/kafka-configs.sh --alter --add-config retention.ms=1000 --bootstrap-server=localhost:9092 --topic test-topic
+bin/kafka-console-consumer.sh --bootstrap-server=localhost:9092 --from-beginning --topic test-topic --max-messages 1 --timeout-ms 1000

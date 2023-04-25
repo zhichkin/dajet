@@ -58,9 +58,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-flow-model", "dajet-f
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-flow-rabbitmq", "dajet-flow-rabbitmq\dajet-flow-rabbitmq.csproj", "{84A564CA-1D07-4909-A3EC-F1C99A73C5A7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-flow-sqlserver", "dajet-flow-sqlserver\dajet-flow-sqlserver.csproj", "{14E0D99A-1C07-4052-8A50-083511C73B27}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-flow-sqlserver", "dajet-flow-sqlserver\dajet-flow-sqlserver.csproj", "{14E0D99A-1C07-4052-8A50-083511C73B27}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-flow-postgresql", "dajet-flow-postgresql\dajet-flow-postgresql.csproj", "{BC808ED2-2DB7-4055-993C-3D521511BC8F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-flow-postgresql", "dajet-flow-postgresql\dajet-flow-postgresql.csproj", "{BC808ED2-2DB7-4055-993C-3D521511BC8F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-flow-kafka", "dajet-flow-kafka\dajet-flow-kafka.csproj", "{77F147BD-FEE1-4074-899B-D9F155842BC1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -124,6 +126,10 @@ Global
 		{BC808ED2-2DB7-4055-993C-3D521511BC8F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BC808ED2-2DB7-4055-993C-3D521511BC8F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BC808ED2-2DB7-4055-993C-3D521511BC8F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{77F147BD-FEE1-4074-899B-D9F155842BC1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77F147BD-FEE1-4074-899B-D9F155842BC1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77F147BD-FEE1-4074-899B-D9F155842BC1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77F147BD-FEE1-4074-899B-D9F155842BC1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -7,8 +7,7 @@ using System.Text.Unicode;
 
 namespace DaJet.Flow
 {
-    [PipelineBlock]
-    public sealed class RecordToJsonTransformer : TransformerBlock<IDataRecord, Payload>
+    [PipelineBlock] public sealed class RecordToJsonTransformer : TransformerBlock<IDataRecord, Payload>
     {
         private static readonly DataRecordJsonConverter _converter = new();
         private static readonly JsonWriterOptions JsonOptions = new()
