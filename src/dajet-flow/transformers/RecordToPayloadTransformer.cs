@@ -7,7 +7,7 @@ using System.Text.Unicode;
 
 namespace DaJet.Flow
 {
-    [PipelineBlock] public sealed class RecordToJsonTransformer : TransformerBlock<IDataRecord, Payload>
+    [PipelineBlock] public sealed class RecordToPayloadTransformer : TransformerBlock<IDataRecord, Payload>
     {
         private static readonly DataRecordJsonConverter _converter = new();
         private static readonly JsonWriterOptions JsonOptions = new()
@@ -18,7 +18,7 @@ namespace DaJet.Flow
         private MemoryStream _stream;
         private readonly Action _callback;
         private readonly RecyclableMemoryStreamManager _memory;
-        public RecordToJsonTransformer(RecyclableMemoryStreamManager manager)
+        public RecordToPayloadTransformer(RecyclableMemoryStreamManager manager)
         {
             _callback = _Dispose;
 
@@ -26,7 +26,7 @@ namespace DaJet.Flow
         }
         protected override void _Transform(in IDataRecord input, out Payload output)
         {
-            _stream = _memory.GetStream(nameof(RecordToJsonTransformer));
+            _stream = _memory.GetStream(nameof(RecordToPayloadTransformer));
 
             using (Utf8JsonWriter writer = new(_stream, JsonOptions))
             {
