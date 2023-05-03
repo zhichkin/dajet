@@ -193,6 +193,16 @@ namespace DaJet.Scripting
             {
                 node.Name = "COALESCE";
             }
+            if (node.Name.ToUpperInvariant() == "DATALENGTH")
+            {
+                node.Name = "OCTET_LENGTH";
+                script.Append(node.Name).Append('(');
+                script.Append("CAST(");
+                Visit(node.Parameters[0], in script);
+                script.Append(" AS text)");
+                script.Append(')');
+                return; //TODO: OCTET_LENGTH - what if data type of column is bytea ?
+            }
 
             script.Append(node.Name).Append("(");
 
@@ -238,6 +248,29 @@ namespace DaJet.Scripting
             base.Visit(in node, in script);
 
             script.Append(';').AppendLine();
+        }
+
+        protected override void Visit(in ConsumeStatement node, in StringBuilder script)
+        {
+            script.AppendLine();
+
+            script.Append("SELECT");
+
+            script.AppendLine();
+
+            for (int i = 0; i < node.Columns.Count; i++)
+            {
+                if (i > 0) { script.Append(',').Append(Environment.NewLine); }
+
+                Visit(node.Columns[i], in script);
+            }
+
+            if (node.From is not null) { Visit(node.From, in script); }
+            if (node.Where is not null) { Visit(node.Where, in script); }
+            if (node.Order is not null) { Visit(node.Order, in script); }
+            if (node.Top is not null) { Visit(node.Top, in script); }
+
+            script.Append(';');
         }
     }
 }

@@ -39,6 +39,7 @@ namespace DaJet.Scripting
             else if (node is UpdateStatement) { OpenScope(ScopeType.Root, node); }
             else if (node is DeleteStatement) { OpenScope(ScopeType.Root, node); }
             else if (node is UpsertStatement) { OpenScope(ScopeType.Root, node); }
+            else if (node is ConsumeStatement) { OpenScope(ScopeType.Root, node); }
             else if (node is CommonTableExpression) { OpenScope(ScopeType.Node, node); }
             else if (node is TableExpression) { OpenScope(ScopeType.Node, node); }
             else if (node is SelectExpression) { OpenScope(ScopeType.Node, node); }
@@ -59,6 +60,7 @@ namespace DaJet.Scripting
             else if (node is UpdateStatement) { CloseScope(); }
             else if (node is DeleteStatement) { CloseScope(); }
             else if (node is UpsertStatement) { CloseScope(); }
+            else if (node is ConsumeStatement) { CloseScope(); }
             else if (node is CommonTableExpression) { CloseScope(); }
             else if (node is SelectExpression) { CloseScope(); }
             else if (node is TableExpression) { CloseScope(); }

@@ -234,6 +234,7 @@ namespace DaJet.Scripting
                 context ??= scope.Ancestor<InsertStatement>();
                 context ??= scope.Ancestor<UpdateStatement>();
                 context ??= scope.Ancestor<DeleteStatement>();
+                context ??= scope.Ancestor<ConsumeStatement>();
 
                 BindCommonTable(context, in table);
             }
@@ -401,6 +402,7 @@ namespace DaJet.Scripting
             if (context is null) // statement result context
             {
                 context = scope.Ancestor<SelectStatement>();
+                context ??= scope.Ancestor<ConsumeStatement>();
                 context ??= scope.Ancestor<UpsertStatement>();
 
                 //NOTE: UPDATE statement columns are not searched in CTE if it is ordinary WHERE UPDATE without FROM clause.

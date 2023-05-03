@@ -222,6 +222,12 @@ namespace DaJet.Scripting
                 //NOTE: the function does not have any parameters
                 union.IsVersion = true; return;
             }
+            if (function.Name == "DATALENGTH")
+            {
+                //TODO: IsVersion is an int64 (bigint) hack
+                //NOTE: the function have one parameter, but we ignore it
+                union.IsVersion = true; return;
+            }
             else if (function.Name == "SUBSTRING")
             {
                 union.IsString = true; return;

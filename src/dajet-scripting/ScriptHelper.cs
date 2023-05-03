@@ -86,7 +86,8 @@ namespace DaJet.Scripting
             { "ALTER", TokenType.ALTER },
             { "COLUMN", TokenType.COLUMN },
             { "AUTO", TokenType.AUTO },
-            { "GENERATED", TokenType.GENERATED }
+            { "GENERATED", TokenType.GENERATED },
+            { "CONSUME", TokenType.CONSUME }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {
@@ -179,7 +180,8 @@ namespace DaJet.Scripting
             { "COUNT", TokenType.COUNT },
             { "ISNULL", TokenType.ISNULL },
             { "ROW_NUMBER", TokenType.ROW_NUMBER },
-            { "SUBSTRING", TokenType.SUBSTRING }
+            { "SUBSTRING", TokenType.SUBSTRING },
+            { "DATALENGTH", TokenType.DATALENGTH }
         };
         private static Dictionary<string, TokenType> _function_ru = new()
         {

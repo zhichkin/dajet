@@ -206,6 +206,10 @@ namespace DaJet.Scripting
             {
                 return upsert_statement();
             }
+            else if (Check(TokenType.CONSUME))
+            {
+                return consume_statement();
+            }
             else if (Match(TokenType.EndOfStatement))
             {
                 return null;
@@ -645,7 +649,7 @@ namespace DaJet.Scripting
             Skip(TokenType.Comment);
 
             Skip(TokenType.Comment);
-            top(in select);
+            select.Top = top_clause();
             Skip(TokenType.Comment);
 
             select.Select.Add(column());
@@ -661,24 +665,23 @@ namespace DaJet.Scripting
                 Skip(TokenType.Comment);
             }
         }
-        private void top(in SelectExpression select)
+        private TopClause top_clause()
         {
             if (!Match(TokenType.TOP))
             {
-                return;
+                return null;
             }
 
             bool expect_close = Match(TokenType.OpenRoundBracket);
 
-            select.Top = new TopClause()
-            {
-                Expression = expression()
-            };
+            TopClause clause = new() { Expression = expression() };
 
             if (expect_close && !Match(TokenType.CloseRoundBracket))
             {
                 throw new FormatException($"TOP clause: close round bracket expected.");
             }
+
+            return clause;
         }
 
         private FromClause from_clause() { return new FromClause() { Expression = join() }; }
@@ -1683,6 +1686,47 @@ namespace DaJet.Scripting
             }
 
             return column;
+        }
+        #endregion
+
+        #region "CONSUME STATEMENT"
+        private SyntaxNode consume_statement()
+        {
+            if (!Match(TokenType.CONSUME))
+            {
+                throw new FormatException("CONSUME keyword expected.");
+            }
+
+            ConsumeStatement consume = new();
+
+            Skip(TokenType.Comment);
+            consume.Top = top_clause();
+            Skip(TokenType.Comment);
+            select_columns(in consume);
+            Skip(TokenType.Comment);
+            if (Match(TokenType.FROM)) { consume.From = from_clause(); }
+            Skip(TokenType.Comment);
+            if (Match(TokenType.WHERE)) { consume.Where = where_clause(); }
+            Skip(TokenType.Comment);
+            if (Match(TokenType.ORDER)) { consume.Order = order_clause(); }
+            Skip(TokenType.Comment);
+
+            return consume;
+        }
+        private void select_columns(in ConsumeStatement statement)
+        {
+            statement.Columns.Add(column());
+
+            Skip(TokenType.Comment);
+
+            while (Match(TokenType.Comma))
+            {
+                Skip(TokenType.Comment);
+
+                statement.Columns.Add(column());
+
+                Skip(TokenType.Comment);
+            }
         }
         #endregion
     }

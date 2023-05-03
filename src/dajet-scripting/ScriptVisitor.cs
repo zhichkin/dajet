@@ -42,6 +42,7 @@ namespace DaJet.Scripting
             else if (node is TableJoinOperator join) { Visit(in join); }
             else if (node is TableReference table) { Visit(in table); }
             else if (node is TableUnionOperator union) { Visit(in union); }
+            else if (node is ConsumeStatement consume_statement) { Visit(in consume_statement); }
         }
         protected virtual void Visit(in ScriptModel node)
         {
@@ -50,6 +51,10 @@ namespace DaJet.Scripting
                 if (statement is SelectStatement select)
                 {
                     Visit(in select);
+                }
+                else if (statement is ConsumeStatement consume)
+                {
+                    Visit(in consume);
                 }
             }
         }
@@ -293,6 +298,19 @@ namespace DaJet.Scripting
             {
                 Visit(node.Columns[i]);
             }
+        }
+        protected virtual void Visit(in ConsumeStatement node)
+        {
+            if (node.Top is not null) { Visit(node.Top); }
+
+            for (int i = 0; i < node.Columns.Count; i++)
+            {
+                Visit(node.Columns[i]);
+            }
+
+            if (node.From is not null) { Visit(node.From); }
+            if (node.Where is not null) { Visit(node.Where); }
+            if (node.Order is not null) { Visit(node.Order); }
         }
     }
 }

@@ -33,6 +33,13 @@ namespace DaJet.Scripting
                         //TODO: implement outside of this class !!!
                         ConfigureDataMapper(in select, result.Mapper);
                     }
+                    else if (node is ConsumeStatement consume)
+                    {
+                        Visit(in consume, in script);
+
+                        //TODO: implement outside of this class !!!
+                        ConfigureDataMapper(in consume, result.Mapper);
+                    }
                     else if (node is InsertStatement insert)
                     {
                         Visit(in insert, in script);
@@ -702,6 +709,35 @@ namespace DaJet.Scripting
         protected virtual void Visit(in TemporaryTableExpression node, in StringBuilder script)
         {
             Visit(node.Expression, in script);
+        }
+        #endregion
+
+        #region "CONSUME STATEMENT"
+        protected virtual void Visit(in ConsumeStatement node, in StringBuilder script)
+        {
+            script.Append("SELECT");
+
+            if (node.Top is not null) { Visit(node.Top, in script); }
+
+            script.AppendLine();
+
+            for (int i = 0; i < node.Columns.Count; i++)
+            {
+                if (i > 0) { script.Append(',').Append(Environment.NewLine); }
+
+                Visit(node.Columns[i], in script);
+            }
+
+            if (node.From is not null) { Visit(node.From, in script); }
+            if (node.Where is not null) { Visit(node.Where, in script); }
+            if (node.Order is not null) { Visit(node.Order, in script); }
+        }
+        private void ConfigureDataMapper(in ConsumeStatement statement, in EntityMap mapper)
+        {
+            foreach (ColumnExpression column in statement.Columns)
+            {
+                DataMapper.Map(in column, in mapper);
+            }
         }
         #endregion
 
