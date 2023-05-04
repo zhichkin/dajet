@@ -384,11 +384,17 @@ namespace DaJet.Scripting
                 return null;
             }
 
-            if (reader.GetFieldType(ordinal) == typeof(byte[]))
+            Type type = reader.GetFieldType(ordinal);
+
+            if (type == typeof(byte[]))
             {
                 //TODO: cast binary(4) to int at database level ?
                 //NOTE: the value can be stored as unsigned big-endian !!!
                 return DbUtilities.GetInt32((byte[])reader.GetValue(ordinal));
+            }
+            else if (type == typeof(long))
+            {
+                return reader.GetInt64(ordinal);
             }
             else
             {

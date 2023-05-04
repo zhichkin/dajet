@@ -218,15 +218,15 @@ namespace DaJet.Scripting
         {
             if (function.Name == "ROW_NUMBER")
             {
-                //TODO: IsVersion is an int64 (bigint) hack
+                //TODO: IsVersion is int64 (bigint) hack
                 //NOTE: the function does not have any parameters
                 union.IsVersion = true; return;
             }
             if (function.Name == "DATALENGTH")
             {
-                //TODO: IsVersion is an int64 (bigint) hack
+                //TODO: IsInteger is int32 (int) hack
                 //NOTE: the function have one parameter, but we ignore it
-                union.IsVersion = true; return;
+                union.IsInteger = true; return;
             }
             else if (function.Name == "SUBSTRING")
             {

@@ -112,5 +112,92 @@ namespace DaJet.Scripting
 
             base.Visit(in node, in script);
         }
+
+        protected override void Visit(in ConsumeStatement node, in StringBuilder script)
+        {
+            script.AppendLine("WITH queue AS").Append("(SELECT");
+
+            if (node.Top is not null) { Visit(node.Top, in script); }
+
+            script.AppendLine();
+
+            for (int i = 0; i < node.Columns.Count; i++)
+            {
+                if (i > 0) { script.AppendLine(","); }
+
+                Visit(node.Columns[i], in script);
+            }
+
+            if (node.From is not null) { Visit(node.From, in script); }
+            script.Append(" WITH (ROWLOCK, READPAST)");
+            if (node.Where is not null) { Visit(node.Where, in script); }
+            if (node.Order is not null) { Visit(node.Order, in script); }
+
+            script.AppendLine(")").AppendLine("DELETE queue OUTPUT");
+
+            for (int i = 0; i < node.Columns.Count; i++)
+            {
+                if (i > 0) { script.AppendLine(","); }
+
+                ColumnExpression output = node.Columns[i];
+
+                if (output.Expression is ColumnReference column)
+                {
+                    TransformColumnReference(in column);
+                }
+                else if (output.Expression is FunctionExpression function)
+                {
+                    TransformColumnExpression(in output, in function);
+                }
+                
+                Visit(in output, in script);
+            }
+        }
+        private void TransformColumnReference(in ColumnReference column)
+        {
+            if (column.Mapping is not null)
+            {
+                foreach (ColumnMap map in column.Mapping)
+                {
+                    map.Name = "deleted." + map.Alias;
+                    map.Alias = string.Empty;
+                }
+            }
+        }
+        private void TransformColumnExpression(in ColumnExpression column, in FunctionExpression function)
+        {
+            if (function.Name.ToUpperInvariant() != "DATALENGTH") { return; }
+
+            column.Expression = new ColumnReference()
+            {
+                Binding = new ColumnExpression()
+                {
+                    Expression = function
+                },
+                Identifier = "deleted." + column.Alias,
+                Mapping = new List<ColumnMap>()
+                {
+                    new ColumnMap() { Name = "deleted." + column.Alias }
+                }
+            };
+        }
     }
 }
+
+// Шаблон запроса на деструктивное чтение для Microsoft SQL Server
+//WITH queue AS
+//(SELECT TOP (@MessageCount)
+//  МоментВремени, Идентификатор, ДатаВремя,
+//  Отправитель, Получатели, Заголовки,
+//  ТипОперации, ТипСообщения, ТелоСообщения
+//FROM
+//  {TABLE_NAME} WITH (ROWLOCK, READPAST)
+//ORDER BY
+//  МоментВремени ASC,
+//  Идентификатор ASC
+//)
+//DELETE queue OUTPUT
+//  deleted.МоментВремени, deleted.Идентификатор, deleted.ДатаВремя,
+//  deleted.Отправитель, deleted.Получатели, deleted.Заголовки,
+//  deleted.ТипОперации, deleted.ТипСообщения, deleted.ТелоСообщения
+//;

@@ -113,6 +113,13 @@ namespace DaJet.Scripting
                 DataMapper.Map(in column, in mapper);
             }
         }
+        private void ConfigureDataMapper(in ConsumeStatement statement, in EntityMap mapper)
+        {
+            foreach (ColumnExpression column in statement.Columns)
+            {
+                DataMapper.Map(in column, in mapper);
+            }
+        }
         private void ConfigureOutputDataMapper(in OutputClause output, in EntityMap mapper)
         {
             foreach (ColumnExpression column in output.Columns)
@@ -482,10 +489,10 @@ namespace DaJet.Scripting
                 }
             }
 
-            script.AppendLine();
-
             if (node.Offset is not null)
             {
+                script.AppendLine();
+
                 script.Append("OFFSET ");
                 Visit(node.Offset, in script);
                 script.AppendLine(" ROWS");
@@ -731,13 +738,6 @@ namespace DaJet.Scripting
             if (node.From is not null) { Visit(node.From, in script); }
             if (node.Where is not null) { Visit(node.Where, in script); }
             if (node.Order is not null) { Visit(node.Order, in script); }
-        }
-        private void ConfigureDataMapper(in ConsumeStatement statement, in EntityMap mapper)
-        {
-            foreach (ColumnExpression column in statement.Columns)
-            {
-                DataMapper.Map(in column, in mapper);
-            }
         }
         #endregion
 

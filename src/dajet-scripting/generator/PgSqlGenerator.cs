@@ -39,7 +39,7 @@ namespace DaJet.Scripting
 
             for (int i = 0; i < node.Select.Count; i++)
             {
-                if (i > 0) { script.Append(',').Append(Environment.NewLine); }
+                if (i > 0) { script.AppendLine(","); }
 
                 Visit(node.Select[i], in script);
             }
@@ -50,6 +50,11 @@ namespace DaJet.Scripting
             if (node.Having is not null) { Visit(node.Having, in script); }
             if (node.Order is not null) { Visit(node.Order, in script); }
             if (node.Top is not null) { Visit(node.Top, in script); }
+
+            if (!string.IsNullOrEmpty(node.Hints))
+            {
+                script.AppendLine().Append(node.Hints);
+            }
         }
         protected override void Visit(in TopClause node, in StringBuilder script)
         {
@@ -252,25 +257,251 @@ namespace DaJet.Scripting
 
         protected override void Visit(in ConsumeStatement node, in StringBuilder script)
         {
-            script.AppendLine();
+            ScriptTransformer transformer = new();
 
-            script.Append("SELECT");
+            script.AppendLine("queue AS (").Append("DELETE");
+            if (node.From is not null) { Visit(node.From, in script); }
+            script.AppendLine(" AS source USING filter");
 
-            script.AppendLine();
+            SelectStatement consume = TransformConsumeToSelect(in node);
 
-            for (int i = 0; i < node.Columns.Count; i++)
+            if (!transformer.TryTransform(consume, out string error))
             {
-                if (i > 0) { script.Append(',').Append(Environment.NewLine); }
-
-                Visit(node.Columns[i], in script);
+                throw new Exception(error);
             }
 
-            if (node.From is not null) { Visit(node.From, in script); }
-            if (node.Where is not null) { Visit(node.Where, in script); }
-            if (node.Order is not null) { Visit(node.Order, in script); }
-            if (node.Top is not null) { Visit(node.Top, in script); }
+            Visit(in consume, in script);
+        }
+        private SelectExpression TransformConsumeToFilter(in ConsumeStatement consume)
+        {
+            SelectExpression select = new()
+            {
+                Hints = "FOR UPDATE SKIP LOCKED"
+            };
 
-            script.Append(';');
+            foreach (OrderExpression order in consume.Order.Expressions)
+            {
+                if (order.Expression is ColumnReference column)
+                {
+                    if (column.Binding is MetadataProperty property)
+                    {
+                        select.Select.Add(new ColumnExpression()
+                        {
+                            Expression = new ColumnReference()
+                            {
+                                Binding = property,
+                                Identifier = column.Identifier
+                            }
+                        });
+                    }
+                }
+            }
+
+            select.Top = consume.Top;
+            select.From = consume.From;
+            select.Where = consume.Where;
+            select.Order = consume.Order;
+
+            return select;
+        }
+        private SelectStatement TransformConsumeToSelect(in ConsumeStatement consume)
+        {
+            SelectExpression filter = TransformConsumeToFilter(in consume);
+
+            CommonTableExpression cte = new() { Name = "filter", Expression = filter };
+
+            SelectExpression select = new();
+
+            foreach (ColumnExpression output in consume.Columns)
+            {
+                if (output.Expression is ColumnReference column)
+                {
+                    select.Select.Add(new ColumnExpression()
+                    {
+                        Alias = output.Alias,
+                        Expression = new ColumnReference()
+                        {
+                            Binding = column.Binding,
+                            Identifier = "source." + column.Identifier
+                        }
+                    });
+                }
+                else if (output.Expression is FunctionExpression function && function.Token == TokenType.DATALENGTH)
+                {
+                    if (function.Parameters.Count > 0 && function.Parameters[0] is ColumnReference parameter)
+                    {
+                        select.Select.Add(new ColumnExpression()
+                        {
+                            Alias = output.Alias,
+                            Expression = new FunctionExpression()
+                            {
+                                Name = function.Name,
+                                Token = function.Token,
+                                Parameters = new List<SyntaxNode>()
+                                {
+                                    new ColumnReference()
+                                    {
+                                        Binding = parameter.Binding,
+                                        Identifier = "source." + parameter.Identifier
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+
+            if (consume.From.Expression is TableReference table)
+            {
+                TableReference source = new() { Alias = "source", Identifier = table.Identifier, Binding = table.Binding };
+
+                select.From = new FromClause()
+                {
+                    Expression = new TableJoinOperator()
+                    {
+                        Token = TokenType.INNER,
+                        Expression1 = source,
+                        Expression2 = new TableReference() { Identifier = "filter", Binding = cte },
+                        On = new OnClause()
+                        {
+                            Expression = TransformOrderToWhere(consume.Order, in filter)
+                        }
+                    }
+                };
+            }
+
+            if (consume.Order is not null)
+            {
+                select.Order = new OrderClause();
+
+                foreach (OrderExpression order in consume.Order.Expressions)
+                {
+                    if (order.Expression is ColumnReference column)
+                    {
+                        select.Order.Expressions.Add(new OrderExpression()
+                        {
+                            Token = order.Token,
+                            Expression = new ColumnReference()
+                            {
+                                Binding = column.Binding,
+                                Identifier = "source." + column.Identifier
+                            }
+                        });
+                    }
+                }
+            }
+
+            return new SelectStatement() { Select = select, CommonTables = cte };
+        }
+        private GroupOperator TransformOrderToWhere(in OrderClause order, in SelectExpression filter)
+        {
+            GroupOperator group = new();
+
+            foreach (OrderExpression expression in order.Expressions)
+            {
+                if (expression.Expression is ColumnReference column)
+                {
+                    if (group.Expression == null)
+                    {
+                        group.Expression = CreateEqualityComparisonOperator(in column, in filter);
+                    }
+                    else
+                    {
+                        group.Expression = new BinaryOperator()
+                        {
+                            Token = TokenType.AND,
+                            Expression1 = group.Expression,
+                            Expression2 = CreateEqualityComparisonOperator(in column, in filter)
+                        };
+                    }
+                }
+            }
+
+            return group;
+        }
+        private ComparisonOperator CreateEqualityComparisonOperator(in ColumnReference column, in SelectExpression filter)
+        {
+            if (column.Binding is not MetadataProperty property) { return null; }
+
+            ColumnReference column1 = new()
+            {
+                Binding = property,
+                Identifier = "source." + column.Identifier
+            };
+
+            ColumnReference column2 = new() { Identifier = "filter." + property.Name };
+
+            BindColumn(in filter, property.Name, in column2);
+
+            ComparisonOperator comparison = new()
+            {
+                Token = TokenType.Equals,
+                Expression1 = column1,
+                Expression2 = column2
+            };
+
+            return comparison;
+        }
+        private void BindColumn(in SelectExpression table, in string identifier, in ColumnReference column)
+        {
+            string columnName = string.Empty;
+
+            foreach (ColumnExpression expression in table.Select)
+            {
+                if (!string.IsNullOrEmpty(expression.Alias))
+                {
+                    columnName = expression.Alias;
+                }
+                else if (expression.Expression is ColumnReference reference)
+                {
+                    ScriptHelper.GetColumnIdentifiers(reference.Identifier, out string _, out columnName);
+                }
+
+                if (columnName == identifier)
+                {
+                    column.Binding = expression; return;
+                }
+            }
         }
     }
 }
+
+// Шаблон запроса на деструктивное чтение для PostgreSQL
+//WITH filter AS
+//(SELECT
+//  МоментВремени,
+//  Идентификатор
+//FROM
+//  {TABLE_NAME}
+//ORDER BY
+//  МоментВремени ASC,
+//  Идентификатор ASC
+//LIMIT
+//  @MessageCount
+//FOR UPDATE SKIP LOCKED
+//),
+
+//queue AS(
+//DELETE FROM {TABLE_NAME} t USING filter
+//WHERE t.МоментВремени = filter.МоментВремени
+//  AND t.Идентификатор = filter.Идентификатор
+//RETURNING
+//  t.МоментВремени, t.Идентификатор, t.ДатаВремя,
+//  t.Отправитель, t.Получатели, t.Заголовки,
+//  t.ТипОперации, t.ТипСообщения, t.ТелоСообщения
+//)
+
+//SELECT
+//  queue.МоментВремени, queue.Идентификатор, queue.ДатаВремя,
+//  CAST(queue.Заголовки     AS text)    AS "Заголовки",
+//  CAST(queue.Отправитель   AS varchar) AS "Отправитель",
+//  CAST(queue.Получатели    AS text)    AS "Получатели",
+//  CAST(queue.ТипОперации   AS varchar) AS "ТипОперации",
+//  CAST(queue.ТипСообщения  AS varchar) AS "ТипСообщения",
+//  CAST(queue.ТелоСообщения AS text)    AS "ТелоСообщения"
+//FROM
+//  queue
+//ORDER BY
+//  queue.МоментВремени ASC,
+//  queue.Идентификатор ASC
+//;
