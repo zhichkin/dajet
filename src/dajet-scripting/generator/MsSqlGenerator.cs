@@ -1,4 +1,5 @@
-﻿using DaJet.Metadata.Model;
+﻿using DaJet.Data;
+using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 using System.Text;
 
@@ -115,11 +116,6 @@ namespace DaJet.Scripting
 
         protected override void Visit(in DeleteStatement node, in StringBuilder script)
         {
-            if (node.Target.Binding is CommonTableExpression)
-            {
-                throw new InvalidOperationException("DELETE: computed table (cte) targeting is not allowed.");
-            }
-
             if (node.CommonTables is not null)
             {
                 script.Append("WITH ");
@@ -137,9 +133,9 @@ namespace DaJet.Scripting
                 {
                     if (column.Expression is ColumnReference reference)
                     {
-                        ScriptHelper.GetColumnIdentifiers(reference.Identifier, out _, out string columnName);
+                        ScriptHelper.GetColumnIdentifiers(reference.Identifier, out string tableAlias, out _);
 
-                        if (!columnName.ToLowerInvariant().StartsWith("deleted"))
+                        if (tableAlias.ToLowerInvariant() != "deleted")
                         {
                             reference.Identifier = "deleted." + reference.Identifier;
 
@@ -160,6 +156,8 @@ namespace DaJet.Scripting
             if (node.Where is not null)
             {
                 // TODO: transform WHERE into FROM ... INNER JOIN if another tables are referenced
+                // DELETE table1 FROM table1 INNER JOIN table2
+                // ON table1.id = table2.id WHERE table1.col = 'test'
                 Visit(node.Where, script);
             }
         }
@@ -169,7 +167,7 @@ namespace DaJet.Scripting
 
             for (int i = 0; i < node.Columns.Count; i++)
             {
-                if (i > 0) { script.Append(", "); }
+                if (i > 0) { script.AppendLine(","); }
 
                 Visit(node.Columns[i], in script);
             }
@@ -177,71 +175,95 @@ namespace DaJet.Scripting
 
         protected override void Visit(in ConsumeStatement node, in StringBuilder script)
         {
-            script.AppendLine("WITH queue AS").Append("(SELECT");
+            SelectExpression source = TransformConsumeToSelect(in node);
 
-            if (node.Top is not null) { Visit(node.Top, in script); }
+            CommonTableExpression queue = new() { Name = "queue", Expression = source };
 
-            script.AppendLine();
+            DeleteStatement output = TransformConsumeToDelete(in node, in queue);
 
-            for (int i = 0; i < node.Columns.Count; i++)
+            Visit(in output, in script);
+        }
+        private SelectExpression TransformConsumeToSelect(in ConsumeStatement consume)
+        {
+            SelectExpression select = new()
             {
-                if (i > 0) { script.AppendLine(","); }
+                Select = consume.Columns,
+                Top = consume.Top,
+                From = consume.From,
+                Where = consume.Where,
+                Order = consume.Order,
+                Hints = "WITH (ROWLOCK, READPAST)"
+            };
 
-                Visit(node.Columns[i], in script);
-            }
-
-            if (node.From is not null) { Visit(node.From, in script); }
-            script.Append(" WITH (ROWLOCK, READPAST)");
-            if (node.Where is not null) { Visit(node.Where, in script); }
-            if (node.Order is not null) { Visit(node.Order, in script); }
-
-            script.AppendLine(")").AppendLine("DELETE queue OUTPUT");
-
-            for (int i = 0; i < node.Columns.Count; i++)
+            return select;
+        }
+        private DeleteStatement TransformConsumeToDelete(in ConsumeStatement consume, in CommonTableExpression queue)
+        {
+            DeleteStatement delete = new()
             {
-                if (i > 0) { script.AppendLine(","); }
+                Output = new OutputClause(),
+                Target = new TableReference()
+                {
+                    Binding = queue,
+                    Identifier = queue.Name
+                },
+                CommonTables = queue
+            };
 
-                ColumnExpression output = node.Columns[i];
-
+            foreach (ColumnExpression output in consume.Columns)
+            {
                 if (output.Expression is ColumnReference column)
                 {
-                    TransformColumnReference(in column);
-                }
-                else if (output.Expression is FunctionExpression function)
-                {
-                    TransformColumnExpression(in output, in function);
-                }
-                
-                Visit(in output, in script);
-            }
-        }
-        private void TransformColumnReference(in ColumnReference column)
-        {
-            if (column.Mapping is not null)
-            {
-                foreach (ColumnMap map in column.Mapping)
-                {
-                    map.Name = "deleted." + map.Alias;
-                    map.Alias = string.Empty;
-                }
-            }
-        }
-        private void TransformColumnExpression(in ColumnExpression column, in FunctionExpression function)
-        {
-            if (function.Name.ToUpperInvariant() != "DATALENGTH") { return; }
+                    ColumnExpression expression = new() { Alias = output.Alias };
 
-            column.Expression = new ColumnReference()
-            {
-                Binding = new ColumnExpression()
-                {
-                    Expression = function
-                },
-                Identifier = "deleted." + column.Alias,
-                Mapping = new List<ColumnMap>()
-                {
-                    new ColumnMap() { Name = "deleted." + column.Alias }
+                    ScriptHelper.GetColumnIdentifiers(column.Identifier, out _, out string columnName);
+
+                    ColumnReference reference = new()
+                    {
+                        Binding = output,
+                        Identifier = "deleted." + (string.IsNullOrEmpty(output.Alias) ? columnName : output.Alias)
+                    };
+
+                    if (column.Mapping is not null)
+                    {
+                        reference.Mapping = new List<ColumnMap>();
+
+                        foreach (ColumnMap map in column.Mapping)
+                        {
+                            reference.Mapping.Add(new ColumnMap()
+                            {
+                                Type = map.Type,
+                                Name = "deleted." + map.Alias
+                            });
+                        }
+                    }
+
+                    expression.Expression = reference;
+
+                    delete.Output.Columns.Add(expression);
                 }
-            };
+                else if (output.Expression is FunctionExpression function && function.Token == TokenType.DATALENGTH)
+                {
+                    delete.Output.Columns.Add(new ColumnExpression()
+                    {
+                        Expression = new ColumnReference()
+                        {
+                            Binding = output,
+                            Identifier = "deleted." + output.Alias,
+                            Mapping = new List<ColumnMap>()
+                            {
+                                new ColumnMap()
+                                {
+                                    Type = UnionTag.Integer,
+                                    Name ="deleted." + output.Alias
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
+            return delete;
         }
     }
 }

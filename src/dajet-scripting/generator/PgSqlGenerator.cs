@@ -53,7 +53,7 @@ namespace DaJet.Scripting
 
             if (!string.IsNullOrEmpty(node.Hints))
             {
-                script.AppendLine().Append(node.Hints);
+                script.AppendLine().Append(node.Hints); // TODO: (pg) refactor this hack from CONSUME command
             }
         }
         protected override void Visit(in TopClause node, in StringBuilder script)
@@ -291,7 +291,7 @@ namespace DaJet.Scripting
 
             for (int i = 0; i < node.Columns.Count; i++)
             {
-                if (i > 0) { script.Append(", "); }
+                if (i > 0) { script.AppendLine(","); }
 
                 Visit(node.Columns[i], in script);
             }
@@ -483,27 +483,6 @@ namespace DaJet.Scripting
             };
 
             return comparison;
-        }
-        private void BindColumn(in SelectExpression table, in string identifier, in ColumnReference column)
-        {
-            string columnName = string.Empty;
-
-            foreach (ColumnExpression expression in table.Select)
-            {
-                if (!string.IsNullOrEmpty(expression.Alias))
-                {
-                    columnName = expression.Alias;
-                }
-                else if (expression.Expression is ColumnReference reference)
-                {
-                    ScriptHelper.GetColumnIdentifiers(reference.Identifier, out string _, out columnName);
-                }
-
-                if (columnName == identifier)
-                {
-                    column.Binding = expression; return;
-                }
-            }
         }
     }
 }

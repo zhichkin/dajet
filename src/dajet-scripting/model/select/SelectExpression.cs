@@ -11,6 +11,8 @@
         public GroupClause Group { get; set; }
         public HavingClause Having { get; set; }
         public OrderClause Order { get; set; }
-        public string Hints { get; set; } // PG hack = FOR UPDATE SKIP LOCKED
+        // PG hack = FOR UPDATE SKIP LOCKED
+        // MS hack = WITH (ROWLOCK, READPAST)
+        public string Hints { get; set; }
     }
 }

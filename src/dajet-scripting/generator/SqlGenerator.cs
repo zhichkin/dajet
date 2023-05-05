@@ -185,12 +185,18 @@ namespace DaJet.Scripting
 
             for (int i = 0; i < node.Select.Count; i++)
             {
-                if (i > 0) { script.Append(',').Append(Environment.NewLine); }
+                if (i > 0) { script.AppendLine(","); }
 
                 Visit(node.Select[i], in script);
             }
 
             if (node.From is not null) { Visit(node.From, in script); }
+
+            if (!string.IsNullOrEmpty(node.Hints))
+            {
+                script.Append(' ').Append(node.Hints); // TODO: (ms) refactor this hack from CONSUME command
+            }
+
             if (node.Where is not null) { Visit(node.Where, in script); }
             if (node.Group is not null) { Visit(node.Group, in script); }
             if (node.Having is not null) { Visit(node.Having, in script); }
@@ -1065,5 +1071,27 @@ namespace DaJet.Scripting
             script.Append(insert_script);
         }
         #endregion
+
+        protected void BindColumn(in SelectExpression table, in string identifier, in ColumnReference column)
+        {
+            string columnName = string.Empty;
+
+            foreach (ColumnExpression expression in table.Select)
+            {
+                if (!string.IsNullOrEmpty(expression.Alias))
+                {
+                    columnName = expression.Alias; // bind by alias
+                }
+                else if (expression.Expression is ColumnReference reference)  // bind by column identifier
+                {
+                    ScriptHelper.GetColumnIdentifiers(reference.Identifier, out string _, out columnName);
+                }
+
+                if (columnName == identifier)
+                {
+                    column.Binding = expression; return;
+                }
+            }
+        }
     }
 }
