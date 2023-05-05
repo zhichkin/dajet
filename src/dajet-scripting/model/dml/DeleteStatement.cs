@@ -6,5 +6,6 @@
         public CommonTableExpression CommonTables { get; set; }
         public TableReference Target { get; set; }
         public WhereClause Where { get; set; }
+        public OutputClause Output { get; set; }
     }
 }

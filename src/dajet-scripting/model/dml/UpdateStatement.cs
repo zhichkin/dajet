@@ -9,5 +9,6 @@
         public WhereClause Where { get; set; }
         public SetClause Set { get; set; }
         public List<string> Hints { get; set; }
+        public OutputClause Output { get; set; }
     }
 }

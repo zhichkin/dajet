@@ -255,6 +255,48 @@ namespace DaJet.Scripting
             script.Append(';').AppendLine();
         }
 
+        protected override void Visit(in DeleteStatement node, in StringBuilder script)
+        {
+            if (node.Target.Binding is CommonTableExpression)
+            {
+                throw new InvalidOperationException("DELETE: computed table (cte) targeting is not allowed.");
+            }
+
+            if (node.CommonTables is not null)
+            {
+                script.Append("WITH ");
+
+                Visit(node.CommonTables, in script);
+            }
+
+            script.Append("DELETE FROM ");
+
+            VisitTargetTable(node.Target, in script);
+
+            // TODO: add USING clause if another tables are referenced in WHERE clause
+
+            if (node.Where is not null)
+            {
+                Visit(node.Where, script);
+            }
+
+            if (node.Output is not null)
+            {
+                Visit(node.Output, script);
+            }
+        }
+        protected override void Visit(in OutputClause node, in StringBuilder script)
+        {
+            script.AppendLine().AppendLine("RETURNING");
+
+            for (int i = 0; i < node.Columns.Count; i++)
+            {
+                if (i > 0) { script.Append(", "); }
+
+                Visit(node.Columns[i], in script);
+            }
+        }
+
         protected override void Visit(in ConsumeStatement node, in StringBuilder script)
         {
             ScriptTransformer transformer = new();

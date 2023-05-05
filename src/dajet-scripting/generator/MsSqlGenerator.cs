@@ -113,6 +113,68 @@ namespace DaJet.Scripting
             base.Visit(in node, in script);
         }
 
+        protected override void Visit(in DeleteStatement node, in StringBuilder script)
+        {
+            if (node.Target.Binding is CommonTableExpression)
+            {
+                throw new InvalidOperationException("DELETE: computed table (cte) targeting is not allowed.");
+            }
+
+            if (node.CommonTables is not null)
+            {
+                script.Append("WITH ");
+
+                Visit(node.CommonTables, in script);
+            }
+
+            script.Append("DELETE ");
+
+            VisitTargetTable(node.Target, in script);
+
+            if (node.Output is not null)
+            {
+                foreach (ColumnExpression column in node.Output.Columns)
+                {
+                    if (column.Expression is ColumnReference reference)
+                    {
+                        ScriptHelper.GetColumnIdentifiers(reference.Identifier, out _, out string columnName);
+
+                        if (!columnName.ToLowerInvariant().StartsWith("deleted"))
+                        {
+                            reference.Identifier = "deleted." + reference.Identifier;
+
+                            if (reference.Mapping is not null)
+                            {
+                                foreach (ColumnMap map in reference.Mapping)
+                                {
+                                    map.Name = "deleted." + map.Name;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Visit(node.Output, script);
+            }
+
+            if (node.Where is not null)
+            {
+                // TODO: transform WHERE into FROM ... INNER JOIN if another tables are referenced
+                Visit(node.Where, script);
+            }
+        }
+        protected override void Visit(in OutputClause node, in StringBuilder script)
+        {
+            script.AppendLine().AppendLine("OUTPUT");
+
+            for (int i = 0; i < node.Columns.Count; i++)
+            {
+                if (i > 0) { script.Append(", "); }
+
+                Visit(node.Columns[i], in script);
+            }
+        }
+
         protected override void Visit(in ConsumeStatement node, in StringBuilder script)
         {
             script.AppendLine("WITH queue AS").Append("(SELECT");

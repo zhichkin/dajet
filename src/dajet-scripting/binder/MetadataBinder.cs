@@ -388,6 +388,13 @@ namespace DaJet.Scripting
 
         private bool TryGetSourceTable(in ScriptScope scope, in string identifier, out object table)
         {
+            // check if it is OUTPUT clause context
+
+            if (identifier.ToLowerInvariant() == "deleted" || identifier.ToLowerInvariant() == "inserted")
+            {
+                return TryGetTableScoped(in scope, in identifier, out table);
+            }
+
             // check if this is script scope table
 
             if (TryGetScriptTable(in scope, in identifier, out table))
@@ -402,8 +409,9 @@ namespace DaJet.Scripting
             if (context is null) // statement result context
             {
                 context = scope.Ancestor<SelectStatement>();
-                context ??= scope.Ancestor<ConsumeStatement>();
+                context ??= scope.Ancestor<DeleteStatement>();
                 context ??= scope.Ancestor<UpsertStatement>();
+                context ??= scope.Ancestor<ConsumeStatement>();
 
                 //NOTE: UPDATE statement columns are not searched in CTE if it is ordinary WHERE UPDATE without FROM clause.
                 //If it is FROM UPDATE then such kind of columns are searched via referenced tables in the FROM clause
@@ -476,6 +484,13 @@ namespace DaJet.Scripting
             {
                 if (node is TableReference reference)
                 {
+                    // check identifier is the keyword used in OUTPUT clause - take first available table
+                    if (identifier.ToLowerInvariant() == "deleted" || identifier.ToLowerInvariant() == "inserted")
+                    {
+                        // TODO: find all candidate tables and warn ambiguous names
+                        table = reference.Binding; return true; // success
+                    }
+
                     if (string.IsNullOrEmpty(identifier)) // identifier is not provided - take first available table
                     {
                         // TODO: find all candidate tables and warn ambiguous names
@@ -591,6 +606,18 @@ namespace DaJet.Scripting
             {
                 BindColumn(in union, in identifier, in column);
             }
+            else if (table.Expression is InsertStatement insert)
+            {
+                BindColumn(in insert, in identifier, in column);
+            }
+            else if (table.Expression is UpdateStatement update)
+            {
+                BindColumn(in update, in identifier, in column);
+            }
+            else if (table.Expression is DeleteStatement delete)
+            {
+                BindColumn(in delete, in identifier, in column);
+            }
         }
         private void BindColumn(in TableVariableExpression table, in string identifier, in ColumnReference column)
         {
@@ -644,6 +671,42 @@ namespace DaJet.Scripting
                     column.Binding = property; return;
                 }
             }
+        }
+
+        private void BindColumn(in OutputClause output, in string identifier, in ColumnReference column)
+        {
+            if (output is null) { return; }
+
+            string columnName = string.Empty;
+
+            foreach (ColumnExpression expression in output.Columns)
+            {
+                if (!string.IsNullOrEmpty(expression.Alias))
+                {
+                    columnName = expression.Alias;
+                }
+                else if (expression.Expression is ColumnReference reference)
+                {
+                    ScriptHelper.GetColumnIdentifiers(reference.Identifier, out string _, out columnName);
+                }
+
+                if (columnName == identifier)
+                {
+                    column.Binding = expression; return; // success
+                }
+            }
+        }
+        private void BindColumn(in InsertStatement table, in string identifier, in ColumnReference column)
+        {
+            if (table.Output is not null) { BindColumn(table.Output, in identifier, in column); }
+        }
+        private void BindColumn(in UpdateStatement table, in string identifier, in ColumnReference column)
+        {
+            if (table.Output is not null) { BindColumn(table.Output, in identifier, in column); }
+        }
+        private void BindColumn(in DeleteStatement table, in string identifier, in ColumnReference column)
+        {
+            if (table.Output is not null) { BindColumn(table.Output, in identifier, in column); }
         }
     }
 }

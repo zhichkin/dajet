@@ -419,7 +419,13 @@ namespace DaJet.Scripting
                 throw new FormatException("Open round bracket expected.");
             }
 
-            cte.Expression = union();
+            if (Check(TokenType.INSERT)) { cte.Expression = insert_statement(); }
+            else if (Check(TokenType.UPDATE)) { cte.Expression = update_statement(); }
+            else if (Check(TokenType.DELETE)) { cte.Expression = delete_statement(); }
+            else
+            {
+                cte.Expression = union();
+            }
 
             Skip(TokenType.Comment);
 
@@ -1460,6 +1466,11 @@ namespace DaJet.Scripting
             if (Match(TokenType.FROM)) { /* do nothing - optional */ }
 
             delete.Target = table_identifier();
+
+            if (Match(TokenType.OUTPUT))
+            {
+                delete.Output = output_clause();
+            }
 
             if (Match(TokenType.WHERE))
             {

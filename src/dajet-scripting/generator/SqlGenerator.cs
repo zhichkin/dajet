@@ -52,11 +52,11 @@ namespace DaJet.Scripting
                     {
                         Visit(in delete, in script);
 
-                        //if (delete.Output is not null)
-                        //{
-                        //    //TODO: implement outside of this class !!!
-                        //    ConfigureOutputDataMapper(delete.Output, result.Mapper);
-                        //}
+                        if (delete.Output is not null)
+                        {
+                            //TODO: implement outside of this class !!!
+                            ConfigureDataMapper(delete.Output, result.Mapper);
+                        }
                     }
                     else if (node is UpsertStatement upsert)
                     {
@@ -120,7 +120,7 @@ namespace DaJet.Scripting
                 DataMapper.Map(in column, in mapper);
             }
         }
-        private void ConfigureOutputDataMapper(in OutputClause output, in EntityMap mapper)
+        private void ConfigureDataMapper(in OutputClause output, in EntityMap mapper)
         {
             foreach (ColumnExpression column in output.Columns)
             {
@@ -129,90 +129,30 @@ namespace DaJet.Scripting
         }
         protected void Visit(in SyntaxNode expression, in StringBuilder script)
         {
-            if (expression is GroupOperator group)
-            {
-                Visit(in group, in script);
-            }
-            else if (expression is UnaryOperator unary)
-            {
-                Visit(in unary, in script);
-            }
-            else if (expression is BinaryOperator binary)
-            {
-                Visit(in binary, in script);
-            }
-            else if (expression is AdditionOperator addition)
-            {
-                Visit(in addition, in script);
-            }
-            else if (expression is MultiplyOperator multiply)
-            {
-                Visit(in multiply, in script);
-            }
-            else if (expression is ComparisonOperator comparison)
-            {
-                Visit(in comparison, in script);
-            }
-            else if (expression is CaseExpression case_when)
-            {
-                Visit(in case_when, in script);
-            }
-            else if (expression is ScalarExpression scalar)
-            {
-                Visit(in scalar, in script);
-            }
-            else if (expression is VariableReference variable)
-            {
-                Visit(in variable, in script);
-            }
-            else if (expression is SelectExpression select)
-            {
-                Visit(in select, in script);
-            }
-            else if (expression is TableJoinOperator join)
-            {
-                Visit(in join, in script);
-            }
-            else if (expression is TableUnionOperator union)
-            {
-                Visit(in union, in script);
-            }
-            else if (expression is TableExpression derived)
-            {
-                Visit(in derived, in script);
-            }
-            else if (expression is TableReference table)
-            {
-                Visit(in table, in script);
-            }
-            else if (expression is ColumnReference column)
-            {
-                Visit(in column, in script);
-            }
-            else if (expression is FunctionExpression function)
-            {
-                Visit(in function, in script);
-            }
-            else if (expression is TableVariableExpression table_variable)
-            {
-                Visit(in table_variable, in script);
-            }
-            else if (expression is TemporaryTableExpression temporary_table)
-            {
-                Visit(in temporary_table, in script);
-            }
-            else if (expression is StarExpression star)
-            {
-                Visit(in star, in script);
-            }
-            else if (expression is ValuesExpression values)
-            {
-                Visit(in values, in script);
-            }
-            else if (expression is SetExpression set)
-            {
-                Visit(in set, in script);
-            }
+            if (expression is GroupOperator group) { Visit(in group, in script); }
+            else if (expression is UnaryOperator unary) { Visit(in unary, in script); }
+            else if (expression is BinaryOperator binary) { Visit(in binary, in script); }
+            else if (expression is AdditionOperator addition) { Visit(in addition, in script); }
+            else if (expression is MultiplyOperator multiply) { Visit(in multiply, in script); }
+            else if (expression is ComparisonOperator comparison) { Visit(in comparison, in script); }
+            else if (expression is CaseExpression case_when) { Visit(in case_when, in script); }
+            else if (expression is ScalarExpression scalar) { Visit(in scalar, in script); }
+            else if (expression is VariableReference variable) { Visit(in variable, in script); }
+            else if (expression is SelectExpression select) { Visit(in select, in script); }
+            else if (expression is TableJoinOperator join) { Visit(in join, in script); }
+            else if (expression is TableUnionOperator union) { Visit(in union, in script); }
+            else if (expression is TableExpression derived) { Visit(in derived, in script); }
+            else if (expression is TableReference table) { Visit(in table, in script); }
+            else if (expression is ColumnReference column) { Visit(in column, in script); }
+            else if (expression is FunctionExpression function) { Visit(in function, in script); }
+            else if (expression is TableVariableExpression table_variable) { Visit(in table_variable, in script); }
+            else if (expression is TemporaryTableExpression temporary_table) { Visit(in temporary_table, in script); }
+            else if (expression is StarExpression star) { Visit(in star, in script); }
+            else if (expression is ValuesExpression values) { Visit(in values, in script); }
+            else if (expression is SetExpression set) { Visit(in set, in script); }
+            else if (expression is InsertStatement insert) { Visit(in insert, in script); }
+            else if (expression is UpdateStatement update) { Visit(in update, in script); }
+            else if (expression is DeleteStatement delete) { Visit(in delete, in script); }
         }
 
         #region "SELECT STATEMENT"
@@ -1037,6 +977,11 @@ namespace DaJet.Scripting
             script.Append("DELETE FROM ");
 
             VisitTargetTable(node.Target, in script);
+
+            if (node.Output is not null)
+            {
+                Visit(node.Output, script);
+            }
 
             if (node.Where is not null)
             {

@@ -6,5 +6,6 @@
         public CommonTableExpression CommonTables { get; set; }
         public TableReference Target { get; set; }
         public SyntaxNode Source { get; set; }
+        public OutputClause Output { get; set; }
     }
 }
