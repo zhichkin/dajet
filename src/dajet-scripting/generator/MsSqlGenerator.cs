@@ -157,7 +157,7 @@ namespace DaJet.Scripting
             {
                 // TODO: transform WHERE into FROM ... INNER JOIN if another tables are referenced
                 // DELETE table1 FROM table1 INNER JOIN table2
-                // ON table1.id = table2.id WHERE table1.col = 'test'
+                // ON table1.id = table2.id WHERE table1.column1 = 'filter'
                 Visit(node.Where, script);
             }
         }

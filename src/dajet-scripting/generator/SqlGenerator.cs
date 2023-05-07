@@ -1071,27 +1071,5 @@ namespace DaJet.Scripting
             script.Append(insert_script);
         }
         #endregion
-
-        protected void BindColumn(in SelectExpression table, in string identifier, in ColumnReference column)
-        {
-            string columnName = string.Empty;
-
-            foreach (ColumnExpression expression in table.Select)
-            {
-                if (!string.IsNullOrEmpty(expression.Alias))
-                {
-                    columnName = expression.Alias; // bind by alias
-                }
-                else if (expression.Expression is ColumnReference reference)  // bind by column identifier
-                {
-                    ScriptHelper.GetColumnIdentifiers(reference.Identifier, out string _, out columnName);
-                }
-
-                if (columnName == identifier)
-                {
-                    column.Binding = expression; return;
-                }
-            }
-        }
     }
 }

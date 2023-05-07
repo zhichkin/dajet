@@ -2,6 +2,8 @@
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 using System.Text;
+using static Npgsql.PostgresTypes.PostgresCompositeType;
+using static Npgsql.Replication.PgOutput.Messages.RelationMessage;
 
 namespace DaJet.Scripting
 {
@@ -281,14 +283,21 @@ namespace DaJet.Scripting
                 script.Append(" AS ").Append(node.Target.Alias);
             }
 
-            if (!string.IsNullOrEmpty(node.Using))
+            if (node.Where is not null)
             {
-                script.Append(" USING ").Append(node.Using);
-            }
-            else if (node.CommonTables is not null)
-            {
-                //TODO: (pg DELETE) find cte names in WHERE clause
-                script.Append(" USING ").Append(node.CommonTables.Name);
+                string source = string.IsNullOrEmpty(node.Target.Alias) ? node.Target.Identifier : node.Target.Alias;
+
+                if (GetCommonTableReferences(node.Where, in source, out List<string> tables))
+                {
+                    script.Append(" USING");
+
+                    for (int i = 0; i < tables.Count; i++)
+                    {
+                        if (i > 0) { script.Append(','); }
+
+                        script.Append(' ').Append(tables[i]);
+                    }
+                }
             }
 
             if (node.Where is not null)
@@ -312,7 +321,67 @@ namespace DaJet.Scripting
                 Visit(node.Columns[i], in script);
             }
         }
+        private bool GetCommonTableReferences(in WhereClause where, in string source, out List<string> identifiers)
+        {
+            identifiers = new List<string>();
 
+            Visit(where.Expression, in source, in identifiers);
+
+            return (identifiers.Count > 0);
+        }
+        private void Visit(in SyntaxNode node, in string source, in List<string> identifiers)
+        {
+            if (node is ComparisonOperator comparison)
+            {
+                Visit(in comparison, in source, in identifiers);
+            }
+            else if (node is ColumnReference column)
+            {
+                Visit(in column, in source, in identifiers);
+            }
+            else if (node is GroupOperator group)
+            {
+                Visit(in group, in source, in identifiers);
+            }
+            else if (node is UnaryOperator unary)
+            {
+                Visit(in unary, in source, in identifiers);
+            }
+            else if (node is BinaryOperator binary)
+            {
+                Visit(in binary, in source, in identifiers);
+            }
+        }
+        private void Visit(in ColumnReference column, in string source, in List<string> identifiers)
+        {
+            ScriptHelper.GetColumnIdentifiers(column.Identifier, out string table, out _);
+
+            if (string.IsNullOrWhiteSpace(table) || table == source) { return; }
+
+            if (!identifiers.Contains(table))
+            {
+                identifiers.Add(table);
+            }
+        }
+        private void Visit(in GroupOperator _operator, in string source, in List<string> identifiers)
+        {
+            Visit(_operator.Expression, in source, in identifiers);
+        }
+        private void Visit(in UnaryOperator _operator, in string source, in List<string> identifiers)
+        {
+            Visit(_operator.Expression, in source, in identifiers);
+        }
+        private void Visit(in BinaryOperator _operator, in string source, in List<string> identifiers)
+        {
+            Visit(_operator.Expression1, in source, in identifiers);
+            Visit(_operator.Expression2, in source, in identifiers);
+        }
+        private void Visit(in ComparisonOperator _operator, in string source, in List<string> identifiers)
+        {
+            Visit(_operator.Expression1, in source, in identifiers);
+            Visit(_operator.Expression2, in source, in identifiers);
+        }
+        
         protected override void Visit(in ConsumeStatement node, in StringBuilder script)
         {
             SelectExpression select = TransformConsumeToFilter(in node);
@@ -326,7 +395,7 @@ namespace DaJet.Scripting
                 Next = filter, Name = "queue", Expression = delete
             };
 
-            SelectStatement consume = TransformConsumeToSelect(in filter, in queue);
+            SelectStatement consume = TransformConsumeToSelect(in node, in queue);
 
             consume.CommonTables = queue;
 
@@ -334,8 +403,6 @@ namespace DaJet.Scripting
         }
         private SelectExpression TransformConsumeToFilter(in ConsumeStatement consume)
         {
-            ColumnReferenceTransformer transformer = new();
-
             SelectExpression select = new()
             {
                 Hints = "FOR UPDATE SKIP LOCKED"
@@ -345,16 +412,30 @@ namespace DaJet.Scripting
             {
                 if (order.Expression is not ColumnReference column) { continue; }
 
-                ColumnExpression expression = new()
+                ColumnExpression expression = new();
+
+                ColumnReference reference = new()
                 {
-                    Expression = new ColumnReference()
-                    {
-                        Binding = column.Binding,
-                        Identifier = column.Identifier
-                    }
+                    Binding = column.Binding,
+                    Identifier = column.Identifier
                 };
 
-                transformer.Transform(expression);
+                if (column.Mapping is not null)
+                {
+                    reference.Mapping = new List<ColumnMap>();
+
+                    foreach (ColumnMap map in column.Mapping)
+                    {
+                        reference.Mapping.Add(new ColumnMap()
+                        {
+                            Type = map.Type,
+                            Name = map.Name,
+                            Alias = column.Identifier
+                        });
+                    }
+                }
+
+                expression.Expression = reference;
 
                 select.Select.Add(expression);
             }
@@ -370,7 +451,6 @@ namespace DaJet.Scripting
         {
             DeleteStatement delete = new()
             {
-                Using = filter.Name,
                 Output = new OutputClause()
             };
 
@@ -461,11 +541,61 @@ namespace DaJet.Scripting
                 }
             }
 
-            //TODO: add columns from ORDER clause if consume.Columns do not contain them !!!
+            if (consume.Order is not null)
+            {
+                foreach (OrderExpression order in consume.Order.Expressions)
+                {
+                    if (order.Expression is ColumnReference orderColumn)
+                    {
+                        bool found = false;
+
+                        foreach (ColumnExpression expression in consume.Columns)
+                        {
+                            if (expression.Expression is ColumnReference selectColumn)
+                            {
+                                if (orderColumn.Identifier == selectColumn.Identifier)
+                                {
+                                    found = true; break;
+                                }
+                            }
+                        }
+
+                        if (!found) // add order columns to OUTPUT clause to be used by final SELECT statement
+                        {
+                            ColumnExpression expression = new();
+
+                            ColumnReference reference = new()
+                            {
+                                Binding = orderColumn.Binding,
+                                Identifier = orderColumn.Identifier
+                            };
+
+                            if (orderColumn.Mapping is not null)
+                            {
+                                reference.Mapping = new List<ColumnMap>();
+
+                                foreach (ColumnMap map in orderColumn.Mapping)
+                                {
+                                    reference.Mapping.Add(new ColumnMap()
+                                    {
+                                        Type = map.Type,
+                                        Name = "source." + map.Name,
+                                        Alias = orderColumn.Identifier
+                                    });
+                                }
+                            }
+
+                            expression.Expression = reference;
+
+                            delete.Output.Columns.Add(expression);
+                        }
+                    }
+                }
+            }
 
             return delete;
         }
-        private SelectStatement TransformConsumeToSelect(in CommonTableExpression filter, in CommonTableExpression queue)
+        private SelectStatement TransformConsumeToSelect(in ConsumeStatement consume, in CommonTableExpression queue)
         {
             SelectStatement statement = new();
 
@@ -477,18 +607,18 @@ namespace DaJet.Scripting
                 }
             };
 
-            if (queue.Expression is not DeleteStatement delete) { return statement; }
+            statement.Select = select;
 
-            foreach (ColumnExpression output in delete.Output.Columns)
+            foreach (ColumnExpression property in consume.Columns)
             {
-                if (output.Expression is ColumnReference column)
+                if (property.Expression is ColumnReference column)
                 {
-                    ColumnExpression expression = new() { Alias = output.Alias };
+                    ColumnExpression expression = new() { Alias = property.Alias };
 
                     ColumnReference reference = new()
                     {
-                        Binding = output,
-                        Identifier = "queue." + output.Alias
+                        Binding = property,
+                        Identifier = "queue." + property.Alias
                     };
 
                     if (column.Mapping is not null)
@@ -509,16 +639,16 @@ namespace DaJet.Scripting
 
                     select.Select.Add(expression);
                 }
-                else if (output.Expression is FunctionExpression function && function.Token == TokenType.DATALENGTH)
+                else if (property.Expression is FunctionExpression function && function.Token == TokenType.DATALENGTH)
                 {
                     if (function.Parameters.Count > 0 && function.Parameters[0] is ColumnReference parameter)
                     {
-                        ColumnExpression expression = new() { Alias = output.Alias };
+                        ColumnExpression expression = new() { Alias = property.Alias };
 
                         ColumnReference reference = new()
                         {
                             Binding = parameter.Binding,
-                            Identifier = "queue." + output.Alias
+                            Identifier = "queue." + property.Alias
                         };
 
                         if (parameter.Mapping is not null)
@@ -530,7 +660,7 @@ namespace DaJet.Scripting
                                 reference.Mapping.Add(new ColumnMap()
                                 {
                                     Type = map.Type,
-                                    Name = "queue." + output.Alias
+                                    Name = "queue." + property.Alias
                                 });
                             }
                         }
@@ -541,18 +671,18 @@ namespace DaJet.Scripting
                     }
                 }
             }
-            
-            if (filter.Expression is SelectExpression fields)
+
+            if (consume.Order is not null)
             {
                 select.Order = new OrderClause();
 
-                foreach (ColumnExpression order in fields.Select)
+                foreach (OrderExpression order in consume.Order.Expressions)
                 {
                     if (order.Expression is ColumnReference column)
                     {
                         ColumnReference reference = new()
                         {
-                            Binding = order,
+                            Binding = column.Binding,
                             Identifier = "queue." + column.Identifier
                         };
 
@@ -565,20 +695,19 @@ namespace DaJet.Scripting
                                 reference.Mapping.Add(new ColumnMap()
                                 {
                                     Type = map.Type,
-                                    Name = "queue." + map.Alias
+                                    Name = "queue." + column.Identifier
                                 });
                             }
                         }
 
                         select.Order.Expressions.Add(new OrderExpression()
                         {
-                            Expression = reference, Token = TokenType.ASC
+                            Token = order.Token,
+                            Expression = reference
                         });
                     }
                 }
             }
-
-            statement.Select = select;
 
             return statement;
         }
@@ -618,7 +747,7 @@ namespace DaJet.Scripting
             ColumnReference column2 = new()
             {
                 Binding = property,
-                Identifier = "filter." + property.Alias
+                Identifier = "filter." + column.Identifier
             };
 
             if (column.Mapping is not null)
