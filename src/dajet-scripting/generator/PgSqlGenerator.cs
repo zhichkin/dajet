@@ -1,4 +1,5 @@
-﻿using DaJet.Metadata.Model;
+﻿using DaJet.Data;
+using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 using System.Text;
 
@@ -95,6 +96,8 @@ namespace DaJet.Scripting
         }
         private bool IsRecursive(in CommonTableExpression cte, in SelectExpression select)
         {
+            if (select.From is null) { return false; }
+
             return IsRecursive(in cte, select.From.Expression);
         }
         private bool IsRecursive(in CommonTableExpression cte, in TableJoinOperator node)
@@ -273,7 +276,20 @@ namespace DaJet.Scripting
 
             VisitTargetTable(node.Target, in script);
 
-            // TODO: add USING clause if another tables are referenced in WHERE clause
+            if (!string.IsNullOrEmpty(node.Target.Alias))
+            {
+                script.Append(" AS ").Append(node.Target.Alias);
+            }
+
+            if (!string.IsNullOrEmpty(node.Using))
+            {
+                script.Append(" USING ").Append(node.Using);
+            }
+            else if (node.CommonTables is not null)
+            {
+                //TODO: (pg DELETE) find cte names in WHERE clause
+                script.Append(" USING ").Append(node.CommonTables.Name);
+            }
 
             if (node.Where is not null)
             {
@@ -299,23 +315,27 @@ namespace DaJet.Scripting
 
         protected override void Visit(in ConsumeStatement node, in StringBuilder script)
         {
-            ScriptTransformer transformer = new();
+            SelectExpression select = TransformConsumeToFilter(in node);
 
-            script.AppendLine("queue AS (").Append("DELETE");
-            if (node.From is not null) { Visit(node.From, in script); }
-            script.AppendLine(" AS source USING filter");
+            CommonTableExpression filter = new() { Name = "filter", Expression = select };
 
-            SelectStatement consume = TransformConsumeToSelect(in node);
+            DeleteStatement delete = TransformConsumeToDelete(in node, in filter);
 
-            if (!transformer.TryTransform(consume, out string error))
+            CommonTableExpression queue = new()
             {
-                throw new Exception(error);
-            }
+                Next = filter, Name = "queue", Expression = delete
+            };
+
+            SelectStatement consume = TransformConsumeToSelect(in filter, in queue);
+
+            consume.CommonTables = queue;
 
             Visit(in consume, in script);
         }
         private SelectExpression TransformConsumeToFilter(in ConsumeStatement consume)
         {
+            ColumnReferenceTransformer transformer = new();
+
             SelectExpression select = new()
             {
                 Hints = "FOR UPDATE SKIP LOCKED"
@@ -323,22 +343,22 @@ namespace DaJet.Scripting
 
             foreach (OrderExpression order in consume.Order.Expressions)
             {
-                if (order.Expression is ColumnReference column)
-                {
-                    if (column.Binding is MetadataProperty property)
-                    {
-                        select.Select.Add(new ColumnExpression()
-                        {
-                            Expression = new ColumnReference()
-                            {
-                                Binding = property,
-                                Identifier = column.Identifier
-                            }
-                        });
-                    }
-                }
-            }
+                if (order.Expression is not ColumnReference column) { continue; }
 
+                ColumnExpression expression = new()
+                {
+                    Expression = new ColumnReference()
+                    {
+                        Binding = column.Binding,
+                        Identifier = column.Identifier
+                    }
+                };
+
+                transformer.Transform(expression);
+
+                select.Select.Add(expression);
+            }
+            
             select.Top = consume.Top;
             select.From = consume.From;
             select.Where = consume.Where;
@@ -346,135 +366,282 @@ namespace DaJet.Scripting
 
             return select;
         }
-        private SelectStatement TransformConsumeToSelect(in ConsumeStatement consume)
+        private DeleteStatement TransformConsumeToDelete(in ConsumeStatement consume, in CommonTableExpression filter)
         {
-            SelectExpression filter = TransformConsumeToFilter(in consume);
+            DeleteStatement delete = new()
+            {
+                Using = filter.Name,
+                Output = new OutputClause()
+            };
 
-            CommonTableExpression cte = new() { Name = "filter", Expression = filter };
+            if (consume.From.Expression is not TableReference table) { return delete; }
 
-            SelectExpression select = new();
+            delete.Target = new TableReference()
+            {
+                Alias = "source",
+                Binding = table.Binding,
+                Identifier = table.Identifier
+            };
+
+            if (filter.Expression is SelectExpression select)
+            {
+                delete.Where = new WhereClause()
+                {
+                    Expression = TransformFilterSelectToDeleteWhere(in select)
+                };
+            }
 
             foreach (ColumnExpression output in consume.Columns)
             {
                 if (output.Expression is ColumnReference column)
                 {
-                    select.Select.Add(new ColumnExpression()
+                    ColumnExpression expression = new() { Alias = output.Alias };
+
+                    ColumnReference reference = new()
                     {
-                        Alias = output.Alias,
-                        Expression = new ColumnReference()
+                        Binding = column.Binding,
+                        Identifier = "source." + column.Identifier
+                    };
+
+                    if (column.Mapping is not null)
+                    {
+                        reference.Mapping = new List<ColumnMap>();
+
+                        foreach (ColumnMap map in column.Mapping)
                         {
-                            Binding = column.Binding,
-                            Identifier = "source." + column.Identifier
+                            reference.Mapping.Add(new ColumnMap()
+                            {
+                                Name = "source." + map.Name,
+                                Type = map.Type,
+                                Alias = map.Alias
+                            });
                         }
-                    });
+                    }
+
+                    expression.Expression = reference;
+
+                    delete.Output.Columns.Add(expression);
                 }
                 else if (output.Expression is FunctionExpression function && function.Token == TokenType.DATALENGTH)
                 {
                     if (function.Parameters.Count > 0 && function.Parameters[0] is ColumnReference parameter)
                     {
-                        select.Select.Add(new ColumnExpression()
+                        ColumnExpression expression = new() { Alias = output.Alias };
+
+                        ColumnReference reference = new()
                         {
-                            Alias = output.Alias,
-                            Expression = new FunctionExpression()
+                            Binding = parameter.Binding,
+                            Identifier = "source." + parameter.Identifier
+                        };
+
+                        if (parameter.Mapping is not null)
+                        {
+                            reference.Mapping = new List<ColumnMap>();
+
+                            foreach (ColumnMap map in parameter.Mapping)
                             {
-                                Name = function.Name,
-                                Token = function.Token,
-                                Parameters = new List<SyntaxNode>()
+                                reference.Mapping.Add(new ColumnMap()
                                 {
-                                    new ColumnReference()
-                                    {
-                                        Binding = parameter.Binding,
-                                        Identifier = "source." + parameter.Identifier
-                                    }
-                                }
+                                    Name = "source." + map.Name,
+                                    Type = map.Type,
+                                    Alias = map.Alias
+                                });
                             }
-                        });
+                        }
+
+                        expression.Expression = new FunctionExpression()
+                        {
+                            Name = function.Name,
+                            Token = TokenType.DATALENGTH,
+                            Parameters = new List<SyntaxNode>() { reference }
+                        };
+
+                        delete.Output.Columns.Add(expression);
                     }
                 }
             }
 
-            if (consume.From.Expression is TableReference table)
-            {
-                TableReference source = new() { Alias = "source", Identifier = table.Identifier, Binding = table.Binding };
+            //TODO: add columns from ORDER clause if consume.Columns do not contain them !!!
 
-                select.From = new FromClause()
+            return delete;
+        }
+        private SelectStatement TransformConsumeToSelect(in CommonTableExpression filter, in CommonTableExpression queue)
+        {
+            SelectStatement statement = new();
+
+            SelectExpression select = new()
+            {
+                From = new FromClause()
                 {
-                    Expression = new TableJoinOperator()
+                    Expression = new TableReference() { Identifier = "queue", Binding = queue }
+                }
+            };
+
+            if (queue.Expression is not DeleteStatement delete) { return statement; }
+
+            foreach (ColumnExpression output in delete.Output.Columns)
+            {
+                if (output.Expression is ColumnReference column)
+                {
+                    ColumnExpression expression = new() { Alias = output.Alias };
+
+                    ColumnReference reference = new()
                     {
-                        Token = TokenType.INNER,
-                        Expression1 = source,
-                        Expression2 = new TableReference() { Identifier = "filter", Binding = cte },
-                        On = new OnClause()
+                        Binding = output,
+                        Identifier = "queue." + output.Alias
+                    };
+
+                    if (column.Mapping is not null)
+                    {
+                        reference.Mapping = new List<ColumnMap>();
+
+                        foreach (ColumnMap map in column.Mapping)
                         {
-                            Expression = TransformOrderToWhere(consume.Order, in filter)
+                            reference.Mapping.Add(new ColumnMap()
+                            {
+                                Type = map.Type,
+                                Name = "queue." + map.Alias
+                            });
                         }
                     }
-                };
-            }
 
-            if (consume.Order is not null)
+                    expression.Expression = reference;
+
+                    select.Select.Add(expression);
+                }
+                else if (output.Expression is FunctionExpression function && function.Token == TokenType.DATALENGTH)
+                {
+                    if (function.Parameters.Count > 0 && function.Parameters[0] is ColumnReference parameter)
+                    {
+                        ColumnExpression expression = new() { Alias = output.Alias };
+
+                        ColumnReference reference = new()
+                        {
+                            Binding = parameter.Binding,
+                            Identifier = "queue." + output.Alias
+                        };
+
+                        if (parameter.Mapping is not null)
+                        {
+                            reference.Mapping = new List<ColumnMap>();
+
+                            foreach (ColumnMap map in parameter.Mapping)
+                            {
+                                reference.Mapping.Add(new ColumnMap()
+                                {
+                                    Type = map.Type,
+                                    Name = "queue." + output.Alias
+                                });
+                            }
+                        }
+
+                        expression.Expression = reference;
+
+                        select.Select.Add(expression);
+                    }
+                }
+            }
+            
+            if (filter.Expression is SelectExpression fields)
             {
                 select.Order = new OrderClause();
 
-                foreach (OrderExpression order in consume.Order.Expressions)
+                foreach (ColumnExpression order in fields.Select)
                 {
                     if (order.Expression is ColumnReference column)
                     {
+                        ColumnReference reference = new()
+                        {
+                            Binding = order,
+                            Identifier = "queue." + column.Identifier
+                        };
+
+                        if (column.Mapping is not null)
+                        {
+                            reference.Mapping = new List<ColumnMap>();
+
+                            foreach (ColumnMap map in column.Mapping)
+                            {
+                                reference.Mapping.Add(new ColumnMap()
+                                {
+                                    Type = map.Type,
+                                    Name = "queue." + map.Alias
+                                });
+                            }
+                        }
+
                         select.Order.Expressions.Add(new OrderExpression()
                         {
-                            Token = order.Token,
-                            Expression = new ColumnReference()
-                            {
-                                Binding = column.Binding,
-                                Identifier = "source." + column.Identifier
-                            }
+                            Expression = reference, Token = TokenType.ASC
                         });
                     }
                 }
             }
 
-            return new SelectStatement() { Select = select, CommonTables = cte };
+            statement.Select = select;
+
+            return statement;
         }
-        private GroupOperator TransformOrderToWhere(in OrderClause order, in SelectExpression filter)
+        private GroupOperator TransformFilterSelectToDeleteWhere(in SelectExpression filter)
         {
             GroupOperator group = new();
 
-            foreach (OrderExpression expression in order.Expressions)
+            foreach (ColumnExpression expression in filter.Select)
             {
-                if (expression.Expression is ColumnReference column)
+                if (expression.Expression is not ColumnReference column) { continue; }
+
+                if (group.Expression == null)
                 {
-                    if (group.Expression == null)
+                    group.Expression = CreateEqualityComparisonOperator(in expression, in column);
+                }
+                else
+                {
+                    group.Expression = new BinaryOperator()
                     {
-                        group.Expression = CreateEqualityComparisonOperator(in column, in filter);
-                    }
-                    else
-                    {
-                        group.Expression = new BinaryOperator()
-                        {
-                            Token = TokenType.AND,
-                            Expression1 = group.Expression,
-                            Expression2 = CreateEqualityComparisonOperator(in column, in filter)
-                        };
-                    }
+                        Token = TokenType.AND,
+                        Expression1 = group.Expression,
+                        Expression2 = CreateEqualityComparisonOperator(in expression, in column)
+                    };
                 }
             }
 
             return group;
         }
-        private ComparisonOperator CreateEqualityComparisonOperator(in ColumnReference column, in SelectExpression filter)
+        private ComparisonOperator CreateEqualityComparisonOperator(in ColumnExpression property, in ColumnReference column)
         {
-            if (column.Binding is not MetadataProperty property) { return null; }
-
             ColumnReference column1 = new()
             {
-                Binding = property,
+                Binding = column.Binding,
                 Identifier = "source." + column.Identifier
             };
 
-            ColumnReference column2 = new() { Identifier = "filter." + property.Name };
+            ColumnReference column2 = new()
+            {
+                Binding = property,
+                Identifier = "filter." + property.Alias
+            };
 
-            BindColumn(in filter, property.Name, in column2);
+            if (column.Mapping is not null)
+            {
+                column1.Mapping = new List<ColumnMap>();
+                column2.Mapping = new List<ColumnMap>();
 
+                foreach (ColumnMap map in column.Mapping)
+                {
+                    column1.Mapping.Add(new ColumnMap()
+                    {
+                        Type = map.Type,
+                        Name = "source." + map.Name
+                    });
+
+                    column2.Mapping.Add(new ColumnMap()
+                    {
+                        Type = map.Type,
+                        Name = "filter." + map.Alias
+                    });
+                }
+            }
+            
             ComparisonOperator comparison = new()
             {
                 Token = TokenType.Equals,
