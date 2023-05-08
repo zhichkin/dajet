@@ -222,7 +222,7 @@ namespace DaJet.Scripting
                 //NOTE: the function does not have any parameters
                 union.IsVersion = true; return;
             }
-            if (function.Name == "DATALENGTH")
+            if (function.Name == "DATALENGTH" || function.Name == "OCTET_LENGTH")
             {
                 //TODO: IsInteger is int32 (int) hack
                 //NOTE: the function have one parameter, but we ignore it

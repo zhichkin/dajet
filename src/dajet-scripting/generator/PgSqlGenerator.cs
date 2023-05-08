@@ -408,6 +408,11 @@ namespace DaJet.Scripting
                 Hints = "FOR UPDATE SKIP LOCKED"
             };
 
+            if (consume.Order is null)
+            {
+                throw new InvalidOperationException("CONSUME: ORDER clause is not defined.");
+            }
+
             foreach (OrderExpression order in consume.Order.Expressions)
             {
                 if (order.Expression is not ColumnReference column) { continue; }

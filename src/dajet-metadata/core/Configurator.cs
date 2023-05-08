@@ -1762,16 +1762,10 @@ namespace DaJet.Metadata.Core
                 return;
             }
 
-            //if (!cache.TryGetDbName(table.Entity.Uuid, out DbName entityTable))
-            //{
-            //    return;
-            //}
-
-            //table.TypeCode = entityTable.Code;
-
             table.Uuid = table.Entity.Uuid;
             table.Name = table.Entity.Name + ".Изменения";
             table.Alias = "Таблица регистрации изменений";
+            table.TypeCode = table.Entity.TypeCode;
             table.TableName = $"_{changeTable.Name}{changeTable.Code}";
 
             // FIXME: Поддерживаются только ссылочные типы данных
