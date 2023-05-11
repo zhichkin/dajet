@@ -26,6 +26,7 @@ namespace DaJet.Metadata.SqlServer
         }
 
         public int YearOffset { get { return 0; } }
+        public string ConnectionString { get { return _connectionString; } }
         public DatabaseProvider DatabaseProvider { get { return DatabaseProvider.SqlServer; } }
         public IQueryExecutor CreateQueryExecutor() { return new MsQueryExecutor(_connectionString); }
         public bool IsRegularDatabase

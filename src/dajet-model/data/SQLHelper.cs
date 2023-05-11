@@ -19,17 +19,17 @@ namespace DaJet.Data
     }
     public sealed class IndexInfo
     {
-        public IndexInfo(string name, bool unique, bool clustered, bool primaryKey)
+        public IndexInfo(string name, bool unique, bool primary, bool clustered)
         {
             Name = name ?? throw new ArgumentNullException(nameof(name));
             IsUnique = unique;
-            IsClustered = clustered;  //  1 - CLUSTERED, 2 - NONCLUSTERED
-            IsPrimaryKey = primaryKey;
+            IsPrimary = primary;
+            IsClustered = clustered; //  1 - CLUSTERED, 2 - NONCLUSTERED
         }
         public string Name { get; private set; }
         public bool IsUnique { get; private set; }
+        public bool IsPrimary { get; private set; }
         public bool IsClustered { get; private set; }
-        public bool IsPrimaryKey { get; private set; }
         public List<IndexColumnInfo> Columns { get; } = new List<IndexColumnInfo>();
         public List<IndexColumnInfo> Includes { get; } = new List<IndexColumnInfo>();
         public override string ToString() { return Name; }
@@ -260,8 +260,8 @@ namespace DaJet.Data
                                 index = new IndexInfo(
                                     reader.GetString("IndexName"),
                                     reader.GetBoolean("IsUnique"),
-                                    reader.GetByte("IsClustered") == 1,
-                                    reader.GetBoolean("IsPrimaryKey"));
+                                    reader.GetBoolean("IsPrimaryKey"),
+                                    reader.GetByte("IsClustered") == 1);
                                 list.Add(index);
 
                                 current_id = index_id;

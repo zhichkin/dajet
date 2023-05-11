@@ -67,7 +67,7 @@ namespace DaJet.Scripting
                 throw new InvalidOperationException($"Unsupported database provider: {_metadata.DatabaseProvider}");
             }
             
-            if (!generator.TryGenerate(in model, out GeneratorResult result))
+            if (!generator.TryGenerate(in model, in _metadata, out GeneratorResult result))
             {
                 throw new Exception(result.Error);
             }

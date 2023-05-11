@@ -2,8 +2,6 @@
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 using System.Text;
-using static Npgsql.PostgresTypes.PostgresCompositeType;
-using static Npgsql.Replication.PgOutput.Messages.RelationMessage;
 
 namespace DaJet.Scripting
 {
@@ -384,7 +382,14 @@ namespace DaJet.Scripting
         
         protected override void Visit(in ConsumeStatement node, in StringBuilder script)
         {
-            SelectExpression select = TransformConsumeToFilter(in node);
+            if (node.From.Expression is not TableReference table)
+            {
+                throw new InvalidOperationException("CONSUME: target table is not defined.");
+            }
+
+            IndexInfo index = GetPrimaryOrUniqueIndex(in table) ?? throw new InvalidOperationException("CONSUME: target table has no valid index.");
+
+            SelectExpression select = TransformConsumeToFilter(in node, in index);
 
             CommonTableExpression filter = new() { Name = "filter", Expression = select };
 
@@ -401,48 +406,58 @@ namespace DaJet.Scripting
 
             Visit(in consume, in script);
         }
-        private SelectExpression TransformConsumeToFilter(in ConsumeStatement consume)
+        private IndexInfo GetPrimaryOrUniqueIndex(in TableReference table)
+        {
+            if (table.Binding is not ApplicationObject entity)
+            {
+                throw new InvalidOperationException("CONSUME: target table has no entity binding.");
+            }
+
+            string target = entity.TableName.ToLowerInvariant();
+
+            List<IndexInfo> indexes = new PgSqlHelper().GetIndexes(Metadata.ConnectionString, target);
+
+            foreach (IndexInfo index in indexes)
+            {
+                if (index.IsPrimary) { return index; }
+            }
+
+            foreach (IndexInfo index in indexes)
+            {
+                if (index.IsUnique && index.IsClustered) { return index; }
+            }
+
+            foreach (IndexInfo index in indexes)
+            {
+                if (index.IsUnique) { return index; }
+            }
+
+            return null;
+        }
+        private SelectExpression TransformConsumeToFilter(in ConsumeStatement consume, in IndexInfo index)
         {
             SelectExpression select = new()
             {
                 Hints = "FOR UPDATE SKIP LOCKED"
             };
 
-            if (consume.Order is null)
+            foreach (IndexColumnInfo column in index.Columns)
             {
-                throw new InvalidOperationException("CONSUME: ORDER clause is not defined.");
-            }
-
-            foreach (OrderExpression order in consume.Order.Expressions)
-            {
-                if (order.Expression is not ColumnReference column) { continue; }
-
-                ColumnExpression expression = new();
-
-                ColumnReference reference = new()
+                select.Select.Add(new ColumnExpression()
                 {
-                    Binding = column.Binding,
-                    Identifier = column.Identifier
-                };
-
-                if (column.Mapping is not null)
-                {
-                    reference.Mapping = new List<ColumnMap>();
-
-                    foreach (ColumnMap map in column.Mapping)
+                    Expression = new ColumnReference()
                     {
-                        reference.Mapping.Add(new ColumnMap()
+                        Binding = column,
+                        Identifier = column.Name,
+                        Mapping = new List<ColumnMap>()
                         {
-                            Type = map.Type,
-                            Name = map.Name,
-                            Alias = column.Identifier
-                        });
+                            new ColumnMap()
+                            {
+                                Name = column.Name
+                            }
+                        }
                     }
-                }
-
-                expression.Expression = reference;
-
-                select.Select.Add(expression);
+                });
             }
             
             select.Top = consume.Top;
@@ -560,7 +575,7 @@ namespace DaJet.Scripting
                             {
                                 if (orderColumn.Identifier == selectColumn.Identifier)
                                 {
-                                    found = true; break;
+                                    found = true; break; //TODO: multi-column !!! ORDER BY _NodeTRef, _NodeRRef
                                 }
                             }
                         }
@@ -584,8 +599,7 @@ namespace DaJet.Scripting
                                     reference.Mapping.Add(new ColumnMap()
                                     {
                                         Type = map.Type,
-                                        Name = "source." + map.Name,
-                                        Alias = orderColumn.Identifier
+                                        Name = "source." + map.Name
                                     });
                                 }
                             }
@@ -700,7 +714,7 @@ namespace DaJet.Scripting
                                 reference.Mapping.Add(new ColumnMap()
                                 {
                                     Type = map.Type,
-                                    Name = "queue." + column.Identifier
+                                    Name = "queue." + map.Name
                                 });
                             }
                         }
@@ -771,7 +785,7 @@ namespace DaJet.Scripting
                     column2.Mapping.Add(new ColumnMap()
                     {
                         Type = map.Type,
-                        Name = "filter." + map.Alias
+                        Name = "filter." + map.Name
                     });
                 }
             }

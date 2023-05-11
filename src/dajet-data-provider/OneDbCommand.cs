@@ -10,13 +10,13 @@ namespace DaJet.Data.Provider
     {
         private readonly OneDbParameterCollection _parameters = new();
 
-        private MetadataCache _metadata;
+        private IMetadataProvider _metadata;
 
         private DbCommand? _command;
         private DbConnection? _connection;
         private DbTransaction? _transaction;
         private GeneratorResult _generator;
-        public OneDbCommand(MetadataCache metadata)
+        public OneDbCommand(IMetadataProvider metadata)
         {
             _metadata = metadata;
         }
@@ -101,7 +101,7 @@ namespace DaJet.Data.Provider
                 throw new InvalidOperationException($"Unsupported database provider: {_metadata.DatabaseProvider}");
             }
 
-            if (!generator.TryGenerate(in model, out _generator))
+            if (!generator.TryGenerate(in model, in _metadata, out _generator))
             {
                 throw new Exception(_generator.Error);
             }

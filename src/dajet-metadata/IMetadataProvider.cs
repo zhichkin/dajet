@@ -11,6 +11,7 @@ namespace DaJet.Metadata
     {
         int YearOffset { get; }
         bool IsRegularDatabase { get; }
+        string ConnectionString { get; }
         DatabaseProvider DatabaseProvider { get; }
         IQueryExecutor CreateQueryExecutor();
         IEnumerable<MetadataItem> GetMetadataItems(Guid type);

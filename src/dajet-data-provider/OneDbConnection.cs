@@ -13,10 +13,10 @@ namespace DaJet.Data.Provider
         private readonly DbConnection _connection;
 
         private readonly string IB_KEY;
-        private MetadataCache _metadata;
         private DatabaseProvider _provider;
+        private IMetadataProvider _metadata;
         private readonly string _connectionString;
-        public OneDbConnection(MetadataCache metadata)
+        public OneDbConnection(IMetadataProvider metadata)
         {
             _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
 
@@ -35,7 +35,7 @@ namespace DaJet.Data.Provider
             //TODO: ib key generation algorithm !?
             IB_KEY = _connection.Database;
         }
-        public OneDbConnection(string? connectionString)
+        public OneDbConnection(string connectionString)
         {
             if (string.IsNullOrWhiteSpace(connectionString))
             {

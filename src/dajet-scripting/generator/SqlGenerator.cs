@@ -8,9 +8,12 @@ namespace DaJet.Scripting
 {
     public abstract class SqlGenerator : ISqlGenerator
     {
+        protected IMetadataProvider Metadata { get; private set; }
         public int YearOffset { get; set; } = 0;
-        public bool TryGenerate(in ScriptModel model, out GeneratorResult result)
+        public bool TryGenerate(in ScriptModel model, in IMetadataProvider metadata, out GeneratorResult result)
         {
+            Metadata = metadata;
+
             result = new GeneratorResult();
 
             result.Mapper.YearOffset = YearOffset;
@@ -424,6 +427,8 @@ namespace DaJet.Scripting
                 if (i > 0) { script.Append(separator); }
 
                 Visit(order.Expression, in script);
+
+                //TODO: ASC | DESC ordering modifier: ColumnReference expression may have multiple database columns
 
                 if (order.Token == TokenType.DESC)
                 {
