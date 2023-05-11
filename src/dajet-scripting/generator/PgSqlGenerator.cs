@@ -393,14 +393,14 @@ namespace DaJet.Scripting
 
             CommonTableExpression filter = new() { Name = "filter", Expression = select };
 
-            DeleteStatement delete = TransformConsumeToDelete(in node, in filter);
+            DeleteStatement delete = TransformConsumeToDelete(in node, in filter, out List<OrderExpression> order);
 
             CommonTableExpression queue = new()
             {
                 Next = filter, Name = "queue", Expression = delete
             };
 
-            SelectStatement consume = TransformConsumeToSelect(in node, in queue);
+            SelectStatement consume = TransformConsumeToSelect(in node, in queue, in order);
 
             consume.CommonTables = queue;
 
@@ -467,12 +467,14 @@ namespace DaJet.Scripting
 
             return select;
         }
-        private DeleteStatement TransformConsumeToDelete(in ConsumeStatement consume, in CommonTableExpression filter)
+        private DeleteStatement TransformConsumeToDelete(in ConsumeStatement consume, in CommonTableExpression filter, out List<OrderExpression> order)
         {
             DeleteStatement delete = new()
             {
                 Output = new OutputClause()
             };
+
+            order = new List<OrderExpression>();
 
             if (consume.From.Expression is not TableReference table) { return delete; }
 
@@ -563,9 +565,9 @@ namespace DaJet.Scripting
 
             if (consume.Order is not null)
             {
-                foreach (OrderExpression order in consume.Order.Expressions)
+                foreach (OrderExpression consumeOrder in consume.Order.Expressions)
                 {
-                    if (order.Expression is ColumnReference orderColumn)
+                    if (consumeOrder.Expression is ColumnReference orderColumn)
                     {
                         bool found = false;
 
@@ -575,12 +577,40 @@ namespace DaJet.Scripting
                             {
                                 if (orderColumn.Identifier == selectColumn.Identifier)
                                 {
-                                    found = true; break; //TODO: multi-column !!! ORDER BY _NodeTRef, _NodeRRef
+                                    found = true;
+
+                                    ColumnReference queueOrder = new()
+                                    {
+                                        Binding = selectColumn.Binding,
+                                        Identifier = selectColumn.Identifier
+                                    };
+
+                                    if (selectColumn.Mapping is not null)
+                                    {
+                                        queueOrder.Mapping = new List<ColumnMap>();
+
+                                        foreach (ColumnMap map in selectColumn.Mapping)
+                                        {
+                                            queueOrder.Mapping.Add(new ColumnMap()
+                                            {
+                                                Type = map.Type,
+                                                Name = string.IsNullOrEmpty(map.Alias) ? map.Name : map.Alias
+                                            });
+                                        }
+                                    }
+
+                                    order.Add(new OrderExpression()
+                                    {
+                                        Token = consumeOrder.Token,
+                                        Expression = queueOrder
+                                    });
+
+                                    break;
                                 }
                             }
                         }
 
-                        if (!found) // add order columns to OUTPUT clause to be used by final SELECT statement
+                        if (!found) // add order columns to OUTPUT clause to be used by final SELECT statement in ORDER clause
                         {
                             ColumnExpression expression = new();
 
@@ -607,6 +637,34 @@ namespace DaJet.Scripting
                             expression.Expression = reference;
 
                             delete.Output.Columns.Add(expression);
+
+                            // order column
+
+                            ColumnReference queueOrder = new()
+                            {
+                                Binding = orderColumn.Binding,
+                                Identifier = orderColumn.Identifier
+                            };
+
+                            if (orderColumn.Mapping is not null)
+                            {
+                                queueOrder.Mapping = new List<ColumnMap>();
+
+                                foreach (ColumnMap map in orderColumn.Mapping)
+                                {
+                                    queueOrder.Mapping.Add(new ColumnMap()
+                                    {
+                                        Type = map.Type,
+                                        Name = map.Name
+                                    });
+                                }
+                            }
+
+                            order.Add(new OrderExpression()
+                            {
+                                Token = consumeOrder.Token,
+                                Expression = queueOrder
+                            });
                         }
                     }
                 }
@@ -614,7 +672,7 @@ namespace DaJet.Scripting
 
             return delete;
         }
-        private SelectStatement TransformConsumeToSelect(in ConsumeStatement consume, in CommonTableExpression queue)
+        private SelectStatement TransformConsumeToSelect(in ConsumeStatement consume, in CommonTableExpression queue, in List<OrderExpression> order)
         {
             SelectStatement statement = new();
 
@@ -691,13 +749,13 @@ namespace DaJet.Scripting
                 }
             }
 
-            if (consume.Order is not null)
+            if (order is not null)
             {
                 select.Order = new OrderClause();
 
-                foreach (OrderExpression order in consume.Order.Expressions)
+                foreach (OrderExpression expression in order)
                 {
-                    if (order.Expression is ColumnReference column)
+                    if (expression.Expression is ColumnReference column)
                     {
                         ColumnReference reference = new()
                         {
@@ -721,7 +779,7 @@ namespace DaJet.Scripting
 
                         select.Order.Expressions.Add(new OrderExpression()
                         {
-                            Token = order.Token,
+                            Token = expression.Token,
                             Expression = reference
                         });
                     }

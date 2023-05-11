@@ -285,3 +285,4 @@ namespace DaJet.Scripting
 //  deleted.Отправитель, deleted.Получатели, deleted.Заголовки,
 //  deleted.ТипОперации, deleted.ТипСообщения, deleted.ТелоСообщения
 //;
+// ??? OPTION (MAXDOP 1) ???

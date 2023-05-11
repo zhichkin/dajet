@@ -426,17 +426,40 @@ namespace DaJet.Scripting
 
                 if (i > 0) { script.Append(separator); }
 
-                Visit(order.Expression, in script);
-
-                //TODO: ASC | DESC ordering modifier: ColumnReference expression may have multiple database columns
-
-                if (order.Token == TokenType.DESC)
+                if (order.Expression is ColumnReference column && column.Mapping is not null && column.Mapping.Count > 1)
                 {
-                    script.Append(" DESC");
+                    ColumnMap field;
+
+                    for (int f = 0; f < column.Mapping.Count; f++)
+                    {
+                        field = column.Mapping[f];
+
+                        if (f > 0) { script.Append(", "); }
+
+                        script.Append(field.Name);
+
+                        if (order.Token == TokenType.DESC)
+                        {
+                            script.Append(" DESC");
+                        }
+                        else
+                        {
+                            script.Append(" ASC"); // default
+                        }
+                    }
                 }
                 else
                 {
-                    script.Append(" ASC"); // default
+                    Visit(order.Expression, in script);
+
+                    if (order.Token == TokenType.DESC)
+                    {
+                        script.Append(" DESC");
+                    }
+                    else
+                    {
+                        script.Append(" ASC"); // default
+                    }
                 }
             }
 
