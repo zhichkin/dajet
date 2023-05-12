@@ -414,6 +414,11 @@ namespace DaJet.Scripting
         }
         protected virtual void Visit(in OrderClause node, in StringBuilder script)
         {
+            if (node is null || node.Expressions is null || node.Expressions.Count == 0)
+            {
+                return;
+            }
+
             script.AppendLine().AppendLine("ORDER BY");
 
             OrderExpression order;
