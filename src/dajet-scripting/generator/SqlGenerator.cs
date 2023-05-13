@@ -1,4 +1,5 @@
-﻿using DaJet.Metadata;
+﻿using DaJet.Data;
+using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 using System.Data;
@@ -250,7 +251,7 @@ namespace DaJet.Scripting
         }
         protected virtual void Visit(in StarExpression node, in StringBuilder script)
         {
-            script.Append(" * ");
+            script.Append("*");
         }
         protected virtual void Visit(in ColumnReference node, in StringBuilder script)
         {
@@ -604,23 +605,36 @@ namespace DaJet.Scripting
 
         protected virtual void Visit(in FunctionExpression node, in StringBuilder script)
         {
-            script.Append(node.Name).Append("(");
+            string name = node.Name.ToUpperInvariant();
 
-            SyntaxNode expression;
-
-            for (int i = 0; i < node.Parameters.Count; i++)
+            if (name == "UUIDOF")
             {
-                expression = node.Parameters[i];
-                if (i > 0) { script.Append(", "); }
-                Visit(in expression, in script);
+                VisitUuidOf(in node, in script);
             }
-
-            script.Append(")");
-
-            if (node.Over is not null)
+            else if (name == "TYPEOF")
             {
-                script.Append(" ");
-                Visit(node.Over, in script);
+                VisitTypeOf(in node, in script);
+            }
+            else
+            {
+                script.Append(node.Name).Append("(");
+
+                SyntaxNode expression;
+
+                for (int i = 0; i < node.Parameters.Count; i++)
+                {
+                    expression = node.Parameters[i];
+                    if (i > 0) { script.Append(", "); }
+                    Visit(in expression, in script);
+                }
+
+                script.Append(")");
+
+                if (node.Over is not null)
+                {
+                    script.Append(" ");
+                    Visit(node.Over, in script);
+                }
             }
         }
         protected virtual void Visit(in OverClause node, in StringBuilder script)
@@ -1104,5 +1118,109 @@ namespace DaJet.Scripting
             script.Append(insert_script);
         }
         #endregion
+
+        protected void VisitUuidOf(in FunctionExpression node, in StringBuilder script)
+        {
+            if (node.Parameters.Count == 0)
+            {
+                throw new FormatException($"Function {node.Name}: missing parameter.");
+            }
+
+            if (node.Parameters[0] is not ColumnReference column)
+            {
+                throw new FormatException($"Function {node.Name}: invalid parameter (must be column reference).");
+            }
+
+            if (column.Mapping is not null)
+            {
+                if (column.Mapping.Count == 1)
+                {
+                    if (column.Mapping[0].Type != UnionTag.Entity)
+                    {
+                        throw new FormatException($"Function {node.Name}: invalid parameter data type.");
+                    }
+                }
+                else
+                {
+                    ColumnMap map = null;
+
+                    for (int i = 0; i < column.Mapping.Count; i++)
+                    {
+                        if (column.Mapping[i].Type == UnionTag.Entity)
+                        {
+                            map = column.Mapping[i]; break;
+                        }
+                    }
+
+                    if (map is null)
+                    {
+                        throw new FormatException($"Function {node.Name}: invalid parameter data type.");
+                    }
+
+                    column.Mapping.Clear();
+                    column.Mapping.Add(map);
+                }
+            }
+            
+            Visit(in column, in script);
+        }
+        protected void VisitTypeOf(in FunctionExpression node, in StringBuilder script)
+        {
+            if (node.Parameters.Count == 0)
+            {
+                throw new FormatException($"Function {node.Name}: missing parameter.");
+            }
+            
+            if (node.Parameters[0] is not ColumnReference column)
+            {
+                throw new FormatException($"Function {node.Name}: invalid parameter.");
+            }
+
+            if (column.Mapping is not null)
+            {
+                if (column.Mapping.Count == 1)
+                {
+                    if (column.Mapping[0].Type != UnionTag.Entity)
+                    {
+                        throw new FormatException($"Function {node.Name}: invalid parameter data type.");
+                    }
+                    
+                    if (column.Binding is not MetadataProperty property)
+                    {
+                        throw new FormatException($"Function {node.Name}: invalid parameter binding.");
+                    }
+
+                    ScalarExpression scalar = new()
+                    {
+                        Token = TokenType.Number,
+                        Literal = property.PropertyType.TypeCode.ToString()
+                    };
+                    Visit(in scalar, in script);
+                    return;
+                }
+                else
+                {
+                    ColumnMap map = null;
+
+                    for (int i = 0; i < column.Mapping.Count; i++)
+                    {
+                        if (column.Mapping[i].Type == UnionTag.TypeCode)
+                        {
+                            map = column.Mapping[i]; break;
+                        }
+                    }
+
+                    if (map is null)
+                    {
+                        throw new FormatException($"Function {node.Name}: invalid parameter data type.");
+                    }
+
+                    column.Mapping.Clear();
+                    column.Mapping.Add(map);
+                }
+            }
+
+            Visit(in column, in script);
+        }
     }
 }

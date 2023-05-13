@@ -104,6 +104,28 @@ namespace DaJet.Scripting
                 throw new InvalidOperationException("MS-DML: Target table identifier is missing.");
             }
         }
+
+        protected override void Visit(in FunctionExpression node, in StringBuilder script)
+        {
+            string name = node.Name.ToUpperInvariant();
+
+            if (name == "NOW") // GETUTCDATE()
+            {
+                if (YearOffset == 0)
+                {
+                    script.Append("GETDATE()");
+                }
+                else
+                {
+                    script.Append("DATEADD(year, " + YearOffset.ToString() + ", GETDATE())");
+                }
+            }
+            else
+            {
+                base.Visit(in node, in script);
+            }
+        }
+
         protected override void Visit(in UpsertStatement node, in StringBuilder script)
         {
             if (node.Target.Binding is MetadataObject || node.Target.Binding is TemporaryTableExpression)

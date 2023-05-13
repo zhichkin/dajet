@@ -15,6 +15,7 @@
         OVER, PARTITION, RANGE, BETWEEN, UNBOUNDED, PRECEDING, CURRENT, FOLLOWING,
         CASE, WHEN, THEN, ELSE, END,
         SUBSTRING,
+        NOW,
 
         Identifier, Type, Table, Column, Variable, Enumeration, Star,
 
@@ -29,6 +30,8 @@
         CREATE, TABLE, COMPUTED, TEMPORARY, VARIABLE, TYPE, ENTITY, PRIMARY, KEY, OF, IDENTITY,
         TEMPLATE, DROP, ALTER, COLUMN, AUTO, GENERATED,
 
-        CONSUME, DATALENGTH
+        CONSUME, DATALENGTH,
+
+        TYPEOF, UUIDOF
     }
 }

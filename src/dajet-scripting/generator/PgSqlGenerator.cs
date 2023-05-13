@@ -197,11 +197,17 @@ namespace DaJet.Scripting
         }
         protected override void Visit(in FunctionExpression node, in StringBuilder script)
         {
-            if (node.Name.ToUpperInvariant() == "ISNULL")
+            string name = node.Name.ToUpperInvariant();
+
+            if (name == "TYPEOF" || name == "UUIDOF")
+            {
+                base.Visit(in node, in script); return;
+            }
+            else if (name == "ISNULL")
             {
                 node.Name = "COALESCE";
             }
-            if (node.Name.ToUpperInvariant() == "DATALENGTH")
+            else if (name == "DATALENGTH")
             {
                 node.Name = "OCTET_LENGTH";
                 script.Append(node.Name).Append('(');
@@ -210,6 +216,10 @@ namespace DaJet.Scripting
                 script.Append(" AS text)");
                 script.Append(')');
                 return; //TODO: OCTET_LENGTH - what if data type of column is bytea ?
+            }
+            else if (name == "NOW")
+            {
+                script.Append("NOW()::timestamp"); return;
             }
 
             script.Append(node.Name).Append("(");
@@ -221,7 +231,7 @@ namespace DaJet.Scripting
                 expression = node.Parameters[i];
                 if (i > 0) { script.Append(", "); }
 
-                if (node.Name == "SUBSTRING" && i == 0)
+                if (name == "SUBSTRING" && i == 0)
                 {
                     script.Append("CAST(");
                     Visit(in expression, in script);

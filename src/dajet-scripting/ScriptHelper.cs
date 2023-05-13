@@ -181,7 +181,10 @@ namespace DaJet.Scripting
             { "ISNULL", TokenType.ISNULL },
             { "ROW_NUMBER", TokenType.ROW_NUMBER },
             { "SUBSTRING", TokenType.SUBSTRING },
-            { "DATALENGTH", TokenType.DATALENGTH }
+            { "DATALENGTH", TokenType.DATALENGTH },
+            { "NOW", TokenType.NOW },
+            { "TYPEOF", TokenType.TYPEOF },
+            { "UUIDOF", TokenType.UUIDOF }
         };
         private static Dictionary<string, TokenType> _function_ru = new()
         {

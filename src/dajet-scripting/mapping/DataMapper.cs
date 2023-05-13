@@ -216,21 +216,39 @@ namespace DaJet.Scripting
         }
         private static void Visit(in FunctionExpression function, in UnionType union)
         {
-            if (function.Name == "ROW_NUMBER")
+            string name = function.Name.ToUpperInvariant();
+
+            if (name == "COUNT")
+            {
+                union.IsInteger = true; return;
+            }
+            else if (name == "ROW_NUMBER")
             {
                 //TODO: IsVersion is int64 (bigint) hack
                 //NOTE: the function does not have any parameters
                 union.IsVersion = true; return;
             }
-            if (function.Name == "DATALENGTH" || function.Name == "OCTET_LENGTH")
+            else if (name == "DATALENGTH" || name == "OCTET_LENGTH")
             {
                 //TODO: IsInteger is int32 (int) hack
                 //NOTE: the function have one parameter, but we ignore it
                 union.IsInteger = true; return;
             }
-            else if (function.Name == "SUBSTRING")
+            else if (name == "SUBSTRING")
             {
                 union.IsString = true; return;
+            }
+            else if (name == "NOW")
+            {
+                union.IsDateTime = true; return;
+            }
+            else if (name == "UUIDOF")
+            {
+                union.IsUuid = true; return;
+            }
+            else if (name == "TYPEOF")
+            {
+                union.IsInteger = true; return;
             }
 
             foreach (SyntaxNode parameter in function.Parameters)

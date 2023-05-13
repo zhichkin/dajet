@@ -615,13 +615,13 @@ namespace DaJet.Scripting
         {
             if (Match(TokenType.AS))
             {
-                if (!Match(TokenType.Identifier))
+                if (Match(TokenType.Identifier, TokenType.TYPE))
                 {
-                    throw new FormatException("Alias expected.");
+                    return Previous().Lexeme;
                 }
                 else
                 {
-                    return Previous().Lexeme;
+                    throw new FormatException("Alias expected.");
                 }
             }
             else if (Match(TokenType.Identifier))
@@ -1013,6 +1013,10 @@ namespace DaJet.Scripting
             {
                 return scalar();
             }
+            else if (Match(TokenType.Star))
+            {
+                return star();
+            }
             if (Match(TokenType.CASE))
             {
                 return case_expression();
@@ -1064,6 +1068,10 @@ namespace DaJet.Scripting
             }
 
             return type;
+        }
+        private SyntaxNode star()
+        {
+            return new StarExpression();
         }
         private SyntaxNode scalar()
         {
