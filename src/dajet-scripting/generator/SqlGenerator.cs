@@ -653,7 +653,7 @@ namespace DaJet.Scripting
             }
             if (node.Preceding is not null || node.Following is not null)
             {
-                script.Append(node.FrameType.ToString()).Append(" ");
+                script.Append(' ').Append(node.FrameType.ToString()).Append(' ');
 
                 if (node.Preceding is not null && node.Following is not null)
                 {
