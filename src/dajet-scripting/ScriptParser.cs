@@ -1,4 +1,5 @@
 ﻿using DaJet.Metadata;
+using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 
 namespace DaJet.Scripting
@@ -174,46 +175,17 @@ namespace DaJet.Scripting
         }
         private SyntaxNode statement()
         {
-            if (Match(TokenType.Comment))
-            {
-                return comment();
-            }
-            else if (Match(TokenType.DECLARE))
-            {
-                return declare();
-            }
-            else if (Match(TokenType.CREATE))
-            {
-                return create_statement();
-            }
-            else if (Check(TokenType.SELECT))
-            {
-                return select_statement();
-            }
-            else if (Check(TokenType.INSERT))
-            {
-                return insert_statement();
-            }
-            else if (Check(TokenType.UPDATE))
-            {
-                return update_statement();
-            }
-            else if (Check(TokenType.DELETE))
-            {
-                return delete_statement();
-            }
-            else if (Check(TokenType.UPSERT))
-            {
-                return upsert_statement();
-            }
-            else if (Check(TokenType.CONSUME))
-            {
-                return consume_statement();
-            }
-            else if (Match(TokenType.EndOfStatement))
-            {
-                return null;
-            }
+            if (Match(TokenType.Comment)) { return comment(); }
+            else if (Match(TokenType.DECLARE)) { return declare(); }
+            else if (Match(TokenType.CREATE)) { return create_statement(); }
+            else if (Check(TokenType.SELECT)) { return select_statement(); }
+            else if (Check(TokenType.INSERT)) { return insert_statement(); }
+            else if (Check(TokenType.UPDATE)) { return update_statement(); }
+            else if (Check(TokenType.DELETE)) { return delete_statement(); }
+            else if (Check(TokenType.UPSERT)) { return upsert_statement(); }
+            else if (Check(TokenType.CONSUME)) { return consume_statement(); }
+            else if (Check(TokenType.IMPORT)) { return import_statement(); }
+            else if (Match(TokenType.EndOfStatement)) { return null; }
 
             Ignore();
 
@@ -550,7 +522,7 @@ namespace DaJet.Scripting
         }
         private SyntaxNode table()
         {
-            if (Match(TokenType.Identifier))
+            if (Match(TokenType.Identifier, TokenType.Variable))
             {
                 string identifier = Previous().Lexeme;
 
@@ -1746,6 +1718,72 @@ namespace DaJet.Scripting
 
                 Skip(TokenType.Comment);
             }
+        }
+        #endregion
+
+        #region "IMPORT STATEMENT"
+        private SyntaxNode import_statement()
+        {
+            if (!Match(TokenType.IMPORT))
+            {
+                throw new FormatException("IMPORT keyword expected.");
+            }
+
+            ImportStatement statement = new();
+
+            Skip(TokenType.Comment);
+
+            if (!Match(TokenType.String))
+            {
+                throw new FormatException("IMPORT: data source URL expected.");
+            }
+            else
+            {
+                statement.Source = Previous().Lexeme;
+            }
+
+            Skip(TokenType.Comment);
+
+            if (!Match(TokenType.INTO))
+            {
+                throw new FormatException("INTO keyword expected.");
+            }
+
+            Skip(TokenType.Comment);
+
+            statement.Target = table_variables();
+            
+            Skip(TokenType.Comment);
+
+            if (Match(TokenType.EndOfStatement)) { /* IGNORE */ }
+
+            return statement;
+        }
+        private List<VariableReference> table_variables()
+        {
+            if (!Match(TokenType.Variable)) { throw new FormatException("IMPORT: table variable expected."); }
+
+            List<VariableReference> tables = new()
+            {
+                new VariableReference()
+                {
+                    Token = TokenType.Table,
+                    Identifier = Previous().Lexeme
+                }
+            };
+
+            while (Match(TokenType.Comma))
+            {
+                if (!Match(TokenType.Variable)) { throw new FormatException("IMPORT: table variable expected."); }
+
+                tables.Add(new VariableReference()
+                {
+                    Token = TokenType.Table,
+                    Identifier = Previous().Lexeme
+                });
+            }
+
+            return tables;
         }
         #endregion
     }

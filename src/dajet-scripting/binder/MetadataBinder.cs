@@ -54,15 +54,14 @@ namespace DaJet.Scripting
                 }
 
                 BindDataType(in scope, in identifier, in metadata);
-
-                
             }
         }
         private void BindDataType(in ScriptScope scope, in TypeIdentifier identifier, in IMetadataProvider metadata)
         {
             if (ScriptHelper.IsDataType(identifier.Identifier, out Type type))
             {
-                identifier.Binding = type; // bool, decimal, DateTime, string, Union == Undefined
+                // Guid, bool, decimal, DateTime, string, byte[], Entity, TypeDefinition (table)
+                identifier.Binding = type;
             }
             else
             {
@@ -280,6 +279,18 @@ namespace DaJet.Scripting
             ScriptScope root = scope.Ancestor<ScriptModel>();
 
             if (root is null) { return; }
+
+            // bind imported tables
+
+            foreach (SyntaxNode node in root.Identifiers)
+            {
+                if (node is VariableReference reference && reference.Identifier == table.Identifier)
+                {
+                    table.Binding = reference.Binding; return; // successful binding
+                }
+            }
+
+            // bind variable or temporary tables
 
             foreach (ScriptScope child in root.Children)
             {

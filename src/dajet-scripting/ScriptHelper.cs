@@ -1,4 +1,5 @@
 ﻿using DaJet.Data;
+using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 
 namespace DaJet.Scripting
@@ -87,7 +88,8 @@ namespace DaJet.Scripting
             { "COLUMN", TokenType.COLUMN },
             { "AUTO", TokenType.AUTO },
             { "GENERATED", TokenType.GENERATED },
-            { "CONSUME", TokenType.CONSUME }
+            { "CONSUME", TokenType.CONSUME },
+            { "IMPORT", TokenType.IMPORT }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {
@@ -135,7 +137,8 @@ namespace DaJet.Scripting
             { "string", typeof(string) },
             { "binary", typeof(byte[]) },
             { "entity", typeof(Entity) },
-            { "undefined", typeof(Union) }
+            { "undefined", typeof(Union) },
+            { "table", typeof(TypeDefinition) }
         };
         private static Dictionary<string, Type> _datatype_ru = new()
         {
@@ -204,11 +207,11 @@ namespace DaJet.Scripting
         }
         internal static bool IsDataType(string identifier, out Type type)
         {
-            if (_datatype_ru.TryGetValue(identifier, out type!))
+            if (_datatype_ru.TryGetValue(identifier, out type))
             {
                 return true;
             }
-            return _datatype_en.TryGetValue(identifier.ToLower(), out type!);
+            return _datatype_en.TryGetValue(identifier.ToLowerInvariant(), out type);
         }
         public static TokenType GetDataTypeToken(Type type)
         {
