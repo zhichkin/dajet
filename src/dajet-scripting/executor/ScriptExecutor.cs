@@ -31,8 +31,6 @@ namespace DaJet.Scripting
 
             ConfigureParameters(in model);
 
-            BindImports(in model);
-
             ScopeBuilder builder = new();
 
             if (!builder.TryBuild(in model, out ScriptScope scope, out error))
@@ -261,40 +259,6 @@ namespace DaJet.Scripting
                 yield return result.Mapper.Map<TEntity>(in reader);
             }
         }
-
-        #region "IMPORT STATEMENT"
-        private void BindImports(in ScriptModel model)
-        {
-            foreach (SyntaxNode node in model.Statements)
-            {
-                if (node is ImportStatement import && import.Target is not null)
-                {
-                    foreach (VariableReference table in import.Target)
-                    {
-                        TypeDefinition type = new()
-                        {
-                            TableName = table.Identifier
-                        };
-
-                        type.Properties.Add(new MetadataProperty()
-                        {
-                            Name = "Code",
-                            Columns = new List<MetadataColumn>()
-                            {
-                                new MetadataColumn() { Name = "_code" }
-                            },
-                            PropertyType = new DataTypeSet()
-                            {
-                                CanBeString = true
-                            }
-                        });
-
-                        table.Binding = type;
-                    }
-                }
-            }
-        }
-        #endregion
 
         #region "DaJet DDL"
         public void ExecuteNonQuery(in string script)

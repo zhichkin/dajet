@@ -1,5 +1,4 @@
 ﻿using DaJet.Metadata;
-using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 
 namespace DaJet.Scripting
@@ -1702,6 +1701,11 @@ namespace DaJet.Scripting
             if (Match(TokenType.ORDER)) { consume.Order = order_clause(); }
             Skip(TokenType.Comment);
 
+            if (consume.From.Expression is TableReference table && table.Identifier.StartsWith('@'))
+            {
+                throw new FormatException($"CONSUME {table.Identifier}: table variable targeting is not allowed.");
+            }
+
             return consume;
         }
         private void select_columns(in ConsumeStatement statement)
@@ -1765,22 +1769,14 @@ namespace DaJet.Scripting
 
             List<VariableReference> tables = new()
             {
-                new VariableReference()
-                {
-                    Token = TokenType.Table,
-                    Identifier = Previous().Lexeme
-                }
+                new VariableReference() { Identifier = Previous().Lexeme }
             };
 
             while (Match(TokenType.Comma))
             {
                 if (!Match(TokenType.Variable)) { throw new FormatException("IMPORT: table variable expected."); }
 
-                tables.Add(new VariableReference()
-                {
-                    Token = TokenType.Table,
-                    Identifier = Previous().Lexeme
-                });
+                tables.Add(new VariableReference() { Identifier = Previous().Lexeme });
             }
 
             return tables;

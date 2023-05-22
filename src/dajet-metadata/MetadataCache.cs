@@ -349,7 +349,10 @@ namespace DaJet.Metadata
                 return !(executor.ExecuteScalar<int>(in script, 10) == 1);
             }
         }
-        public IDbConfigurator GetDbConfigurator() { throw new NotImplementedException(); }
+        public IDbConfigurator GetDbConfigurator()
+        {
+            return new MsDbConfigurator(CreateQueryExecutor());
+        }
         public IQueryExecutor CreateQueryExecutor()
         {
             if (_provider == DatabaseProvider.SqlServer)
@@ -898,6 +901,14 @@ namespace DaJet.Metadata
             reference.SetTarget(metadata);
         }
 
+        private MetadataObject GetTypeDefinitionCached(in string[] identifiers)
+        {
+            //TODO: try get type definition from cache first
+
+            IDbConfigurator configurator = GetDbConfigurator();
+            
+            return configurator.GetTypeDefinition(in identifiers);
+        }
         #endregion
 
         #region "INTERNAL METHODS USED BY CONFIGURATOR"
@@ -1219,6 +1230,13 @@ namespace DaJet.Metadata
         public MetadataObject GetMetadataObject(string metadataName)
         {
             string[] identifiers = GetIdentifiers(metadataName);
+
+            Guid type = MetadataTypes.ResolveName(identifiers[0]);
+
+            if (type == Guid.Empty)
+            {
+                return GetTypeDefinitionCached(in identifiers);
+            }
 
             if (identifiers.Length > 2)
             {

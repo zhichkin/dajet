@@ -67,7 +67,11 @@ namespace DaJet.Scripting
             {
                 MetadataObject table = metadata.GetMetadataObject(identifier.Identifier);
 
-                if (table is ApplicationObject entity)
+                if (table is TypeDefinition definition)
+                {
+                    identifier.Binding = definition;
+                }
+                else if (table is ApplicationObject entity)
                 {
                     identifier.Binding = new Entity(entity.TypeCode, Guid.Empty);
                 }
@@ -103,9 +107,13 @@ namespace DaJet.Scripting
             {
                 if (node is DeclareStatement declare)
                 {
-                    if (declare.Name.Substring(1) == variable.Identifier.Substring(1)) // remove leading @ or &
+                    if (declare.Name == variable.Identifier)
                     {
-                        if (ScriptHelper.IsDataType(declare.Type.Identifier, out Type type))
+                        if (declare.Type.Binding is TypeDefinition definition)
+                        {
+                            variable.Binding = definition;
+                        }
+                        else if (ScriptHelper.IsDataType(declare.Type.Identifier, out Type type))
                         {
                             if (type == typeof(Entity))
                             {
@@ -280,13 +288,13 @@ namespace DaJet.Scripting
 
             if (root is null) { return; }
 
-            // bind imported tables
+            // bind declared table variables
 
             foreach (SyntaxNode node in root.Identifiers)
             {
-                if (node is VariableReference reference && reference.Identifier == table.Identifier)
+                if (node is DeclareStatement declare && declare.Name == table.Identifier)
                 {
-                    table.Binding = reference.Binding; return; // successful binding
+                    table.Binding = declare.Type.Binding; return; // successful binding
                 }
             }
 

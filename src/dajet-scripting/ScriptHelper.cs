@@ -1,5 +1,4 @@
 ﻿using DaJet.Data;
-using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 
 namespace DaJet.Scripting
@@ -137,8 +136,7 @@ namespace DaJet.Scripting
             { "string", typeof(string) },
             { "binary", typeof(byte[]) },
             { "entity", typeof(Entity) },
-            { "undefined", typeof(Union) },
-            { "table", typeof(TypeDefinition) }
+            { "undefined", typeof(Union) }
         };
         private static Dictionary<string, Type> _datatype_ru = new()
         {

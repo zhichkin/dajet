@@ -1,4 +1,5 @@
-﻿using DaJet.Model;
+﻿using DaJet.Metadata.Model;
+using DaJet.Model;
 
 namespace DaJet.Data
 {
@@ -10,5 +11,7 @@ namespace DaJet.Data
         void CreateProperties(in TypeDef definition); // ?
         void CreateRelations(in TypeDef definition); // ?
         void CreateTableOfType(in string identifier, in string tableName);
+
+        TypeDefinition GetTypeDefinition(in string[] identifiers);
     }
 }

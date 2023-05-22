@@ -1,11 +1,12 @@
-﻿using DaJet.Data;
+﻿using DaJet.Metadata.Model;
+using DaJet.Model;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Reflection;
 using System.Text;
 
-namespace DaJet.Model
+namespace DaJet.Data
 {
     public sealed class MsDbConfigurator : IDbConfigurator
     {
@@ -1095,6 +1096,32 @@ namespace DaJet.Model
             if (parent is not null) { GetFullName(in parent, in name); }
 
             name.Append('.').Append(definition.Name);
+        }
+
+
+
+        public TypeDefinition GetTypeDefinition(in string[] identifiers)
+        {
+            TypeDefinition type = new()
+            {
+                Name = "UDT",
+                TableName = "_table"
+            };
+
+            type.Properties.Add(new MetadataProperty()
+            {
+                Name = "Code",
+                Columns = new List<MetadataColumn>()
+                {
+                    new MetadataColumn() { Name = "_code" }
+                },
+                PropertyType = new DataTypeSet()
+                {
+                    CanBeString = true
+                }
+            });
+
+            return type;
         }
     }
 }
