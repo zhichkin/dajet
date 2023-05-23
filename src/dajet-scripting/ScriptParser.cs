@@ -1528,38 +1528,18 @@ namespace DaJet.Scripting
         #region "CREATE TYPE STATEMENT"
         private SyntaxNode create_type()
         {
-            CreateTypeStatement statement = new()
-            {
-                IsTemplate = Match(TokenType.TEMPLATE)
-            };
+            CreateTypeStatement statement = new();
 
-            if (Match(TokenType.ENTITY))
-            {
-                // SYSTEM TYPE ENTITY DEFINITION
-            }
-            else if (!Match(TokenType.Identifier))
+            if (!Match(TokenType.Identifier))
             {
                 throw new FormatException("Type identifier expected.");
             }
 
-            statement.Name = Previous().Lexeme;
-            statement.BaseType = base_type();
+            statement.Identifier = Previous().Lexeme;
 
-            if (Match(TokenType.PRIMARY))
+            if (!Match(TokenType.OpenRoundBracket))
             {
-                if (!Match(TokenType.KEY)) { throw new FormatException("KEY keyword expected."); }
-
-                statement.PrimaryKey = column_identifiers();
-            }
-
-            statement.DropColumns = drop_columns();
-            statement.AlterColumns = alter_columns();
-
-            if (!Match(TokenType.OpenRoundBracket)) { throw new FormatException("Open round bracket expected."); }
-
-            if (Match(TokenType.CloseRoundBracket))
-            {
-                return statement; // column definitions are optional
+                throw new FormatException("Open round bracket expected.");
             }
 
             statement.Columns.Add(column_definition());
@@ -1569,111 +1549,22 @@ namespace DaJet.Scripting
                 statement.Columns.Add(column_definition());
             }
 
-            if (!Match(TokenType.CloseRoundBracket)) { throw new FormatException("Close round bracket expected."); }
+            if (!Match(TokenType.CloseRoundBracket))
+            {
+                throw new FormatException("Close round bracket expected.");
+            }
 
             return statement;
-
-            //throw new FormatException("Invalid CREATE TYPE statement.");
-        }
-        private List<string> column_identifiers()
-        {
-            if (!Match(TokenType.Identifier)) { throw new FormatException("Column identifier expected."); }
-
-            List<string> columns = new()
-            {
-                Previous().Lexeme
-            };
-
-            while (Match(TokenType.Comma))
-            {
-                if (!Match(TokenType.Identifier)) { throw new FormatException("Column identifier expected."); }
-
-                columns.Add(Previous().Lexeme);
-            }
-
-            return columns;
-        }
-        private string base_type()
-        {
-            if (!Match(TokenType.AS)) { return null; }
-
-            if (Match(TokenType.ENTITY)) { return Previous().Lexeme; }
-
-            if (!Match(TokenType.Identifier)) { throw new FormatException("Base type identifier expected."); }
-
-            return Previous().Lexeme;
-        }
-        private List<string> drop_columns()
-        {
-            if (!Match(TokenType.DROP)) { return null; }
-
-            if (!Match(TokenType.COLUMN)) { throw new FormatException("COLUMN keyword expected."); }
-
-            return column_identifiers();
-        }
-        private List<ColumnDefinition> alter_columns()
-        {
-            if (!Match(TokenType.ALTER)) { return null; }
-
-            if (!Match(TokenType.COLUMN)) { throw new FormatException("COLUMN keyword expected."); }
-
-            List<ColumnDefinition> columns = new()
-            {
-                column_definition()
-            };
-
-            while (Match(TokenType.ALTER))
-            {
-                if (!Match(TokenType.COLUMN)) { throw new FormatException("COLUMN keyword expected."); }
-
-                columns.Add(column_definition());
-            }
-
-            return columns;
         }
         private ColumnDefinition column_definition()
         {
             if (!Match(TokenType.Identifier)) { throw new FormatException("Column identifier expected."); }
 
-            ColumnDefinition column = new()
-            {
-                Name = Previous().Lexeme
-            };
+            ColumnDefinition column = new() { Name = Previous().Lexeme };
 
             if (!Match(TokenType.Identifier)) { throw new FormatException("Data type identifier expected."); }
 
             column.Type = type();
-
-            _ = Match(TokenType.EndOfStatement); // Костыль для CREATE TYPE ... ALTER COLUMN
-            
-            column.IsVersion = (column.Type.Identifier.ToLowerInvariant() == "version");
-
-            column.IsNullable = Match(TokenType.NULL);
-
-            column.IsIdentity = Match(TokenType.IDENTITY);
-
-            if (column.IsIdentity)
-            {
-                if (Match(TokenType.OpenRoundBracket))
-                {
-                    if (!Match(TokenType.Number)) { throw new FormatException("Number literal expected."); }
-                    if (!int.TryParse(Previous().Lexeme, out int seed)) { throw new FormatException("Number literal expected."); }
-
-                    column.IdentitySeed = seed;
-
-                    if (!Match(TokenType.Comma))
-                    {
-                        throw new FormatException("Comma token expected.");
-                    }
-                    
-                    if (!Match(TokenType.Number)) { throw new FormatException("Number literal expected."); }
-                    if (!int.TryParse(Previous().Lexeme, out int increment)) { throw new FormatException("Number literal expected."); }
-                    
-                    column.IdentityIncrement = increment;
-
-                    if (!Match(TokenType.CloseRoundBracket)) { throw new FormatException("Close round bracket expected."); }
-                }
-            }
 
             return column;
         }

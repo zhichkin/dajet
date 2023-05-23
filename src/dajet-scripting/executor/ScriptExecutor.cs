@@ -1,7 +1,6 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
-using DaJet.Model;
 using DaJet.Scripting.Model;
 using System.Data;
 using System.Globalization;
@@ -274,8 +273,6 @@ namespace DaJet.Scripting
                 }
             }
 
-            _metadata.GetDbConfigurator().CreateDatabase(); //TODO: refactor this !!!
-
             ProcessStatements(in model);
         }
         private void ProcessStatements(in ScriptModel script)
@@ -294,240 +291,40 @@ namespace DaJet.Scripting
         }
         private void ProcessStatement(in CreateTypeStatement statement)
         {
-            // 1. Сгенерировать код нового типа (Metadata.Code)
-            // 2. Разрешить ссылки на NestType и BaseType.
-            // 3. Записать объявление типа в таблицу dajet_types
-            // 4. Обработать первичный ключ, наследуемый от NestType.
-            // 5. Обработать первичный ключ, наследуемый от BaseType (переопределить TypeCode свойства ENTITY.Ref).
-            // 6. Обработать инструкцию DROP COLUMN.
-            // 7. Обработать инструкцию ALTER COLUMN.
-            // 8. Обработать собственные свойства типа.
-            // 9. Заполнить свойство PropertyDef.Ordinal последовательными значениями.
-            // 10. Записать объявления свойств типа в таблицу dajet_properties.
-            // 11. Для ссылочных типов свойств заполнить таблицу dajet_relations.
+            //MetadataBinder binder = new();
 
-            TypeDef definition = new()
+            TypeDefinition definition = new()
             {
-                Name = statement.Name,
-                IsTemplate = statement.IsTemplate,
-                Code = _metadata.GetDbConfigurator().GenerateTypeCode()
+                Name = statement.Identifier
             };
-
-            ResolveNestType(in definition, statement.NestType);
-            ResolveBaseType(in definition, statement.BaseType);
-            _metadata.GetDbConfigurator().CreateUserType(in definition);
-
-            if (!definition.IsTemplate)
-            {
-                DropColumns(in definition, statement.DropColumns);
-                AlterColumns(in definition, statement.AlterColumns);
-            }
 
             foreach (ColumnDefinition column in statement.Columns)
             {
-                PropertyDef property = new()
+                //binder.TryBind(column.Type, in _metadata);
+
+                MetadataProperty property = new()
                 {
-                    Name = column.Name,
-                    Owner = definition.Ref,
-                    ColumnName = column.Name,
-                    DataType = ResolveDataType(column.Type, out List<TypeDef> references),
-                    Qualifier1 = column.Type.Qualifier1,
-                    Qualifier2 = column.Type.Qualifier2,
-                    IsVersion = column.IsVersion,
-                    IsNullable = column.IsNullable,
-                    IsPrimaryKey = statement.PrimaryKey.Contains(column.Name),
-                    IsIdentity = column.IsIdentity,
-                    IdentitySeed = column.IdentitySeed,
-                    IdentityIncrement = column.IdentityIncrement
+                    Name = column.Name
                 };
-                definition.Properties.Add(property);
 
-                UnionType type = property.DataType;
-
-                foreach (TypeDef target in references)
+                if (column.Type.Binding is Type type)
                 {
-                    property.Relations.Add(new RelationDef()
-                    {
-                        Source = property.Ref,
-                        Target = target.Ref
-                    });
+
                 }
+
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = column.Name
+                });
+
+                definition.Properties.Add(property);
             }
-
-            for (int ordinal = 0; ordinal < definition.Properties.Count; ordinal++)
-            {
-                definition.Properties[ordinal].Ordinal = (ordinal + 1);
-            }
-
-            //TODO: save TypeDef, properties and relations in transaction !!!
-
-            _metadata.GetDbConfigurator().CreateProperties(in definition);
-            _metadata.GetDbConfigurator().CreateRelations(in definition);
         }
         private void ProcessStatement(in CreateTableStatement statement)
         {
-            _metadata.GetDbConfigurator().CreateTableOfType(statement.Type, statement.Name);
-        }
-        private UnionType ResolveDataType(TypeIdentifier type, out List<TypeDef> references)
-        {
-            UnionType union = new();
+            throw new NotImplementedException();
 
-            references = new List<TypeDef>();
-
-            if (!union.ApplySystemType(type.Identifier, out UnionTag _))
-            {
-                TypeDef target = ApplyEntityType(type.Identifier, in union);
-                
-                references.Add(target);
-            }
-
-            return union;
-        }
-        private TypeDef ApplyEntityType(in string identifier, in UnionType union)
-        {
-            TypeDef type = _metadata.GetTypeDefinition(in identifier) ?? throw new InvalidOperationException($"Undefined type: [{identifier}]");
-
-            if (!type.IsEntity)
-            {
-                throw new InvalidOperationException($"Type [{identifier}] is not ENTITY");
-            }
-
-            union.TypeCode = type.Code;
-
-            return type;
-        }
-        private void ResolveNestType(in TypeDef definition, in string identifier)
-        {
-            if (string.IsNullOrEmpty(identifier)) { return; }
-
-            TypeDef parent = _metadata.GetTypeDefinition(identifier) ?? throw new InvalidOperationException($"Nesting type [{identifier}] not found.");
-
-            definition.NestType = parent.Ref;
-
-            if (definition.IsTemplate) { return; }
-
-            List<PropertyDef> primaryKey = new();
-
-            GetNestTypePrimaryKey(in definition, in primaryKey);
-
-            foreach (PropertyDef property in primaryKey)
-            {
-                PropertyDef copy = property.Copy();
-
-                copy.Owner = definition.Ref;
-
-                definition.Properties.Add(copy);
-            }
-        }
-        private void GetNestTypePrimaryKey(in TypeDef definition, in List<PropertyDef> primaryKey)
-        {
-            if (definition.NestType == Entity.Undefined) { return; }
-
-            TypeDef parent = _metadata.GetTypeDefinition(definition.NestType);
-
-            if (parent is not null) { GetNestTypePrimaryKey(in parent, in primaryKey); }
-
-            foreach (PropertyDef property in definition.Properties)
-            {
-                if (property.IsPrimaryKey)
-                {
-                    primaryKey.Add(property);
-                }
-            }
-        }
-        private void ResolveBaseType(in TypeDef definition, in string identifier)
-        {
-            TypeDef type = _metadata.GetTypeDefinition(identifier) ?? throw new InvalidOperationException($"Base type [{identifier}] not found.");
-
-            definition.BaseType = type.Ref;
-
-            if (definition.IsTemplate) { return; }
-
-            List<PropertyDef> properties = new();
-
-            GetBaseTypeProperties(in definition, in properties);
-
-            foreach (PropertyDef property in properties)
-            {
-                PropertyDef copy = property.Copy();
-
-                copy.Owner = definition.Ref;
-
-                if (property.Owner.TypeCode == 0 && property.Name == "Ref") // system type ENTITY
-                {
-                    copy.DataType = new UnionType() { IsEntity = true, TypeCode = definition.Code };
-                }
-
-                definition.Properties.Add(copy);
-            }
-        }
-        private void GetBaseTypeProperties(in TypeDef definition, in List<PropertyDef> properties)
-        {
-            if (definition.BaseType == Entity.Undefined) { return; }
-
-            TypeDef parent = _metadata.GetTypeDefinition(definition.BaseType);
-
-            if (parent is not null) { GetBaseTypeProperties(in parent, in properties); }
-
-            foreach (PropertyDef property in definition.Properties)
-            {
-                properties.Add(property);
-            }
-        }
-        private void DropColumns(in TypeDef definition, in List<string> columns)
-        {
-            if (columns is null) { return; }
-
-            foreach (string column in columns)
-            {
-                int next = 0;
-                int count = definition.Properties.Count;
-
-                while (next < count)
-                {
-                    if (definition.Properties[next].Name == column)
-                    {
-                        definition.Properties.RemoveAt(next); break;
-                    }
-                    
-                    next++;
-                }
-            }
-        }
-        private void AlterColumns(in TypeDef definition, in List<ColumnDefinition> columns)
-        {
-            if (columns is null) { return; }
-
-            foreach (ColumnDefinition column in columns)
-            {
-                PropertyDef property = definition.Properties
-                    .Where(p => p.Name == column.Name)
-                    .FirstOrDefault();
-
-                if (property is null) { continue; }
-
-                property.DataType = ResolveDataType(column.Type, out List<TypeDef> references);
-                property.Qualifier1 = column.Type.Qualifier1;
-                property.Qualifier2 = column.Type.Qualifier2;
-                property.IsVersion = column.IsVersion;
-                property.IsNullable = column.IsNullable;
-                property.IsIdentity = column.IsIdentity;
-                property.IdentitySeed = column.IdentitySeed;
-                property.IdentityIncrement = column.IdentityIncrement;
-
-                UnionType type = property.DataType;
-
-                property.Relations.Clear();
-
-                foreach (TypeDef target in references)
-                {
-                    property.Relations.Add(new RelationDef()
-                    {
-                        Source = property.Ref,
-                        Target = target.Ref
-                    });
-                }
-            }
+            //TODO: _metadata.GetDbConfigurator().CreateTableOfType(statement.Type, statement.Name);
         }
         #endregion
     }

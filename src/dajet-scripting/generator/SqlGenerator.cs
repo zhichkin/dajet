@@ -157,7 +157,10 @@ namespace DaJet.Scripting
             else if (expression is InsertStatement insert) { Visit(in insert, in script); }
             else if (expression is UpdateStatement update) { Visit(in update, in script); }
             else if (expression is DeleteStatement delete) { Visit(in delete, in script); }
+            else if (expression is CreateTypeStatement type) { Visit(in type, in script); }
         }
+
+        public abstract void Visit(in CreateTypeStatement node, in StringBuilder script);
 
         #region "SELECT STATEMENT"
         protected virtual void Visit(in SelectStatement node, in StringBuilder script)

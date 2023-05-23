@@ -6,7 +6,6 @@ using DaJet.Metadata.Extensions;
 using DaJet.Metadata.Model;
 using DaJet.Metadata.Parsers;
 using DaJet.Metadata.Services;
-using DaJet.Model;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -310,14 +309,6 @@ namespace DaJet.Metadata
         public void Configure(in Dictionary<string, string> options)
         {
             throw new NotImplementedException(); //TODO: IMetadataProvider.Configure(...)
-        }
-        public TypeDef GetTypeDefinition(Entity entity)
-        {
-            throw new NotImplementedException(); //TODO: IMetadataProvider.GetTypeDefinition(entity)
-        }
-        public TypeDef GetTypeDefinition(in string identifier)
-        {
-            throw new NotImplementedException(); //TODO: IMetadataProvider.GetTypeDefinition(identifier)
         }
         internal MetadataCache(MetadataCacheOptions options)
         {
@@ -901,13 +892,13 @@ namespace DaJet.Metadata
             reference.SetTarget(metadata);
         }
 
-        private MetadataObject GetTypeDefinitionCached(in string[] identifiers)
+        private MetadataObject GetTypeDefinitionCached(in string identifier)
         {
             //TODO: try get type definition from cache first
 
             IDbConfigurator configurator = GetDbConfigurator();
             
-            return configurator.GetTypeDefinition(in identifiers);
+            return configurator.GetTypeDefinition(in identifier);
         }
         #endregion
 
@@ -1235,7 +1226,7 @@ namespace DaJet.Metadata
 
             if (type == Guid.Empty)
             {
-                return GetTypeDefinitionCached(in identifiers);
+                return GetTypeDefinitionCached(in metadataName);
             }
 
             if (identifiers.Length > 2)

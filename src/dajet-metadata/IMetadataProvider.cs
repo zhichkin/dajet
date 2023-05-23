@@ -1,7 +1,6 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
-using DaJet.Model;
 using System;
 using System.Collections.Generic;
 
@@ -13,14 +12,11 @@ namespace DaJet.Metadata
         bool IsRegularDatabase { get; }
         string ConnectionString { get; }
         DatabaseProvider DatabaseProvider { get; }
+        IDbConfigurator GetDbConfigurator();
         IQueryExecutor CreateQueryExecutor();
         IEnumerable<MetadataItem> GetMetadataItems(Guid type);
         MetadataObject GetMetadataObject(string metadataName);
         bool TryGetExtendedInfo(Guid uuid, out MetadataItemEx info);
         bool TryGetEnumValue(in string identifier, out EnumValue value);
-
-        IDbConfigurator GetDbConfigurator();
-        TypeDef GetTypeDefinition(Entity entity);
-        TypeDef GetTypeDefinition(in string identifier);
     }
 }

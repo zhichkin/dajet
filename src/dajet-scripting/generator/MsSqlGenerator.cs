@@ -287,6 +287,25 @@ namespace DaJet.Scripting
 
             return delete;
         }
+
+        public override void Visit(in CreateTypeStatement node, in StringBuilder script)
+        {
+            script.Append("CREATE TYPE ").AppendLine(node.Identifier);
+            script.AppendLine("(");
+
+            for (int i = 0; i < node.Columns.Count; i++)
+            {
+                ColumnDefinition column = node.Columns[i];
+
+                if (i > 0) { script.AppendLine(","); }
+
+                script.Append(column.Name);
+                script.Append(' ');
+                script.Append(column.Type.Identifier);
+            }
+
+            script.AppendLine().AppendLine(")");
+        }
     }
 }
 

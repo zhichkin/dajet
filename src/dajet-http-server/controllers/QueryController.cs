@@ -117,7 +117,7 @@ namespace DaJet.Http.Controllers
             return Content(json);
         }
 
-        [HttpPost("ddl")] public ActionResult ExecuteNonQuery([FromBody] QueryModel query)
+        [HttpPost("ddl")][Authorize]public ActionResult ExecuteNonQuery([FromBody] QueryModel query)
         {
             if (string.IsNullOrWhiteSpace(query.DbName) || string.IsNullOrWhiteSpace(query.Script))
             {

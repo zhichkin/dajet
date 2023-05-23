@@ -76,17 +76,9 @@ namespace DaJet.Scripting
             { "UPSERT", TokenType.UPSERT },
             { "IGNORE", TokenType.IGNORE },
             { "TYPE", TokenType.TYPE },
-            { "ENTITY", TokenType.ENTITY },
-            { "TEMPLATE", TokenType.TEMPLATE },
-            { "IDENTITY", TokenType.IDENTITY },
-            { "PRIMARY", TokenType.PRIMARY },
-            { "KEY", TokenType.KEY },
+            { "COLUMN", TokenType.COLUMN },
             { "OF", TokenType.OF },
             { "DROP", TokenType.DROP },
-            { "ALTER", TokenType.ALTER },
-            { "COLUMN", TokenType.COLUMN },
-            { "AUTO", TokenType.AUTO },
-            { "GENERATED", TokenType.GENERATED },
             { "CONSUME", TokenType.CONSUME },
             { "IMPORT", TokenType.IMPORT }
         };

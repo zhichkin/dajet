@@ -58,6 +58,8 @@ namespace DaJet.Scripting
         }
         private void BindDataType(in ScriptScope scope, in TypeIdentifier identifier, in IMetadataProvider metadata)
         {
+            //TODO: bind Union type for CREATE TYPE statement
+
             if (ScriptHelper.IsDataType(identifier.Identifier, out Type type))
             {
                 // Guid, bool, decimal, DateTime, string, byte[], Entity, TypeDefinition (table)

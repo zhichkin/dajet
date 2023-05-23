@@ -867,6 +867,11 @@ namespace DaJet.Scripting
 
             return comparison;
         }
+
+        public override void Visit(in CreateTypeStatement node, in StringBuilder script)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
 
