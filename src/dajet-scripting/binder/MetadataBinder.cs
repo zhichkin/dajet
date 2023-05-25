@@ -114,6 +114,7 @@ namespace DaJet.Scripting
                         if (declare.Type.Binding is TypeDefinition definition)
                         {
                             variable.Binding = definition;
+                            definition.TableName = variable.Identifier;
                         }
                         else if (ScriptHelper.IsDataType(declare.Type.Identifier, out Type type))
                         {

@@ -121,14 +121,14 @@ namespace DaJet.Scripting
         };
         private static Dictionary<string, Type> _datatype_en = new()
         {
-            { "uuid", typeof(Guid) },
-            { "boolean", typeof(bool) },
-            { "number", typeof(decimal) },
-            { "datetime", typeof(DateTime) },
-            { "string", typeof(string) },
-            { "binary", typeof(byte[]) },
-            { "entity", typeof(Entity) },
-            { "undefined", typeof(Union) }
+            { "boolean", typeof(bool) }, // L
+            { "number", typeof(decimal) }, // N
+            { "datetime", typeof(DateTime) }, // T
+            { "string", typeof(string) }, // S
+            { "binary", typeof(byte[]) }, // B
+            { "uuid", typeof(Guid) }, // U
+            { "entity", typeof(Entity) }, // C + R
+            { "undefined", typeof(Union) } // D
         };
         private static Dictionary<string, Type> _datatype_ru = new()
         {

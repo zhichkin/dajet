@@ -290,18 +290,67 @@ namespace DaJet.Scripting
 
         public override void Visit(in CreateTypeStatement node, in StringBuilder script)
         {
-            script.Append("CREATE TYPE ").AppendLine(node.Identifier);
+            script.Append("CREATE TYPE [").Append(node.Identifier).AppendLine("] AS TABLE");
             script.AppendLine("(");
 
             for (int i = 0; i < node.Columns.Count; i++)
             {
                 ColumnDefinition column = node.Columns[i];
 
+                if (column.Type is not TypeIdentifier info)
+                {
+                    continue;
+                }
+
                 if (i > 0) { script.AppendLine(","); }
 
-                script.Append(column.Name);
-                script.Append(' ');
-                script.Append(column.Type.Identifier);
+                if (info.Binding is Type type)
+                {
+                    if (type == typeof(bool)) // boolean
+                    {
+                        script.Append('_').Append(column.Name).Append("_L").Append(' ').Append("binary(1)");
+                    }
+                    else if (type == typeof(decimal)) // number(p,s)
+                    {
+                        script.Append('_').Append(column.Name).Append("_N")
+                            .Append(' ').Append("numeric(").Append(info.Qualifier1).Append(',').Append(info.Qualifier2).Append(')');
+                    }
+                    else if (type == typeof(DateTime)) // datetime
+                    {
+                        script.Append('_').Append(column.Name).Append("_T").Append(' ').Append("datetime2");
+                    }
+                    else if (type == typeof(string)) // string(n)
+                    {
+                        script.Append('_').Append(column.Name).Append("_S").Append(' ').Append("nvarchar(")
+                            .Append((info.Qualifier1 > 0) ? info.Qualifier1.ToString() : "max").Append(')');
+                    }
+                    else if (type == typeof(byte[])) // binary
+                    {
+                        script.Append('_').Append(column.Name).Append("_B").Append(' ').Append("varbinary(max)");
+                    }
+                    else if (type == typeof(Guid)) // uuid
+                    {
+                        script.Append('_').Append(column.Name).Append("_U").Append(' ').Append("binary(16)");
+                    }
+                    else if (type == typeof(Entity)) // entity - multiple reference type
+                    {
+                        script.Append('_').Append(column.Name).Append("_C").Append(' ').Append("binary(4)").AppendLine(",");
+                        script.Append('_').Append(column.Name).Append("_R").Append(' ').Append("binary(16)");
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Unsupported column data type");
+                    }
+                }
+                else if (info.Binding is Entity entity) // single reference type, example: Справочник.Номенклатура
+                {
+                    script.Append('_').Append(column.Name).Append("_R_").Append(entity.TypeCode).Append(' ').Append("binary(16)");
+                }
+                else //TODO: union type
+                {
+                    throw new InvalidOperationException("Unknown column data type");
+                    //script.Append('_').Append(column.Name).Append("_D").Append(' ').Append("binary(1)");
+                }
             }
 
             script.AppendLine().AppendLine(")");
