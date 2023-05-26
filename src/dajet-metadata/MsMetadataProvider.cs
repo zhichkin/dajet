@@ -63,11 +63,15 @@ namespace DaJet.Metadata.SqlServer
 
         public IDbConfigurator GetDbConfigurator()
         {
-            return new MsDbConfigurator(CreateQueryExecutor());
+            return new MsDbConfigurator(this);
+        }
+        public MetadataItem GetMetadataItem(int typeCode)
+        {
+            throw new NotImplementedException();
         }
         public MetadataObject GetMetadataObject(string metadataName)
         {
-            MsDbConfigurator configurator = new(CreateQueryExecutor());
+            MsDbConfigurator configurator = new(this);
 
             return configurator.GetTypeDefinition(in metadataName);
         }

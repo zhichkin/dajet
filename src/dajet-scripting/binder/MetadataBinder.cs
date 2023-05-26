@@ -41,6 +41,7 @@ namespace DaJet.Scripting
             }
 
             BindDataTypes(in scope, in metadata);
+            BindTableVariables(in scope);
             BindVariables(in scope, in metadata);
             BindScriptScopeTables(in scope, in metadata);
         }
@@ -84,6 +85,26 @@ namespace DaJet.Scripting
                 ThrowBindingException(identifier.Token, identifier.Identifier);
             }
         }
+        private void BindTableVariables(in ScriptScope scope)
+        {
+            ScriptScope root = scope.Root;
+
+            if (root.Owner is not ScriptModel script)
+            {
+                throw new InvalidOperationException("Root scope is missing");
+            }
+
+            foreach (SyntaxNode node in script.Statements)
+            {
+                if (node is DeclareStatement declare)
+                {
+                    if (declare.Type.Binding is TypeDefinition definition)
+                    {
+                        definition.TableName = declare.Name;
+                    }
+                }
+            }
+        }
         private void BindVariables(in ScriptScope scope, in IMetadataProvider metadata)
         {
             foreach (SyntaxNode node in scope.Identifiers)
@@ -114,7 +135,6 @@ namespace DaJet.Scripting
                         if (declare.Type.Binding is TypeDefinition definition)
                         {
                             variable.Binding = definition;
-                            definition.TableName = variable.Identifier;
                         }
                         else if (ScriptHelper.IsDataType(declare.Type.Identifier, out Type type))
                         {

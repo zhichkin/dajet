@@ -6,30 +6,34 @@ namespace DaJet.Json
 {
     public sealed class ScriptParametersJsonConverter : JsonConverter<Dictionary<string,object>>
     {
+        public override void Write(Utf8JsonWriter writer, Dictionary<string, object> value, JsonSerializerOptions options)
+        {
+            throw new NotImplementedException();
+        }
         public override Dictionary<string, object> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            string key = null;
-            object value = null;
-            string input = null;
-            bool storeValue = false;
-            Dictionary<string, object> parameters = null;
+            Dictionary<string, object> parameters = new();
 
             if (reader.TokenType == JsonTokenType.StartObject)
             {
-                parameters = new();
+                ParseObject(ref reader, in parameters);
             }
             else
             {
                 throw new FormatException();
             }
 
+            return parameters;
+        }
+        private void ParseObject(ref Utf8JsonReader reader, in Dictionary<string, object> target)
+        {
+            string key = null;
+            object value = null;
+            bool storeValue = false;
+
             while (reader.Read())
             {
-                if (reader.TokenType == JsonTokenType.StartObject)
-                {
-                    // converter starts parsing from '{'
-                }
-                else if (reader.TokenType == JsonTokenType.PropertyName)
+                if (reader.TokenType == JsonTokenType.PropertyName)
                 {
                     key = reader.GetString();
                 }
@@ -47,15 +51,15 @@ namespace DaJet.Json
                 }
                 else if (reader.TokenType == JsonTokenType.Number)
                 {
-                    if (reader.TryGetDecimal(out decimal numeric))
+                    if (reader.TryGetDecimal(out decimal number))
                     {
-                        if (numeric.Scale > 0)
+                        if (number.Scale > 0)
                         {
-                            value = numeric;
+                            value = number;
                         }
                         else
                         {
-                            value = Convert.ToInt32(numeric);
+                            value = Convert.ToInt32(number);
                         }
                     }
                     else
@@ -66,7 +70,7 @@ namespace DaJet.Json
                 }
                 else if (reader.TokenType == JsonTokenType.String)
                 {
-                    input = reader.GetString();
+                    string input = reader.GetString();
 
                     if (Guid.TryParse(input, out Guid uuid))
                     {
@@ -104,9 +108,17 @@ namespace DaJet.Json
                     }
                     storeValue = true;
                 }
+                else if (reader.TokenType == JsonTokenType.StartArray)
+                {
+                    List<Dictionary<string, object>> list = new();
+
+                    ParseArray(ref reader, in list);
+
+                    value = list; storeValue = true;
+                }
                 else if (reader.TokenType == JsonTokenType.EndObject)
                 {
-                    break; // end of dictionary
+                    break; // end of target object - return result
                 }
                 else
                 {
@@ -115,19 +127,31 @@ namespace DaJet.Json
 
                 if (storeValue)
                 {
-                    parameters.Add(key, value);
+                    target.Add(key, value);
 
                     key = null;
                     value = null;
                     storeValue = false;
                 }
             }
-
-            return parameters;
         }
-        public override void Write(Utf8JsonWriter writer, Dictionary<string, object> value, JsonSerializerOptions options)
+        private void ParseArray(ref Utf8JsonReader reader, in List<Dictionary<string, object>> target)
         {
-            throw new NotImplementedException();
+            while (reader.Read())
+            {
+                if (reader.TokenType == JsonTokenType.StartObject)
+                {
+                    Dictionary<string, object> item = new();
+
+                    ParseObject(ref reader, in item);
+
+                    target.Add(item);
+                }
+                else if (reader.TokenType == JsonTokenType.EndArray)
+                {
+                    break; // end of target object - return result
+                }
+            }
         }
     }
 }

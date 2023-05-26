@@ -1,4 +1,6 @@
-﻿using DaJet.Metadata.Model;
+﻿using DaJet.Metadata;
+using DaJet.Metadata.Core;
+using DaJet.Metadata.Model;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -23,9 +25,11 @@ namespace DaJet.Data
             "ORDER BY c.column_id ASC;";
 
         private readonly IQueryExecutor _executor;
-        public MsDbConfigurator(IQueryExecutor executor)
+        private readonly IMetadataProvider _provider;
+        public MsDbConfigurator(IMetadataProvider provider)
         {
-            _executor = executor;
+            _provider = provider;
+            _executor = _provider.CreateQueryExecutor();
         }
         private List<TypeColumnInfo> SelectTypeColumns(in string identifier)
         {
@@ -53,26 +57,8 @@ namespace DaJet.Data
         {
             throw new NotImplementedException();
         }
-        private string[] GetIdentifiers(string metadataName)
-        {
-            if (string.IsNullOrWhiteSpace(metadataName))
-            {
-                throw new ArgumentNullException(nameof(metadataName));
-            }
-
-            string[] identifiers = metadataName.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            if (identifiers.Length < 2)
-            {
-                throw new FormatException(nameof(metadataName));
-            }
-
-            return identifiers;
-        }
         public TypeDefinition GetTypeDefinition(in string identifier)
         {
-            string[] identifiers = GetIdentifiers(identifier);
-
             string sql = string.Format(TYPE_EXISTS_COMMAND, identifier);
             
             if (_executor.ExecuteScalar<int>(in sql, 10) != 1) { return null; }
@@ -144,13 +130,20 @@ namespace DaJet.Data
                 else if (purpose == 'U') { property.PropertyType.IsUuid = true; }
                 else if (purpose == 'R')
                 {
+                    property.PropertyType.CanBeReference = true;
+
                     if (typeCode == 0)
                     {
                         column.Purpose = ColumnPurpose.Identity;
+                        property.PropertyType.TypeCode = 0;
+                        property.PropertyType.Reference = Guid.Empty;
                     }
-                    property.PropertyType.TypeCode = typeCode;
-                    property.PropertyType.Reference = Guid.Empty; //TODO(?): GetMetadataItem(int typeCode)
-                    property.PropertyType.CanBeReference = true;
+                    else
+                    {
+                        MetadataItem item = _provider.GetMetadataItem(typeCode);
+                        property.PropertyType.TypeCode = typeCode;
+                        property.PropertyType.Reference = item.Uuid;
+                    }
                 }
                 else if (purpose == 'C')
                 {

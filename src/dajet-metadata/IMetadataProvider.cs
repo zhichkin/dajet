@@ -14,6 +14,7 @@ namespace DaJet.Metadata
         DatabaseProvider DatabaseProvider { get; }
         IDbConfigurator GetDbConfigurator();
         IQueryExecutor CreateQueryExecutor();
+        MetadataItem GetMetadataItem(int typeCode);
         IEnumerable<MetadataItem> GetMetadataItems(Guid type);
         MetadataObject GetMetadataObject(string metadataName);
         bool TryGetExtendedInfo(Guid uuid, out MetadataItemEx info);

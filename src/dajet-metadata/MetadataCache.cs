@@ -342,7 +342,7 @@ namespace DaJet.Metadata
         }
         public IDbConfigurator GetDbConfigurator()
         {
-            return new MsDbConfigurator(CreateQueryExecutor());
+            return new MsDbConfigurator(this);
         }
         public IQueryExecutor CreateQueryExecutor()
         {
@@ -1097,11 +1097,6 @@ namespace DaJet.Metadata
             }
 
             string[] identifiers = metadataName.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            if (identifiers.Length < 2)
-            {
-                throw new FormatException(nameof(metadataName));
-            }
 
             return identifiers;
         }

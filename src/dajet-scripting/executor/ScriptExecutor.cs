@@ -28,8 +28,6 @@ namespace DaJet.Scripting
                 }
             }
 
-            ConfigureParameters(in model);
-
             ScopeBuilder builder = new();
 
             if (!builder.TryBuild(in model, out ScriptScope scope, out error))
@@ -71,6 +69,8 @@ namespace DaJet.Scripting
                 throw new Exception(result.Error);
             }
 
+            ConfigureParameters(in model);
+
             return result;
         }
         private void ConfigureParameters(in ScriptModel model)
@@ -80,9 +80,14 @@ namespace DaJet.Scripting
             {
                 if (node is DeclareStatement declare)
                 {
+                    // 0. UDT parameter must (!) be provided by caller - it has no default value anyway
+
+                    if (declare.Type.Binding is TypeDefinition) { continue; }
+
+                    // 1. Set default value if parameter value is not initialized in script.
+
                     if (declare.Initializer is not ScalarExpression scalar)
                     {
-                        // Set default value if parameter value is not initialized in script.
                         scalar = ScriptHelper.CreateDefaultScalar(in declare);
                         declare.Initializer = scalar;
                     }
@@ -91,9 +96,10 @@ namespace DaJet.Scripting
                     string name = declare.Name[1..]; // remove leading @
                     string literal = scalar.Literal;
 
-                    // Synchronize parameters defined by script and provided by caller.
-                    // Parameters defined by script must present anyway!
-                    // Parameter values provided by the caller overrides parameter values set by script.
+                    // 2. Synchronize parameters defined by script and provided by caller.
+                    // -  Parameters defined by script must present anyway!
+                    // -  Parameter values provided by the caller overrides parameter values set by script.
+
                     if (!Parameters.TryGetValue(name, out _))
                     {
                         if (ScriptHelper.IsDataType(declare.Type.Identifier, out Type type))
@@ -208,7 +214,33 @@ namespace DaJet.Scripting
                 {
                     Parameters[parameter.Key] = entity.Identity.ToByteArray();
                 }
+                else if (parameter.Value is List<Dictionary<string, object>> table)
+                {
+                    Parameters[parameter.Key] = new TableValuedParameter()
+                    {
+                        Name = parameter.Key,
+                        Value = table,
+                        DbName = GetTypeIdentifier(in model, parameter.Key)
+                    };
+                }
             }
+        }
+        private string GetTypeIdentifier(in ScriptModel script, in string name)
+        {
+            foreach (SyntaxNode node in script.Statements)
+            {
+                if (node is not DeclareStatement declare)
+                {
+                    continue;
+                }
+
+                if (declare.Name[1..] == name) // remove leading @
+                {
+                    return declare.Type.Identifier;
+                }
+            }
+
+            return null;
         }
         private bool DeclareStatementExists(in ScriptModel model, string name)
         {
