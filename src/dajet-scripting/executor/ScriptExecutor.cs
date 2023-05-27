@@ -1,18 +1,26 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
+using DaJet.Options;
 using DaJet.Scripting.Model;
 using System.Data;
 using System.Globalization;
+using TypeDefinition = DaJet.Metadata.Model.TypeDefinition;
 
 namespace DaJet.Scripting
 {
     public sealed class ScriptExecutor
     {
-        private readonly IMetadataProvider _metadata;
-        public ScriptExecutor(IMetadataProvider provider)
+        private readonly IMetadataService _metadata;
+        private readonly IMetadataProvider _context; // execution context database
+        private readonly ScriptDataMapper _scripts;
+        private readonly InfoBaseDataMapper _databases;
+        public ScriptExecutor(IMetadataProvider context, IMetadataService metadata, InfoBaseDataMapper databases, ScriptDataMapper scripts)
         {
-            _metadata = provider;
+            _context = context;
+            _metadata = metadata;
+            _scripts = scripts;
+            _databases = databases;
         }
         public Dictionary<string, object> Parameters { get; } = new();
         public GeneratorResult PrepareScript(in string script)
@@ -37,7 +45,7 @@ namespace DaJet.Scripting
 
             MetadataBinder binder = new();
 
-            if (!binder.TryBind(in scope, in _metadata, out error))
+            if (!binder.TryBind(in scope, in _context, out error))
             {
                 throw new Exception(error);
             }
@@ -49,27 +57,31 @@ namespace DaJet.Scripting
                 throw new Exception(error);
             }
 
+            ConfigureParameters(in model);
+
+            ExecuteImportStatements(in model);
+
+            // execute main context script
+
             ISqlGenerator generator;
 
-            if (_metadata.DatabaseProvider == DatabaseProvider.SqlServer)
+            if (_context.DatabaseProvider == DatabaseProvider.SqlServer)
             {
-                generator = new MsSqlGenerator() { YearOffset = _metadata.YearOffset };
+                generator = new MsSqlGenerator() { YearOffset = _context.YearOffset };
             }
-            else if (_metadata.DatabaseProvider == DatabaseProvider.PostgreSql)
+            else if (_context.DatabaseProvider == DatabaseProvider.PostgreSql)
             {
-                generator = new PgSqlGenerator() { YearOffset = _metadata.YearOffset };
+                generator = new PgSqlGenerator() { YearOffset = _context.YearOffset };
             }
             else
             {
-                throw new InvalidOperationException($"Unsupported database provider: {_metadata.DatabaseProvider}");
+                throw new InvalidOperationException($"Unsupported database provider: {_context.DatabaseProvider}");
             }
             
-            if (!generator.TryGenerate(in model, in _metadata, out GeneratorResult result))
+            if (!generator.TryGenerate(in model, in _context, out GeneratorResult result))
             {
                 throw new Exception(result.Error);
             }
-
-            ConfigureParameters(in model);
 
             return result;
         }
@@ -154,7 +166,7 @@ namespace DaJet.Scripting
                             // Metadata object reference parameter:
                             // DECLARE @product Справочник.Номенклатура = "9a1984dc-3084-11ed-9cd7-408d5c93cc8e";
 
-                            MetadataObject table = _metadata.GetMetadataObject(declare.Type.Identifier);
+                            MetadataObject table = _context.GetMetadataObject(declare.Type.Identifier);
 
                             if (table is ApplicationObject entity)
                             {
@@ -201,14 +213,14 @@ namespace DaJet.Scripting
                 }
                 else if (parameter.Value is bool boolean)
                 {
-                    if (_metadata.DatabaseProvider == DatabaseProvider.SqlServer)
+                    if (_context.DatabaseProvider == DatabaseProvider.SqlServer)
                     {
                         Parameters[parameter.Key] = new byte[] { Convert.ToByte(boolean) };
                     }
                 }
                 else if (parameter.Value is DateTime dateTime)
                 {
-                    Parameters[parameter.Key] = dateTime.AddYears(_metadata.YearOffset);
+                    Parameters[parameter.Key] = dateTime.AddYears(_context.YearOffset);
                 }
                 else if (parameter.Value is Entity entity)
                 {
@@ -258,6 +270,95 @@ namespace DaJet.Scripting
             }
             return false;
         }
+
+        private void ExecuteImportStatements(in ScriptModel model)
+        {
+            List<SyntaxNode> items_to_remove = new();
+
+            foreach (SyntaxNode node in model.Statements)
+            {
+                if (node is ImportStatement import)
+                {
+                    items_to_remove.Add(node);
+
+                    ExecuteImportStatement(in import);
+                }
+            }
+
+            foreach (SyntaxNode node in items_to_remove)
+            {
+                model.Statements.Remove(node);
+            }
+        }
+        private void ExecuteImportStatement(in ImportStatement import)
+        {
+            Uri uri = new(import.Source);
+
+            if (uri.Scheme != "dajet")
+            {
+                throw new InvalidOperationException($"Unknown data source scheme: {uri.Scheme}");
+            }
+
+            string target = uri.Host;
+            string script = uri.AbsolutePath;
+
+            InfoBaseModel database = _databases.Select(target) ?? throw new ArgumentException($"Target not found: {target}");
+            ScriptRecord record = _scripts.SelectScriptByPath(database.Uuid, script) ?? throw new ArgumentException($"Script not found: {script}");
+
+            if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            {
+                throw new Exception(error);
+            }
+
+            ScriptExecutor executor = new(provider, _metadata, _databases, _scripts);
+
+            string query = uri.Query;
+
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                query = query.TrimStart('?');
+
+                string[] parameters = query.Split('&', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (string parameter in parameters)
+                {
+                    string[] replace = parameter.Split('=', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+                    string parameterName = replace[0];
+                    string variableName = (replace.Length > 1) ? replace[1] : parameterName;
+                    
+                    if (Parameters.TryGetValue(variableName, out object value))
+                    {
+                        executor.Parameters.Add(parameterName, value);
+                    }
+                }
+            }
+
+            List<Dictionary<string, object>> result = new();
+
+            foreach (var entity in executor.ExecuteReader(record.Script))
+            {
+                result.Add(entity);
+            }
+
+            if (import.Target is not null && import.Target.Count > 0)
+            {
+                VariableReference variable = import.Target[0];
+
+                string key = variable.Identifier[1..];
+
+                if (variable.Binding is TypeDefinition type)
+                {
+                    Parameters[key] = new TableValuedParameter()
+                    {
+                        Name = key,
+                        Value = result,
+                        DbName = type.Name
+                    };
+                }
+            }
+        }
+
         public IEnumerable<Dictionary<string, object>> ExecuteReader(string script)
         {
             GeneratorResult result = PrepareScript(in script);
@@ -267,7 +368,7 @@ namespace DaJet.Scripting
                 throw new Exception(result.Error);
             }
 
-            IQueryExecutor executor = _metadata.CreateQueryExecutor();
+            IQueryExecutor executor = _context.CreateQueryExecutor();
 
             foreach (IDataReader reader in executor.ExecuteReader(result.Script, 10, Parameters))
             {
@@ -283,7 +384,7 @@ namespace DaJet.Scripting
                 throw new Exception(result.Error);
             }
 
-            IQueryExecutor executor = _metadata.CreateQueryExecutor();
+            IQueryExecutor executor = _context.CreateQueryExecutor();
 
             foreach (IDataReader reader in executor.ExecuteReader(result.Script, 10, Parameters))
             {
@@ -332,7 +433,7 @@ namespace DaJet.Scripting
 
             foreach (ColumnDefinition column in statement.Columns)
             {
-                //binder.TryBind(column.Type, in _metadata);
+                //binder.TryBind(column.Type, in _context);
 
                 MetadataProperty property = new()
                 {
@@ -356,7 +457,7 @@ namespace DaJet.Scripting
         {
             throw new NotImplementedException();
 
-            //TODO: _metadata.GetDbConfigurator().CreateTableOfType(statement.Type, statement.Name);
+            //TODO: _context.GetDbConfigurator().CreateTableOfType(statement.Type, statement.Name);
         }
         #endregion
     }

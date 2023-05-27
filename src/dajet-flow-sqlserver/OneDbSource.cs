@@ -35,7 +35,7 @@ namespace DaJet.Flow.SqlServer
             InfoBaseModel database = _databases.Select(Source);
             if (database is null) { throw new Exception($"Source not found: {Source}"); }
 
-            ScriptModel script = _scripts.SelectScriptByPath(database.Uuid, Script);
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, Script);
             if (script is null) { throw new Exception($"Script not found: {Script}"); }
 
             if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
@@ -43,7 +43,7 @@ namespace DaJet.Flow.SqlServer
                 throw new Exception(error);
             }
 
-            ScriptExecutor executor = new(provider);
+            ScriptExecutor executor = new(provider, _metadata, _databases, _scripts);
             ScriptGenerator = executor.PrepareScript(script.Script);
             ScriptParameters = executor.Parameters;
 

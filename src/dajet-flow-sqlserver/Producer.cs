@@ -23,7 +23,7 @@ namespace DaJet.Flow.SqlServer
         protected override void _Configure()
         {
             InfoBaseModel database = _databases.Select(Target) ?? throw new ArgumentException($"Target not found: {Target}");
-            ScriptModel script = _scripts.SelectScriptByPath(database.Uuid, Script) ?? throw new ArgumentException($"Script not found: {Script}");
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, Script) ?? throw new ArgumentException($"Script not found: {Script}");
 
             CommandText = script.Script;
             ConnectionString = database.ConnectionString;

@@ -45,9 +45,9 @@ namespace DaJet.Options
         }
 
         #region "CRUD COMMANDS"
-        public List<ScriptModel> Select(Guid database)
+        public List<ScriptRecord> Select(Guid database)
         {
-            List<ScriptModel> list = new();
+            List<ScriptRecord> list = new();
 
             using (SqliteConnection connection = new(_connectionString))
             {
@@ -64,7 +64,7 @@ namespace DaJet.Options
                     {
                         while (reader.Read())
                         {
-                            ScriptModel item = new()
+                            ScriptRecord item = new()
                             {
                                 Uuid = new Guid(reader.GetString(0)),
                                 Owner = new Guid(reader.GetString(1)),
@@ -82,9 +82,9 @@ namespace DaJet.Options
 
             return list;
         }
-        public List<ScriptModel> Select(ScriptModel parent)
+        public List<ScriptRecord> Select(ScriptRecord parent)
         {
-            List<ScriptModel> list = new();
+            List<ScriptRecord> list = new();
 
             using (SqliteConnection connection = new(_connectionString))
             {
@@ -100,7 +100,7 @@ namespace DaJet.Options
                     {
                         while (reader.Read())
                         {
-                            ScriptModel item = new()
+                            ScriptRecord item = new()
                             {
                                 Uuid = new Guid(reader.GetString(0)),
                                 Owner = new Guid(reader.GetString(1)),
@@ -118,9 +118,9 @@ namespace DaJet.Options
 
             return list;
         }
-        public ScriptModel SelectScript(Guid uuid)
+        public ScriptRecord SelectScript(Guid uuid)
         {
-            ScriptModel script = null;
+            ScriptRecord script = null;
 
             using (SqliteConnection connection = new(_connectionString))
             {
@@ -136,7 +136,7 @@ namespace DaJet.Options
                     {
                         if (reader.Read())
                         {
-                            script = new ScriptModel()
+                            script = new ScriptRecord()
                             {
                                 Uuid = new Guid(reader.GetString(0)),
                                 Owner = new Guid(reader.GetString(1)),
@@ -152,7 +152,7 @@ namespace DaJet.Options
 
             return script;
         }
-        public bool TrySelect(Guid uuid, out ScriptModel script)
+        public bool TrySelect(Guid uuid, out ScriptRecord script)
         {
             script = null;
 
@@ -170,7 +170,7 @@ namespace DaJet.Options
                     {
                         if (reader.Read())
                         {
-                            script = new ScriptModel()
+                            script = new ScriptRecord()
                             {
                                 Uuid = new Guid(reader.GetString(0)),
                                 Owner = new Guid(reader.GetString(1)),
@@ -187,7 +187,7 @@ namespace DaJet.Options
 
             return (script != null);
         }
-        public bool Insert(ScriptModel script)
+        public bool Insert(ScriptRecord script)
         {
             int result;
 
@@ -212,7 +212,7 @@ namespace DaJet.Options
 
             return (result == 1);
         }
-        public bool Update(ScriptModel script)
+        public bool Update(ScriptRecord script)
         {
             int result;
 
@@ -237,7 +237,7 @@ namespace DaJet.Options
 
             return (result == 1);
         }
-        public bool UpdateName(ScriptModel script)
+        public bool UpdateName(ScriptRecord script)
         {
             int result;
 
@@ -258,7 +258,7 @@ namespace DaJet.Options
 
             return (result == 1);
         }
-        public bool Delete(ScriptModel script)
+        public bool Delete(ScriptRecord script)
         {
             int result;
 
@@ -280,13 +280,13 @@ namespace DaJet.Options
         }
         #endregion
 
-        public ScriptModel SelectScriptByPath(Guid database, string path)
+        public ScriptRecord SelectScriptByPath(Guid database, string path)
         {
             string[] segments = path.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
             int counter = 0;
-            ScriptModel current = null;
-            List<ScriptModel> list = Select(database);
+            ScriptRecord current = null;
+            List<ScriptRecord> list = Select(database);
 
             foreach (string segment in segments)
             {
@@ -304,7 +304,7 @@ namespace DaJet.Options
 
             if (counter == segments.Length && current != null)
             {
-                if (TrySelect(current.Uuid, out ScriptModel script))
+                if (TrySelect(current.Uuid, out ScriptRecord script))
                 {
                     return script;
                 }

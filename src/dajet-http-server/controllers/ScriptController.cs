@@ -29,9 +29,9 @@ namespace DaJet.Http.Controllers
             InfoBaseModel database = _mapper.Select(infobase);
             if (database is null) { return NotFound(); }
 
-            List<ScriptModel> list = _scripts.Select(database.Uuid);
+            List<ScriptRecord> list = _scripts.Select(database.Uuid);
 
-            foreach (ScriptModel parent in list)
+            foreach (ScriptRecord parent in list)
             {
                 GetScriptChildren(parent);
             }
@@ -46,9 +46,9 @@ namespace DaJet.Http.Controllers
 
             return Content(json);
         }
-        private void GetScriptChildren(ScriptModel parent)
+        private void GetScriptChildren(ScriptRecord parent)
         {
-            List<ScriptModel> list = _scripts.Select(parent);
+            List<ScriptRecord> list = _scripts.Select(parent);
 
             if (list.Count == 0)
             {
@@ -57,7 +57,7 @@ namespace DaJet.Http.Controllers
 
             parent.Children.AddRange(list);
 
-            foreach (ScriptModel child in parent.Children)
+            foreach (ScriptRecord child in parent.Children)
             {
                 GetScriptChildren(child);
             }
@@ -66,7 +66,7 @@ namespace DaJet.Http.Controllers
         [HttpGet("url/{uuid:guid}")]
         public ActionResult SelectScriptUrl([FromRoute] Guid uuid)
         {
-            if (!_scripts.TrySelect(uuid, out ScriptModel script))
+            if (!_scripts.TrySelect(uuid, out ScriptRecord script))
             {
                 return NotFound();
             }
@@ -91,7 +91,7 @@ namespace DaJet.Http.Controllers
         [HttpGet("{uuid:guid}")]
         public ActionResult SelectScript([FromRoute] Guid uuid)
         {
-            if (!_scripts.TrySelect(uuid, out ScriptModel script))
+            if (!_scripts.TrySelect(uuid, out ScriptRecord script))
             {
                 return NotFound();
             }
@@ -107,9 +107,9 @@ namespace DaJet.Http.Controllers
             return Content(json);
         }
         [HttpPost("")]
-        public ActionResult InsertScript([FromBody] ScriptModel script)
+        public ActionResult InsertScript([FromBody] ScriptRecord script)
         {
-            if (script.Parent != Guid.Empty && !_scripts.TrySelect(script.Parent, out ScriptModel _))
+            if (script.Parent != Guid.Empty && !_scripts.TrySelect(script.Parent, out ScriptRecord _))
             {
                 return NotFound();
             }
@@ -122,7 +122,7 @@ namespace DaJet.Http.Controllers
             return Created($"{script.Name}", $"{script.Uuid}");
         }
         [HttpPut("")]
-        public ActionResult UpdateScript([FromBody] ScriptModel script)
+        public ActionResult UpdateScript([FromBody] ScriptRecord script)
         {
             if (!_scripts.Update(script))
             {
@@ -131,7 +131,7 @@ namespace DaJet.Http.Controllers
             return Ok();
         }
         [HttpPut("name")]
-        public ActionResult UpdateScriptName([FromBody] ScriptModel script)
+        public ActionResult UpdateScriptName([FromBody] ScriptRecord script)
         {
             if (!_scripts.UpdateName(script))
             {
@@ -142,7 +142,7 @@ namespace DaJet.Http.Controllers
         [HttpDelete("{uuid:guid}")]
         public ActionResult DeleteScript([FromRoute] Guid uuid)
         {
-            if (!_scripts.TrySelect(uuid, out ScriptModel script))
+            if (!_scripts.TrySelect(uuid, out ScriptRecord script))
             {
                 return NotFound();
             }
@@ -158,11 +158,11 @@ namespace DaJet.Http.Controllers
 
             return Ok();
         }
-        private void DeleteScriptFolder(ScriptModel script)
+        private void DeleteScriptFolder(ScriptRecord script)
         {
-            List<ScriptModel> children = _scripts.Select(script);
+            List<ScriptRecord> children = _scripts.Select(script);
 
-            foreach (ScriptModel child in children)
+            foreach (ScriptRecord child in children)
             {
                 if (child.IsFolder)
                 {
@@ -183,7 +183,7 @@ namespace DaJet.Http.Controllers
             InfoBaseModel database = _mapper.Select(infobase);
             if (database is null) { return NotFound(); }
 
-            ScriptModel script = _scripts.SelectScriptByPath(database.Uuid, path);
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, path);
             if (script is null) { return NotFound(); }
 
             if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(script.Script))
@@ -196,7 +196,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest(error);
             }
 
-            ScriptExecutor executor = new(provider);
+            ScriptExecutor executor = new(provider, _metadataService, _mapper, _scripts);
 
             Dictionary<string, object> parameters = await ParseScriptParametersFromBody();
 

@@ -14,11 +14,13 @@ namespace DaJet.Http.Controllers
     [ApiController][Route("query")]
     public class QueryController : ControllerBase
     {
+        private readonly ScriptDataMapper _scripts;
         private readonly InfoBaseDataMapper _mapper;
         private readonly IMetadataService _metadataService;
-        public QueryController(InfoBaseDataMapper mapper, IMetadataService metadataService)
+        public QueryController(InfoBaseDataMapper mapper, ScriptDataMapper scripts, IMetadataService metadataService)
         {
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
             _metadataService = metadataService ?? throw new ArgumentNullException(nameof(metadataService));
         }
         [HttpPost("prepare")] public ActionResult Generate([FromBody] QueryModel query)
@@ -40,7 +42,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest(error);
             }
 
-            ScriptExecutor executor = new(provider);
+            ScriptExecutor executor = new(provider, _metadataService, _mapper, _scripts);
 
             GeneratorResult result;
 
@@ -82,7 +84,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest(error);
             }
 
-            ScriptExecutor executor = new(provider);
+            ScriptExecutor executor = new(provider, _metadataService, _mapper, _scripts);
 
             List<Dictionary<string, object>> result = new();
 
@@ -136,7 +138,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest(error);
             }
 
-            ScriptExecutor executor = new(provider);
+            ScriptExecutor executor = new(provider, _metadataService, _mapper, _scripts);
 
             GeneratorResult result = new()
             {

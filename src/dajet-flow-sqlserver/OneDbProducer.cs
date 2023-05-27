@@ -29,14 +29,14 @@ namespace DaJet.Flow.SqlServer
         protected override void _Configure()
         {
             InfoBaseModel database = _databases.Select(Target) ?? throw new ArgumentException($"Target not found: {Target}");
-            ScriptModel script = _scripts.SelectScriptByPath(database.Uuid, Script) ?? throw new ArgumentException($"Script not found: {Script}");
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, Script) ?? throw new ArgumentException($"Script not found: {Script}");
 
             if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
             {
                 throw new Exception(error);
             }
 
-            ScriptExecutor executor = new(provider);
+            ScriptExecutor executor = new(provider, _metadata, _databases, _scripts);
             ScriptGenerator = executor.PrepareScript(script.Script);
             ScriptParameters = executor.Parameters;
 
