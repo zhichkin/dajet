@@ -62,6 +62,23 @@ namespace DaJet.Scripting
             script.AppendLine().Append("LIMIT ");
             Visit(node.Expression, in script);
         }
+        protected override void Visit(in TableReference node, in StringBuilder script)
+        {
+            if (node.Binding is EntityDefinition table)
+            {
+                script.Append("UNNEST(").Append(table.TableName).Append(')');
+
+                if (!string.IsNullOrEmpty(node.Alias))
+                {
+                    script.Append(" AS ").Append(node.Alias);
+                }
+            }
+            else
+            {
+                base.Visit(in node, in script);
+            }
+        }
+
         private bool IsRecursive(in CommonTableExpression cte)
         {
             if (IsRecursive(in cte, cte.Expression))
@@ -870,7 +887,70 @@ namespace DaJet.Scripting
 
         public override void Visit(in CreateTypeStatement node, in StringBuilder script)
         {
-            throw new NotImplementedException();
+            script.Append("CREATE TYPE \"").Append(node.Identifier).AppendLine("\" AS");
+            script.AppendLine("(");
+
+            for (int i = 0; i < node.Columns.Count; i++)
+            {
+                ColumnDefinition column = node.Columns[i];
+
+                if (column.Type is not TypeIdentifier info)
+                {
+                    continue;
+                }
+
+                if (i > 0) { script.AppendLine(","); }
+
+                if (info.Binding is Type type)
+                {
+                    if (type == typeof(bool)) // boolean
+                    {
+                        script.Append('"').Append('_').Append(column.Name).Append("_L").Append('"').Append(' ').Append("boolean");
+                    }
+                    else if (type == typeof(decimal)) // number(p,s)
+                    {
+                        script.Append('"').Append('_').Append(column.Name).Append("_N").Append('"')
+                            .Append(' ').Append("numeric(").Append(info.Qualifier1).Append(',').Append(info.Qualifier2).Append(')');
+                    }
+                    else if (type == typeof(DateTime)) // datetime
+                    {
+                        script.Append('"').Append('_').Append(column.Name).Append("_T").Append('"').Append(' ').Append("timestamp without time zone");
+                    }
+                    else if (type == typeof(string)) // string(n)
+                    {
+                        script.Append('"').Append('_').Append(column.Name).Append("_S").Append('"').Append(' ').Append("mvarchar")
+                            .Append((info.Qualifier1 > 0) ? "(" + info.Qualifier1.ToString() + ")" : string.Empty);
+                    }
+                    else if (type == typeof(byte[])) // binary
+                    {
+                        script.Append('"').Append('_').Append(column.Name).Append("_B").Append('"').Append(' ').Append("bytea");
+                    }
+                    else if (type == typeof(Guid)) // uuid
+                    {
+                        script.Append('"').Append('_').Append(column.Name).Append("_U").Append('"').Append(' ').Append("bytea");
+                    }
+                    else if (type == typeof(Entity)) // entity - multiple reference type
+                    {
+                        script.Append('"').Append('_').Append(column.Name).Append("_C").Append('"').Append(' ').Append("bytea").AppendLine(",");
+                        script.Append('"').Append('_').Append(column.Name).Append("_R").Append('"').Append(' ').Append("bytea");
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Unsupported column data type");
+                    }
+                }
+                else if (info.Binding is Entity entity) // single reference type, example: Справочник.Номенклатура
+                {
+                    script.Append('"').Append('_').Append(column.Name).Append("_R_").Append(entity.TypeCode).Append('"').Append(' ').Append("bytea");
+                }
+                else //TODO: union type
+                {
+                    throw new InvalidOperationException("Unknown column data type");
+                    //script.Append('_').Append(column.Name).Append("_D").Append(' ').Append("bytea");
+                }
+            }
+
+            script.AppendLine().AppendLine(")");
         }
     }
 }

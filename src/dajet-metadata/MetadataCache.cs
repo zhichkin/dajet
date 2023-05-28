@@ -342,7 +342,16 @@ namespace DaJet.Metadata
         }
         public IDbConfigurator GetDbConfigurator()
         {
-            return new MsDbConfigurator(this);
+            if (_provider == DatabaseProvider.SqlServer)
+            {
+                return new MsDbConfigurator(this);
+            }
+            else if (_provider == DatabaseProvider.PostgreSql)
+            {
+                return new PgDbConfigurator(this);
+            }
+
+            throw new InvalidOperationException($"Unsupported database provider: {_provider}");
         }
         public IQueryExecutor CreateQueryExecutor()
         {

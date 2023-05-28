@@ -53,11 +53,11 @@ namespace DaJet.Data
 
             return columns;
         }
-        public bool TryCreateType(in TypeDefinition type)
+        public bool TryCreateType(in EntityDefinition type)
         {
             throw new NotImplementedException();
         }
-        public TypeDefinition GetTypeDefinition(in string identifier)
+        public EntityDefinition GetTypeDefinition(in string identifier)
         {
             string sql = string.Format(TYPE_EXISTS_COMMAND, identifier);
             
@@ -67,7 +67,7 @@ namespace DaJet.Data
 
             if (columns.Count == 0) { return null; }
 
-            TypeDefinition type = new() { Name = identifier };
+            EntityDefinition type = new() { Name = identifier };
 
             StringSplitOptions splitOptions = StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries;
 

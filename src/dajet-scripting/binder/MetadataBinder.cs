@@ -63,14 +63,14 @@ namespace DaJet.Scripting
 
             if (ScriptHelper.IsDataType(identifier.Identifier, out Type type))
             {
-                // Guid, bool, decimal, DateTime, string, byte[], Entity, TypeDefinition (table)
+                // Guid, bool, decimal, DateTime, string, byte[], Entity, EntityDefinition (table)
                 identifier.Binding = type;
             }
             else
             {
                 MetadataObject table = metadata.GetMetadataObject(identifier.Identifier);
 
-                if (table is TypeDefinition definition)
+                if (table is EntityDefinition definition)
                 {
                     identifier.Binding = definition;
                 }
@@ -98,7 +98,7 @@ namespace DaJet.Scripting
             {
                 if (node is DeclareStatement declare)
                 {
-                    if (declare.Type.Binding is TypeDefinition definition)
+                    if (declare.Type.Binding is EntityDefinition definition)
                     {
                         definition.TableName = declare.Name;
                     }
@@ -132,7 +132,7 @@ namespace DaJet.Scripting
                 {
                     if (declare.Name == variable.Identifier)
                     {
-                        if (declare.Type.Binding is TypeDefinition definition)
+                        if (declare.Type.Binding is EntityDefinition definition)
                         {
                             variable.Binding = definition;
                         }

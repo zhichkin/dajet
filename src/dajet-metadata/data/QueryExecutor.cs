@@ -24,13 +24,10 @@ namespace DaJet.Data
                 return new SqliteQueryExecutor(connectionString);
             }
 
-            return null!;
+            return null;
         }
         protected readonly string _connectionString;
-        public QueryExecutor(string connectionString)
-        {
-            _connectionString = connectionString;
-        }
+        public QueryExecutor(string connectionString) { _connectionString = connectionString; }
         public abstract string GetDatabaseName();
         protected abstract DbConnection GetDbConnection();
         protected abstract void ConfigureQueryParameters(in DbCommand command, in Dictionary<string, object> parameters);

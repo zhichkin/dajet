@@ -5,7 +5,6 @@ using DaJet.Options;
 using DaJet.Scripting.Model;
 using System.Data;
 using System.Globalization;
-using TypeDefinition = DaJet.Metadata.Model.TypeDefinition;
 
 namespace DaJet.Scripting
 {
@@ -94,7 +93,7 @@ namespace DaJet.Scripting
                 {
                     // 0. UDT parameter must (!) be provided by caller - it has no default value anyway
 
-                    if (declare.Type.Binding is TypeDefinition) { continue; }
+                    if (declare.Type.Binding is EntityDefinition) { continue; }
 
                     // 1. Set default value if parameter value is not initialized in script.
 
@@ -347,7 +346,7 @@ namespace DaJet.Scripting
 
                 string key = variable.Identifier[1..];
 
-                if (variable.Binding is TypeDefinition type)
+                if (variable.Binding is EntityDefinition type)
                 {
                     Parameters[key] = new TableValuedParameter()
                     {
@@ -426,7 +425,7 @@ namespace DaJet.Scripting
         {
             //MetadataBinder binder = new();
 
-            TypeDefinition definition = new()
+            EntityDefinition definition = new()
             {
                 Name = statement.Identifier
             };
