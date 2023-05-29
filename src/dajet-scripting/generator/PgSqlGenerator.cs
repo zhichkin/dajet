@@ -78,6 +78,31 @@ namespace DaJet.Scripting
                 base.Visit(in node, in script);
             }
         }
+        protected override void Visit(in List<ColumnMap> mapping, in StringBuilder script)
+        {
+            ColumnMap column;
+
+            for (int i = 0; i < mapping.Count; i++)
+            {
+                column = mapping[i];
+
+                if (i > 0) { script.Append(", "); }
+
+                if (column.TypeName.StartsWith("char") || column.TypeName.StartsWith("text"))
+                {
+                    script.Append("CAST(").Append(column.Name).Append(" AS mvarchar)"); // table variable column trick
+                }
+                else
+                {
+                    script.Append(column.Name);
+                }
+
+                if (!string.IsNullOrEmpty(column.Alias))
+                {
+                    script.Append(" AS ").Append(column.Alias);
+                }
+            }
+        }
 
         private bool IsRecursive(in CommonTableExpression cte)
         {
@@ -905,34 +930,34 @@ namespace DaJet.Scripting
                 {
                     if (type == typeof(bool)) // boolean
                     {
-                        script.Append('"').Append('_').Append(column.Name).Append("_L").Append('"').Append(' ').Append("boolean");
+                        script.Append('"').Append('_').Append(column.Name).Append("_l").Append('"').Append(' ').Append("boolean");
                     }
                     else if (type == typeof(decimal)) // number(p,s)
                     {
-                        script.Append('"').Append('_').Append(column.Name).Append("_N").Append('"')
+                        script.Append('"').Append('_').Append(column.Name).Append("_n").Append('"')
                             .Append(' ').Append("numeric(").Append(info.Qualifier1).Append(',').Append(info.Qualifier2).Append(')');
                     }
                     else if (type == typeof(DateTime)) // datetime
                     {
-                        script.Append('"').Append('_').Append(column.Name).Append("_T").Append('"').Append(' ').Append("timestamp without time zone");
+                        script.Append('"').Append('_').Append(column.Name).Append("_t").Append('"').Append(' ').Append("timestamp without time zone");
                     }
                     else if (type == typeof(string)) // string(n)
                     {
-                        script.Append('"').Append('_').Append(column.Name).Append("_S").Append('"').Append(' ').Append("mvarchar")
-                            .Append((info.Qualifier1 > 0) ? "(" + info.Qualifier1.ToString() + ")" : string.Empty);
+                        script.Append('"').Append('_').Append(column.Name).Append("_s").Append('"').Append(' ')
+                            .Append((info.Qualifier1 > 0) ? "varchar(" + info.Qualifier1.ToString() + ")" : "text");
                     }
                     else if (type == typeof(byte[])) // binary
                     {
-                        script.Append('"').Append('_').Append(column.Name).Append("_B").Append('"').Append(' ').Append("bytea");
+                        script.Append('"').Append('_').Append(column.Name).Append("_b").Append('"').Append(' ').Append("bytea");
                     }
                     else if (type == typeof(Guid)) // uuid
                     {
-                        script.Append('"').Append('_').Append(column.Name).Append("_U").Append('"').Append(' ').Append("bytea");
+                        script.Append('"').Append('_').Append(column.Name).Append("_u").Append('"').Append(' ').Append("bytea");
                     }
                     else if (type == typeof(Entity)) // entity - multiple reference type
                     {
-                        script.Append('"').Append('_').Append(column.Name).Append("_C").Append('"').Append(' ').Append("bytea").AppendLine(",");
-                        script.Append('"').Append('_').Append(column.Name).Append("_R").Append('"').Append(' ').Append("bytea");
+                        script.Append('"').Append('_').Append(column.Name).Append("_c").Append('"').Append(' ').Append("bytea").AppendLine(",");
+                        script.Append('"').Append('_').Append(column.Name).Append("_r").Append('"').Append(' ').Append("bytea");
                     }
                     else
                     {
@@ -941,12 +966,12 @@ namespace DaJet.Scripting
                 }
                 else if (info.Binding is Entity entity) // single reference type, example: Справочник.Номенклатура
                 {
-                    script.Append('"').Append('_').Append(column.Name).Append("_R_").Append(entity.TypeCode).Append('"').Append(' ').Append("bytea");
+                    script.Append('"').Append('_').Append(column.Name).Append("_r_").Append(entity.TypeCode).Append('"').Append(' ').Append("bytea");
                 }
                 else //TODO: union type
                 {
                     throw new InvalidOperationException("Unknown column data type");
-                    //script.Append('_').Append(column.Name).Append("_D").Append(' ').Append("bytea");
+                    //script.Append('_').Append(column.Name).Append("_d").Append(' ').Append("bytea");
                 }
             }
 

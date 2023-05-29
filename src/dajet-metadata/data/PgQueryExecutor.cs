@@ -1,6 +1,6 @@
-﻿using DaJet.Metadata;
-using Npgsql;
+﻿using Npgsql;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Reflection;
@@ -10,29 +10,26 @@ namespace DaJet.Data.PostgreSql
     public sealed class PgQueryExecutor : QueryExecutor
     {
         private readonly NpgsqlDataSource _source;
-        private readonly IMetadataProvider _metadata;
-        private readonly PgDbConfigurator _configurator;
         public PgQueryExecutor(string connectionString) : base(connectionString)
         {
-            _source = new NpgsqlDataSourceBuilder(_connectionString).Build();
+            PgDbConfigurator.InitializeUserDefinedTypes(in _connectionString);
+
+            NpgsqlDataSourceBuilder builder = new(_connectionString);
+
+            string database = new NpgsqlConnectionStringBuilder(_connectionString).Database;
+
+            Dictionary<string, Type> types = PgDbConfigurator.GetUserDefinedTypes(in database);
+
+            if (types is not null)
+            {
+                foreach (var item in types)
+                {
+                    builder.MapComposite(item.Value, item.Key);
+                }
+            }
+            
+            _source = builder.Build();
         }
-        //public PgQueryExecutor(IMetadataProvider provider) : base(provider.ConnectionString)
-        //{
-        //    _metadata = provider;
-        //    _configurator = new(_metadata);
-        //    _configurator.InitializeUserDefinedTypes();
-
-        //    NpgsqlDataSourceBuilder builder = new(_connectionString);
-
-        //    foreach (EntityDefinition definition in _configurator.SelectTypeDefinitions())
-        //    {
-        //        Type type = _configurator.GetUserDefinedType(definition.Name);
-
-        //        _ = builder.MapComposite(type, definition.Name);
-        //    }
-
-        //    _source = builder.Build();
-        //}
         public override string GetDatabaseName()
         {
             string databaseName = new NpgsqlConnectionStringBuilder(_connectionString).Database;
@@ -54,7 +51,7 @@ namespace DaJet.Data.PostgreSql
             {
                 if (item.Value is TableValuedParameter tvp)
                 {
-                    List<object> records = CreateTableParameter(in tvp);
+                    object records = CreateTableParameter(in tvp);
 
                     _ = _command.Parameters.AddWithValue(tvp.Name, records);
                 }
@@ -64,11 +61,23 @@ namespace DaJet.Data.PostgreSql
                 }
             }
         }
-        private List<object> CreateTableParameter(in TableValuedParameter tvp)
+        private object CreateTableParameter(in TableValuedParameter tvp)
         {
-            List<object> records = new();
+            Type type = PgDbConfigurator.GetUserDefinedType(GetDatabaseName(), tvp.DbName);
 
-            Type type = _configurator.GetUserDefinedType(tvp.DbName);
+            if (type is null)
+            {
+                throw new InvalidOperationException($"Type [{tvp.DbName}] is not found.");
+            }
+
+            Type list = typeof(List<>).MakeGenericType(new Type[] { type });
+            
+            object records = Activator.CreateInstance(list);
+
+            if (records is not IList result)
+            {
+                throw new InvalidOperationException($"Failed to create instance of [{list}]");
+            }
 
             foreach (var record in tvp.Value)
             {
@@ -79,6 +88,11 @@ namespace DaJet.Data.PostgreSql
                 foreach (var column in record)
                 {
                     PropertyInfo property = type.GetProperty(column.Key);
+
+                    if (property is null)
+                    {
+                        throw new InvalidOperationException($"Property [{column.Key}] is not found.");
+                    }
 
                     if (column.Value is null) { throw new InvalidOperationException("NULL values is not allowed"); }
                     else if (column.Value is bool boolean) { property.SetValue(row, boolean); }
@@ -94,10 +108,10 @@ namespace DaJet.Data.PostgreSql
                     index++;
                 }
 
-                records.Add(row);
+                result.Add(row);
             }
 
-            return records;
+            return result;
         }
     }
 }
