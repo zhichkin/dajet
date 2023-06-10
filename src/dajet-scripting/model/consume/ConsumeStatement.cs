@@ -8,5 +8,6 @@
         public FromClause From { get; set; }
         public WhereClause Where { get; set; }
         public OrderClause Order { get; set; }
+        public bool StrictOrderRequired { get; set; } // do not use hints (ms) READPAST or (pg) SKIP LOCKED
     }
 }

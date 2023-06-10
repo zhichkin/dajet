@@ -80,6 +80,8 @@ namespace DaJet.Scripting
             { "OF", TokenType.OF },
             { "DROP", TokenType.DROP },
             { "CONSUME", TokenType.CONSUME },
+            { "STRICT", TokenType.STRICT },
+            { "RANDOM", TokenType.RANDOM },
             { "IMPORT", TokenType.IMPORT }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()

@@ -1583,6 +1583,30 @@ namespace DaJet.Scripting
             Skip(TokenType.Comment);
             consume.Top = top_clause();
             Skip(TokenType.Comment);
+
+            if (consume.Top is null)
+            {
+                throw new FormatException("CONSUME: TOP keyword expected.");
+            }
+
+            if (Match(TokenType.WITH))
+            {
+                if (Match(TokenType.STRICT))
+                {
+                    consume.StrictOrderRequired = true;
+                }
+                else if (Match(TokenType.RANDOM))
+                {
+                    consume.StrictOrderRequired = false;
+                }
+                else
+                {
+                    throw new FormatException($"CONSUME: STRICT or RANDOM keyword expected.");
+                }
+
+                if (!Match(TokenType.ORDER)) { throw new FormatException($"CONSUME: (STRICT or RANDOM) ORDER keyword expected."); }
+            }
+
             select_columns(in consume);
             Skip(TokenType.Comment);
             if (Match(TokenType.FROM)) { consume.From = from_clause(); }

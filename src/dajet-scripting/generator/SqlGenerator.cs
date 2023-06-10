@@ -198,12 +198,6 @@ namespace DaJet.Scripting
             }
 
             if (node.From is not null) { Visit(node.From, in script); }
-
-            if (!string.IsNullOrEmpty(node.Hints))
-            {
-                script.Append(' ').Append(node.Hints); // TODO: (ms) refactor this hack from CONSUME command
-            }
-
             if (node.Where is not null) { Visit(node.Where, in script); }
             if (node.Group is not null) { Visit(node.Group, in script); }
             if (node.Having is not null) { Visit(node.Having, in script); }
@@ -1224,6 +1218,26 @@ namespace DaJet.Scripting
             }
 
             Visit(in column, in script);
+        }
+
+        protected bool TryGetConsumeTargetTable(in FromClause from, out TableReference table)
+        {
+            return TryGetConsumeTargetTableRecursively(from.Expression, out table);
+        }
+        protected bool TryGetConsumeTargetTableRecursively(in SyntaxNode node, out TableReference table)
+        {
+            table = null;
+
+            if (node is TableJoinOperator join)
+            {
+                return TryGetConsumeTargetTableRecursively(join.Expression1, out table);
+            }
+            else if (node is TableReference target)
+            {
+                table = target;
+            }
+
+            return (table is not null);
         }
     }
 }

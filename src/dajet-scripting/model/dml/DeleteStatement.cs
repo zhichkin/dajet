@@ -7,5 +7,6 @@
         public TableReference Target { get; set; }
         public WhereClause Where { get; set; }
         public OutputClause Output { get; set; }
+        public FromClause From { get; set; } // MS SQL Server only
     }
 }

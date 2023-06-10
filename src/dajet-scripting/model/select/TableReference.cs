@@ -10,5 +10,6 @@
         {
             return $"[{Token}: {Identifier}]";
         }
+        public string Hints { get; set; } // ms like WITH table hints
     }
 }
