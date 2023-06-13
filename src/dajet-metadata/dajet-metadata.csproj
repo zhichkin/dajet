@@ -5,7 +5,7 @@
     <RootNamespace>DaJet.Metadata</RootNamespace>
     <AssemblyName>DaJet.Metadata</AssemblyName>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>4.3.1</Version>
+    <Version>4.3.2</Version>
     <Authors>Zhichkin</Authors>
     <Description>Library to read 1C:Enterprise 8 metadata from Microsoft SQL Server or PostgreSQL databases.</Description>
     <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>

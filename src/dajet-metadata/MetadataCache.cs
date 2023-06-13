@@ -1550,6 +1550,8 @@ namespace DaJet.Metadata
         }
         public bool TryApplyExtension(in ExtensionInfo extension, out string error)
         {
+            //TODO: extensive error and logging handling !!!
+
             ConfigFileOptions options = new()
             {
                 IsExtension = true,
@@ -1592,49 +1594,26 @@ namespace DaJet.Metadata
             {
                 IMetadataObjectParser parser = CreateExtensionParser(type.Key);
 
-                if (parser == null)
-                {
-                    continue;
-                }
-
-                if (type.Key == MetadataTypes.SharedProperty)
-                {
-                    continue;
-                }
-
-                if (type.Key == MetadataTypes.NamedDataTypeSet)
-                {
-                    continue; //TODO: (!) заполнить коллекцию MetadataCache._references.
-                }
-
+                if (parser is null) { continue; }
+                if (type.Key == MetadataTypes.SharedProperty) { continue; }
+                if (type.Key == MetadataTypes.NamedDataTypeSet) { continue; } //TODO: (!) заполнить коллекцию MetadataCache._references.
+                
                 foreach (var uuid in type.Value)
                 {
-                    if (!extension.FileMap.TryGetValue(uuid, out fileName))
-                    {
-                        continue;
-                    }
+                    if (!extension.FileMap.TryGetValue(uuid, out fileName)) { continue; }
 
-                    if (string.IsNullOrWhiteSpace(fileName))
-                    {
-                        continue;
-                    }
+                    if (string.IsNullOrWhiteSpace(fileName)) { continue; }
 
                     options.FileName = fileName;
                     options.MetadataUuid = uuid;
 
-                    if (!ExtendsDatabaseSchema(in database, in options, in parser))
-                    {
-                        continue;
-                    }
+                    if (!ExtendsDatabaseSchema(in database, in options, in parser)) { continue; }
 
                     parser.Parse(in options, out MetadataInfo info);
 
                     MetadataItemEx item = new(extension.Identity, info.MetadataType, info.MetadataUuid, info.Name, fileName, info.MetadataParent);
 
-                    if (!TryApplyMetadataObject(in item, out string message))
-                    {
-                        error += $"{message}{Environment.NewLine}";
-                    }
+                    ApplyMetadataObjectExtension(in item);
                 }
             }
 
@@ -1688,69 +1667,65 @@ namespace DaJet.Metadata
 
             return false;
         }
-        private bool TryApplyMetadataObject(in MetadataItemEx item, out string error)
+        private void ApplyMetadataObjectExtension(in MetadataItemEx item)
         {
-            error = string.Empty;
-            
             //TODO: (!) заполнить коллекции _references, _characteristics, _owners и _registers.
 
-            if (item.Parent == Guid.Empty) // Синхронизация объектов по имени
+            if (!TryApplyExtensionByUuid(in item)) { ApplyExtensionByName(in item); }
+        }
+        private bool TryApplyExtensionByUuid(in MetadataItemEx item)
+        {
+            if (!_cache.TryGetValue(item.Type, out Dictionary<Guid, WeakReference<MetadataObject>> items))
             {
-                if (_names.TryGetValue(item.Type, out Dictionary<string, Guid> names))
+                return false; // Основная конфигурация не содержит данный тип метаданных
+            }
+
+            if (!items.ContainsKey(item.Parent))
+            {
+                return false; // Основная конфигурация не содержит объект метаданных с таким uuid - нужно применять по имени
+            }
+
+            _ = _extended.TryAdd(item.Parent, item);
+
+            return true;
+        }
+        private void ApplyExtensionByName(in MetadataItemEx item)
+        {
+            if (_names.TryGetValue(item.Type, out Dictionary<string, Guid> names))
+            {
+                // Основная конфигурация содержит данный тип метаданных - сопоставляем по имени
+
+                if (names.TryGetValue(item.Name, out Guid parent))
                 {
-                    if (names.TryGetValue(item.Name, out Guid parent))
-                    {
-                        // Заимствованный из основной конфигурации объект
+                    // Заимствованный из основной конфигурации объект
 
-                        _ = _extended.TryAdd(parent, item.SetParent(parent));
-
-                        return true;
-                    }
-                    else
-                    {
-                        // Собственный объект расширения - новый для основной конфигурации
-
-                        _cache[item.Type].Add(item.Uuid, new WeakReference<MetadataObject>(null));
-
-                        AddName(item.Type, item.Uuid, item.Name);
-                        
-                        _ = _extended.TryAdd(item.Uuid, item.SetParent(item.Uuid));
-                    }
+                    _ = _extended.TryAdd(parent, item.SetParent(parent));
                 }
-                else // Основная конфигурация не содержит данный тип метаданных
+                else
                 {
-                    _ = _cache.TryAdd(item.Type, new Dictionary<Guid, WeakReference<MetadataObject>>()
-                    {
-                        { item.Uuid, new WeakReference<MetadataObject>(null) }
-                    });
-                    
+                    // Собственный объект расширения - новый для основной конфигурации
+
+                    _cache[item.Type].Add(item.Uuid, new WeakReference<MetadataObject>(null));
+
                     AddName(item.Type, item.Uuid, item.Name);
 
                     _ = _extended.TryAdd(item.Uuid, item.SetParent(item.Uuid));
                 }
             }
-            else // Синхронизация объектов по внутреннему идентификатору
+            else // Основная конфигурация не содержит данный тип метаданных - добавляем объект метаданных
             {
-                // Должны присутствовать в основной конфигруации - иначе ошибка !!!
+                // Собственный объект расширения - новый для основной конфигурации
 
-                if (!_cache.TryGetValue(item.Type, out Dictionary<Guid, WeakReference<MetadataObject>> items))
+                _ = _cache.TryAdd(item.Type, new Dictionary<Guid, WeakReference<MetadataObject>>()
                 {
-                    error = $"Объект метаданных \"{MetadataTypes.ResolveNameRu(item.Type)}.{item.Name}\" не найден в основной конфигурации!";
-                    return false;
-                }
+                    { item.Uuid, new WeakReference<MetadataObject>(null) }
+                });
                 
-                if (!items.ContainsKey(item.Parent))
-                {
-                    error = $"Объект метаданных \"{MetadataTypes.ResolveNameRu(item.Type)}.{item.Name}\" не найден в основной конфигурации!";
-                    return false;
-                }
-
-                _ = _extended.TryAdd(item.Parent, item);
+                AddName(item.Type, item.Uuid, item.Name);
+                
+                _ = _extended.TryAdd(item.Uuid, item.SetParent(item.Uuid));
             }
-
-            return true;
         }
-
         #endregion
 
         #region "USER API METHODS"
