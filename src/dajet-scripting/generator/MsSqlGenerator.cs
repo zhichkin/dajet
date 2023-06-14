@@ -201,6 +201,8 @@ namespace DaJet.Scripting
 
                 Visit(node.Columns[i], in script);
             }
+
+            if (node.Into is not null) { Visit(node.Into, in script); } //TODO: change IntoClause.Table.Binding to TableVariableExpression
         }
         #endregion
 

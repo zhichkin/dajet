@@ -4,5 +4,6 @@
     {
         public OutputClause() { Token = TokenType.OUTPUT; }
         public List<ColumnExpression> Columns { get; set; } = new();
+        public IntoClause Into { get; set; }
     }
 }

@@ -506,6 +506,8 @@ namespace DaJet.Scripting
             Skip(TokenType.Comment);
             select_clause(in select);
             Skip(TokenType.Comment);
+            if (Match(TokenType.INTO)) { select.Into = into_clause(select.Select); }
+            Skip(TokenType.Comment);
             if (Match(TokenType.FROM)) { select.From = from_clause(); }
             Skip(TokenType.Comment);
             if (Match(TokenType.WHERE)) { select.Where = where_clause(); }
@@ -661,6 +663,22 @@ namespace DaJet.Scripting
             return clause;
         }
 
+        private IntoClause into_clause(in List<ColumnExpression> columns)
+        {
+            if (!Match(TokenType.Identifier))
+            {
+                throw new FormatException("INTO: table identifier expected.");
+            }
+            
+            return new IntoClause()
+            {
+                Table = new TableReference()
+                {
+                    Identifier = Previous().Lexeme
+                },
+                Columns = columns
+            };
+        }
         private FromClause from_clause() { return new FromClause() { Expression = join() }; }
         private OnClause on_clause() { return new OnClause() { Expression = predicate() }; }
         private WhereClause where_clause() { return new WhereClause() { Expression = predicate() }; }
@@ -1473,6 +1491,10 @@ namespace DaJet.Scripting
                 Skip(TokenType.Comment);
             }
 
+            Skip(TokenType.Comment);
+            if (Match(TokenType.INTO)) { output.Into = into_clause(output.Columns); }
+            Skip(TokenType.Comment);
+
             return output;
         }
         #endregion
@@ -1584,10 +1606,7 @@ namespace DaJet.Scripting
             consume.Top = top_clause();
             Skip(TokenType.Comment);
 
-            if (consume.Top is null)
-            {
-                throw new FormatException("CONSUME: TOP keyword expected.");
-            }
+            if (consume.Top is null) { throw new FormatException("CONSUME: TOP keyword expected."); }
 
             if (Match(TokenType.WITH))
             {
@@ -1607,7 +1626,10 @@ namespace DaJet.Scripting
                 if (!Match(TokenType.ORDER)) { throw new FormatException($"CONSUME: (STRICT or RANDOM) ORDER keyword expected."); }
             }
 
+            Skip(TokenType.Comment);
             select_columns(in consume);
+            Skip(TokenType.Comment);
+            if (Match(TokenType.INTO)) { consume.Into = into_clause(consume.Columns); }
             Skip(TokenType.Comment);
             if (Match(TokenType.FROM)) { consume.From = from_clause(); }
             Skip(TokenType.Comment);

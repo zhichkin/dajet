@@ -14,5 +14,6 @@
         // PG hack = FOR UPDATE SKIP LOCKED
         // MS hack = WITH (ROWLOCK, READPAST)
         public string Hints { get; set; }
+        public IntoClause Into { get; set; }
     }
 }

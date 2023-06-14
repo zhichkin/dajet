@@ -49,6 +49,7 @@ namespace DaJet.Scripting
             else if (node is ColumnReference) { JoinScope(node); }
             else if (node is TypeIdentifier) { JoinGlobalScope(node); }
             else if (node is VariableReference) { JoinGlobalScope(node); }
+            else if (node is IntoClause into) { CreateVirtualTableExpression(in into); }
         }
         public void SayGoodbye(SyntaxNode node)
         {
@@ -73,7 +74,7 @@ namespace DaJet.Scripting
         {
             if (_scope == null)
             {
-                _scope = new ScriptScope(type, owner, null!);
+                _scope = new ScriptScope(type, owner, null);
                 _current = _scope;
             }
             else
@@ -103,6 +104,23 @@ namespace DaJet.Scripting
             {
                 _current = _current.Parent;
             }
+        }
+        private void CreateVirtualTableExpression(in IntoClause target)
+        {
+            TemporaryTableExpression table = new()
+            {
+                Name = target.Table.Identifier,
+                Expression = new SelectExpression()
+                {
+                    Select = target.Columns,
+                    From = new FromClause()
+                    {
+                        Expression = target.Table
+                    }
+                }
+            };
+
+            _scope?.Children.Add(new ScriptScope(ScopeType.Node, table, _scope));
         }
     }
 }

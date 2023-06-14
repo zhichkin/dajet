@@ -45,6 +45,7 @@ namespace DaJet.Scripting
                 Visit(node.Select[i], in script);
             }
 
+            if (node.Into is not null) { Visit(node.Into, in script); }
             if (node.From is not null) { Visit(node.From, in script); }
             if (node.Where is not null) { Visit(node.Where, in script); }
             if (node.Group is not null) { Visit(node.Group, in script); }
@@ -61,6 +62,11 @@ namespace DaJet.Scripting
         {
             script.AppendLine().Append("LIMIT ");
             Visit(node.Expression, in script);
+        }
+        protected override void Visit(in IntoClause node, in StringBuilder script)
+        {
+            script.AppendLine().Append("INTO TEMPORARY TABLE ");
+            Visit(node.Table, in script);
         }
         protected override void Visit(in TableReference node, in StringBuilder script)
         {

@@ -112,6 +112,11 @@ namespace DaJet.Scripting
                 throw new InvalidOperationException("SELECT statement is not defined.");
             }
 
+            if (select.Into is not null)
+            {
+                return; // SELECT ... INTO ... statement does not return any records
+            }
+
             foreach (ColumnExpression column in select.Select)
             {
                 DataMapper.Map(in column, in mapper);
@@ -126,6 +131,11 @@ namespace DaJet.Scripting
         }
         private void ConfigureDataMapper(in OutputClause output, in EntityMap mapper)
         {
+            if (output.Into is not null)
+            {
+                return; // OUTPUT ... INTO ... statement does not return any records
+            }
+
             foreach (ColumnExpression column in output.Columns)
             {
                 DataMapper.Map(in column, in mapper);
@@ -197,6 +207,7 @@ namespace DaJet.Scripting
                 Visit(node.Select[i], in script);
             }
 
+            if (node.Into is not null) { Visit(node.Into, in script); }
             if (node.From is not null) { Visit(node.From, in script); }
             if (node.Where is not null) { Visit(node.Where, in script); }
             if (node.Group is not null) { Visit(node.Group, in script); }
@@ -371,6 +382,11 @@ namespace DaJet.Scripting
             script.Append(" TOP ").Append("(");
             Visit(node.Expression, in script);
             script.Append(")");
+        }
+        protected virtual void Visit(in IntoClause node, in StringBuilder script)
+        {
+            script.AppendLine().Append("INTO ");
+            Visit(node.Table, in script);
         }
         protected virtual void Visit(in FromClause node, in StringBuilder script)
         {
