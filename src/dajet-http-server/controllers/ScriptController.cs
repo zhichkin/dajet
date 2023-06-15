@@ -211,16 +211,24 @@ namespace DaJet.Http.Controllers
             List<Dictionary<string, object>> result = new();
             try
             {
-                foreach (var entity in executor.ExecuteReader(script.Script))
+                List<List<Dictionary<string, object>>> batch = executor.Execute(script.Script);
+
+                if (batch.Count > 0)
                 {
-                    foreach (var item in entity)
+                    List<Dictionary<string, object>> table = batch[0];
+
+                    foreach (Dictionary<string, object> record in table)
                     {
-                        if (item.Value is Entity value)
+                        foreach (var column in record)
                         {
-                            entity[item.Key] = value.ToString();
+                            if (column.Value is Entity value)
+                            {
+                                record[column.Key] = value.ToString();
+                            }
                         }
                     }
-                    result.Add(entity);
+
+                    result = table;
                 }
             }
             catch (Exception exception)

@@ -36,21 +36,33 @@ namespace DaJet.Scripting
                         
                         //TODO: implement outside of this class !!!
                         ConfigureDataMapper(in select, result.Mapper);
+
+                        EntityMap mapper = new();
+                        ConfigureDataMapper(in select, mapper);
+                        if (mapper.Properties.Count > 0)
+                        {
+                            result.Commands.Add(new ScriptCommand()
+                            {
+                                Mapper = mapper
+                            });
+                        }
                     }
                     else if (node is ConsumeStatement consume)
                     {
                         Visit(in consume, in script);
 
                         //TODO: implement outside of this class !!!
-                        ConfigureDataMapper(in consume, result.Mapper);
-                    }
-                    else if (node is InsertStatement insert)
-                    {
-                        Visit(in insert, in script);
-                    }
-                    else if (node is UpdateStatement update)
-                    {
-                        Visit(in update, in script);
+                        //ConfigureDataMapper(in consume, result.Mapper);
+
+                        EntityMap mapper = new();
+                        ConfigureDataMapper(in consume, mapper);
+                        if (mapper.Properties.Count > 0)
+                        {
+                            result.Commands.Add(new ScriptCommand()
+                            {
+                                Mapper = mapper
+                            });
+                        }
                     }
                     else if (node is DeleteStatement delete)
                     {
@@ -60,20 +72,24 @@ namespace DaJet.Scripting
                         {
                             //TODO: implement outside of this class !!!
                             ConfigureDataMapper(delete.Output, result.Mapper);
+
+                            EntityMap mapper = new();
+                            ConfigureDataMapper(delete.Output, mapper);
+                            if (mapper.Properties.Count > 0)
+                            {
+                                result.Commands.Add(new ScriptCommand()
+                                {
+                                    Mapper = mapper
+                                });
+                            }
                         }
                     }
-                    else if (node is UpsertStatement upsert)
-                    {
-                        Visit(in upsert, in script);
-                    }
+                    else if (node is InsertStatement insert) { Visit(in insert, in script); }
+                    else if (node is UpdateStatement update) { Visit(in update, in script); }
+                    else if (node is UpsertStatement upsert) { Visit(in upsert, in script); }
                     else
                     {
                         Visit(in node, in script);
-                    }
-
-                    if (!(node is DeclareStatement || node is CommentStatement))
-                    {
-                        script.Append(';');
                     }
                 }
 
@@ -124,6 +140,11 @@ namespace DaJet.Scripting
         }
         private void ConfigureDataMapper(in ConsumeStatement statement, in EntityMap mapper)
         {
+            if (statement.Into is not null)
+            {
+                return; // CONSUME ... INTO ... statement returns data into temporary table
+            }
+
             foreach (ColumnExpression column in statement.Columns)
             {
                 DataMapper.Map(in column, in mapper);
@@ -741,6 +762,7 @@ namespace DaJet.Scripting
                 Visit(node.Columns[i], in script);
             }
 
+            if (node.Into is not null) { Visit(node.Into, in script); }
             if (node.From is not null) { Visit(node.From, in script); }
             if (node.Where is not null) { Visit(node.Where, in script); }
             if (node.Order is not null) { Visit(node.Order, in script); }

@@ -1,5 +1,6 @@
 ﻿using DaJet.Data;
 using System.Data;
+using System.Dynamic;
 using System.Reflection;
 
 namespace DaJet.Scripting
@@ -35,6 +36,17 @@ namespace DaJet.Scripting
         public void Map(in IDbCommand command)
         {
             //TODO: map IDbCommand for DML
+        }
+        public void Map(in IDataReader reader, out dynamic entity)
+        {
+            entity = new ExpandoObject();
+
+            IDictionary<string, object> bag = entity;
+
+            foreach (PropertyMap property in Properties)
+            {
+                bag.Add(property.Name, property.GetValue(in reader));
+            }
         }
         public void Map(in IDataReader reader, out IDataRecord record)
         {

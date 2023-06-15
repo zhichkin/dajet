@@ -362,10 +362,7 @@ namespace DaJet.Scripting
         {
             GeneratorResult result = PrepareScript(in script);
 
-            if (!result.Success)
-            {
-                throw new Exception(result.Error);
-            }
+            if (!result.Success) { throw new Exception(result.Error); }
 
             IQueryExecutor executor = _context.CreateQueryExecutor();
 
@@ -378,10 +375,7 @@ namespace DaJet.Scripting
         {
             GeneratorResult result = PrepareScript(in script);
 
-            if (!result.Success)
-            {
-                throw new Exception(result.Error);
-            }
+            if (!result.Success) { throw new Exception(result.Error); }
 
             IQueryExecutor executor = _context.CreateQueryExecutor();
 
@@ -389,6 +383,37 @@ namespace DaJet.Scripting
             {
                 yield return result.Mapper.Map<TEntity>(in reader);
             }
+        }
+
+        public List<List<Dictionary<string, object>>> Execute(string script)
+        {
+            List<List<Dictionary<string, object>>> batch = new();
+
+            GeneratorResult commands = PrepareScript(in script);
+
+            if (!commands.Success) { throw new Exception(commands.Error); }
+
+            IQueryExecutor executor = _context.CreateQueryExecutor();
+
+            int next = 0;
+            EntityMap mapper = null;
+            List<Dictionary<string, object>> result = null;
+
+            foreach (IDataReader reader in executor.ExecuteBatch(commands.Script, 10, Parameters))
+            {
+                if (reader is null) // new result
+                {
+                    result = new List<Dictionary<string, object>>();
+                    mapper = commands.Commands[next++].Mapper;
+                    batch.Add(result);
+                }
+                else
+                {
+                    result.Add(mapper.Map(in reader));
+                }
+            }
+
+            return batch;
         }
 
         #region "DaJet DDL"

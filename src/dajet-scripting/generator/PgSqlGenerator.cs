@@ -776,6 +776,7 @@ namespace DaJet.Scripting
 
             SelectExpression select = new()
             {
+                Into = consume.Into,
                 From = new FromClause()
                 {
                     Expression = new TableReference() { Identifier = "queue", Binding = queue }
@@ -1264,6 +1265,7 @@ namespace DaJet.Scripting
 
             SelectExpression select = new()
             {
+                Into = consume.Into,
                 From = new FromClause()
                 {
                     Expression = new TableReference()
