@@ -202,7 +202,7 @@ namespace DaJet.Scripting
                 Visit(node.Columns[i], in script);
             }
 
-            if (node.Into is not null) { Visit(node.Into, in script); } //TODO: change IntoClause.Table.Binding to TableVariableExpression
+            if (node.Into is not null) { Visit(node.Into, in script); }
         }
         #endregion
 
@@ -212,6 +212,13 @@ namespace DaJet.Scripting
             if (!TryGetConsumeTargetTable(node.From, out TableReference table))
             {
                 throw new InvalidOperationException("CONSUME: target table is not found.");
+            }
+
+            if (node.Into is not null)
+            {
+                CreateTypeStatement statement = CreateTypeDefinition(node.Into.Table.Identifier, node.Columns);
+
+                script.Insert(0, ScriptDeclareTableVariableStatement(in statement));
             }
 
             DeleteStatement output;
@@ -224,7 +231,7 @@ namespace DaJet.Scripting
             {
                 output = TransformComplexConsume(in node, in table);
             }
-
+            
             Visit(in output, in script);
         }
         private IndexInfo GetPrimaryOrUniqueIndex(in TableReference table)
@@ -255,6 +262,25 @@ namespace DaJet.Scripting
 
             return null;
         }
+        private string ScriptDeclareTableVariableStatement(in CreateTypeStatement statement)
+        {
+            StringBuilder script = new();
+            
+            script.Append("DECLARE @").Append(statement.Identifier).AppendLine(" AS TABLE (");
+
+            for (int i = 0; i < statement.Columns.Count; i++)
+            {
+                ColumnDefinition column = statement.Columns[i];
+
+                if (i > 0) { script.AppendLine(","); }
+
+                script.Append(column.Name).Append(' ').Append(column.Type.Identifier);
+            }
+            
+            script.AppendLine(");");
+
+            return script.ToString();
+        }
 
         #region "CONSUME FROM ONE TARGET TABLE"
         private DeleteStatement TransformSimpleConsume(in ConsumeStatement node, in TableReference table)
@@ -284,7 +310,10 @@ namespace DaJet.Scripting
         {
             DeleteStatement delete = new()
             {
-                Output = new OutputClause(),
+                Output = new OutputClause()
+                {
+                    Into = consume.Into
+                },
                 Target = new TableReference()
                 {
                     Binding = queue,
@@ -360,6 +389,8 @@ namespace DaJet.Scripting
             CommonTableExpression changes = new() { Name = "changes", Expression = select };
 
             DeleteStatement delete = TransformConsumeToDelete(in changes, in table, in filter, in output);
+
+            delete.Output.Into = node.Into;
 
             delete.CommonTables = changes;
 
@@ -868,6 +899,40 @@ namespace DaJet.Scripting
             }
 
             script.AppendLine().AppendLine(")");
+        }
+
+        protected override void Infer(in List<ColumnMap> mapping, in List<ColumnDefinition> columns)
+        {
+            foreach (ColumnMap map in mapping)
+            {
+                ScriptHelper.GetColumnIdentifiers(map.Name, out _, out string columnName);
+
+                if (!string.IsNullOrEmpty(map.Alias)) { columnName = map.Alias; }
+
+                ColumnDefinition column = new()
+                {
+                    Name = columnName,
+                    Type = new TypeIdentifier()
+                    {
+                        Identifier = map.TypeName
+                    }
+                };
+
+                if (map.Type == UnionTag.TypeCode)
+                {
+                    column.Type.Identifier += "(4)";
+                }
+                else if (map.Type == UnionTag.Entity)
+                {
+                    column.Type.Identifier += "(16)";
+                }
+                else if (map.Type == UnionTag.String)
+                {
+                    column.Type.Identifier += "(1024)";
+                }
+
+                columns.Add(column);
+            }
         }
     }
 }

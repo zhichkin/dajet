@@ -107,18 +107,38 @@ namespace DaJet.Scripting
         }
         private void CreateVirtualTableExpression(in IntoClause target)
         {
-            TemporaryTableExpression table = new()
+            SyntaxNode table;
+
+            if (_current is not null && _current.Owner is ConsumeStatement)
             {
-                Name = target.Table.Identifier,
-                Expression = new SelectExpression()
+                table = new TableVariableExpression() // MS SQL Server feature
                 {
-                    Select = target.Columns,
-                    From = new FromClause()
+                    Name = target.Table.Identifier,
+                    Expression = new SelectExpression()
                     {
-                        Expression = target.Table
+                        Select = target.Columns,
+                        From = new FromClause()
+                        {
+                            Expression = target.Table
+                        }
                     }
-                }
-            };
+                };
+            }
+            else
+            {
+                table = new TemporaryTableExpression()
+                {
+                    Name = target.Table.Identifier,
+                    Expression = new SelectExpression()
+                    {
+                        Select = target.Columns,
+                        From = new FromClause()
+                        {
+                            Expression = target.Table
+                        }
+                    }
+                };
+            }
 
             _scope?.Children.Add(new ScriptScope(ScopeType.Node, table, _scope));
         }

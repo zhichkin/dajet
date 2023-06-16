@@ -1277,5 +1277,252 @@ namespace DaJet.Scripting
 
             return (table is not null);
         }
+
+        protected CreateTypeStatement CreateTypeDefinition(in string identifier, in List<ColumnExpression> properties)
+        {
+            CreateTypeStatement type = new()
+            {
+                Identifier = identifier
+            };
+
+            foreach (ColumnExpression property in properties)
+            {
+                List<ColumnDefinition> columns = CreateColumnDefinitions(in property);
+
+                foreach (ColumnDefinition column in columns)
+                {
+                    type.Columns.Add(column);
+                }
+            }
+
+            return type;
+        }
+        protected List<ColumnDefinition> CreateColumnDefinitions(in ColumnExpression property)
+        {
+            List<ColumnDefinition> columns = new();
+
+            Infer(property.Expression, in columns);
+
+            if (columns.Count == 1 && string.IsNullOrEmpty(columns[0].Name))
+            {
+                columns[0].Name = property.Alias;
+            }
+
+            return columns;
+        }
+        private void Infer(in SyntaxNode node, in List<ColumnDefinition> columns)
+        {
+            if (node is ColumnExpression property) { Infer(in property, in columns); }
+            else if (node is ColumnReference column) { Infer(in column, in columns); }
+            else if (node is ScalarExpression scalar) { Infer(in scalar, in columns); }
+            else if (node is VariableReference variable) { Infer(in variable, in columns); }
+            else if (node is CaseExpression _case) { Infer(in _case, in columns); }
+            else if (node is FunctionExpression function) { Infer(in function, in columns); }
+        }
+        protected virtual void Infer(in ColumnExpression column, in List<ColumnDefinition> columns)
+        {
+            Infer(column.Expression, in columns);
+        }
+        protected virtual void Infer(in ColumnReference column, in List<ColumnDefinition> columns)
+        {
+            if (column.Binding is ColumnExpression parent)
+            {
+                Infer(in parent, in columns);
+            }
+            else if (column.Binding is EnumValue)
+            {
+                TypeIdentifier type = new()
+                {
+                    Binding = typeof(Guid), // pg = bytea
+                    Identifier = "uuid"     // ms = binary(16)
+                    //Qualifier1 = 16;
+                };
+                columns.Add(new ColumnDefinition() { Type = type });
+            }
+            else if (column.Mapping is not null)
+            {
+                Infer(column.Mapping, in columns);
+            }
+            else if (column.Binding is MetadataProperty property)
+            {
+                Infer(in property, in columns);
+            }
+            else
+            {
+                throw new InvalidOperationException($"Failed to create column definition for identifier [{column.Identifier}]");
+            }
+        }
+        protected virtual void Infer(in List<ColumnMap> mapping, in List<ColumnDefinition> columns)
+        {
+            foreach (ColumnMap map in mapping)
+            {
+                ScriptHelper.GetColumnIdentifiers(map.Name, out _, out string columnName);
+
+                if (!string.IsNullOrEmpty(map.Alias)) { columnName = map.Alias; }
+
+                columns.Add(new ColumnDefinition()
+                {
+                    Name = columnName,
+                    Type = new TypeIdentifier()
+                    {
+                        Identifier = map.TypeName
+                    }
+                });
+            }
+        }
+        protected virtual void Infer(in MetadataProperty property, in List<ColumnDefinition> columns)
+        {
+            //TODO: implement void Infer(in MetadataProperty property, in List<ColumnDefinition> columns)
+        }
+        protected virtual void Infer(in ScalarExpression scalar, in List<ColumnDefinition> columns)
+        {
+            //TODO: implement void Infer(in ScalarExpression scalar, in List<ColumnDefinition> columns)
+
+            if (scalar.Token == TokenType.Boolean)
+            {
+                
+            }
+            else if (scalar.Token == TokenType.Number)
+            {
+                
+            }
+            else if (scalar.Token == TokenType.DateTime)
+            {
+                
+            }
+            else if (scalar.Token == TokenType.String)
+            {
+                
+            }
+            else if (scalar.Token == TokenType.Binary)
+            {
+                
+            }
+            else if (scalar.Token == TokenType.Uuid)
+            {
+                
+            }
+            else if (scalar.Token == TokenType.Entity)
+            {
+                if (Entity.TryParse(scalar.Literal, out Entity entity))
+                {
+                    
+                }
+            }
+            else if (scalar.Token == TokenType.Version)
+            {
+                
+            }
+            else if (scalar.Token == TokenType.Integer)
+            {
+                
+            }
+            else if (scalar.Token == TokenType.NULL)
+            {
+                
+            }
+        }
+        protected virtual void Infer(in VariableReference identifier, in List<ColumnDefinition> columns)
+        {
+            //TODO: implement void Infer(in VariableReference identifier, in List<ColumnDefinition> columns)
+
+            if (identifier.Binding is Entity entity)
+            {
+                return;
+            }
+
+            if (identifier.Binding is not Type type)
+            {
+                return;
+            }
+
+            if (type == typeof(Guid))
+            {
+                
+            }
+            else if (type == typeof(bool))
+            {
+                
+            }
+            else if (type == typeof(decimal))
+            {
+                
+            }
+            else if (type == typeof(DateTime))
+            {
+                
+            }
+            else if (type == typeof(string))
+            {
+                
+            }
+            else if (type == typeof(byte[]))
+            {
+                
+            }
+            else if (type == typeof(ulong))
+            {
+                
+            }
+            else if (type == typeof(int))
+            {
+                
+            }
+        }
+        protected virtual void Infer(in CaseExpression node, in List<ColumnDefinition> columns)
+        {
+            if (node.CASE is not null && node.CASE.Count > 0)
+            {
+                WhenClause when = node.CASE[0];
+                Infer(when.THEN, in columns);
+            }
+            
+            //NOTE: WHEN clause is not used for type inference
+            //NOTE: ELSE clause is not used for type inference
+        }
+        protected virtual void Infer(in FunctionExpression function, in List<ColumnDefinition> columns)
+        {
+            //TODO: implement void Infer(in FunctionExpression function, in List<ColumnDefinition> columns)
+
+            string name = function.Name.ToUpperInvariant();
+
+            if (name == "COUNT")
+            {
+                //union.IsInteger = true; return;
+            }
+            else if (name == "ROW_NUMBER")
+            {
+                //TODO: IsVersion is int64 (bigint) hack
+                //NOTE: the function does not have any parameters
+                //union.IsVersion = true; return;
+            }
+            else if (name == "DATALENGTH" || name == "OCTET_LENGTH")
+            {
+                //TODO: IsInteger is int32 (int) hack
+                //NOTE: the function have one parameter, but we ignore it
+                //union.IsInteger = true; return;
+            }
+            else if (name == "SUBSTRING")
+            {
+                //union.IsString = true; return;
+            }
+            else if (name == "NOW")
+            {
+                //union.IsDateTime = true; return;
+            }
+            else if (name == "UUIDOF")
+            {
+                //union.IsUuid = true; return;
+            }
+            else if (name == "TYPEOF")
+            {
+                //union.IsInteger = true; return;
+            }
+
+            foreach (SyntaxNode parameter in function.Parameters)
+            {
+                Infer(in parameter, in columns);
+            }
+        }
     }
 }
