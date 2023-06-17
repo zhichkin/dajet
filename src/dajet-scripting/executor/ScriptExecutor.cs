@@ -416,6 +416,66 @@ namespace DaJet.Scripting
             return batch;
         }
 
+        public void PrepareScript(in string script, out ScriptModel model, out List<ScriptCommand> commands)
+        {
+            string error;
+            
+            using (ScriptParser parser = new())
+            {
+                if (!parser.TryParse(in script, out model, out error))
+                {
+                    throw new Exception(error);
+                }
+            }
+
+            ScopeBuilder builder = new();
+
+            if (!builder.TryBuild(in model, out ScriptScope scope, out error))
+            {
+                throw new Exception(error);
+            }
+
+            MetadataBinder binder = new();
+
+            if (!binder.TryBind(in scope, in _context, out error))
+            {
+                throw new Exception(error);
+            }
+
+            ScriptTransformer transformer = new();
+
+            if (!transformer.TryTransform(model, out error))
+            {
+                throw new Exception(error);
+            }
+
+            ConfigureParameters(in model);
+
+            ExecuteImportStatements(in model);
+
+            // execute main context script
+
+            ISqlGenerator generator;
+
+            if (_context.DatabaseProvider == DatabaseProvider.SqlServer)
+            {
+                generator = new MsSqlGenerator() { YearOffset = _context.YearOffset };
+            }
+            else if (_context.DatabaseProvider == DatabaseProvider.PostgreSql)
+            {
+                generator = new PgSqlGenerator() { YearOffset = _context.YearOffset };
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unsupported database provider: {_context.DatabaseProvider}");
+            }
+
+            if (!generator.TryGenerate(in model, in _context, out commands, out error))
+            {
+                throw new Exception(error);
+            }
+        }
+
         #region "DaJet DDL"
         public void ExecuteNonQuery(in string script)
         {

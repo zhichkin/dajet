@@ -209,7 +209,7 @@ namespace DaJet.Scripting
         #region "CONSUME STATEMENT"
         protected override void Visit(in ConsumeStatement node, in StringBuilder script)
         {
-            if (!TryGetConsumeTargetTable(node.From, out TableReference table))
+            if (!TryGetFromTable(node.From, out TableReference table))
             {
                 throw new InvalidOperationException("CONSUME: target table is not found.");
             }
@@ -899,40 +899,6 @@ namespace DaJet.Scripting
             }
 
             script.AppendLine().AppendLine(")");
-        }
-
-        protected override void Infer(in List<ColumnMap> mapping, in List<ColumnDefinition> columns)
-        {
-            foreach (ColumnMap map in mapping)
-            {
-                ScriptHelper.GetColumnIdentifiers(map.Name, out _, out string columnName);
-
-                if (!string.IsNullOrEmpty(map.Alias)) { columnName = map.Alias; }
-
-                ColumnDefinition column = new()
-                {
-                    Name = columnName,
-                    Type = new TypeIdentifier()
-                    {
-                        Identifier = map.TypeName
-                    }
-                };
-
-                if (map.Type == UnionTag.TypeCode)
-                {
-                    column.Type.Identifier += "(4)";
-                }
-                else if (map.Type == UnionTag.Entity)
-                {
-                    column.Type.Identifier += "(16)";
-                }
-                else if (map.Type == UnionTag.String)
-                {
-                    column.Type.Identifier += "(1024)";
-                }
-
-                columns.Add(column);
-            }
         }
     }
 }

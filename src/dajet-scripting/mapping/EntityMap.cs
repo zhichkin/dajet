@@ -59,6 +59,13 @@ namespace DaJet.Scripting
 
             record = data;
         }
+        public void Map(in IDataReader reader, in DataRecord record)
+        {
+            foreach (PropertyMap property in Properties)
+            {
+                record.SetValue(property.Name, property.GetValue(in reader));
+            }
+        }
         public Dictionary<string, object> Map(in IDataReader reader)
         {
             Dictionary<string, object> entity = new();

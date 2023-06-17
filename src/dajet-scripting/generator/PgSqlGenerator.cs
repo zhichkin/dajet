@@ -444,7 +444,7 @@ namespace DaJet.Scripting
         #region "CONSUME STATEMENT"
         protected override void Visit(in ConsumeStatement node, in StringBuilder script)
         {
-            if (!TryGetConsumeTargetTable(node.From, out TableReference table))
+            if (!TryGetFromTable(node.From, out TableReference table))
             {
                 throw new InvalidOperationException("CONSUME: target table is not found.");
             }

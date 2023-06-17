@@ -155,6 +155,38 @@ namespace DaJet.Data
                 }
             }
         }
+        public IEnumerable<IDataReader> TxExecuteReader(string script, int timeout, Dictionary<string, object> parameters)
+        {
+            using (DbConnection connection = GetDbConnection())
+            {
+                connection.Open();
+
+                using (DbCommand command = connection.CreateCommand())
+                {
+                    command.Connection = connection;
+                    command.CommandType = CommandType.Text;
+                    command.CommandText = script;
+                    command.CommandTimeout = timeout;
+
+                    ConfigureQueryParameters(in command, in parameters);
+
+                    using (DbTransaction transaction = connection.BeginTransaction())
+                    {
+                        command.Transaction = transaction;
+
+                        using (IDataReader reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                yield return reader;
+                            }
+                            reader.Close();
+                        }
+                        transaction.Commit();
+                    }
+                }
+            }
+        }
         public IEnumerable<IDataReader> ExecuteBatch(string script, int timeout, Dictionary<string, object> parameters)
         {
             using (DbConnection connection = GetDbConnection())

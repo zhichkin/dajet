@@ -89,7 +89,7 @@ namespace DaJet.Scripting
                     else if (node is UpsertStatement upsert) { Visit(in upsert, in script); }
                     else
                     {
-                        Visit(in node, in script);
+                        Visit(in node, in script); // non query commands !?
                     }
                 }
 
@@ -103,6 +103,131 @@ namespace DaJet.Scripting
             result.Success = string.IsNullOrWhiteSpace(result.Error);
 
             return result.Success;
+        }
+        public bool TryGenerate(in ScriptModel model, in IMetadataProvider metadata, out List<ScriptCommand> commands, out string error)
+        {
+            Metadata = metadata;
+            error = string.Empty;
+            commands = new List<ScriptCommand>();
+
+            try
+            {
+                foreach (SyntaxNode node in model.Statements)
+                {
+                    if (node is SelectStatement select)
+                    {
+                        commands.Add(GenerateScriptCommand(in select));
+                    }
+                    else if (node is ConsumeStatement consume)
+                    {
+                        commands.Add(GenerateScriptCommand(in consume));
+                    }
+                    else if (node is DeleteStatement delete)
+                    {
+                        commands.Add(GenerateScriptCommand(in delete));
+                    }
+                    else
+                    {
+                        //StringBuilder script = new();
+                        //Visit(in node, in script);
+                        //commands.Add(new ScriptCommand()
+                        //{
+                        //    Script = script.ToString(),
+                        //    Statement = node
+                        //});
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                error = ExceptionHelper.GetErrorMessage(exception);
+            }
+
+            return string.IsNullOrEmpty(error);
+        }
+        private ScriptCommand GenerateScriptCommand(in SelectStatement select)
+        {
+            StringBuilder script = new();
+
+            Visit(in select, in script);
+
+            EntityMap mapper = new()
+            {
+                YearOffset = Metadata.YearOffset
+            };
+
+            ConfigureDataMapper(in select, in mapper);
+
+            if (!TryGetFromTable(select, out TableReference table))
+            {
+                throw new InvalidOperationException();
+            }
+
+            ScriptHelper.GetColumnIdentifiers(table.Identifier, out _, out string tableName);
+
+            return new ScriptCommand()
+            {
+                Mapper = mapper,
+                Script = script.ToString(),
+                Statement = select,
+                Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias)
+            };
+        }
+        private ScriptCommand GenerateScriptCommand(in ConsumeStatement consume)
+        {
+            StringBuilder script = new();
+
+            Visit(in consume, in script);
+
+            EntityMap mapper = new()
+            {
+                YearOffset = Metadata.YearOffset
+            };
+
+            ConfigureDataMapper(in consume, in mapper);
+
+            if (!TryGetFromTable(consume, out TableReference table))
+            {
+                throw new InvalidOperationException();
+            }
+
+            ScriptHelper.GetColumnIdentifiers(table.Identifier, out _, out string tableName);
+
+            return new ScriptCommand()
+            {
+                Mapper = mapper,
+                Script = script.ToString(),
+                Statement = consume,
+                Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias)
+            };
+        }
+        private ScriptCommand GenerateScriptCommand(in DeleteStatement delete)
+        {
+            StringBuilder script = new();
+
+            Visit(in delete, in script);
+
+            EntityMap mapper = new()
+            {
+                YearOffset = Metadata.YearOffset
+            };
+
+            if (delete.Output is not null)
+            {
+                ConfigureDataMapper(delete.Output, in mapper);
+            }
+
+            TableReference table = delete.Target;
+
+            ScriptHelper.GetColumnIdentifiers(table.Identifier, out _, out string tableName);
+
+            return new ScriptCommand()
+            {
+                Mapper = mapper,
+                Script = script.ToString(),
+                Statement = delete,
+                Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias)
+            };
         }
         private void ConfigureDataMapper(in SelectStatement statement, in EntityMap mapper)
         {
@@ -1258,17 +1383,36 @@ namespace DaJet.Scripting
             Visit(in column, in script);
         }
 
-        protected bool TryGetConsumeTargetTable(in FromClause from, out TableReference table)
+        protected bool TryGetFromTable(in SyntaxNode node, out TableReference table)
         {
-            return TryGetConsumeTargetTableRecursively(from.Expression, out table);
+            table = null;
+
+            if (node is SelectStatement statement)
+            {
+                return TryGetFromTable(statement.Select, out table);
+            }
+            else if (node is SelectExpression select)
+            {
+                return TryGetFromTable(select.From, out table);
+            }
+            else if (node is ConsumeStatement consume)
+            {
+                return TryGetFromTable(consume.From, out table);
+            }
+
+            return (table is not null);
         }
-        protected bool TryGetConsumeTargetTableRecursively(in SyntaxNode node, out TableReference table)
+        protected bool TryGetFromTable(in FromClause from, out TableReference table)
+        {
+            return TryGetFromTableRecursively(from.Expression, out table);
+        }
+        protected bool TryGetFromTableRecursively(in SyntaxNode node, out TableReference table)
         {
             table = null;
 
             if (node is TableJoinOperator join)
             {
-                return TryGetConsumeTargetTableRecursively(join.Expression1, out table);
+                return TryGetFromTableRecursively(join.Expression1, out table);
             }
             else if (node is TableReference target)
             {
@@ -1278,6 +1422,7 @@ namespace DaJet.Scripting
             return (table is not null);
         }
 
+        #region "CREATE TYPE DEFINITION FROM ColumnExpression"
         protected CreateTypeStatement CreateTypeDefinition(in string identifier, in List<ColumnExpression> properties)
         {
             CreateTypeStatement type = new()
@@ -1301,33 +1446,49 @@ namespace DaJet.Scripting
         {
             List<ColumnDefinition> columns = new();
 
-            Infer(property.Expression, in columns);
+            string columnName = property.Alias;
 
-            if (columns.Count == 1 && string.IsNullOrEmpty(columns[0].Name))
+            Infer(property.Expression, in columns, ref columnName);
+
+            foreach (ColumnDefinition column in columns)
             {
-                columns[0].Name = property.Alias;
+                string postfix = (string.IsNullOrEmpty(column.Name) ? string.Empty : "_" + column.Name);
+
+                if (string.IsNullOrEmpty(property.Alias))
+                {
+                    column.Name = columnName + postfix;
+                }
+                else
+                {
+                    column.Name = property.Alias + postfix;
+                }
             }
 
             return columns;
         }
-        private void Infer(in SyntaxNode node, in List<ColumnDefinition> columns)
+        private void Infer(in SyntaxNode node, in List<ColumnDefinition> columns, ref string name)
         {
-            if (node is ColumnExpression property) { Infer(in property, in columns); }
-            else if (node is ColumnReference column) { Infer(in column, in columns); }
-            else if (node is ScalarExpression scalar) { Infer(in scalar, in columns); }
-            else if (node is VariableReference variable) { Infer(in variable, in columns); }
-            else if (node is CaseExpression _case) { Infer(in _case, in columns); }
-            else if (node is FunctionExpression function) { Infer(in function, in columns); }
+            if (node is ColumnExpression property) { Infer(in property, in columns, ref name); }
+            else if (node is ColumnReference column) { Infer(in column, in columns, ref name); }
+            else if (node is ScalarExpression scalar) { Infer(in scalar, in columns, ref name); }
+            else if (node is VariableReference variable) { Infer(in variable, in columns, ref name); }
+            else if (node is CaseExpression _case) { Infer(in _case, in columns, ref name); }
+            else if (node is FunctionExpression function) { Infer(in function, in columns, ref name); }
         }
-        protected virtual void Infer(in ColumnExpression column, in List<ColumnDefinition> columns)
+        protected virtual void Infer(in ColumnExpression column, in List<ColumnDefinition> columns, ref string name)
         {
-            Infer(column.Expression, in columns);
+            Infer(column.Expression, in columns, ref name);
+
+            if (!string.IsNullOrEmpty(column.Alias))
+            {
+                name = column.Alias;
+            }
         }
-        protected virtual void Infer(in ColumnReference column, in List<ColumnDefinition> columns)
+        protected virtual void Infer(in ColumnReference column, in List<ColumnDefinition> columns, ref string name)
         {
             if (column.Binding is ColumnExpression parent)
             {
-                Infer(in parent, in columns);
+                Infer(in parent, in columns, ref name);
             }
             else if (column.Binding is EnumValue)
             {
@@ -1339,42 +1500,53 @@ namespace DaJet.Scripting
                 };
                 columns.Add(new ColumnDefinition() { Type = type });
             }
-            else if (column.Mapping is not null)
-            {
-                Infer(column.Mapping, in columns);
-            }
             else if (column.Binding is MetadataProperty property)
             {
-                Infer(in property, in columns);
+                Infer(in property, in columns, ref name);
             }
             else
             {
                 throw new InvalidOperationException($"Failed to create column definition for identifier [{column.Identifier}]");
             }
         }
-        protected virtual void Infer(in List<ColumnMap> mapping, in List<ColumnDefinition> columns)
+        protected virtual void Infer(in MetadataProperty property, in List<ColumnDefinition> columns, ref string name)
         {
-            foreach (ColumnMap map in mapping)
+            name = property.Name;
+
+            List<MetadataColumn> fields = property.Columns.OrderBy((column) => { return column.Purpose; }).ToList();
+
+            for (int i = 0; i < fields.Count; i++)
             {
-                ScriptHelper.GetColumnIdentifiers(map.Name, out _, out string columnName);
+                MetadataColumn field = fields[i];
 
-                if (!string.IsNullOrEmpty(map.Alias)) { columnName = map.Alias; }
+                string columnName = UnionType.GetPurposeLiteral(field.Purpose);
 
-                columns.Add(new ColumnDefinition()
+                ColumnDefinition column = new()
                 {
                     Name = columnName,
                     Type = new TypeIdentifier()
                     {
-                        Identifier = map.TypeName
+                        Identifier = field.TypeName
                     }
-                });
+                };
+
+                if (field.Length == -1)
+                {
+                    column.Type.Identifier += "(max)";
+                }
+                else if (field.Length > 0)
+                {
+                    column.Type.Identifier += $"({field.Length})";
+                }
+                else if (field.TypeName == "numeric")
+                {
+                    column.Type.Identifier += $"({field.Precision},{field.Scale})";
+                }
+
+                columns.Add(column);
             }
         }
-        protected virtual void Infer(in MetadataProperty property, in List<ColumnDefinition> columns)
-        {
-            //TODO: implement void Infer(in MetadataProperty property, in List<ColumnDefinition> columns)
-        }
-        protected virtual void Infer(in ScalarExpression scalar, in List<ColumnDefinition> columns)
+        protected virtual void Infer(in ScalarExpression scalar, in List<ColumnDefinition> columns, ref string name)
         {
             //TODO: implement void Infer(in ScalarExpression scalar, in List<ColumnDefinition> columns)
 
@@ -1422,7 +1594,7 @@ namespace DaJet.Scripting
                 
             }
         }
-        protected virtual void Infer(in VariableReference identifier, in List<ColumnDefinition> columns)
+        protected virtual void Infer(in VariableReference identifier, in List<ColumnDefinition> columns, ref string name)
         {
             //TODO: implement void Infer(in VariableReference identifier, in List<ColumnDefinition> columns)
 
@@ -1469,60 +1641,75 @@ namespace DaJet.Scripting
                 
             }
         }
-        protected virtual void Infer(in CaseExpression node, in List<ColumnDefinition> columns)
+        protected virtual void Infer(in CaseExpression node, in List<ColumnDefinition> columns, ref string name)
         {
             if (node.CASE is not null && node.CASE.Count > 0)
             {
                 WhenClause when = node.CASE[0];
-                Infer(when.THEN, in columns);
+                Infer(when.THEN, in columns, ref name);
             }
             
             //NOTE: WHEN clause is not used for type inference
             //NOTE: ELSE clause is not used for type inference
         }
-        protected virtual void Infer(in FunctionExpression function, in List<ColumnDefinition> columns)
+        protected virtual void Infer(in FunctionExpression function, in List<ColumnDefinition> columns, ref string name)
         {
-            //TODO: implement void Infer(in FunctionExpression function, in List<ColumnDefinition> columns)
+            ColumnDefinition column = new()
+            {
+                Name = string.Empty,
+                Type = new TypeIdentifier()
+            };
 
-            string name = function.Name.ToUpperInvariant();
+            string functionName = function.Name.ToUpperInvariant();
 
-            if (name == "COUNT")
+            if (functionName == "COUNT")
             {
                 //union.IsInteger = true; return;
             }
-            else if (name == "ROW_NUMBER")
+            else if (functionName == "ROW_NUMBER")
             {
                 //TODO: IsVersion is int64 (bigint) hack
                 //NOTE: the function does not have any parameters
                 //union.IsVersion = true; return;
             }
-            else if (name == "DATALENGTH" || name == "OCTET_LENGTH")
+            else if (functionName == "DATALENGTH")
             {
                 //TODO: IsInteger is int32 (int) hack
                 //NOTE: the function have one parameter, but we ignore it
-                //union.IsInteger = true; return;
+                column.Type.Identifier = "int";
+                columns.Add(column);
+                return;
             }
-            else if (name == "SUBSTRING")
+            else if (functionName == "OCTET_LENGTH")
+            {
+                //TODO: IsInteger is int32 (int) hack
+                //NOTE: the function have one parameter, but we ignore it
+                column.Type.Identifier = "integer";
+                columns.Add(column);
+                return;
+            }
+            else if (functionName == "SUBSTRING")
             {
                 //union.IsString = true; return;
             }
-            else if (name == "NOW")
+            else if (functionName == "NOW")
             {
                 //union.IsDateTime = true; return;
             }
-            else if (name == "UUIDOF")
+            else if (functionName == "UUIDOF")
             {
                 //union.IsUuid = true; return;
             }
-            else if (name == "TYPEOF")
+            else if (functionName == "TYPEOF")
             {
                 //union.IsInteger = true; return;
             }
 
             foreach (SyntaxNode parameter in function.Parameters)
             {
-                Infer(in parameter, in columns);
+                Infer(in parameter, in columns, ref name);
             }
         }
+        #endregion
     }
 }

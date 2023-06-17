@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using DaJet.Scripting.Model;
+using System.Text.Json.Serialization;
 
 namespace DaJet.Scripting
 {
@@ -12,7 +13,9 @@ namespace DaJet.Scripting
     }
     public sealed class ScriptCommand
     {
+        [JsonIgnore] public string Name { get; set; } = string.Empty;
         [JsonIgnore] public string Script { get; set; } = string.Empty;
-        [JsonIgnore] public EntityMap Mapper { get; set; } = new();
+        [JsonIgnore] public EntityMap Mapper { get; set; }
+        [JsonIgnore] public SyntaxNode Statement { get; set; }
     }
 }

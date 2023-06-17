@@ -11,6 +11,7 @@ namespace DaJet.Data
         void TxExecuteNonQuery(in List<string> scripts, int timeout);
         IEnumerable<IDataReader> ExecuteReader(string script, int timeout);
         IEnumerable<IDataReader> ExecuteReader(string script, int timeout, Dictionary<string, object> parameters);
+        IEnumerable<IDataReader> TxExecuteReader(string script, int timeout, Dictionary<string, object> parameters);
         IEnumerable<IDataReader> ExecuteBatch(string script, int timeout, Dictionary<string, object> parameters);
     }
 }
