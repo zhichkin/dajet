@@ -29,6 +29,8 @@ namespace DaJet_Console
             //Использование_Типа_Union();
             //Отображение_Запроса_На_Класс();
             Использование_Параметров_Запроса();
+
+            //TestDataRecordJsonConverter();
         }
         private static void InitializeMetadataCache()
         {
@@ -213,6 +215,41 @@ namespace DaJet_Console
                 }
             }
         }
+
+        //private static void TestDataRecordJsonConverter()
+        //{
+        //    string message = @"{ ""Ссылка"": ""{1072:8d40de9c-935c-8ecc-11ed-63721997a442}"", ""Узел"": ""{1255:8d40ed9c-935c-8ecc-11ee-06117c486156}"", ""Данные"": [ { ""Код"": ""0001"", ""Наименование"": ""(ms) 01 тест"", ""ПометкаУдаления"": false }, { ""Код"": ""0002"", ""Наименование"": ""(ms) 02 тест"", ""ПометкаУдаления"": true } ], ""Узлы"": [ { ""Код"": ""DaJet"", ""Наименование"": ""Интеграция DaJet"" }, { ""Код"": ""TEST"", ""Наименование"": ""Интеграция TEST"" } ] }";
+
+        //    byte[] buffer = Encoding.UTF8.GetBytes(message);
+
+        //    Utf8JsonReader reader = new(buffer.AsSpan(), true, default);
+
+        //    DataRecordJsonConverter _converter = new();
+        //    JsonSerializerOptions JsonOptions = new()
+        //    {
+        //        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+        //    };
+
+        //    IDataRecord record = _converter.Read(ref reader, typeof(IDataRecord), JsonOptions);
+
+        //    JsonWriterOptions JsonWriterOptions = new()
+        //    {
+        //        Indented = true,
+        //        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+        //    };
+
+        //    using (MemoryStream memory = new())
+        //    {
+        //        using (Utf8JsonWriter writer = new(memory, JsonWriterOptions))
+        //        {
+        //            _converter.Write(writer, record, null);
+
+        //            writer.Flush();
+
+        //            Console.WriteLine(Encoding.UTF8.GetString(memory.ToArray()));
+        //        }
+        //    }
+        //}
     }
     internal sealed class Product
     {

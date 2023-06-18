@@ -42,14 +42,10 @@ namespace DaJet.Flow.Json
                 {
                     if (reader.TryGetDecimal(out decimal numeric))
                     {
-                        if (numeric.Scale > 0)
-                        {
-                            value = numeric;
-                        }
-                        else
-                        {
-                            value = Convert.ToInt32(numeric);
-                        }
+                        value = numeric;
+
+                        //if (numeric.Scale > 0) { value = numeric; }
+                        //else { value = Convert.ToInt32(numeric); }
                     }
                     else
                     {
@@ -96,6 +92,24 @@ namespace DaJet.Flow.Json
                         value = input;
                     }
                     storeValue = true;
+                }
+                else if (reader.TokenType == JsonTokenType.StartArray)
+                {
+                    IDataRecord item;
+                    List<IDataRecord> list = new();
+                    do
+                    {
+                        item = Read(ref reader, typeof(IDataRecord), options);
+
+                        if (item is not null) { list.Add(item); }
+                    }
+                    while (item is not null);
+
+                    value = list; storeValue = true;
+                }
+                else if (reader.TokenType == JsonTokenType.EndArray)
+                {
+                    return null; // end of array
                 }
                 else if (reader.TokenType == JsonTokenType.EndObject)
                 {
@@ -165,6 +179,16 @@ namespace DaJet.Flow.Json
                 else if (value is ushort uint2) { writer.WriteNumber(name, uint2); }
                 else if (value is uint uint4) { writer.WriteNumber(name, uint4); }
                 else if (value is ulong uint8) { writer.WriteNumber(name, uint8); }
+                else if (value is List<IDataRecord> list)
+                {
+                    writer.WritePropertyName(name);
+                    writer.WriteStartArray();
+                    foreach (IDataRecord record in list)
+                    {
+                        Write(writer, record, options);
+                    }
+                    writer.WriteEndArray();
+                }
                 else
                 {
                     writer.WriteString(name, value.ToString());

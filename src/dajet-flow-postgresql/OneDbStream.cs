@@ -3,12 +3,12 @@ using DaJet.Metadata;
 using DaJet.Options;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
-using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using System.Data;
 using System.Text;
 
-namespace DaJet.Flow.SqlServer
+namespace DaJet.Flow.PostgreSql
 {
     [PipelineBlock] public sealed class OneDbStream : SourceBlock<IDataRecord>
     {
@@ -59,7 +59,7 @@ namespace DaJet.Flow.SqlServer
                 {
                     _Dispose();
                 }
-            }   
+            }
         }
         protected override void _Dispose() { if (CanDispose) { _ = Interlocked.Exchange(ref _state, STATE_IS_IDLE); } }
         private void ConfigureConsumer()
@@ -96,12 +96,12 @@ namespace DaJet.Flow.SqlServer
             {
                 consumed = 0;
 
-                using (SqlConnection connection = new(ConnectionString))
+                using (NpgsqlConnection connection = new(ConnectionString))
                 {
                     connection.Open();
 
-                    SqlCommand command = connection.CreateCommand();
-                    SqlTransaction transaction = connection.BeginTransaction();
+                    NpgsqlCommand command = connection.CreateCommand();
+                    NpgsqlTransaction transaction = connection.BeginTransaction();
 
                     command.Connection = connection;
                     command.Transaction = transaction;
@@ -173,7 +173,7 @@ namespace DaJet.Flow.SqlServer
                 {
                     continue;
                 }
-                
+
                 script.AppendLine(command.Script);
 
                 if (command.Mapper.Properties.Count > 0)
@@ -181,7 +181,7 @@ namespace DaJet.Flow.SqlServer
                     break;
                 }
             }
-            
+
             return script.ToString();
         }
         private string CreateBodyScript()
@@ -243,7 +243,7 @@ namespace DaJet.Flow.SqlServer
 
             return mappers;
         }
-        private void Stream(in SqlCommand command)
+        private void Stream(in NpgsqlCommand command)
         {
             command.CommandText = CreateEntireScript();
             EntityMap mapper = GetReaders()[0].Mapper;
@@ -259,7 +259,7 @@ namespace DaJet.Flow.SqlServer
             }
             record.Clear(); // clear buffer
         }
-        private void Throttle(in SqlCommand command)
+        private void Throttle(in NpgsqlCommand command)
         {
             int next = 0;
             List<ScriptCommand> mappers = GetReaders();

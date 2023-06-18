@@ -51,17 +51,17 @@ namespace DaJet.Scripting
                     {
                         Visit(in consume, in script);
 
-                        //TODO: implement outside of this class !!!
-                        //ConfigureDataMapper(in consume, result.Mapper);
-
                         EntityMap mapper = new();
                         ConfigureDataMapper(in consume, mapper);
+                        result.Mapper = mapper;
+
                         if (mapper.Properties.Count > 0)
                         {
-                            result.Commands.Add(new ScriptCommand()
+                            ScriptCommand command = new()
                             {
                                 Mapper = mapper
-                            });
+                            };
+                            result.Commands.Add(command);
                         }
                     }
                     else if (node is DeleteStatement delete)
@@ -128,13 +128,7 @@ namespace DaJet.Scripting
                     }
                     else
                     {
-                        //StringBuilder script = new();
-                        //Visit(in node, in script);
-                        //commands.Add(new ScriptCommand()
-                        //{
-                        //    Script = script.ToString(),
-                        //    Statement = node
-                        //});
+                        commands.Add(GenerateScriptCommand(in node));
                     }
                 }
             }
@@ -144,6 +138,25 @@ namespace DaJet.Scripting
             }
 
             return string.IsNullOrEmpty(error);
+        }
+        private ScriptCommand GenerateScriptCommand(in SyntaxNode node)
+        {
+            StringBuilder script = new();
+            
+            Visit(in node, in script);
+
+            EntityMap mapper = new()
+            {
+                YearOffset = Metadata.YearOffset
+            };
+
+            return new ScriptCommand()
+            {
+                Name = string.Empty,
+                Mapper = mapper,
+                Script = script.ToString(),
+                Statement = node
+            };
         }
         private ScriptCommand GenerateScriptCommand(in SelectStatement select)
         {
