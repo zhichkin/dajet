@@ -1087,6 +1087,7 @@ namespace DaJet.Metadata.Core
         // 2. "Период"      = Period     - DateTime
         // 3. "ВидДвижения" = RecordType - string { "Receipt", "Expense" }
         // 4. "Активность"  = Active     - bool
+        // 5. _SimpleKey    = binary(16) - версия платформы 8.2.х и ниже
 
         private static void ConfigureInformationRegister(in MetadataCache cache, in InformationRegister register)
         {
