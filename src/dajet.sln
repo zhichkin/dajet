@@ -62,7 +62,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-flow-sqlserver", "daj
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-flow-postgresql", "dajet-flow-postgresql\dajet-flow-postgresql.csproj", "{BC808ED2-2DB7-4055-993C-3D521511BC8F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-flow-kafka", "dajet-flow-kafka\dajet-flow-kafka.csproj", "{77F147BD-FEE1-4074-899B-D9F155842BC1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-flow-kafka", "dajet-flow-kafka\dajet-flow-kafka.csproj", "{77F147BD-FEE1-4074-899B-D9F155842BC1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-stream", "dajet-stream\dajet-stream.csproj", "{8F985EAE-C461-4587-A94C-E589BC6C2439}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -130,6 +132,10 @@ Global
 		{77F147BD-FEE1-4074-899B-D9F155842BC1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{77F147BD-FEE1-4074-899B-D9F155842BC1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{77F147BD-FEE1-4074-899B-D9F155842BC1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8F985EAE-C461-4587-A94C-E589BC6C2439}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8F985EAE-C461-4587-A94C-E589BC6C2439}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8F985EAE-C461-4587-A94C-E589BC6C2439}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8F985EAE-C461-4587-A94C-E589BC6C2439}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

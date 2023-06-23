@@ -16,6 +16,7 @@ namespace DaJet.Metadata
         IQueryExecutor CreateQueryExecutor();
         MetadataItem GetMetadataItem(int typeCode);
         IEnumerable<MetadataItem> GetMetadataItems(Guid type);
+        MetadataObject GetMetadataObject(Guid type, Guid uuid);
         MetadataObject GetMetadataObject(string metadataName);
         bool TryGetExtendedInfo(Guid uuid, out MetadataItemEx info);
         bool TryGetEnumValue(in string identifier, out EnumValue value);

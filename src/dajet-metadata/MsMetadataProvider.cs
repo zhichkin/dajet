@@ -69,6 +69,10 @@ namespace DaJet.Metadata.SqlServer
         {
             throw new NotImplementedException();
         }
+        public MetadataObject GetMetadataObject(Guid type, Guid uuid)
+        {
+            throw new NotImplementedException();
+        }
         public MetadataObject GetMetadataObject(string metadataName)
         {
             MsDbConfigurator configurator = new(this);
