@@ -7,6 +7,7 @@ using DaJet.Scripting;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using System.Data;
+using System.Diagnostics;
 using System.Text;
 
 namespace DaJet.Stream.SqlServer
@@ -128,12 +129,29 @@ namespace DaJet.Stream.SqlServer
         
         public override void Execute()
         {
-            foreach (var command in _commands)
+            Stopwatch watch = new();
+
+            watch.Start();
+
+            int consumed;
+            int processed = 0;
+
+            do
             {
-                int consumed = Consume(command.Key, command.Value);
-                
-                _manager.UpdatePipelineStatus(Pipeline, $"Consumed {consumed} messages");
+                consumed = 0;
+
+                foreach (var command in _commands)
+                {
+                    consumed += Consume(command.Key, command.Value);
+                }
+
+                processed += consumed;
             }
+            while (consumed > 0); //TODO: check for dispose command !!!
+
+            watch.Stop();
+
+            _manager.UpdatePipelineStatus(Pipeline, $"Processed {processed} in {watch.ElapsedMilliseconds} ms");
         }
         private int Consume(int typeCode, in GeneratorResult script)
         {
@@ -164,8 +182,7 @@ namespace DaJet.Stream.SqlServer
                         reader.Close();
                     }
 
-                    //TODO: wait for confirms !!!
-                    _next?.Synchronize();
+                    WaitForCompletion();
 
                     transaction.Commit();
                 }
@@ -190,6 +207,10 @@ namespace DaJet.Stream.SqlServer
             };
 
             _next?.Process(in message);
+        }
+        private void WaitForCompletion()
+        {
+            //TODO: wait for batch have been processed by pipeline ...
         }
     }
 }
