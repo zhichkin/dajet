@@ -7,6 +7,7 @@
         internal int _count; // successfull commands counter
         internal bool _success = true; // successfull synchronization flag
         private ManualResetEvent _synchronizer;
+        private readonly bool[] _tracker = new bool[1000];
         public ProgressTracker() { }
         public void Track() { _total++; }
         public void Report(bool success)
@@ -16,14 +17,16 @@
                 _success = false;
                 _synchronizer?.Set();
             }
-            else if (Interlocked.Increment(ref _count) == _total)
+            else //if (Interlocked.Increment(ref _count) == _total)
             {
+                //_tracker[] = true;
+                _count++;
                 _synchronizer?.Set();
             }
         }
         public void Synchronize()
         {
-            if (_total == 0 || _total == _count)
+            if (_total == 0)
             {
                 return;
             }
@@ -40,7 +43,12 @@
                 synchronizer.Dispose();
             }
 
-            if (Interlocked.CompareExchange(ref _count, _count, _total) == _total)
+            //if (Interlocked.CompareExchange(ref _count, _count, _total) == _total)
+            //{
+            //    return;
+            //}
+
+            if (_count > 0)
             {
                 return;
             }

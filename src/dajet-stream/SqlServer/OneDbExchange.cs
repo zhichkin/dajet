@@ -6,6 +6,7 @@ using DaJet.Options;
 using DaJet.Scripting;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Data;
 using System.Diagnostics;
 using System.Text;
@@ -15,6 +16,7 @@ namespace DaJet.Stream.SqlServer
     [PipelineBlock] public sealed class OneDbExchange : SourceBlock<OneDbMessage>
     {
         #region "PRIVATE VARIABLES"
+        private ILogger _logger;
         private readonly IPipelineManager _manager;
         private readonly IMetadataService _metadata;
         private readonly ScriptDataMapper _scripts;
@@ -26,10 +28,12 @@ namespace DaJet.Stream.SqlServer
         [Option] public string Source { get; set; } = string.Empty;
         [Option] public string Exchange { get; set; } = string.Empty;
         [Option] public string NodeName { get; set; } = string.Empty;
+        [Option] public int MaxDop { get; set; } = 1;
         [Option] public int BatchSize { get; set; } = 1000;
         [Option] public int Timeout { get; set; } = 10; // seconds (value of 0 indicates no limit)
-        [ActivatorUtilitiesConstructor] public OneDbExchange(InfoBaseDataMapper databases, ScriptDataMapper scripts, IPipelineManager manager, IMetadataService metadata)
+        [ActivatorUtilitiesConstructor] public OneDbExchange(InfoBaseDataMapper databases, ScriptDataMapper scripts, IPipelineManager manager, IMetadataService metadata, ILogger<OneDbExchange> logger)
         {
+            _logger = logger;
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
             _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
             _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
@@ -142,7 +146,44 @@ namespace DaJet.Stream.SqlServer
 
                 foreach (var command in _commands)
                 {
-                    consumed += Consume(command.Key, command.Value);
+                    Task<int>[] tasks = new Task<int>[MaxDop];
+                    AsyncConsumer[] consumers = new AsyncConsumer[MaxDop];
+
+                    for (int i = 0; i < MaxDop; i++)
+                    {
+                        AsyncConsumer consumer = new(_manager, command.Key, command.Value)
+                        {
+                            Next = _next,
+                            Pipeline = Pipeline,
+                            ConnectionString = ConnectionString,
+                            NodeName = NodeName,
+                            Timeout = Timeout
+                        };
+                        consumers[i] = consumer;
+
+                        tasks[i] = consumer.Consume();
+                    }
+
+                    Task.WaitAll(tasks);
+
+                    foreach (Task<int> task in tasks)
+                    {
+                        consumed += task.Result;
+                    }
+
+                    long writerCount = 0L;
+                    long readerCount = 0L;
+                    foreach (AsyncConsumer consumer in consumers)
+                    {
+                        writerCount += consumer.WriterCount;
+                        readerCount += consumer.ReaderCount;
+                    }
+                    _logger?.LogInformation($"Writer = {writerCount} ms");
+                    _logger?.LogInformation($"Reader = {readerCount} ms");
+
+                    //_next?.Synchronize();
+
+                    //consumed += Consume(command.Key, command.Value);
                 }
 
                 processed += consumed;
@@ -181,6 +222,10 @@ namespace DaJet.Stream.SqlServer
 
                     try
                     {
+                        string report = string.Empty;
+                        Stopwatch watch = new();
+                        watch.Start();
+
                         using (SqlDataReader reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -190,9 +235,27 @@ namespace DaJet.Stream.SqlServer
                                 Process(reader, session, sequence, typeCode, script.Mapper);
                             }
                             reader.Close();
+
+                            Process(null, session, -1, 0, null);
+                        }
+                        watch.Stop();
+                        if (sequence > 0)
+                        {
+                            report = $"Writer {sequence} = {watch.ElapsedMilliseconds} ms ";
                         }
 
+                        watch.Restart();
+
+                        _next?.Synchronize();
                         tracker.Synchronize();
+                        
+                        watch.Stop();
+                        if (sequence > 0)
+                        {
+                            report += $"Reader {sequence} = {watch.ElapsedMilliseconds} ms";
+                            
+                            _manager.UpdatePipelineStatus(Pipeline, report);
+                        }
 
                         transaction.Commit();
                     }
@@ -210,17 +273,172 @@ namespace DaJet.Stream.SqlServer
         }
         private void Process(in SqlDataReader reader, Guid session, int sequence, int typeCode, in EntityMap mapper)
         {
-            mapper.Map(reader, out IDataRecord record);
-
-            OneDbMessage message = new()
+            if (sequence < 0)
             {
-                Session = session,
-                Sequence = sequence,
-                TypeCode = typeCode,
-                DataRecord = record
-            };
+                OneDbMessage message = new()
+                {
+                    Session = session,
+                    Sequence = sequence
+                };
 
-            _next?.Process(in message);
+                _next?.Process(in message);
+            }
+            else
+            {
+                mapper.Map(reader, out IDataRecord record);
+
+                OneDbMessage message = new()
+                {
+                    Session = session,
+                    Sequence = sequence,
+                    TypeCode = typeCode,
+                    DataRecord = record
+                };
+
+                _next?.Process(in message);
+            }
+        }
+    }
+    internal class AsyncConsumer
+    {
+        private readonly int _typeCode;
+        private readonly GeneratorResult _script;
+        private readonly IPipelineManager _manager;
+        private long _writer = 0L;
+        private long _reader = 0L;
+        internal long WriterCount { get { return _writer; } }
+        internal long ReaderCount { get { return _reader; } }
+        internal AsyncConsumer(IPipelineManager manager, int typeCode, GeneratorResult script)
+        {
+            _typeCode = typeCode;
+            _script = script;
+            _manager = manager;
+        }
+        internal Guid Pipeline { get; set; } = Guid.Empty;
+        internal string ConnectionString { get; set; } = string.Empty;
+        internal string NodeName { get; set; } = string.Empty;
+        internal IInputBlock<OneDbMessage> Next { get; set; }
+        internal int Timeout { get; set; } = 10; // seconds (value of 0 indicates no limit) 
+        internal Task<int> Consume()
+        {
+            return Task.Run(ConsumeWhileNotEmpty);
+        }
+        private int ConsumeWhileNotEmpty()
+        {
+            int result;
+            int consumed = 0;
+
+            do
+            {
+                result = ConsumeSingleBatch();
+
+                consumed += result;
+            }
+            while (result > 0);
+
+            return consumed;
+        }
+        private int ConsumeSingleBatch()
+        {
+            Guid session = Guid.NewGuid(); // transaction identifier
+
+            int sequence;
+
+            using (ProgressTracker tracker = new())
+            {
+                _manager.RegisterProgressReporter(session, tracker);
+
+                sequence = 0;
+
+                using (SqlConnection connection = new(ConnectionString))
+                {
+                    connection.Open();
+
+                    SqlCommand command = connection.CreateCommand();
+                    SqlTransaction transaction = connection.BeginTransaction();
+
+                    command.Connection = connection;
+                    command.Transaction = transaction;
+                    command.CommandText = _script.Script;
+                    command.CommandType = CommandType.Text;
+                    command.CommandTimeout = Timeout;
+                    command.Parameters.AddWithValue("node", NodeName);
+
+                    try
+                    {
+                        string report = string.Empty;
+                        Stopwatch watch = new();
+                        watch.Start();
+
+                        using (SqlDataReader reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                sequence++; tracker.Track();
+
+                                Process(reader, session, sequence, _typeCode, _script.Mapper);
+                            }
+                            reader.Close();
+
+                            Process(null, session, -1, 0, null);
+                        }
+                        watch.Stop();
+                        if (sequence > 0)
+                        {
+                            _writer += watch.ElapsedMilliseconds;
+                        }
+
+                        //watch.Restart();
+
+                        //Next?.Synchronize();
+                        //tracker.Synchronize();
+
+                        //watch.Stop();
+                        if (sequence > 0)
+                        {
+                            _reader += sequence;
+                        }
+
+                        transaction.Commit();
+                    }
+                    catch (Exception error)
+                    {
+                        try { transaction.Rollback(); throw; }
+                        catch { throw error; }
+                    }
+                }
+            }
+
+            _manager.RemoveProgressReporter(session);
+
+            return sequence;
+        }
+        private void Process(in SqlDataReader reader, Guid session, int sequence, int typeCode, in EntityMap mapper)
+        {
+            if (sequence < 0)
+            {
+                OneDbMessage message = new()
+                {
+                    Session = session,
+                    Sequence = sequence
+                };
+
+                Next?.Process(in message);
+            }
+            else
+            {
+                mapper.Map(reader, out IDataRecord record);
+
+                OneDbMessage message = new()
+                {
+                    Session = session,
+                    Sequence = sequence,
+                    TypeCode = typeCode,
+                    DataRecord = record
+                };
+
+                Next?.Process(in message);
+            }
         }
     }
 }
