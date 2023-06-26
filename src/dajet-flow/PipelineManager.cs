@@ -15,6 +15,9 @@ namespace DaJet.Flow
         void UpdatePipelineStartTime(Guid uuid, DateTime value);
         void UpdatePipelineFinishTime(Guid uuid, DateTime value);
         void UpdatePipelineState(Guid uuid, in PipelineState state);
+        void RegisterProgressReporter(Guid uuid, in IProgress<bool> progress);
+        bool TryGetProgressReporter(Guid uuid, out IProgress<bool> progress);
+        void RemoveProgressReporter(Guid uuid);
     }
     public sealed class PipelineManager : IPipelineManager
     {
@@ -24,6 +27,7 @@ namespace DaJet.Flow
         private readonly IPipelineOptionsProvider _options;
         private readonly Dictionary<Guid, IPipeline> _pipelines = new();
         private readonly Dictionary<Guid, PipelineInfo> _monitor = new();
+        private readonly Dictionary<Guid, IProgress<bool>> _progress = new();
         public PipelineManager(IPipelineOptionsProvider options, IPipelineBuilder builder, ILogger<PipelineManager> logger)
         {
             _logger = logger;
@@ -196,5 +200,21 @@ namespace DaJet.Flow
             }
         }
         #endregion
+
+        public void RegisterProgressReporter(Guid uuid, in IProgress<bool> progress)
+        {
+            if (!_progress.TryAdd(uuid, progress))
+            {
+                _progress[uuid] = progress;
+            }
+        }
+        public bool TryGetProgressReporter(Guid uuid, out IProgress<bool> progress)
+        {
+            return _progress.TryGetValue(uuid, out progress);
+        }
+        public void RemoveProgressReporter(Guid uuid)
+        {
+            _ = _progress.Remove(uuid);
+        }
     }
 }

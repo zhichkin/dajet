@@ -6,7 +6,6 @@ using DaJet.Options;
 using DaJet.Scripting;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using System.Data;
 using System.Threading.Channels;
 
@@ -15,7 +14,6 @@ namespace DaJet.Stream.SqlServer
     [PipelineBlock] public sealed class OneDbRouter : AsyncProcessorBlock<OneDbMessage>
     {
         #region "PRIVATE VARIABLES"
-        private readonly ILogger _logger;
         private readonly IPipelineManager _manager;
         private readonly IMetadataService _metadata;
         private readonly ScriptDataMapper _scripts;
@@ -29,9 +27,8 @@ namespace DaJet.Stream.SqlServer
         [Option] public string Exchange { get; set; } = string.Empty;
         [Option] public int MaxDop { get; set; } = 1;
         [Option] public int Timeout { get; set; } = 10; // seconds (value of 0 indicates no limit)
-        [ActivatorUtilitiesConstructor] public OneDbRouter(InfoBaseDataMapper databases, ScriptDataMapper scripts, IPipelineManager manager, IMetadataService metadata, ILogger<OneDbRouter> logger)
+        [ActivatorUtilitiesConstructor] public OneDbRouter(InfoBaseDataMapper databases, ScriptDataMapper scripts, IPipelineManager manager, IMetadataService metadata)
         {
-            _logger = logger;
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
             _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
             _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
@@ -131,7 +128,7 @@ namespace DaJet.Stream.SqlServer
                 }
             }
 
-            _ = _channel.Writer.WriteAsync(input);
+            _channel.Writer.WriteAsync(input);
         }
         private async ValueTask RouteMessages()
         {
@@ -144,9 +141,21 @@ namespace DaJet.Stream.SqlServer
             {
                 if (_channel.Reader.TryRead(out OneDbMessage message))
                 {
-                    RouteMessage(in message);
+                    bool success = true;
 
-                    _logger.LogInformation($"Thread {Environment.CurrentManagedThreadId}");
+                    try
+                    {
+                        RouteMessage(in message);
+                    }
+                    catch
+                    {
+                        success = false;
+                    }
+
+                    if (_manager.TryGetProgressReporter(message.Session, out IProgress<bool> progress))
+                    {
+                        progress?.Report(success);
+                    }
 
                     _next?.Process(in message);
                 }

@@ -155,62 +155,72 @@ namespace DaJet.Stream.SqlServer
         }
         private int Consume(int typeCode, in GeneratorResult script)
         {
-            int consumed = 0;
+            Guid session = Guid.NewGuid(); // transaction identifier
 
-            using (SqlConnection connection = new(ConnectionString))
+            int sequence;
+
+            using (ProgressTracker tracker = new())
             {
-                connection.Open();
+                _manager.RegisterProgressReporter(session, tracker);
 
-                SqlCommand command = connection.CreateCommand();
-                SqlTransaction transaction = connection.BeginTransaction();
+                sequence = 0;
 
-                command.Connection = connection;
-                command.Transaction = transaction;
-                command.CommandText = script.Script;
-                command.CommandType = CommandType.Text;
-                command.CommandTimeout = Timeout;
-                command.Parameters.AddWithValue("node", NodeName);
-
-                try
+                using (SqlConnection connection = new(ConnectionString))
                 {
-                    using (SqlDataReader reader = command.ExecuteReader())
+                    connection.Open();
+
+                    SqlCommand command = connection.CreateCommand();
+                    SqlTransaction transaction = connection.BeginTransaction();
+
+                    command.Connection = connection;
+                    command.Transaction = transaction;
+                    command.CommandText = script.Script;
+                    command.CommandType = CommandType.Text;
+                    command.CommandTimeout = Timeout;
+                    command.Parameters.AddWithValue("node", NodeName);
+
+                    try
                     {
-                        while (reader.Read())
+                        using (SqlDataReader reader = command.ExecuteReader())
                         {
-                            Process(reader, typeCode, script.Mapper); consumed++;
+                            while (reader.Read())
+                            {
+                                sequence++; tracker.Track();
+
+                                Process(reader, session, sequence, typeCode, script.Mapper);
+                            }
+                            reader.Close();
                         }
-                        reader.Close();
+
+                        tracker.Synchronize();
+
+                        transaction.Commit();
                     }
-
-                    WaitForCompletion();
-
-                    transaction.Commit();
-                }
-                catch (Exception error)
-                {
-                    try { transaction.Rollback(); throw; }
-                    catch { throw error; }
+                    catch (Exception error)
+                    {
+                        try { transaction.Rollback(); throw; }
+                        catch { throw error; }
+                    }
                 }
             }
 
-            return consumed;
+            _manager.RemoveProgressReporter(session);
+
+            return sequence;
         }
-        private void Process(in SqlDataReader reader, int typeCode, in EntityMap mapper)
+        private void Process(in SqlDataReader reader, Guid session, int sequence, int typeCode, in EntityMap mapper)
         {
             mapper.Map(reader, out IDataRecord record);
 
             OneDbMessage message = new()
             {
-                Sequence = 1234,
+                Session = session,
+                Sequence = sequence,
                 TypeCode = typeCode,
                 DataRecord = record
             };
 
             _next?.Process(in message);
-        }
-        private void WaitForCompletion()
-        {
-            //TODO: wait for batch have been processed by pipeline ...
         }
     }
 }
