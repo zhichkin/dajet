@@ -7,7 +7,6 @@ using DaJet.Scripting;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using System.Data;
-using System.Threading.Channels;
 
 namespace DaJet.Stream.SqlServer
 {
@@ -19,18 +18,11 @@ namespace DaJet.Stream.SqlServer
         private readonly ScriptDataMapper _scripts;
         private readonly InfoBaseDataMapper _databases;
         private readonly Dictionary<int, GeneratorResult> _commands = new();
-        private Channel<OneDbMessage> _channel = Channel.CreateUnbounded<OneDbMessage>(new UnboundedChannelOptions()
-        {
-            SingleWriter = false,
-            SingleReader = false,
-            AllowSynchronousContinuations = true
-        });
         #endregion
         private string ConnectionString { get; set; }
         [Option] public Guid Pipeline { get; set; } = Guid.Empty;
         [Option] public string Source { get; set; } = string.Empty;
         [Option] public string Exchange { get; set; } = string.Empty;
-        [Option] public int MaxDop { get; set; } = 1;
         [Option] public int Timeout { get; set; } = 10; // seconds (value of 0 indicates no limit)
         [ActivatorUtilitiesConstructor] public OneDbRouter(InfoBaseDataMapper databases, ScriptDataMapper scripts, IPipelineManager manager, IMetadataService metadata)
         {
@@ -116,73 +108,9 @@ namespace DaJet.Stream.SqlServer
             }
         }
 
-        public override void Process(in OneDbMessage input)
+        protected override void _Process(in OneDbMessage input)
         {
-            //if (_channel is null)
-            //{
-            //    _channel = Channel.CreateUnbounded<OneDbMessage>(new UnboundedChannelOptions()
-            //    {
-            //        SingleWriter = false,
-            //        SingleReader = false,
-            //        AllowSynchronousContinuations = true
-            //    });
-
-            //    for (int i = 0; i < MaxDop; i++)
-            //    {
-            //        _ = Task.Run(RouteMessages);
-            //    }
-            //}
-
-            if (!_channel.Writer.TryWrite(input))
-            {
-                //TODO: _channel.Writer.TryWrite ?
-            }
-
-            //_channel.Writer.WriteAsync(input);
-        }
-        private async ValueTask RouteMessages()
-        {
-            if (_channel is null)
-            {
-                return; // _channel must be disposed
-            }
-
-            while (await _channel.Reader.WaitToReadAsync())
-            {
-                if (_channel.Reader.TryRead(out OneDbMessage message))
-                {
-                    if (message.Sequence < 0)
-                    {
-                        if (_manager.TryGetProgressReporter(message.Session, out IProgress<bool> progress))
-                        {
-                            progress?.Report(true);
-                        }
-                    }
-
-                    bool success = true;
-
-                    try
-                    {
-                        RouteMessage(in message);
-                    }
-                    catch
-                    {
-                        success = false;
-                    }
-
-                    //if (_manager.TryGetProgressReporter(message.Session, out IProgress<bool> progress))
-                    //{
-                    //    progress?.Report(success);
-                    //}
-
-                    _next?.Process(in message);
-                }
-
-                if (_channel is null)
-                {
-                    break; // _channel must be disposed
-                }
-            }
+            RouteMessage(in input);
         }
         private void RouteMessage(in OneDbMessage message)
         {
@@ -237,30 +165,6 @@ namespace DaJet.Stream.SqlServer
                     catch { throw error; }
                 }
             }
-        }
-        protected override void _Synchronize()
-        {
-            for (int i = 0; i < MaxDop; i++)
-            {
-                _ = Task.Run(RouteMessages);
-            }
-        }
-        protected override void _Dispose()
-        {
-            //if (_channel is null)
-            //{
-            //    return;
-            //}
-
-            //if (_channel.Writer.TryComplete())
-            //{
-            //    _channel.Reader.Completion.ContinueWith((task) =>
-            //    {
-            //        //TODO: dispose local resources
-            //    });
-            //}
-
-            //_channel = null;
         }
     }
 }
