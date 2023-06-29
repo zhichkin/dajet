@@ -2,7 +2,7 @@
 
 namespace DaJet.Flow
 {
-    public abstract class AsyncProcessorBlock<TInput> : Configurable, IInputBlock<TInput>, IOutputBlock<TInput>
+    public abstract class BufferProcessorBlock<TInput> : Configurable, IInputBlock<TInput>, IOutputBlock<TInput>
     {
         protected IInputBlock<TInput> _next;
         public void LinkTo(in IInputBlock<TInput> next) { _next = next; }
@@ -14,12 +14,7 @@ namespace DaJet.Flow
             SingleReader = false,
             AllowSynchronousContinuations = true
         });
-        private readonly ManualResetEventSlim _lock = new(true);
-        [Option] public int MaxDop { get; set; } = Environment.ProcessorCount;
-        public void BeginProcessing()
-        {
-            _lock.Wait();
-        }
+        [Option] public int MaxDop { get; set; } = 1;
         public void Process(in TInput input)
         {
             if (!_channel.Writer.TryWrite(input))
@@ -29,28 +24,6 @@ namespace DaJet.Flow
         }
         public void Synchronize()
         {
-            _lock.Reset(); // lock processor
-
-            //TODO: handle synchronous block
-            //if (_next is not AsyncProcessorBlock<TInput> next)
-            //{
-            //    //_next?.Synchronize();
-            //    //_lock.Set(); // unlock processor
-            //    //return;
-            //}
-
-            AsyncProcessorBlock<TInput> next = _next as AsyncProcessorBlock<TInput>;
-
-            next?.BeginProcessing();
-
-            _Synchronise();
-
-            next?.Synchronize();
-
-            _lock.Set(); // unlock processor
-        }
-        private void _Synchronise()
-        {
             if (MaxDop == 1)
             {
                 ProcessSynchronously();
@@ -58,18 +31,22 @@ namespace DaJet.Flow
             else
             {
                 Task[] tasks = new Task[MaxDop];
+
                 for (int i = 0; i < MaxDop; i++)
                 {
                     tasks[i] = Task.Run(ProcessAsync);
                 }
+
                 Task.WaitAll(tasks);
             }
+
+            _next?.Synchronize();
         }
         private void ProcessSynchronously()
         {
             while (_channel.Reader.TryRead(out TInput input))
             {
-                _Process(in input);
+                _Process(in input); _next?.Process(in input);
             }
         }
         private ValueTask ProcessAsync()
@@ -87,8 +64,11 @@ namespace DaJet.Flow
             //    });
             //}
 
-            //TODO: _lock.Dispose(); ???
-            
+            while (_channel.Reader.TryRead(out _))
+            {
+                // empty channel buffer
+            }
+
             _next?.Dispose();
         }
     }

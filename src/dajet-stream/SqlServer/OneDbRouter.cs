@@ -10,25 +10,22 @@ using System.Data;
 
 namespace DaJet.Stream.SqlServer
 {
-    [PipelineBlock] public sealed class OneDbRouter : AsyncProcessorBlock<OneDbMessage>
+    [PipelineBlock] public sealed class OneDbRouter : BufferProcessorBlock<OneDbMessage>
     {
         #region "PRIVATE VARIABLES"
-        private readonly IPipelineManager _manager;
         private readonly IMetadataService _metadata;
         private readonly ScriptDataMapper _scripts;
         private readonly InfoBaseDataMapper _databases;
         private readonly Dictionary<int, GeneratorResult> _commands = new();
         #endregion
         private string ConnectionString { get; set; }
-        [Option] public Guid Pipeline { get; set; } = Guid.Empty;
         [Option] public string Source { get; set; } = string.Empty;
         [Option] public string Exchange { get; set; } = string.Empty;
         [Option] public int Timeout { get; set; } = 10; // seconds (value of 0 indicates no limit)
-        [ActivatorUtilitiesConstructor] public OneDbRouter(InfoBaseDataMapper databases, ScriptDataMapper scripts, IPipelineManager manager, IMetadataService metadata)
+        [ActivatorUtilitiesConstructor] public OneDbRouter(InfoBaseDataMapper databases, ScriptDataMapper scripts, IMetadataService metadata)
         {
-            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
-            _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
             _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
+            _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
             _databases = databases ?? throw new ArgumentNullException(nameof(databases));
         }
         protected override void _Configure()
@@ -95,26 +92,17 @@ namespace DaJet.Stream.SqlServer
                                 }
                                 else
                                 {
-                                    //TODO: throw new InvalidOperationException(command.Error);
+                                    throw new InvalidOperationException(command.Error);
                                 }
                             }
-                        }
-                        else
-                        {
-                            //TODO: throw new InvalidOperationException($"Router script not found: {metadataName}");
                         }
                     }
                 }
             }
         }
-
         protected override void _Process(in OneDbMessage input)
         {
-            RouteMessage(in input);
-        }
-        private void RouteMessage(in OneDbMessage message)
-        {
-            if (!_commands.TryGetValue(message.TypeCode, out GeneratorResult script))
+            if (!_commands.TryGetValue(input.TypeCode, out GeneratorResult script))
             {
                 throw new InvalidOperationException();
             }
@@ -132,10 +120,10 @@ namespace DaJet.Stream.SqlServer
                 command.CommandType = CommandType.Text;
                 command.CommandTimeout = Timeout;
 
-                for (int i = 0; i < message.DataRecord.FieldCount; i++)
+                for (int i = 0; i < input.DataRecord.FieldCount; i++)
                 {
-                    string name = message.DataRecord.GetName(i);
-                    object value = message.DataRecord.GetValue(i);
+                    string name = input.DataRecord.GetName(i);
+                    object value = input.DataRecord.GetValue(i);
 
                     if (value is Entity entity)
                     {
@@ -153,7 +141,7 @@ namespace DaJet.Stream.SqlServer
                     {
                         while (reader.Read())
                         {
-                            message.Subscribers.Add(reader.GetString(0));
+                            input.Subscribers.Add(reader.GetString(0));
                         }
                         reader.Close();
                     }
