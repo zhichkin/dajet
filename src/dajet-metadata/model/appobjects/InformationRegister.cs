@@ -4,6 +4,7 @@
     {
         public bool UseRecorder { get; set; }
         public RegisterPeriodicity Periodicity { get; set; } = RegisterPeriodicity.None;
+        public bool UsePeriodForChangeTracking { get; set; }
     }
     
     // периодический регистр сведений

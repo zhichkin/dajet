@@ -22,7 +22,7 @@ namespace DaJet.Metadata.Model
         public PropertyUsage PropertyUsage { get; set; } = PropertyUsage.Item;
         /// <summary>Использование измерения периодического или непереодического регистра сведений,
         /// <br>который не подчинён регистратору, в качестве основного отбора при регистрации изменений в плане обмена</br></summary>
-        public bool DimensionUsage { get; set; } = false;
+        public bool UseForChangeTracking { get; set; } = false;
         /// <summary>Признак измерения регистра сведений (ведущее):
         /// <br>запись будет подчинена объектам, записываемым в данном измерении</br></summary>
         public bool CascadeDelete { get; set; } = false; // Каскадное удаление по внешнему ключу

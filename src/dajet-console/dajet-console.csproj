@@ -12,4 +12,8 @@
     <PackageReference Include="DaJet.Data.Provider" Version="1.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\dajet-metadata\dajet-metadata.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -62,9 +62,9 @@ namespace DaJet.Data.Provider
         {
             if (_metadata != null) { return; }
 
-            if (MetadataSingleton.Instance.TryGetMetadataCache(IB_KEY, out _metadata, out string error))
+            if (MetadataSingleton.Instance.TryGetMetadataCache(IB_KEY, out MetadataCache cache, out string error))
             {
-                return;
+                _metadata = cache; return;
             }
 
             InfoBaseOptions options = new()
@@ -76,7 +76,11 @@ namespace DaJet.Data.Provider
             
             MetadataSingleton.Instance.Add(options);
 
-            if (!MetadataSingleton.Instance.TryGetMetadataCache(IB_KEY, out _metadata, out error))
+            if (MetadataSingleton.Instance.TryGetMetadataCache(IB_KEY, out cache, out error))
+            {
+                _metadata = cache;
+            }
+            else
             {
                 throw new InvalidOperationException($"Metadata cache error: {error}");
             }

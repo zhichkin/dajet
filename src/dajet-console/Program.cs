@@ -2,6 +2,7 @@
 using DaJet.Data.Provider;
 using DaJet.Metadata;
 using DaJet.Metadata.Core;
+using DaJet.Metadata.Model;
 using System.Reflection;
 
 namespace DaJet_Console
@@ -28,8 +29,9 @@ namespace DaJet_Console
             //Использование_Типа_Entity();
             //Использование_Типа_Union();
             //Отображение_Запроса_На_Класс();
-            Использование_Параметров_Запроса();
+            //Использование_Параметров_Запроса();
 
+            WriteConfigFile();
             //TestDataRecordJsonConverter();
         }
         private static void InitializeMetadataCache()
@@ -137,7 +139,7 @@ namespace DaJet_Console
                             string code = (string)reader.GetValue(0);
                             Union union = (Union)reader["СоставнойТип"];
 
-                            if (union.IsEmpty)
+                            if (union.IsUndefined)
                             {
                                 Console.WriteLine($" {code}: [{union.Tag}] = Неопределено");
                             }
@@ -216,6 +218,38 @@ namespace DaJet_Console
             }
         }
 
+        private static void WriteConfigFile()
+        {
+            IMetadataService service = new MetadataService();
+            service.Add(new InfoBaseOptions()
+            {
+                Key = "dajet-metadata-ms",
+                ConnectionString = MS_CONNECTION_STRING,
+                DatabaseProvider = DatabaseProvider.SqlServer
+            });
+
+            if (!service.TryGetMetadataProvider("dajet-metadata-ms", out IMetadataProvider provider, out string error))
+            {
+                Console.WriteLine(error);
+                _ = Console.ReadKey(false);
+                return;
+            }
+
+            MetadataObject metadata = provider.GetMetadataObject("РегистрСведений.ЦеныНоменклатуры");
+
+            Console.WriteLine(metadata.Uuid);
+
+            using (ConfigFileReader reader = new(DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.Config, metadata.Uuid))
+            {
+                ConfigObject configObject = new ConfigFileParser().Parse(reader);
+
+                new ConfigFileWriter().Write(configObject, "C:\\temp\\1c-dump\\РегистрСведений.ЦеныНоменклатуры.txt");
+            }
+
+            Console.WriteLine("Press any key to exit...");
+            _ = Console.ReadKey(false);
+        }
+
         //private static void TestDataRecordJsonConverter()
         //{
         //    string message = @"{ ""Ссылка"": ""{1072:8d40de9c-935c-8ecc-11ed-63721997a442}"", ""Узел"": ""{1255:8d40ed9c-935c-8ecc-11ee-06117c486156}"", ""Данные"": [ { ""Код"": ""0001"", ""Наименование"": ""(ms) 01 тест"", ""ПометкаУдаления"": false }, { ""Код"": ""0002"", ""Наименование"": ""(ms) 02 тест"", ""ПометкаУдаления"": true } ], ""Узлы"": [ { ""Код"": ""DaJet"", ""Наименование"": ""Интеграция DaJet"" }, { ""Код"": ""TEST"", ""Наименование"": ""Интеграция TEST"" } ] }";
@@ -253,12 +287,12 @@ namespace DaJet_Console
     }
     internal sealed class Product
     {
-        public Entity Ссылка { get; set; } = Entity.Empty;
+        public Entity Ссылка { get; set; } = Entity.Undefined;
         public string Код { get; set; } = string.Empty;
         public string Наименование { get; set; } = string.Empty;
         public bool ПометкаУдаления { get; set; }
-        public Entity Валюта { get; set; } = Entity.Empty;
-        public Union СоставнойТип { get; set; } = Union.Empty;
+        public Entity Валюта { get; set; } = Entity.Undefined;
+        public Union СоставнойТип { get; set; } = Union.Undefined;
         public DateTime РеквизитДата { get; set; } = DateTime.MinValue;
     }
 }

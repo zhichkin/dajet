@@ -2,16 +2,18 @@
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
-    <RootNamespace>DaJet.Stream</RootNamespace>
+    <RootNamespace>DaJet.Exchange</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
-    <AssemblyName>DaJet.Stream</AssemblyName>
+    <AssemblyName>DaJet.Exchange</AssemblyName>
     <Version>1.0.0</Version>
     <Authors>Zhichkin</Authors>
     <Copyright>Zhichkin © 2023</Copyright>
     <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/zhichkin/dajet/tree/main/src/dajet-stream</RepositoryUrl>
+    <RepositoryUrl>https://github.com/zhichkin/dajet/tree/main/src/dajet-exchange</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Description>1C:Enterprise 8 data changes streaming tool.
+Microsoft SQL Server and PostgreSQL are supported.</Description>
   </PropertyGroup>
 
   <ItemGroup>

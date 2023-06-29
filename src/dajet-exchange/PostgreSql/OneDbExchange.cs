@@ -4,24 +4,21 @@ using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Options;
 using DaJet.Scripting;
-using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using Npgsql;
 using System.Data;
 using System.Diagnostics;
-using System.Text;
 
-namespace DaJet.Stream.SqlServer
+namespace DaJet.Exchange.PostgreSql
 {
     [PipelineBlock] public sealed class OneDbExchange : SourceBlock<OneDbMessage>
     {
         #region "PRIVATE VARIABLES"
-        private ILogger _logger;
         private readonly IPipelineManager _manager;
         private readonly IMetadataService _metadata;
         private readonly ScriptDataMapper _scripts;
         private readonly InfoBaseDataMapper _databases;
-        private readonly Dictionary<int, GeneratorResult> _commands = new();
+        private readonly Dictionary<string, GeneratorResult> _commands = new();
         private bool _disposed;
         #endregion
         private string ConnectionString { get; set; }
@@ -31,9 +28,8 @@ namespace DaJet.Stream.SqlServer
         [Option] public string NodeName { get; set; } = string.Empty;
         [Option] public int BatchSize { get; set; } = 1000;
         [Option] public int Timeout { get; set; } = 10; // seconds (value of 0 indicates no limit)
-        [ActivatorUtilitiesConstructor] public OneDbExchange(InfoBaseDataMapper databases, ScriptDataMapper scripts, IPipelineManager manager, IMetadataService metadata, ILogger<OneDbExchange> logger)
+        [ActivatorUtilitiesConstructor] public OneDbExchange(InfoBaseDataMapper databases, ScriptDataMapper scripts, IPipelineManager manager, IMetadataService metadata)
         {
-            _logger = logger;
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
             _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
             _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
@@ -53,14 +49,18 @@ namespace DaJet.Stream.SqlServer
                 throw new InvalidOperationException(error);
             }
 
-            if (provider.GetMetadataObject(Exchange) is not Publication publication)
+            string metadataName = "ПланОбмена." + Exchange;
+
+            if (provider.GetMetadataObject(metadataName) is not Publication publication)
             {
                 throw new InvalidOperationException($"Exchange not found: {Exchange}");
             }
 
             List<MetadataObject> entities = GetExchangeArticles(in publication, in provider);
 
-            GenerateConsumingScripts(in entities, in provider);
+            ConfigureConsumerScripts(database.Uuid, in entities, in provider);
+
+            //GenerateConsumingScripts(in entities, in provider);
         }
         private List<MetadataObject> GetExchangeArticles(in Publication publication, in IMetadataProvider provider)
         {
@@ -83,54 +83,51 @@ namespace DaJet.Stream.SqlServer
 
             return entities;
         }
-        private void GenerateConsumingScripts(in List<MetadataObject> entities, in IMetadataProvider provider)
+        private void ConfigureConsumerScripts(Guid database, in List<MetadataObject> entities, in IMetadataProvider provider)
         {
             foreach (MetadataObject entity in entities)
             {
-                GenerateConsumingScript(in entity, in provider);
+                ConfigureConsumerScript(database, in provider, in entity);
             }
         }
-        private void GenerateConsumingScript(in MetadataObject entity, in IMetadataProvider provider)
+        private void ConfigureConsumerScript(Guid database, in IMetadataProvider provider, in MetadataObject entity)
         {
-            int code = 0;
-            StringBuilder script = new();
+            string metadataType;
+            if (entity is Catalog) { metadataType = "Справочник"; }
+            else if (entity is Document) { metadataType = "Документ"; }
+            else if (entity is InformationRegister) { metadataType = "РегистрСведений"; }
+            else
+            {
+                throw new InvalidOperationException($"Unsupported metadata type: {entity.Name}");
+            }
+            string metadataName = metadataType + "." + entity.Name;
 
-            if (entity is Catalog catalog)
+            string scriptPath = $"/exchange/{Exchange}/pub/{metadataType}/{entity.Name}/consume";
+
+            ScriptRecord record = _scripts.SelectScriptByPath(database, scriptPath);
+
+            if (record is null)
             {
-                code = catalog.TypeCode;
-                script.AppendLine("DECLARE @node string = 'DaJet';")
-                    .Append("CONSUME TOP ").Append(BatchSize).AppendLine(" Изменения.Ссылка AS Ссылка")
-                    .Append("FROM Справочник.").Append(catalog.Name).AppendLine(".Изменения AS Изменения")
-                    .Append("INNER JOIN ").Append(Exchange).AppendLine(" AS ПланОбмена")
-                    .Append("ON Изменения.УзелОбмена = ПланОбмена.Ссылка AND ПланОбмена.Код = @node");
+                throw new InvalidOperationException($"Script not found: {scriptPath}");
             }
-            else if (entity is Document document)
+
+            if (!_scripts.TrySelect(record.Uuid, out ScriptRecord script))
             {
-                code = document.TypeCode;
-                script.AppendLine("DECLARE @node string = 'DaJet';")
-                    .Append("CONSUME TOP ").Append(BatchSize).AppendLine(" Изменения.Ссылка AS Ссылка")
-                    .Append("FROM Документ.").Append(document.Name).AppendLine(".Изменения AS Изменения")
-                    .Append("INNER JOIN ").Append(Exchange).AppendLine(" AS ПланОбмена")
-                    .Append("ON Изменения.УзелОбмена = ПланОбмена.Ссылка AND ПланОбмена.Код = @node");
-            }
-            else if (entity is InformationRegister register)
-            {
-                //TODO: !!! Учесть основной отбор !!!
+                throw new InvalidOperationException($"Script not found: {scriptPath}");
             }
 
             ScriptExecutor executor = new(provider, _metadata, _databases, _scripts);
-            GeneratorResult command = executor.PrepareScript(script.ToString());
+            GeneratorResult command = executor.PrepareScript(script.Script);
 
             if (command.Success)
             {
-                _commands.Add(code, command);
+                _commands.Add(metadataName, command);
             }
             else
             {
                 throw new InvalidOperationException(command.Error);
             }
         }
-
         protected override void _Dispose()
         {
             _disposed = true;
@@ -168,39 +165,40 @@ namespace DaJet.Stream.SqlServer
             watch.Stop();
             _manager.UpdatePipelineStatus(Pipeline, $"Processed {processed} in {watch.ElapsedMilliseconds} ms");
         }
-        private int Consume(int typeCode, in GeneratorResult script)
+        private int Consume(in string typeName, in GeneratorResult script)
         {
-            int sequence = 0;
+            int consumed = 0;
 
-            using (SqlConnection connection = new(ConnectionString))
+            using (NpgsqlConnection connection = new(ConnectionString))
             {
                 connection.Open();
 
-                SqlCommand command = connection.CreateCommand();
-                SqlTransaction transaction = connection.BeginTransaction();
+                NpgsqlCommand command = connection.CreateCommand();
+                NpgsqlTransaction transaction = connection.BeginTransaction();
 
                 command.Connection = connection;
                 command.Transaction = transaction;
                 command.CommandText = script.Script;
                 command.CommandType = CommandType.Text;
                 command.CommandTimeout = Timeout;
-                command.Parameters.AddWithValue("node", NodeName);
 
                 try
                 {
-                    using (SqlDataReader reader = command.ExecuteReader())
+                    ConfigureParameters(in command);
+
+                    using (NpgsqlDataReader reader = command.ExecuteReader())
                     {
                         while (reader.Read())
                         {
-                            sequence++;
+                            consumed++;
 
                             script.Mapper.Map(reader, out IDataRecord record);
 
                             OneDbMessage message = new()
                             {
                                 Sender = Source,
-                                Sequence = sequence,
-                                TypeCode = typeCode,
+                                Sequence = DateTime.Now.Ticks,
+                                TypeName = typeName,
                                 DataRecord = record
                             };
 
@@ -218,7 +216,13 @@ namespace DaJet.Stream.SqlServer
                 }
             }
 
-            return sequence;
+            return consumed;
+        }
+        private void ConfigureParameters(in NpgsqlCommand command)
+        {
+            command.Parameters.Clear();
+            command.Parameters.AddWithValue("node_name", NodeName);
+            command.Parameters.AddWithValue("batch_size", BatchSize);
         }
     }
 }

@@ -6,7 +6,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using System.Data;
 
-namespace DaJet.Stream.SqlServer
+namespace DaJet.Exchange.SqlServer
 {
     [PipelineBlock] public sealed class OneDbProducer : TargetBlock<OneDbMessage>
     {
@@ -93,9 +93,8 @@ namespace DaJet.Stream.SqlServer
             command.Parameters.AddWithValue("msg_source", input.Sender);
             command.Parameters.AddWithValue("msg_target", string.Join(',', input.Subscribers));
             command.Parameters.AddWithValue("msg_time", DateTime.Now.AddYears(YearOffset));
-            command.Parameters.AddWithValue("msg_uuid", Guid.NewGuid().ToByteArray());
             command.Parameters.AddWithValue("msg_number", input.Sequence);
-            command.Parameters.AddWithValue("msg_type", input.TypeCode.ToString());
+            command.Parameters.AddWithValue("msg_type", input.TypeName);
             command.Parameters.AddWithValue("msg_body", input.Payload);
         }
     }

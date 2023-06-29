@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Data;
 using System.Text;
 
-namespace DaJet.Stream.SqlServer
+namespace DaJet.Exchange.SqlServer
 {
     [PipelineBlock] public sealed class OneDbTransformer : BufferProcessorBlock<OneDbMessage>
     {
@@ -18,7 +18,7 @@ namespace DaJet.Stream.SqlServer
         private readonly IMetadataService _metadata;
         private readonly ScriptDataMapper _scripts;
         private readonly InfoBaseDataMapper _databases;
-        private readonly Dictionary<int, List<ScriptCommand>> _commands = new();
+        private readonly Dictionary<string, List<ScriptCommand>> _commands = new();
         #endregion
         private string ConnectionString { get; set; }
         [Option] public string Source { get; set; } = string.Empty;
@@ -48,27 +48,24 @@ namespace DaJet.Stream.SqlServer
         }
         private void ConfigureTransformerScripts(Guid database, in IMetadataProvider provider)
         {
-            string[] identifiers = Exchange.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            string exchangeName = identifiers[1];
-
-            string pubRoot = $"/exchange/{exchangeName}/pub";
+            string pubRoot = $"/exchange/{Exchange}/pub";
 
             ScriptRecord pubNode = _scripts.SelectScriptByPath(database, pubRoot);
 
             List<ScriptRecord> typeNodes = _scripts.Select(pubNode);
 
-            string metadataName = string.Empty;
+            string metadataType;
+            string metadataName;
 
             foreach (ScriptRecord typeNode in typeNodes)
             {
-                metadataName = typeNode.Name;
+                metadataType = typeNode.Name;
 
                 List<ScriptRecord> entityNodes = _scripts.Select(typeNode);
 
                 foreach (ScriptRecord entityNode in entityNodes)
                 {
-                    metadataName += $".{entityNode.Name}";
+                    metadataName = $"{metadataType}.{entityNode.Name}";
 
                     MetadataObject metadata = provider.GetMetadataObject(metadataName);
 
@@ -87,7 +84,7 @@ namespace DaJet.Stream.SqlServer
                             {
                                 ScriptExecutor executor = new(provider, _metadata, _databases, _scripts);
                                 executor.PrepareScript(script.Script, out ScriptModel _, out List<ScriptCommand> command);
-                                _commands.Add(entity.TypeCode, command);
+                                _commands.Add(metadataName, command);
                             }
                         }
                     }
@@ -96,7 +93,7 @@ namespace DaJet.Stream.SqlServer
         }
         protected override void _Process(in OneDbMessage input)
         {
-            if (!_commands.TryGetValue(input.TypeCode, out List<ScriptCommand> script))
+            if (!_commands.TryGetValue(input.TypeName, out List<ScriptCommand> script))
             {
                 throw new InvalidOperationException();
             }
@@ -114,20 +111,7 @@ namespace DaJet.Stream.SqlServer
                 command.CommandType = CommandType.Text;
                 command.CommandTimeout = Timeout;
 
-                for (int i = 0; i < input.DataRecord.FieldCount; i++)
-                {
-                    string name = input.DataRecord.GetName(i);
-                    object value = input.DataRecord.GetValue(i);
-
-                    if (value is Entity entity)
-                    {
-                        command.Parameters.AddWithValue(name, entity.Identity.ToByteArray());
-                    }
-                    else
-                    {
-                        command.Parameters.AddWithValue(name, value);
-                    }
-                }
+                ConfigureParameters(in command, in input);
 
                 try
                 {
@@ -245,6 +229,28 @@ namespace DaJet.Stream.SqlServer
 
             return mappers;
         }
+        private void ConfigureParameters(in SqlCommand command, in OneDbMessage input)
+        {
+            if (input.DataRecord is not DataRecord record)
+            {
+                throw new InvalidOperationException($"DataRecord value is missing.");
+            }
+
+            for (int i = 0; i < record.FieldCount; i++)
+            {
+                string name = record.GetName(i);
+                object value = record.GetValue(i);
+
+                if (value is Entity entity)
+                {
+                    command.Parameters.AddWithValue(name, entity.Identity.ToByteArray());
+                }
+                else
+                {
+                    command.Parameters.AddWithValue(name, value);
+                }
+            }
+        }
         private void Stream(in SqlCommand command, in List<ScriptCommand> commands, in OneDbMessage input)
         {
             command.CommandText = CreateEntireScript(in commands);
@@ -268,65 +274,44 @@ namespace DaJet.Stream.SqlServer
             List<ScriptCommand> mappers = GetReaders(in commands);
             command.CommandText = CreateHeadScript(in commands);
             EntityMap mapper = mappers[next++].Mapper;
-            List<DataRecord> table = new();
 
+            if (input.DataRecord is not DataRecord record)
+            {
+                throw new InvalidOperationException($"DataRecord value is missing.");
+            }
+            
             using (IDataReader reader = command.ExecuteReader())
             {
-                while (reader.Read())
+                if (reader.Read())
                 {
-                    DataRecord record = new();
-                    mapper.Map(in reader, in record);
-                    table.Add(record);
+                    record.Clear(); mapper.Map(in reader, in record);
                 }
                 reader.Close();
             }
 
             command.CommandText = CreateBodyScript(in commands);
 
-            foreach (DataRecord record in table)
+            next = 1;
+
+            using (IDataReader reader = command.ExecuteReader())
             {
-                for (int i = 0; i < record.FieldCount; i++)
+                do
                 {
-                    string key = record.GetName(i);
-                    object value = record.GetValue(i);
+                    List<IDataRecord> list = new();
+                    ScriptCommand sc = mappers[next++];
 
-                    if (command.Parameters.Contains(key))
+                    while (reader.Read())
                     {
-                        if (value is Entity entity)
-                        {
-                            command.Parameters[key].Value = entity.Identity.ToByteArray();
-                        }
-                        else
-                        {
-                            command.Parameters[key].Value = (value is null ? DBNull.Value : value);
-                        }
+                        DataRecord item = new();
+                        sc.Mapper.Map(in reader, in item);
+                        list.Add(item);
                     }
+
+                    record.SetValue(sc.Name, list);
                 }
+                while (reader.NextResult());
 
-                next = 1;
-
-                using (IDataReader reader = command.ExecuteReader())
-                {
-                    do
-                    {
-                        List<IDataRecord> list = new();
-                        ScriptCommand sc = mappers[next++];
-
-                        while (reader.Read())
-                        {
-                            DataRecord item = new();
-                            sc.Mapper.Map(in reader, in item);
-                            list.Add(item);
-                        }
-
-                        record.SetValue(sc.Name, list);
-                    }
-                    while (reader.NextResult());
-
-                    reader.Close();
-                }
-
-                input.DataRecord = record;
+                reader.Close();
             }
         }
     }

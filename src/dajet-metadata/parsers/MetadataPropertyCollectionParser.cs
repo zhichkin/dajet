@@ -176,7 +176,7 @@ namespace DaJet.Metadata.Parsers
                         if (_purpose == PropertyPurpose.Dimension)
                         {
                             _converter[0][2] += CascadeDelete;
-                            _converter[0][5] += DimensionUsage;
+                            _converter[0][5] += UseDimensionForChangeTracking;
                         }
                     }
                 }
@@ -219,9 +219,9 @@ namespace DaJet.Metadata.Parsers
         {
             _property.CascadeDelete = (source.GetInt32() == 1);
         }
-        private void DimensionUsage(in ConfigFileReader source, in CancelEventArgs args)
+        private void UseDimensionForChangeTracking(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _property.DimensionUsage = (source.GetInt32() == 1);
+            _property.UseForChangeTracking = (source.GetInt32() == 1);
         }
         private void Parent(in ConfigFileReader source, in CancelEventArgs args)
         {

@@ -90,11 +90,11 @@ namespace DaJet.Data.Provider
 
             if (_metadata.DatabaseProvider == DatabaseProvider.SqlServer)
             {
-                generator = new MsSqlGenerator() { YearOffset = _metadata.InfoBase.YearOffset };
+                generator = new MsSqlGenerator() { YearOffset = _metadata.YearOffset };
             }
             else if (_metadata.DatabaseProvider == DatabaseProvider.PostgreSql)
             {
-                generator = new PgSqlGenerator() { YearOffset = _metadata.InfoBase.YearOffset };
+                generator = new PgSqlGenerator() { YearOffset = _metadata.YearOffset };
             }
             else
             {
@@ -133,7 +133,7 @@ namespace DaJet.Data.Provider
                 }
                 else if (parameter.Value is DateTime dateTime)
                 {
-                    parameter.Value = dateTime.AddYears(_metadata.InfoBase.YearOffset);
+                    parameter.Value = dateTime.AddYears(_metadata.YearOffset);
                     parameter.DbType = DbType.DateTime2;
                 }
 

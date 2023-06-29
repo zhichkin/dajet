@@ -2,6 +2,7 @@
 using DaJet.Metadata.Model;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace DaJet.Metadata.Core
 {
@@ -1756,8 +1757,13 @@ namespace DaJet.Metadata.Core
 
         #region "CHANGE TRACKING TABLE"
 
-        private static void ConfigureChangeTrackingTable(in MetadataCache cache, in ChangeTrackingTable table)
+        internal static void ConfigureChangeTrackingTable(in MetadataCache cache, in ChangeTrackingTable table)
         {
+            if (table.Entity is not ApplicationObject entity)
+            {
+                return;
+            }
+
             if (!cache.TryGetChngR(table.Entity.Uuid, out DbName changeTable))
             {
                 return;
@@ -1769,16 +1775,60 @@ namespace DaJet.Metadata.Core
             table.TypeCode = table.Entity.TypeCode;
             table.TableName = $"_{changeTable.Name}{changeTable.Code}";
 
-            // FIXME: Поддерживаются только ссылочные типы данных
-            // TODO: Добавить поддержку для регистров:
-            // 1. Регистры, подчинённые регистратору, имеют только свойство "Регистратор"
-            //    в таблице регистрации измерений, с учётом значения его множественности
-            // 2. Регистры сведений, неподчинённые регистратору, имеют составные ключи
-            //    только для тех своих измерений, которые помечены как "Основной отбор"
-
-            ConfigurePropertyСсылка(table);
             ConfigurePropertyУзелПланаОбмена(in table);
             ConfigurePropertyНомерСообщения(in table);
+
+            if (entity is Catalog || entity is Document)
+            {
+                MetadataProperty reference = entity.Properties.Where(p => p.Name == "Ссылка").FirstOrDefault();
+
+                if (reference is not null)
+                {
+                    table.Properties.Add(reference);
+                }
+            }
+            else if (entity is InformationRegister register)
+            {
+                if (register.UseRecorder) // Регистр, подчинённый регистратору
+                {
+                    MetadataProperty recorder = entity.Properties.Where(p => p.Name == "Регистратор").FirstOrDefault();
+
+                    if (recorder is not null)
+                    {
+                        table.Properties.Add(recorder);
+                    }
+                }
+                else if (register.Periodicity != RegisterPeriodicity.None) // Периодический регистр сведений
+                {
+                    if (register.UsePeriodForChangeTracking)
+                    {
+                        MetadataProperty period = entity.Properties.Where(p => p.Name == "Период").FirstOrDefault();
+
+                        if (period is not null)
+                        {
+                            table.Properties.Add(period);
+                        }
+                    }
+
+                    foreach (MetadataProperty property in register.Properties)
+                    {
+                        if (property.Purpose == PropertyPurpose.Dimension && property.UseForChangeTracking)
+                        {
+                            table.Properties.Add(property);
+                        }
+                    }
+                }
+                else // Непериодический и независимый регистр сведений
+                {
+                    foreach (MetadataProperty property in register.Properties)
+                    {
+                        if (property.Purpose == PropertyPurpose.Dimension && property.UseForChangeTracking)
+                        {
+                            table.Properties.Add(property);
+                        }
+                    }
+                }
+            }
         }
         private static void ConfigurePropertyУзелПланаОбмена(in ChangeTrackingTable table)
         {

@@ -5,7 +5,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
 
-namespace DaJet.Stream
+namespace DaJet.Exchange
 {
     [PipelineBlock] public sealed class OneDbSerializer : BufferProcessorBlock<OneDbMessage>
     {

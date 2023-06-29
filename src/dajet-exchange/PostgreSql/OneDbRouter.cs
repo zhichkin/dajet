@@ -4,11 +4,11 @@ using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Options;
 using DaJet.Scripting;
-using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using System.Data;
 
-namespace DaJet.Stream.SqlServer
+namespace DaJet.Exchange.PostgreSql
 {
     [PipelineBlock] public sealed class OneDbRouter : BufferProcessorBlock<OneDbMessage>
     {
@@ -16,7 +16,7 @@ namespace DaJet.Stream.SqlServer
         private readonly IMetadataService _metadata;
         private readonly ScriptDataMapper _scripts;
         private readonly InfoBaseDataMapper _databases;
-        private readonly Dictionary<int, GeneratorResult> _commands = new();
+        private readonly Dictionary<string, GeneratorResult> _commands = new();
         #endregion
         private string ConnectionString { get; set; }
         [Option] public string Source { get; set; } = string.Empty;
@@ -46,27 +46,24 @@ namespace DaJet.Stream.SqlServer
         }
         private void ConfigureRouterScripts(Guid database, in IMetadataProvider provider)
         {
-            string[] identifiers = Exchange.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            string exchangeName = identifiers[1];
-
-            string pubRoot = $"/exchange/{exchangeName}/pub";
+            string pubRoot = $"/exchange/{Exchange}/pub";
 
             ScriptRecord pubNode = _scripts.SelectScriptByPath(database, pubRoot);
 
             List<ScriptRecord> typeNodes = _scripts.Select(pubNode);
 
-            string metadataName = string.Empty;
+            string metadataType;
+            string metadataName;
 
             foreach (ScriptRecord typeNode in typeNodes)
             {
-                metadataName = typeNode.Name;
+                metadataType = typeNode.Name;
 
                 List<ScriptRecord> entityNodes = _scripts.Select(typeNode);
 
                 foreach (ScriptRecord entityNode in entityNodes)
                 {
-                    metadataName += $".{entityNode.Name}";
+                    metadataName = $"{metadataType}.{entityNode.Name}";
 
                     MetadataObject metadata = provider.GetMetadataObject(metadataName);
 
@@ -79,7 +76,7 @@ namespace DaJet.Stream.SqlServer
 
                     foreach (ScriptRecord entityScript in entityScripts)
                     {
-                        if (entityScript.Name == "routing")
+                        if (entityScript.Name == "route")
                         {
                             if (_scripts.TrySelect(entityScript.Uuid, out ScriptRecord script))
                             {
@@ -88,7 +85,7 @@ namespace DaJet.Stream.SqlServer
 
                                 if (command.Success)
                                 {
-                                    _commands.Add(entity.TypeCode, command);
+                                    _commands.Add(metadataName, command);
                                 }
                                 else
                                 {
@@ -102,17 +99,17 @@ namespace DaJet.Stream.SqlServer
         }
         protected override void _Process(in OneDbMessage input)
         {
-            if (!_commands.TryGetValue(input.TypeCode, out GeneratorResult script))
+            if (!_commands.TryGetValue(input.TypeName, out GeneratorResult script))
             {
                 throw new InvalidOperationException();
             }
 
-            using (SqlConnection connection = new(ConnectionString))
+            using (NpgsqlConnection connection = new(ConnectionString))
             {
                 connection.Open();
 
-                SqlCommand command = connection.CreateCommand();
-                SqlTransaction transaction = connection.BeginTransaction();
+                NpgsqlCommand command = connection.CreateCommand();
+                NpgsqlTransaction transaction = connection.BeginTransaction();
 
                 command.Connection = connection;
                 command.Transaction = transaction;
@@ -137,11 +134,16 @@ namespace DaJet.Stream.SqlServer
 
                 try
                 {
-                    using (SqlDataReader reader = command.ExecuteReader())
+                    using (IDataReader reader = command.ExecuteReader())
                     {
                         while (reader.Read())
                         {
-                            input.Subscribers.Add(reader.GetString(0));
+                            object value = script.Mapper.Properties[0].GetValue(in reader);
+                            
+                            if (value is string target)
+                            {
+                                input.Subscribers.Add(target); //reader.GetString(0)
+                            }
                         }
                         reader.Close();
                     }

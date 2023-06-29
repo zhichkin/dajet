@@ -106,6 +106,8 @@ namespace DaJet.Metadata.Parsers
             _converter[1][15][1][3][2] += Alias;
             _converter[1][18] += Periodicity;
             _converter[1][19] += UseRecorder;
+            _converter[1][23] += UsePeriodForChangeTracking;
+            //TODO: Основной отбор по периоду для таблиц регистрации изменений планов обмена !!!
 
             ConfigurePropertyConverters();
         }
@@ -138,6 +140,10 @@ namespace DaJet.Metadata.Parsers
         private void UseRecorder(in ConfigFileReader source, in CancelEventArgs args)
         {
             _target.UseRecorder = (source.GetInt32() != 0);
+        }
+        private void UsePeriodForChangeTracking(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _target.UsePeriodForChangeTracking = (source.GetInt32() == 1);
         }
         private void ConfigurePropertyConverters()
         {
