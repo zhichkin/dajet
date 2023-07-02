@@ -46,7 +46,7 @@ namespace DaJet.Flow
         {
             while (_channel.Reader.TryRead(out TInput input))
             {
-                _Process(in input); _next?.Process(in input);
+                _Process(in input);
             }
         }
         private ValueTask ProcessAsync()

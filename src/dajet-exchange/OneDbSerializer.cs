@@ -28,6 +28,8 @@ namespace DaJet.Exchange
                     input.Payload = Encoding.UTF8.GetString(memory.ToArray());
                 }
             }
+
+            _next?.Process(in input); // continue pipeline processing
         }
     }
 }

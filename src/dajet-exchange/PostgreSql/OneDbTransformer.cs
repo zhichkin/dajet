@@ -95,7 +95,7 @@ namespace DaJet.Exchange.PostgreSql
         {
             if (!_commands.TryGetValue(input.TypeName, out List<ScriptCommand> script))
             {
-                throw new InvalidOperationException();
+                return; // messages, having no contract, are dropped
             }
 
             using (NpgsqlConnection connection = new(ConnectionString))
@@ -132,6 +132,8 @@ namespace DaJet.Exchange.PostgreSql
                     catch { throw error; }
                 }
             }
+
+            _next?.Process(in input); // continue pipeline processing
         }
         private bool IsSingleReader(in List<ScriptCommand> script)
         {

@@ -98,7 +98,7 @@ namespace DaJet.Exchange.PostgreSql
             else if (entity is InformationRegister) { metadataType = "РегистрСведений"; }
             else
             {
-                throw new InvalidOperationException($"Unsupported metadata type: {entity.Name}");
+                return; // unsupported metadata type - no processing ¯\_(ツ)_/¯
             }
             string metadataName = metadataType + "." + entity.Name;
 
@@ -108,12 +108,17 @@ namespace DaJet.Exchange.PostgreSql
 
             if (record is null)
             {
-                throw new InvalidOperationException($"Script not found: {scriptPath}");
+                return; // no consume script - no processing ¯\_(ツ)_/¯
             }
 
             if (!_scripts.TrySelect(record.Uuid, out ScriptRecord script))
             {
                 throw new InvalidOperationException($"Script not found: {scriptPath}");
+            }
+
+            if (string.IsNullOrWhiteSpace(script.Script))
+            {
+                return; // empty script is none script ¯\_(ツ)_/¯
             }
 
             ScriptExecutor executor = new(provider, _metadata, _databases, _scripts);

@@ -17,6 +17,7 @@ namespace DaJet.Exchange.SqlServer
         private readonly ScriptDataMapper _scripts;
         private readonly InfoBaseDataMapper _databases;
         private readonly Dictionary<string, GeneratorResult> _commands = new();
+        private GeneratorResult _defaultRouter;
         #endregion
         private string ConnectionString { get; set; }
         [Option] public string Source { get; set; } = string.Empty;
@@ -41,8 +42,28 @@ namespace DaJet.Exchange.SqlServer
             {
                 throw new InvalidOperationException(error);
             }
-            
+
+            ConfigureDefaultRouter(database.Uuid, in provider);
             ConfigureRouterScripts(database.Uuid, in provider);
+        }
+        private void ConfigureDefaultRouter(Guid database, in IMetadataProvider provider)
+        {
+            string scriptPath = $"/exchange/{Exchange}/pub/route";
+
+            ScriptRecord record = _scripts.SelectScriptByPath(database, scriptPath);
+
+            if (record is null) { return; }
+
+            if (!_scripts.TrySelect(record.Uuid, out ScriptRecord script)) { return; }
+
+            if (string.IsNullOrWhiteSpace(script.Script)) { return; }
+
+            ScriptExecutor executor = new(provider, _metadata, _databases, _scripts);
+            GeneratorResult command = executor.PrepareScript(script.Script);
+
+            if (!command.Success) { return; }
+
+            _defaultRouter = command;
         }
         private void ConfigureRouterScripts(Guid database, in IMetadataProvider provider)
         {
@@ -74,18 +95,25 @@ namespace DaJet.Exchange.SqlServer
 
                     List<ScriptRecord> entityScripts = _scripts.Select(entityNode);
 
+                    bool configured = false;
+
                     foreach (ScriptRecord entityScript in entityScripts)
                     {
                         if (entityScript.Name == "route")
                         {
                             if (_scripts.TrySelect(entityScript.Uuid, out ScriptRecord script))
                             {
+                                if (string.IsNullOrWhiteSpace(script.Script))
+                                {
+                                    continue; // empty script is none script ¯\_(ツ)_/¯
+                                }
+
                                 ScriptExecutor executor = new(provider, _metadata, _databases, _scripts);
                                 GeneratorResult command = executor.PrepareScript(script.Script);
 
                                 if (command.Success)
                                 {
-                                    _commands.Add(metadataName, command);
+                                    configured = _commands.TryAdd(metadataName, command);
                                 }
                                 else
                                 {
@@ -94,6 +122,12 @@ namespace DaJet.Exchange.SqlServer
                             }
                         }
                     }
+
+                    if (!configured && _defaultRouter is not null)
+                    {
+                        _commands.Add(metadataName, _defaultRouter);
+                        //TODO: cache default router values !?
+                    }
                 }
             }
         }
@@ -101,7 +135,7 @@ namespace DaJet.Exchange.SqlServer
         {
             if (!_commands.TryGetValue(input.TypeName, out GeneratorResult script))
             {
-                throw new InvalidOperationException();
+                return; // messages, having no route script, are dropped
             }
 
             using (SqlConnection connection = new(ConnectionString))
@@ -134,11 +168,16 @@ namespace DaJet.Exchange.SqlServer
 
                 try
                 {
-                    using (SqlDataReader reader = command.ExecuteReader())
+                    using (IDataReader reader = command.ExecuteReader())
                     {
                         while (reader.Read())
                         {
-                            input.Subscribers.Add(reader.GetString(0));
+                            object value = script.Mapper.Properties[0].GetValue(in reader);
+
+                            if (value is string target)
+                            {
+                                input.Subscribers.Add(target);
+                            }
                         }
                         reader.Close();
                     }
@@ -149,6 +188,16 @@ namespace DaJet.Exchange.SqlServer
                     try { transaction.Rollback(); throw; }
                     catch { throw error; }
                 }
+            }
+
+            if (input.Subscribers.Count > 0)
+            {
+                _next?.Process(in input); // continue pipeline processing
+            }
+            else
+            {
+                // Unrouted messages are dropped.
+                // TODO: make an option to throw an exception !?
             }
         }
     }

@@ -1097,6 +1097,8 @@ namespace DaJet.Scripting
                 Visit(node.Source, in script);
                 script.Append(") AS source");
             }
+
+            script.Append(";");
         }
         protected virtual void Visit(in ValuesExpression node, in StringBuilder script)
         {
