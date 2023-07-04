@@ -1,0 +1,18 @@
+﻿@inject HttpClient Http;
+
+<MudDialog OnBackdropClick="CloseDialog" DefaultFocus="DefaultFocus.Element" DisableSidePadding="true">
+
+    <DialogContent>
+
+        <MudTable T="string" Items="@Items" OnRowClick="OnSelectItem" Hover="true" Dense="true">
+            <HeaderContent>
+                <MudTh>Publication</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context</MudTd>
+            </RowTemplate>
+        </MudTable>
+
+    </DialogContent>
+
+</MudDialog>

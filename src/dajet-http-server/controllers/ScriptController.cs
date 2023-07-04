@@ -10,10 +10,13 @@ using System.Text.Unicode;
 
 namespace DaJet.Http.Controllers
 {
-    [ApiController]
-    [Route("api")]
-    public class ScriptController : ControllerBase
+    [ApiController][Route("api")] public class ScriptController : ControllerBase
     {
+        private readonly JsonSerializerOptions JsonOptions = new()
+        {
+            WriteIndented = true,
+            Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+        };
         private readonly ScriptDataMapper _scripts;
         private readonly InfoBaseDataMapper _mapper;
         private readonly IMetadataService _metadataService;
@@ -23,8 +26,7 @@ namespace DaJet.Http.Controllers
             _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
             _metadataService = metadataService ?? throw new ArgumentNullException(nameof(metadataService));
         }
-        [HttpGet("select/{infobase}")]
-        public ActionResult Select([FromRoute] string infobase)
+        [HttpGet("select/{infobase}")] public ActionResult Select([FromRoute] string infobase)
         {
             InfoBaseModel database = _mapper.Select(infobase);
             if (database is null) { return NotFound(); }
@@ -33,38 +35,14 @@ namespace DaJet.Http.Controllers
 
             foreach (ScriptRecord parent in list)
             {
-                GetScriptChildren(parent);
+                _scripts.GetScriptChildren(parent);
             }
 
-            JsonSerializerOptions options = new()
-            {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-            };
-
-            string json = JsonSerializer.Serialize(list, options);
+            string json = JsonSerializer.Serialize(list, JsonOptions);
 
             return Content(json);
         }
-        private void GetScriptChildren(ScriptRecord parent)
-        {
-            List<ScriptRecord> list = _scripts.Select(parent);
-
-            if (list.Count == 0)
-            {
-                return;
-            }
-
-            parent.Children.AddRange(list);
-
-            foreach (ScriptRecord child in parent.Children)
-            {
-                GetScriptChildren(child);
-            }
-        }
-
-        [HttpGet("url/{uuid:guid}")]
-        public ActionResult SelectScriptUrl([FromRoute] Guid uuid)
+        [HttpGet("url/{uuid:guid}")] public ActionResult SelectScriptUrl([FromRoute] Guid uuid)
         {
             if (!_scripts.TrySelect(uuid, out ScriptRecord script))
             {
@@ -88,26 +66,18 @@ namespace DaJet.Http.Controllers
 
             return Content(url);
         }
-        [HttpGet("{uuid:guid}")]
-        public ActionResult SelectScript([FromRoute] Guid uuid)
+        [HttpGet("{uuid:guid}")] public ActionResult SelectScript([FromRoute] Guid uuid)
         {
             if (!_scripts.TrySelect(uuid, out ScriptRecord script))
             {
                 return NotFound();
             }
 
-            JsonSerializerOptions options = new()
-            {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-            };
-
-            string json = JsonSerializer.Serialize(script, options);
+            string json = JsonSerializer.Serialize(script, JsonOptions);
 
             return Content(json);
         }
-        [HttpPost("")]
-        public ActionResult InsertScript([FromBody] ScriptRecord script)
+        [HttpPost("")] public ActionResult InsertScript([FromBody] ScriptRecord script)
         {
             if (script.Parent != Guid.Empty && !_scripts.TrySelect(script.Parent, out ScriptRecord _))
             {
@@ -121,8 +91,7 @@ namespace DaJet.Http.Controllers
 
             return Created($"{script.Name}", $"{script.Uuid}");
         }
-        [HttpPut("")]
-        public ActionResult UpdateScript([FromBody] ScriptRecord script)
+        [HttpPut("")] public ActionResult UpdateScript([FromBody] ScriptRecord script)
         {
             if (!_scripts.Update(script))
             {
@@ -130,8 +99,7 @@ namespace DaJet.Http.Controllers
             }
             return Ok();
         }
-        [HttpPut("name")]
-        public ActionResult UpdateScriptName([FromBody] ScriptRecord script)
+        [HttpPut("name")] public ActionResult UpdateScriptName([FromBody] ScriptRecord script)
         {
             if (!_scripts.UpdateName(script))
             {
@@ -139,8 +107,7 @@ namespace DaJet.Http.Controllers
             }
             return Ok();
         }
-        [HttpDelete("{uuid:guid}")]
-        public ActionResult DeleteScript([FromRoute] Guid uuid)
+        [HttpDelete("{uuid:guid}")] public ActionResult DeleteScript([FromRoute] Guid uuid)
         {
             if (!_scripts.TrySelect(uuid, out ScriptRecord script))
             {
@@ -176,7 +143,7 @@ namespace DaJet.Http.Controllers
 
             _scripts.Delete(script);
         }
-
+        
         [HttpPost("{infobase}/{**path}")]
         public async Task<ActionResult> ExecuteScript([FromRoute] string infobase, [FromRoute] string path)
         {
@@ -236,12 +203,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest(ExceptionHelper.GetErrorMessage(exception));
             }
 
-            JsonSerializerOptions options = new()
-            {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-            };
-            string json = JsonSerializer.Serialize(result, options);
+            string json = JsonSerializer.Serialize(result, JsonOptions);
 
             return Content(json);
         }

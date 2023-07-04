@@ -1,44 +1,37 @@
 ﻿using DaJet.Studio.Components;
 using DaJet.Studio.Model;
 using DaJet.Studio.Pages;
+using DaJet.Studio.Pages.Exchange;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
-using System.ComponentModel;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace DaJet.Studio.Controllers
 {
-    public sealed class ApiTreeViewController
+    public sealed class ExchangeTreeViewController
     {
         private HttpClient Http { get; set; }
         private AppState AppState { get; set; }
         private NavigationManager Navigator { get; set; }
-        private readonly Func<TreeNodeModel, CancelEventArgs, Task> _updateTitleCommandHandler;
-        public ApiTreeViewController(AppState appState, HttpClient http, NavigationManager navigator)
+        public ExchangeTreeViewController(AppState appState, HttpClient http, NavigationManager navigator)
         {
             Http = http;
             AppState = appState;
             Navigator = navigator;
-
-            _updateTitleCommandHandler = new(UpdateTitleCommandHandler);
         }
         public TreeNodeModel CreateRootNode(InfoBaseModel model)
         {
             return new TreeNodeModel()
             {
                 Tag = model,
-                Url = $"/api/select/{model.Name}",
-                Title = "api",
-                OpenNodeHandler = OpenApiNodeHandler,
+                Url = $"/exchange/{model.Name}",
+                Title = "exchange",
+                OpenNodeHandler = OpenRootNodeHandler,
                 ContextMenuHandler = ContextMenuHandler
             };
         }
-        private async Task ContextMenuHandler(TreeNodeModel root, IDialogService dialogService)
-        {
-            await OpenContextMenu(root, dialogService);
-        }
-        private async Task OpenApiNodeHandler(TreeNodeModel root)
+        private async Task OpenRootNodeHandler(TreeNodeModel root)
         {
             if (root == null || root.Nodes.Count > 0)
             {
@@ -54,14 +47,6 @@ namespace DaJet.Studio.Controllers
 
             List<ScriptModel> list = await response.Content.ReadFromJsonAsync<List<ScriptModel>>();
 
-            for (int i = 0; i < list.Count; i++)
-            {
-                if (list[i].Name == "exchange")
-                {
-                    list.RemoveAt(i); break;
-                }
-            }
-
             foreach (ScriptModel model in list)
             {
                 TreeNodeModel node = CreateScriptNodeTree(in root, in model);
@@ -69,18 +54,22 @@ namespace DaJet.Studio.Controllers
                 root.Nodes.Add(node);
             }
         }
+        private async Task ContextMenuHandler(TreeNodeModel node, IDialogService dialogService)
+        {
+            if (node.Tag is InfoBaseModel)
+            {
+                await OpenExchangeRootContextMenu(node, dialogService);
+            }
+            else if (node.Tag is ScriptModel script && !script.IsFolder)
+            {
+                Navigator.NavigateTo($"/script-editor/{script.Uuid}");
+            }
+        }
         private TreeNodeModel CreateScriptNodeTree(in TreeNodeModel parent, in ScriptModel model)
         {
             string url = string.Empty;
 
-            if (parent.Tag is InfoBaseModel infobase)
-            {
-                url = $"/api/{infobase.Name}/{model.Name}";
-            }
-            else
-            {
-                url = $"{parent.Url}/{model.Name}";
-            }
+            url = $"{parent.Url}/{model.Name}";
 
             TreeNodeModel node = new()
             {
@@ -89,9 +78,7 @@ namespace DaJet.Studio.Controllers
                 Parent = parent,
                 Title = model.Name,
                 UseToggle = model.IsFolder,
-                CanBeEdited = true,
-                ContextMenuHandler = OpenContextMenu,
-                UpdateTitleCommand = _updateTitleCommandHandler
+                ContextMenuHandler = ContextMenuHandler
             };
 
             foreach (ScriptModel script in model.Children)
@@ -103,7 +90,8 @@ namespace DaJet.Studio.Controllers
 
             return node;
         }
-        private async Task OpenContextMenu(TreeNodeModel node, IDialogService dialogService)
+        
+        private async Task OpenExchangeRootContextMenu(TreeNodeModel node, IDialogService dialogService)
         {
             DialogParameters parameters = new()
             {
@@ -117,45 +105,63 @@ namespace DaJet.Studio.Controllers
                 DisableBackdropClick = false,
                 Position = DialogPosition.Center
             };
-            var dialog = dialogService.Show<ScriptTreeNodeDialog>(node.Url, parameters, options);
+            var dialog = dialogService.Show<ExchangeRootDialog>(node.Url, parameters, options);
             var result = await dialog.Result;
             if (result.Cancelled) { return; }
 
-            if (result.Data is not ScriptTreeNodeDialogResult dialogResult)
+            if (result.Data is not ExchangeDialogResult dialogResult)
             {
                 return;
             }
 
-            if (dialogResult.CommandType == ScriptTreeNodeDialogCommand.CreateFolder)
+            if (dialogResult.CommandType == ExchangeDialogCommand.SelectExchange)
             {
-                await CreateFolder(node);
-            }
-            else if (dialogResult.CommandType == ScriptTreeNodeDialogCommand.CreateScript)
-            {
-                await CreateScript(node);
-            }
-            else if (dialogResult.CommandType == ScriptTreeNodeDialogCommand.UpdateScript)
-            {
-                UpdateScript(node);
-            }
-            else if (dialogResult.CommandType == ScriptTreeNodeDialogCommand.DeleteFolder)
-            {
-                await DeleteFolderScript(node);
-            }
-            else if (dialogResult.CommandType == ScriptTreeNodeDialogCommand.DeleteScript)
-            {
-                await DeleteFolderScript(node);
+                await SelectExchange(node, dialogService);
             }
         }
-        private async Task CreateFolder(TreeNodeModel node)
+        private async Task SelectExchange(TreeNodeModel node, IDialogService dialogService)
         {
-            ScriptModel script = new()
+            if (node.Tag is not InfoBaseModel infobase) { return; }
+
+            DialogParameters parameters = new()
             {
-                Name = "NewFolder",
-                IsFolder = true
+                { "Model", node }
+            };
+            var settings = new DialogOptions() { CloseButton = true };
+            var dialog = dialogService.Show<SelectPublicationDialog>("Select publication", parameters, settings);
+            var result = await dialog.Result;
+            if (result.Cancelled) { return; }
+            if (result.Data is not string name) { return; }
+
+            foreach (TreeNodeModel child in node.Nodes)
+            {
+                if (child.Title == name)
+                {
+                    AppState.FooterText = $"{name} exists!"; return;
+                }
+            }
+
+            bool success = await CreatePublication(infobase, name);
+            if (!success) { return; }
+
+            string url = $"{node.Url}/{name}";
+
+            ScriptModel model = new()
+            {
+                Name = name
             };
 
-            await CreateFolderScript(node, script);
+            TreeNodeModel publication = new()
+            {
+                Url = url,
+                Tag = model,
+                Parent = node,
+                Title = name,
+                UseToggle = true,
+                ContextMenuHandler = ContextMenuHandler
+            };
+
+            node.Nodes.Add(publication);
         }
         private async Task CreateScript(TreeNodeModel node)
         {
@@ -216,52 +222,10 @@ namespace DaJet.Studio.Controllers
                 Title = script.Name,
                 UseToggle = script.IsFolder,
                 CanBeEdited = true,
-                ContextMenuHandler = OpenContextMenu,
-                UpdateTitleCommand = _updateTitleCommandHandler
+                ContextMenuHandler = ContextMenuHandler
             };
 
             node.Nodes.Add(child);
-        }
-        private void UpdateScript(TreeNodeModel node)
-        {
-            if (node.Tag is ScriptModel script)
-            {
-                Navigator.NavigateTo($"/script-editor/{script.Uuid}");
-            }
-        }
-        private async Task UpdateTitleCommandHandler(TreeNodeModel node, CancelEventArgs args)
-        {
-            if (node.Tag is not ScriptModel script)
-            {
-                return;
-            }
-
-            bool success = await UpdateScriptName(new ScriptModel()
-            {
-                Uuid = script.Uuid,
-                Name = node.Title
-            });
-
-            if (success)
-            {
-                script.Name = node.Title;
-
-                if (node.Parent is not null)
-                {
-                    if (node.Parent.Tag is InfoBaseModel infobase)
-                    {
-                        node.Url = $"/api/{infobase.Name}/{script.Name}";
-                    }
-                    else
-                    {
-                        node.Url = $"{node.Parent.Url}/{script.Name}";
-                    }
-                }
-            }
-            else
-            {
-                args.Cancel = true;
-            }
         }
         private async Task DeleteFolderScript(TreeNodeModel node)
         {
@@ -306,26 +270,6 @@ namespace DaJet.Studio.Controllers
                 return false;
             }
         }
-        private async Task<bool> UpdateScriptName(ScriptModel script)
-        {
-            try
-            {
-                HttpResponseMessage response = await Http.PutAsJsonAsync($"/api/name", script);
-
-                if (response.StatusCode == HttpStatusCode.OK)
-                {
-                    return true;
-                }
-
-                AppState.FooterText = response.ReasonPhrase;
-                return false;
-            }
-            catch (Exception error)
-            {
-                AppState.FooterText = error.Message;
-                return false;
-            }
-        }
         private async Task<bool> DeleteScript(ScriptModel script)
         {
             try
@@ -333,6 +277,26 @@ namespace DaJet.Studio.Controllers
                 HttpResponseMessage response = await Http.DeleteAsync($"/api/{script.Uuid}");
 
                 if (response.StatusCode != HttpStatusCode.OK)
+                {
+                    AppState.FooterText = response.ReasonPhrase;
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception error)
+            {
+                AppState.FooterText = error.Message;
+                return false;
+            }
+        }
+
+        private async Task<bool> CreatePublication(InfoBaseModel infobase, string name)
+        {
+            try
+            {
+                HttpResponseMessage response = await Http.PostAsJsonAsync($"/exchange/{infobase.Name}/{name}", name);
+
+                if (response.StatusCode != HttpStatusCode.Created)
                 {
                     AppState.FooterText = response.ReasonPhrase;
                     return false;

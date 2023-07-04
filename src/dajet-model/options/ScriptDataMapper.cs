@@ -82,6 +82,43 @@ namespace DaJet.Options
 
             return list;
         }
+        public List<ScriptRecord> Select(Guid database, Guid parent)
+        {
+            List<ScriptRecord> list = new();
+
+            using (SqliteConnection connection = new(_connectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = SELECT_ROOT_SCRIPT;
+
+                    command.Parameters.AddWithValue("owner", database.ToString().ToLower());
+                    command.Parameters.AddWithValue("parent", parent.ToString().ToLower());
+
+                    using (SqliteDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            ScriptRecord item = new()
+                            {
+                                Uuid = new Guid(reader.GetString(0)),
+                                Owner = new Guid(reader.GetString(1)),
+                                Parent = new Guid(reader.GetString(2)),
+                                IsFolder = (reader.GetInt64(3) == 1L),
+                                Name = reader.GetString(4),
+                                Script = string.Empty
+                            };
+                            list.Add(item);
+                        }
+                        reader.Close();
+                    }
+                }
+            }
+
+            return list;
+        }
         public List<ScriptRecord> Select(ScriptRecord parent)
         {
             List<ScriptRecord> list = new();
@@ -280,6 +317,22 @@ namespace DaJet.Options
         }
         #endregion
 
+        public void GetScriptChildren(ScriptRecord parent)
+        {
+            List<ScriptRecord> list = Select(parent);
+
+            if (list.Count == 0)
+            {
+                return;
+            }
+
+            parent.Children.AddRange(list);
+
+            foreach (ScriptRecord child in parent.Children)
+            {
+                GetScriptChildren(child);
+            }
+        }
         public ScriptRecord SelectScriptByPath(Guid database, string path)
         {
             string[] segments = path.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);

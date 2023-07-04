@@ -38,6 +38,7 @@ namespace DaJet.Studio
             builder.Services.AddSingleton<AppState>();
             builder.Services.AddSingleton<DbViewController>();
             builder.Services.AddSingleton<ApiTreeViewController>();
+            builder.Services.AddSingleton<ExchangeTreeViewController>();
 
             await builder.Build().RunAsync();
         }

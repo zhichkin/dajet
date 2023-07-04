@@ -4,7 +4,6 @@ using DaJet.Studio.Pages;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using System.Globalization;
-using System.Net;
 using System.Net.Http.Json;
 
 namespace DaJet.Studio.Components
@@ -32,6 +31,7 @@ namespace DaJet.Studio.Components
         protected List<TreeNodeModel> Nodes { get; set; } = new();
         [Inject] private DbViewController DbViewController { get; set; }
         [Inject] private ApiTreeViewController ApiTreeViewController { get; set; }
+        [Inject] private ExchangeTreeViewController ExchangeTreeViewController { get; set; }
         protected override async Task OnInitializedAsync()
         {
             await IntializeInfoBaseList();
@@ -79,6 +79,19 @@ namespace DaJet.Studio.Components
                 TreeNodeModel api = ApiTreeViewController.CreateRootNode(model);
                 api.Parent = node;
                 node.Nodes.Add(api);
+            }
+            catch (Exception error)
+            {
+                Snackbar.Add(error.Message, Severity.Error);
+            }
+        }
+        private void ConfigureExchangeTreeViewNode(in TreeNodeModel node, in InfoBaseModel model)
+        {
+            try
+            {
+                TreeNodeModel root = ExchangeTreeViewController.CreateRootNode(model);
+                root.Parent = node;
+                node.Nodes.Add(root);
             }
             catch (Exception error)
             {
@@ -155,6 +168,8 @@ namespace DaJet.Studio.Components
             node.ContextMenuHandler = InfoBaseContextMenuHandler;
 
             ConfigureApiTreeViewNode(in node, in model);
+
+            ConfigureExchangeTreeViewNode(in node, in model);
 
             ConfigureDbViewNode(in node, in model);
 
