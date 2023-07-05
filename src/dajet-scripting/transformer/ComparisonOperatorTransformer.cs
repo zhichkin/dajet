@@ -674,7 +674,9 @@ namespace DaJet.Scripting
             {
                 ColumnMap column = node.Mapping[i];
 
-                if (map.TryGetValue(column.Type, out ComparisonOperator comparison))
+                UnionTag tag = column.Type == UnionTag.Uuid ? UnionTag.Entity : column.Type;
+
+                if (map.TryGetValue(tag, out ComparisonOperator comparison))
                 {
                     ColumnReference copy = new()
                     {

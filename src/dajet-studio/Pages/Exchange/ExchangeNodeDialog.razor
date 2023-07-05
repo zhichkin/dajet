@@ -1,0 +1,29 @@
+﻿@using DaJet.Studio.Model;
+
+<MudDialog OnBackdropClick="CloseDialog" DefaultFocus="DefaultFocus.Element" DisableSidePadding="true">
+
+    <DialogContent>
+
+        <MudContainer MaxWidth="MaxWidth.ExtraSmall" Class="mx-0 my-0">
+
+            <span Style="display:block; font-size:var(--mud-typography-default-size);">
+                @Model.Url
+            </span>
+
+            <MudTooltip Text="Создать конвейер обмена данными">
+                <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder" Color="Color.Success" Size="Size.Large" OnClick="CreatePipeline" />
+            </MudTooltip>
+
+            <MudTooltip Text="Удалить правила обмена данными">
+                <MudIconButton Icon="@Icons.Material.Filled.FolderOff" Color="Color.Error" Size="Size.Large" OnClick="DeleteExchange" />
+            </MudTooltip>
+
+            <MudTooltip Text="Отмена">
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Dark" Size="Size.Large" OnClick="CloseDialog" />
+            </MudTooltip>
+
+        </MudContainer>
+
+    </DialogContent>
+
+</MudDialog>

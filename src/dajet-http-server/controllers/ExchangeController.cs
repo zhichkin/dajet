@@ -1,5 +1,4 @@
-﻿using DaJet.Data;
-using DaJet.Metadata;
+﻿using DaJet.Metadata;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Options;
@@ -8,7 +7,6 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace DaJet.Http.Controllers
 {
@@ -60,6 +58,28 @@ namespace DaJet.Http.Controllers
 
             return Content(json);
         }
+        [HttpGet("{infobase}/{publication}")] public ActionResult Select([FromRoute] string infobase, [FromRoute] string publication)
+        {
+            InfoBaseModel database = _databases.Select(infobase);
+
+            if (database is null)
+            {
+                return NotFound();
+            }
+
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, $"/exchange/{publication}");
+
+            if (script is null)
+            {
+                return NotFound();
+            }
+
+            _scripts.GetScriptChildren(script);
+
+            string json = JsonSerializer.Serialize(script, JsonOptions);
+
+            return Content(json);
+        }
         [HttpGet("{infobase}/publications")] public ActionResult SelectPublications([FromRoute] string infobase)
         {
             InfoBaseModel database = _databases.Select(infobase);
@@ -84,6 +104,31 @@ namespace DaJet.Http.Controllers
             string json = JsonSerializer.Serialize(list, JsonOptions);
 
             return Content(json);
+        }
+        [HttpDelete("{infobase}/{publication}")] public ActionResult DeletePublication([FromRoute] string infobase, [FromRoute] string publication)
+        {
+            InfoBaseModel database = _databases.Select(infobase);
+
+            if (database is null)
+            {
+                return NotFound();
+            }
+
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, $"/exchange/{publication}");
+
+            if (script is null)
+            {
+                return NotFound();
+            }
+
+            if (!_scripts.TrySelect(script.Uuid, out _))
+            {
+                return NotFound();
+            }
+
+            _scripts.DeleteScriptFolder(in script);
+
+            return Ok();
         }
         [HttpPost("{infobase}/{publication}")] public ActionResult CreatePublication([FromRoute] string infobase, [FromRoute] string publication)
         {
@@ -142,7 +187,7 @@ namespace DaJet.Http.Controllers
             ScriptRecord pub = CreatePubScriptNode(database.Uuid, script);
             if (pub is null) { return BadRequest(); }
 
-            ScriptRecord route = CreateRouteScriptNode(database.Uuid, pub);
+            ScriptRecord route = CreateRouteScriptNode(database.Uuid, pub, in publication);
             if (route is null) { return BadRequest(); }
 
             ScriptRecord document = CreateDocumentScriptNode(database.Uuid, pub);
@@ -156,7 +201,7 @@ namespace DaJet.Http.Controllers
 
             List<ScriptRecord> parents = new() { catalog, document, register };
 
-            CreateArticleScripts(database.Uuid, in parents, in articles);
+            CreateArticleScripts(database.Uuid, in publication, in parents, in articles, in provider);
 
             return Created($"[{infobase}] {publication}", $"[{infobase}] {publication}");
         }
@@ -199,7 +244,7 @@ namespace DaJet.Http.Controllers
                 return null;
             }
         }
-        private ScriptRecord CreateRouteScriptNode(Guid database, ScriptRecord parent)
+        private ScriptRecord CreateRouteScriptNode(Guid database, ScriptRecord parent, in string publication)
         {
             ScriptRecord script = new()
             {
@@ -207,7 +252,7 @@ namespace DaJet.Http.Controllers
                 IsFolder = false,
                 Owner = database,
                 Parent = parent.Uuid,
-                Script = $"SELECT '{parent.Name}'"
+                Script = $"SELECT '{publication}'"
             };
 
             if (_scripts.Insert(script))
@@ -273,20 +318,22 @@ namespace DaJet.Http.Controllers
                 return null;
             }
         }
-        private void CreateArticleScripts(Guid database, in List<ScriptRecord> parents, in List<MetadataObject> articles)
+        
+        private void CreateArticleScripts(Guid database, in string publication, in List<ScriptRecord> parents, in List<MetadataObject> articles, in IMetadataProvider provider)
         {
             foreach (MetadataObject article in articles)
             {
-                if (article is Catalog catalog) { CreateCatalogScripts(database, parents[0], in catalog); }
-                else if (article is Document document) { CreateDocumentScripts(database, parents[1], in document); }
-                else if (article is InformationRegister register) { CreateRegisterScripts(database, parents[2], in register); }
+                if (article is Catalog catalog) { CreateCatalogScripts(database, in publication, parents[0], in catalog); }
+                else if (article is Document document) { CreateDocumentScripts(database, in publication, parents[1], in document); }
+                else if (article is InformationRegister register) { CreateRegisterScripts(database, in publication, parents[2], in register, in provider); }
                 else
                 {
                     continue; // unsupported metadata type - no processing ¯\_(ツ)_/¯
                 }
             }
         }
-        private void CreateCatalogScripts(Guid database, in ScriptRecord parent, in Catalog catalog)
+        
+        private void CreateCatalogScripts(Guid database, in string publication, in ScriptRecord parent, in Catalog catalog)
         {
             ScriptRecord script = new()
             {
@@ -302,7 +349,7 @@ namespace DaJet.Http.Controllers
                 Name = "consume",
                 Owner = database,
                 Parent = script.Uuid,
-                Script = GenerateConsumeScript(in catalog)
+                Script = GenerateConsumeScript(in catalog, in publication)
             });
 
             _ = _scripts.Insert(new ScriptRecord()
@@ -311,7 +358,7 @@ namespace DaJet.Http.Controllers
                 Name = "route",
                 Owner = database,
                 Parent = script.Uuid,
-                Script = GenerateRouteScript(in catalog)
+                Script = GenerateRouteScript(in catalog, in publication)
             });
 
             _ = _scripts.Insert(new ScriptRecord()
@@ -320,18 +367,10 @@ namespace DaJet.Http.Controllers
                 Name = "contract",
                 Owner = database,
                 Parent = script.Uuid,
-                Script = GenerateContractScript(in catalog)
+                Script = GenerateContractScript(in catalog, in publication)
             });
         }
-        private void CreateDocumentScripts(Guid database, in ScriptRecord parent, in Document catalog)
-        {
-
-        }
-        private void CreateRegisterScripts(Guid database, in ScriptRecord parent, in InformationRegister catalog)
-        {
-
-        }
-        private string GenerateConsumeScript(in Catalog catalog)
+        private string GenerateConsumeScript(in Catalog catalog, in string publication)
         {
             StringBuilder script = new();
 
@@ -339,28 +378,32 @@ namespace DaJet.Http.Controllers
             script.AppendLine("DECLARE @batch_size number;");
             script.AppendLine();
             script.AppendLine("CONSUME TOP @batch_size");
-            script.AppendLine("           Изменения.Ссылка AS Ссылка");
-            script.AppendLine($"     FROM Справочник.{catalog.Name}.Изменения AS Изменения");
-            script.AppendLine("INNER JOIN ПланОбмена.ПланОбменаDaJet AS ПланОбмена");
-            script.AppendLine("        ON Изменения.УзелОбмена = ПланОбмена.Ссылка");
-            script.AppendLine("       AND ПланОбмена.Код = @node_name");
+            script.AppendLine("            Изменения.Ссылка AS Ссылка");
+            script.AppendLine($"       FROM Справочник.{catalog.Name}.Изменения AS Изменения");
+            script.AppendLine($" INNER JOIN ПланОбмена.{publication} AS ПланОбмена");
+            script.AppendLine("         ON Изменения.УзелОбмена = ПланОбмена.Ссылка");
+            script.AppendLine("        AND ПланОбмена.Код = @node_name");
 
             return script.ToString();
         }
-        private string GenerateRouteScript(in Catalog catalog)
+        private string GenerateRouteScript(in Catalog catalog, in string publication)
         {
             StringBuilder script = new();
 
             script.AppendLine($"DECLARE @Ссылка Справочник.{catalog.Name};");
             script.AppendLine();
-            script.AppendLine($"SELECT 'routing_key' FROM Справочник.{catalog.Name} WHERE Ссылка = @Ссылка");
+            script.AppendLine($"CREATE COMPUTED TABLE routing_key AS (SELECT @Ссылка AS Ссылка)");
+            script.AppendLine($"   SELECT CASE WHEN source.Ссылка IS NULL THEN 'deleted' ELSE 'Справочник.{catalog.Name}' END");
+            script.AppendLine( "     FROM routing_key AS rk");
+            script.AppendLine($"LEFT JOIN Справочник.{catalog.Name} AS source ON source.Ссылка = rk.Ссылка");
 
             return script.ToString();
         }
-        private string GenerateContractScript(in Catalog catalog)
+        private string GenerateContractScript(in Catalog catalog, in string publication)
         {
-            StringBuilder script = new();
+            int line = 0;
 
+            StringBuilder script = new();
             script.AppendLine($"DECLARE @Ссылка Справочник.{catalog.Name};");
             script.AppendLine();
             script.AppendLine("SELECT");
@@ -368,25 +411,34 @@ namespace DaJet.Http.Controllers
             {
                 MetadataProperty property = catalog.Properties[i];
 
-                if (i > 0) { script.AppendLine(","); }
+                if (property.Purpose == PropertyPurpose.System && property.Name != "Предопределённый")
+                {
+                    if (line > 0) { script.AppendLine(","); }
 
-                script.Append(property.Name);
+                    script.Append(property.Name); line++;
+                }
             }
             script.AppendLine();
             script.AppendLine($"FROM Справочник.{catalog.Name}");
             script.AppendLine("WHERE Ссылка = @Ссылка");
-
+            
             foreach (TablePart table in catalog.TableParts)
             {
+                line = 0;
                 script.AppendLine();
                 script.AppendLine("SELECT");
                 for (int i = 0; i < table.Properties.Count; i++)
                 {
                     MetadataProperty property = table.Properties[i];
 
-                    if (i > 0) { script.AppendLine(","); }
+                    if (property.Name == "KeyField")
+                    {
+                        continue;
+                    }
 
-                    script.Append(property.Name);
+                    if (line > 0) { script.AppendLine(","); }
+
+                    script.Append(property.Name); line++;
                 }
                 script.AppendLine();
                 script.AppendLine($"FROM Справочник.{catalog.Name}.{table.Name} AS {table.Name}");
@@ -394,6 +446,322 @@ namespace DaJet.Http.Controllers
             }
 
             return script.ToString();
+        }
+
+        private void CreateDocumentScripts(Guid database, in string publication, in ScriptRecord parent, in Document document)
+        {
+            ScriptRecord script = new()
+            {
+                Name = document.Name,
+                Owner = database,
+                Parent = parent.Uuid
+            };
+            _ = _scripts.Insert(script);
+
+            _ = _scripts.Insert(new ScriptRecord()
+            {
+                IsFolder = false,
+                Name = "consume",
+                Owner = database,
+                Parent = script.Uuid,
+                Script = GenerateConsumeScript(in document, in publication)
+            });
+
+            _ = _scripts.Insert(new ScriptRecord()
+            {
+                IsFolder = false,
+                Name = "route",
+                Owner = database,
+                Parent = script.Uuid,
+                Script = GenerateRouteScript(in document, in publication)
+            });
+
+            _ = _scripts.Insert(new ScriptRecord()
+            {
+                IsFolder = false,
+                Name = "contract",
+                Owner = database,
+                Parent = script.Uuid,
+                Script = GenerateContractScript(in document, in publication)
+            });
+        }
+        private string GenerateConsumeScript(in Document document, in string publication)
+        {
+            StringBuilder script = new();
+
+            script.AppendLine("DECLARE @node_name  string;");
+            script.AppendLine("DECLARE @batch_size number;");
+            script.AppendLine();
+            script.AppendLine("CONSUME TOP @batch_size");
+            script.AppendLine("            Изменения.Ссылка AS Ссылка");
+            script.AppendLine($"       FROM Документ.{document.Name}.Изменения AS Изменения");
+            script.AppendLine($" INNER JOIN ПланОбмена.{publication} AS ПланОбмена");
+            script.AppendLine("         ON Изменения.УзелОбмена = ПланОбмена.Ссылка");
+            script.AppendLine("        AND ПланОбмена.Код = @node_name");
+
+            return script.ToString();
+        }
+        private string GenerateRouteScript(in Document document, in string publication)
+        {
+            StringBuilder script = new();
+
+            script.AppendLine($"DECLARE @Ссылка Документ.{document.Name};");
+            script.AppendLine();
+            script.AppendLine($"CREATE COMPUTED TABLE routing_key AS (SELECT @Ссылка AS Ссылка)");
+            script.AppendLine($"   SELECT CASE WHEN source.Ссылка IS NULL THEN 'deleted' ELSE 'Документ.{document.Name}' END");
+            script.AppendLine("     FROM routing_key AS rk");
+            script.AppendLine($"LEFT JOIN Документ.{document.Name} AS source ON source.Ссылка = rk.Ссылка");
+
+            return script.ToString();
+        }
+        private string GenerateContractScript(in Document document, in string publication)
+        {
+            int line = 0;
+
+            StringBuilder script = new();
+            script.AppendLine($"DECLARE @Ссылка Документ.{document.Name};");
+            script.AppendLine();
+            script.AppendLine("SELECT");
+            for (int i = 0; i < document.Properties.Count; i++)
+            {
+                MetadataProperty property = document.Properties[i];
+
+                if (property.Purpose == PropertyPurpose.System)
+                {
+                    if (line > 0) { script.AppendLine(","); }
+
+                    script.Append(property.Name); line++;
+                }
+            }
+            script.AppendLine();
+            script.AppendLine($"FROM Документ.{document.Name}");
+            script.AppendLine("WHERE Ссылка = @Ссылка");
+
+            foreach (TablePart table in document.TableParts)
+            {
+                line = 0;
+                script.AppendLine();
+                script.AppendLine("SELECT");
+                for (int i = 0; i < table.Properties.Count; i++)
+                {
+                    MetadataProperty property = table.Properties[i];
+
+                    if (property.Name == "KeyField")
+                    {
+                        continue;
+                    }
+
+                    if (line > 0) { script.AppendLine(","); }
+
+                    script.Append(property.Name); line++;
+                }
+                script.AppendLine();
+                script.AppendLine($"FROM Документ.{document.Name}.{table.Name} AS {table.Name}");
+                script.AppendLine("WHERE Ссылка = @Ссылка");
+            }
+
+            return script.ToString();
+        }
+
+        private void CreateRegisterScripts(Guid database, in string publication, in ScriptRecord parent, in InformationRegister register, in IMetadataProvider provider)
+        {
+            MetadataObject entity = provider.GetMetadataObject($"РегистрСведений.{register.Name}.Изменения");
+
+            if (entity is not ChangeTrackingTable table)
+            {
+                return; // объект метаданных не включён ни в один план обмена
+            }
+
+            ScriptRecord script = new()
+            {
+                Name = register.Name,
+                Owner = database,
+                Parent = parent.Uuid
+            };
+            _ = _scripts.Insert(script);
+
+            _ = _scripts.Insert(new ScriptRecord()
+            {
+                IsFolder = false,
+                Name = "consume",
+                Owner = database,
+                Parent = script.Uuid,
+                Script = GenerateConsumeScript(in table, in publication)
+            });
+
+            _ = _scripts.Insert(new ScriptRecord()
+            {
+                IsFolder = false,
+                Name = "route",
+                Owner = database,
+                Parent = script.Uuid,
+                Script = GenerateRouteScript(in table, in publication)
+            });
+
+            _ = _scripts.Insert(new ScriptRecord()
+            {
+                IsFolder = false,
+                Name = "contract",
+                Owner = database,
+                Parent = script.Uuid,
+                Script = GenerateContractScript(in table, in publication)
+            });
+        }
+        private string GenerateConsumeScript(in ChangeTrackingTable table, in string publication)
+        {
+            if (table.Entity is not InformationRegister register) { return string.Empty; }
+
+            StringBuilder script = new();
+
+            script.AppendLine("DECLARE @node_name  string;");
+            script.AppendLine("DECLARE @batch_size number;");
+            script.AppendLine();
+            script.AppendLine("CONSUME TOP @batch_size");
+            int line = 0;
+            for (int i = 0; i < table.Properties.Count; i++)
+            {
+                MetadataProperty property = table.Properties[i];
+
+                if (property.Name == "УзелОбмена" || property.Name == "НомерСообщения")
+                {
+                    continue;
+                }
+
+                if (line > 0) { script.AppendLine(","); }
+
+                script.Append($"Изменения.{property.Name} AS {property.Name}"); line++;
+            }
+            script.AppendLine();
+            script.AppendLine($"      FROM РегистрСведений.{register.Name}.Изменения AS Изменения");
+            script.AppendLine($"INNER JOIN ПланОбмена.{publication} AS ПланОбмена");
+            script.AppendLine("        ON Изменения.УзелОбмена = ПланОбмена.Ссылка");
+            script.AppendLine("       AND ПланОбмена.Код = @node_name");
+
+            return script.ToString();
+        }
+        private string GenerateRouteScript(in ChangeTrackingTable table, in string publication)
+        {
+            if (table.Entity is not InformationRegister register) { return string.Empty; }
+
+            StringBuilder script = new();
+
+            for (int i = 0; i < table.Properties.Count; i++)
+            {
+                MetadataProperty property = table.Properties[i];
+
+                if (property.Name == "УзелОбмена" || property.Name == "НомерСообщения")
+                {
+                    continue;
+                }
+
+                string type = GetDataTypeLiteral(in property);
+
+                script.AppendLine($"DECLARE @{property.Name} {type};");
+            }
+            script.AppendLine();
+            script.AppendLine($"CREATE COMPUTED TABLE routing_key AS");
+            script.AppendLine("(");
+            script.AppendLine("SELECT");
+            int line = 0;
+            for (int i = 0; i < table.Properties.Count; i++)
+            {
+                MetadataProperty property = table.Properties[i];
+
+                if (property.Name == "УзелОбмена" || property.Name == "НомерСообщения")
+                {
+                    continue;
+                }
+
+                if (line > 0) { script.AppendLine(","); }
+
+                script.Append($"@{property.Name} AS {property.Name}"); line++;
+            }
+            script.AppendLine();
+            script.AppendLine(")");
+
+            string column = register.Properties[0].Name;
+
+            script.AppendLine($"   SELECT CASE WHEN source.{column} IS NULL THEN 'deleted' ELSE 'РегистрСведений.{register.Name}' END");
+            script.AppendLine("     FROM routing_key AS rk");
+            script.AppendLine($"LEFT JOIN РегистрСведений.{register.Name} AS source");
+            line = 0;
+            for (int i = 0; i < table.Properties.Count; i++)
+            {
+                MetadataProperty property = table.Properties[i];
+
+                if (property.Name == "УзелОбмена" || property.Name == "НомерСообщения")
+                {
+                    continue;
+                }
+
+                if (line == 0) { script.Append("ON "); }
+                else { script.Append("AND "); }
+
+                script.AppendLine($"source.{property.Name} = rk.{property.Name}"); line++;
+            }
+
+            return script.ToString();
+        }
+        private string GenerateContractScript(in ChangeTrackingTable table, in string publication)
+        {
+            if (table.Entity is not InformationRegister register) { return string.Empty; }
+            
+            StringBuilder script = new();
+            for (int i = 0; i < table.Properties.Count; i++)
+            {
+                MetadataProperty property = table.Properties[i];
+
+                if (property.Name == "УзелОбмена" || property.Name == "НомерСообщения")
+                {
+                    continue;
+                }
+
+                string type = GetDataTypeLiteral(in property);
+
+                script.AppendLine($"DECLARE @{property.Name} {type};");
+            }
+            script.AppendLine();
+            script.AppendLine("SELECT");
+            int line = 0;
+            for (int i = 0; i < register.Properties.Count; i++)
+            {
+                MetadataProperty property = register.Properties[i];
+
+                if (line > 0) { script.AppendLine(","); }
+
+                script.Append($"{property.Name}"); line++;
+            }
+            script.AppendLine();
+            script.AppendLine($"FROM РегистрСведений.{register.Name}");
+            line = 0;
+            for (int i = 0; i < table.Properties.Count; i++)
+            {
+                MetadataProperty property = table.Properties[i];
+
+                if (property.Name == "УзелОбмена" || property.Name == "НомерСообщения")
+                {
+                    continue;
+                }
+
+                if (line == 0) { script.Append("WHERE "); }
+                else { script.Append("AND "); }
+
+                script.AppendLine($"{property.Name} = @{property.Name}"); line++;
+            }
+
+            return script.ToString();
+        }
+
+        private string GetDataTypeLiteral(in MetadataProperty property)
+        {
+            string type = property.PropertyType.GetTypeLiteral();
+
+            if (type == "entity" || type == "union")
+            {
+                type = "uuid";
+            }
+
+            return type;
         }
     }
 }

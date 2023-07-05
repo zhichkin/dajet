@@ -464,5 +464,19 @@ namespace DaJet.Metadata.Model
             }
             return union;
         }
+
+        public string GetTypeLiteral()
+        {
+            if (IsMultipleType) { return "union"; }
+            else if (IsUuid) { return "uuid"; }
+            else if (IsBinary) { return "binary"; }
+            else if (IsValueStorage) { return "binary"; }
+            else if (CanBeString) { return "string"; }
+            else if (CanBeBoolean) { return "boolean"; }
+            else if (CanBeNumeric) { return "number"; }
+            else if (CanBeDateTime) { return "datetime"; }
+            else if (CanBeReference) { return "entity"; }
+            else { return "undefined"; }
+        }
     }
 }

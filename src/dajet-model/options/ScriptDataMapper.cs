@@ -123,6 +123,8 @@ namespace DaJet.Options
         {
             List<ScriptRecord> list = new();
 
+            if (parent is null) { return list; }
+
             using (SqliteConnection connection = new(_connectionString))
             {
                 connection.Open();
@@ -314,6 +316,24 @@ namespace DaJet.Options
             }
 
             return (result > 0);
+        }
+        public void DeleteScriptFolder(in ScriptRecord script)
+        {
+            List<ScriptRecord> children = Select(script);
+
+            foreach (ScriptRecord child in children)
+            {
+                if (child.IsFolder)
+                {
+                    DeleteScriptFolder(child);
+                }
+                else
+                {
+                    Delete(child);
+                }
+            }
+
+            Delete(script);
         }
         #endregion
 

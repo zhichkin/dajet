@@ -60,6 +60,10 @@ namespace DaJet.Studio.Controllers
             {
                 await OpenExchangeRootContextMenu(node, dialogService);
             }
+            else if (node.Parent is not null && node.Parent.Tag is InfoBaseModel)
+            {
+                await OpenExchangeNodeContextMenu(node, dialogService);
+            }
             else if (node.Tag is ScriptModel script && !script.IsFolder)
             {
                 Navigator.NavigateTo($"/script-editor/{script.Uuid}");
@@ -90,7 +94,7 @@ namespace DaJet.Studio.Controllers
 
             return node;
         }
-        
+
         private async Task OpenExchangeRootContextMenu(TreeNodeModel node, IDialogService dialogService)
         {
             DialogParameters parameters = new()
@@ -119,13 +123,45 @@ namespace DaJet.Studio.Controllers
                 await SelectExchange(node, dialogService);
             }
         }
-        private async Task SelectExchange(TreeNodeModel node, IDialogService dialogService)
+        private async Task OpenExchangeNodeContextMenu(TreeNodeModel node, IDialogService dialogService)
         {
-            if (node.Tag is not InfoBaseModel infobase) { return; }
-
             DialogParameters parameters = new()
             {
                 { "Model", node }
+            };
+            DialogOptions options = new()
+            {
+                NoHeader = true,
+                CloseButton = false,
+                CloseOnEscapeKey = true,
+                DisableBackdropClick = false,
+                Position = DialogPosition.Center
+            };
+            var dialog = dialogService.Show<ExchangeNodeDialog>(node.Url, parameters, options);
+            var result = await dialog.Result;
+            if (result.Cancelled) { return; }
+
+            if (result.Data is not ExchangeDialogResult dialogResult)
+            {
+                return;
+            }
+
+            if (dialogResult.CommandType == ExchangeDialogCommand.CreatePipeline)
+            {
+                await CreatePipeline(node, dialogService);
+            }
+            else if (dialogResult.CommandType == ExchangeDialogCommand.DeleteExchange)
+            {
+                await DeleteExchange(node, dialogService);
+            }
+        }
+        private async Task SelectExchange(TreeNodeModel root, IDialogService dialogService)
+        {
+            if (root.Tag is not InfoBaseModel infobase) { return; }
+
+            DialogParameters parameters = new()
+            {
+                { "Model", root }
             };
             var settings = new DialogOptions() { CloseButton = true };
             var dialog = dialogService.Show<SelectPublicationDialog>("Select publication", parameters, settings);
@@ -133,7 +169,7 @@ namespace DaJet.Studio.Controllers
             if (result.Cancelled) { return; }
             if (result.Data is not string name) { return; }
 
-            foreach (TreeNodeModel child in node.Nodes)
+            foreach (TreeNodeModel child in root.Nodes)
             {
                 if (child.Title == name)
                 {
@@ -142,100 +178,84 @@ namespace DaJet.Studio.Controllers
             }
 
             bool success = await CreatePublication(infobase, name);
-            if (!success) { return; }
+            if (!success) {/* CORS error may happen */ }
 
-            string url = $"{node.Url}/{name}";
+            HttpResponseMessage response = await Http.GetAsync($"{root.Url}/{name}");
 
-            ScriptModel model = new()
-            {
-                Name = name
-            };
+            ScriptModel model = await response.Content.ReadFromJsonAsync<ScriptModel>();
 
-            TreeNodeModel publication = new()
-            {
-                Url = url,
-                Tag = model,
-                Parent = node,
-                Title = name,
-                UseToggle = true,
-                ContextMenuHandler = ContextMenuHandler
-            };
-
-            node.Nodes.Add(publication);
+            TreeNodeModel node = CreateScriptNodeTree(in root, in model);
+            node.Parent = root;
+            root.Nodes.Add(node);
         }
-        private async Task CreateScript(TreeNodeModel node)
+        private async Task<bool> CreatePublication(InfoBaseModel infobase, string name)
         {
-            ScriptModel script = new()
+            try
             {
-                Name = "NewScript",
-                IsFolder = false
-            };
+                HttpResponseMessage response = await Http.PostAsync($"/exchange/{infobase.Name}/{name}", null);
 
-            await CreateFolderScript(node, script);
+                if (response.StatusCode == HttpStatusCode.Created)
+                {
+                    return true;
+                }
+
+                AppState.FooterText = response.ReasonPhrase;
+                return false;
+            }
+            catch (Exception error)
+            {
+                AppState.FooterText = error.Message;
+                return false;
+            }
         }
-        private async Task CreateFolderScript(TreeNodeModel node, ScriptModel script)
+        private async Task DeleteExchange(TreeNodeModel node, IDialogService dialogService)
         {
-            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseModel>(in node);
-
-            if (root == null || root.Tag is not InfoBaseModel infobase)
+            if (node.Parent is null ||
+                node.Parent.Tag is not InfoBaseModel infobase ||
+                node.Tag is not ScriptModel script)
             {
-                return; // owner database is not found
+                return;
             }
 
-            ScriptModel parent = node.Tag as ScriptModel;
-
-            if (parent != null)
-            {
-                script.Owner = parent.Owner;
-                script.Parent = parent.Uuid;
-            }
-            else
-            {
-                script.Owner = infobase.Uuid;
-                script.Parent = Guid.Empty;
-            }
-
-            bool success = await InsertScript(script);
+            bool success = await DeletePublication(infobase, node.Title);
 
             if (!success)
             {
                 return;
             }
 
-            string url = string.Empty;
+            node.Parent.Nodes.Remove(node);
 
-            if (parent == null)
-            {
-                url = $"/api/{infobase.Name}/{script.Name}";
-            }
-            else
-            {
-                parent.Children.Add(script);
-                url = $"{node.Url}/{script.Name}";
-            }
-
-            TreeNodeModel child = new()
-            {
-                Url = url,
-                Tag = script,
-                Parent = node,
-                Title = script.Name,
-                UseToggle = script.IsFolder,
-                CanBeEdited = true,
-                ContextMenuHandler = ContextMenuHandler
-            };
-
-            node.Nodes.Add(child);
+            node.IsVisible = false;
         }
-        private async Task DeleteFolderScript(TreeNodeModel node)
+        private async Task<bool> DeletePublication(InfoBaseModel infobase, string name)
+        {
+            try
+            {
+                HttpResponseMessage response = await Http.DeleteAsync($"/exchange/{infobase.Name}/{name}");
+
+                if (response.StatusCode != HttpStatusCode.OK)
+                {
+                    AppState.FooterText = response.ReasonPhrase;
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception error)
+            {
+                AppState.FooterText = error.Message;
+                return false;
+            }
+        }
+        private async Task DeleteArticle(TreeNodeModel node)
         {
             if (node.Tag is not ScriptModel script)
             {
                 return;
             }
 
-            bool success = await DeleteScript(script);
-            
+            bool success = await DeleteArticle(script);
+
             if (!success)
             {
                 return;
@@ -250,27 +270,7 @@ namespace DaJet.Studio.Controllers
 
             node.IsVisible = false;
         }
-
-        private async Task<bool> InsertScript(ScriptModel script)
-        {
-            try
-            {
-                HttpResponseMessage response = await Http.PostAsJsonAsync($"/api", script);
-
-                if (response.StatusCode != HttpStatusCode.Created)
-                {
-                    AppState.FooterText = response.ReasonPhrase;
-                    return false;
-                }
-                return true;
-            }
-            catch (Exception error)
-            {
-                AppState.FooterText = error.Message;
-                return false;
-            }
-        }
-        private async Task<bool> DeleteScript(ScriptModel script)
+        private async Task<bool> DeleteArticle(ScriptModel script)
         {
             try
             {
@@ -289,25 +289,26 @@ namespace DaJet.Studio.Controllers
                 return false;
             }
         }
-
-        private async Task<bool> CreatePublication(InfoBaseModel infobase, string name)
+        private async Task<bool> CreatePipeline(TreeNodeModel node, IDialogService dialogService)
         {
-            try
-            {
-                HttpResponseMessage response = await Http.PostAsJsonAsync($"/exchange/{infobase.Name}/{name}", name);
+            return true;
 
-                if (response.StatusCode != HttpStatusCode.Created)
-                {
-                    AppState.FooterText = response.ReasonPhrase;
-                    return false;
-                }
-                return true;
-            }
-            catch (Exception error)
-            {
-                AppState.FooterText = error.Message;
-                return false;
-            }
+            //try
+            //{
+            //    HttpResponseMessage response = await Http.PostAsJsonAsync($"/exchange/{infobase.Name}/{name}", name);
+
+            //    if (response.StatusCode != HttpStatusCode.Created)
+            //    {
+            //        AppState.FooterText = response.ReasonPhrase;
+            //        return false;
+            //    }
+            //    return true;
+            //}
+            //catch (Exception error)
+            //{
+            //    AppState.FooterText = error.Message;
+            //    return false;
+            //}
         }
     }
 }

@@ -247,6 +247,41 @@ namespace DaJet.Exchange.PostgreSql
                 {
                     command.Parameters.AddWithValue(name, entity.Identity.ToByteArray());
                 }
+                else if (value is Union union)
+                {
+                    if (union.IsUndefined)
+                    {
+                        command.Parameters.AddWithValue(name, Guid.Empty.ToByteArray());
+                    }
+                    else if (union.Tag == UnionTag.Boolean)
+                    {
+                        command.Parameters.AddWithValue(name, union.GetBoolean());
+                    }
+                    else if (union.Tag == UnionTag.Numeric)
+                    {
+                        command.Parameters.AddWithValue(name, union.GetNumeric());
+                    }
+                    else if (union.Tag == UnionTag.DateTime)
+                    {
+                        command.Parameters.AddWithValue(name, union.GetDateTime());
+                    }
+                    else if (union.Tag == UnionTag.String)
+                    {
+                        command.Parameters.AddWithValue(name, union.GetString());
+                    }
+                    else if (union.Tag == UnionTag.Binary)
+                    {
+                        command.Parameters.AddWithValue(name, union.GetBinary());
+                    }
+                    else if (union.Tag == UnionTag.Entity)
+                    {
+                        command.Parameters.AddWithValue(name, union.GetEntity().Identity.ToByteArray());
+                    }
+                    else
+                    {
+                        command.Parameters.AddWithValue(name, value);
+                    }
+                }
                 else
                 {
                     command.Parameters.AddWithValue(name, value);
