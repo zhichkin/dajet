@@ -3,6 +3,7 @@ using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Options;
 using Microsoft.AspNetCore.Mvc;
+using System.Net;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -130,7 +131,98 @@ namespace DaJet.Http.Controllers
 
             return Ok();
         }
-        [HttpPost("{infobase}/{publication}")] public ActionResult CreatePublication([FromRoute] string infobase, [FromRoute] string publication)
+        
+        [HttpPost("{infobase}/{publication}/{type}/{article}")]
+        public ActionResult CreateArticle([FromRoute] string infobase, [FromRoute] string publication, [FromRoute] string type, [FromRoute] string article)
+        {
+            InfoBaseModel database = _databases.Select(infobase);
+
+            if (database is null) { return NotFound(); }
+
+            ScriptRecord parent = _scripts.SelectScriptByPath(database.Uuid, $"/exchange/{publication}/pub/{type}");
+
+            if (parent is null) { return NotFound(); }
+
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, $"/exchange/{publication}/pub/{type}/{article}");
+
+            if (script is not null) { return BadRequest($"Article {article} exists!"); }
+
+            if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            {
+                return BadRequest(error);
+            }
+
+            string metadataName = "ПланОбмена." + publication;
+
+            if (provider.GetMetadataObject(metadataName) is not Publication exchange)
+            {
+                return BadRequest($"Metadata object not found: {metadataName}");
+            }
+
+            List<MetadataObject> articles = GetPublicationArticles(in exchange, in provider);
+
+            MetadataObject entity = null;
+            foreach (MetadataObject metadata in articles)
+            {
+                if (metadata.Name == article)
+                {
+                    entity = metadata; break;
+                }
+            }
+            if (entity is null) { return NotFound(); }
+
+            if (entity is Catalog catalog && type == "Справочник")
+            {
+                CreateCatalogScripts(database.Uuid, in publication, parent, in catalog);
+            }
+            else if (entity is Document document && type == "Документ")
+            {
+                CreateDocumentScripts(database.Uuid, in publication, parent, in document);
+            }
+            else if (entity is InformationRegister register && type == "РегистрСведений")
+            {
+                CreateRegisterScripts(database.Uuid, in publication, parent, in register, in provider);
+            }
+            else
+            {
+                return BadRequest($"Unsupported metadata type \"{entity}\"");
+            }
+
+            script = _scripts.SelectScriptByPath(database.Uuid, $"/exchange/{publication}/pub/{type}/{article}");
+
+            if (script is null)
+            {
+                return BadRequest();
+            }
+
+            _scripts.GetScriptChildren(script);
+
+            string json = JsonSerializer.Serialize(script, JsonOptions);
+
+            Response.StatusCode = (int)HttpStatusCode.Created;
+
+            return Content(json, "application/json", Encoding.UTF8);
+        }
+        
+        [HttpDelete("{infobase}/{publication}/{type}/{article}")]
+        public ActionResult DeleteArticle([FromRoute] string infobase, [FromRoute] string publication, [FromRoute] string type, [FromRoute] string article)
+        {
+            InfoBaseModel database = _databases.Select(infobase);
+
+            if (database is null) { return NotFound(); }
+
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, $"/exchange/{publication}/pub/{type}/{article}");
+
+            if (script is not null)
+            {
+                _scripts.DeleteScriptFolder(in script);
+            }
+
+            return Ok();
+        }
+
+        [HttpPost("{infobase}/{publication}")]
+        public ActionResult CreatePublication([FromRoute] string infobase, [FromRoute] string publication)
         {
             InfoBaseModel database = _databases.Select(infobase);
 
@@ -160,7 +252,7 @@ namespace DaJet.Http.Controllers
 
             if (provider.GetMetadataObject(metadataName) is not Publication entity)
             {
-                throw new InvalidOperationException($"Metadata object not found: {metadataName}");
+                return BadRequest($"Metadata object not found: {metadataName}");
             }
 
             ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, $"/exchange/{publication}");
@@ -203,7 +295,7 @@ namespace DaJet.Http.Controllers
 
             CreateArticleScripts(database.Uuid, in publication, in parents, in articles, in provider);
 
-            return Created($"[{infobase}] {publication}", $"[{infobase}] {publication}");
+            return Created(new Uri($"/{database.Name}/{publication}", UriKind.Relative), null);
         }
         private List<MetadataObject> GetPublicationArticles(in Publication publication, in IMetadataProvider provider)
         {
@@ -248,7 +340,7 @@ namespace DaJet.Http.Controllers
         {
             ScriptRecord script = new()
             {
-                Name = "route",
+                Name = "route", // default script for all of the articles
                 IsFolder = false,
                 Owner = database,
                 Parent = parent.Uuid,
@@ -355,7 +447,7 @@ namespace DaJet.Http.Controllers
             _ = _scripts.Insert(new ScriptRecord()
             {
                 IsFolder = false,
-                Name = "route",
+                Name = "_route", // script is disabled by default
                 Owner = database,
                 Parent = script.Uuid,
                 Script = GenerateRouteScript(in catalog, in publication)
@@ -470,7 +562,7 @@ namespace DaJet.Http.Controllers
             _ = _scripts.Insert(new ScriptRecord()
             {
                 IsFolder = false,
-                Name = "route",
+                Name = "_route", // script is disabled by default
                 Owner = database,
                 Parent = script.Uuid,
                 Script = GenerateRouteScript(in document, in publication)
@@ -592,7 +684,7 @@ namespace DaJet.Http.Controllers
             _ = _scripts.Insert(new ScriptRecord()
             {
                 IsFolder = false,
-                Name = "route",
+                Name = "_route", // script is disabled by default
                 Owner = database,
                 Parent = script.Uuid,
                 Script = GenerateRouteScript(in table, in publication)

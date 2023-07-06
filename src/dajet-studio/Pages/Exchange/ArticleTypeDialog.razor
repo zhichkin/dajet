@@ -8,8 +8,12 @@
                 @Model.Url
             </span>
 
-            <MudTooltip Text="Добавить план обмена">
-                <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder" Color="Color.Success" Size="Size.Large" OnClick="SelectExchange" />
+            <MudTextField Label="Имя объекта метаданных" @bind-Value="ArticleName"
+                          T="string" Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Class="ml-2 mt-2" Style="font-size:var(--mud-typography-default-size);" />
+
+            <MudTooltip Text="Добавить объект">
+                <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder" Color="Color.Success" Size="Size.Large" OnClick="CreateArticle" />
             </MudTooltip>
 
             <MudTooltip Text="Отмена">

@@ -71,7 +71,8 @@ namespace DaJet.Exchange.PostgreSql
 
                     if (metadata is not ApplicationObject entity)
                     {
-                        throw new InvalidOperationException($"Metadata object not found: {metadataName}");
+                        continue; // route script is disabled - no processing ¯\_(ツ)_/¯
+                        //TODO: log exception ??? throw new InvalidOperationException($"Metadata object not found: {metadataName}");
                     }
 
                     List<ScriptRecord> entityScripts = _scripts.Select(entityNode);

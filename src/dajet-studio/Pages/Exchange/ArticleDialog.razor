@@ -1,0 +1,38 @@
+﻿@using DaJet.Studio.Model;
+
+<MudDialog OnBackdropClick="CloseDialog" DefaultFocus="DefaultFocus.Element" DisableSidePadding="true">
+
+    <DialogContent>
+
+        <MudContainer MaxWidth="MaxWidth.ExtraSmall" Class="mx-0 my-0">
+
+            <span Style="display:block; font-size:var(--mud-typography-default-size);">
+                @Model.Url
+            </span>
+
+            @if (Model.Title.StartsWith('_'))
+            {
+                <MudTooltip Text="Включить объект">
+                    <MudIconButton Icon="@Icons.Material.Filled.CheckCircleOutline" Color="Color.Success" Size="Size.Large" OnClick="EnableArticle" />
+                </MudTooltip>
+            }
+            else
+            {
+                <MudTooltip Text="Выключить объект">
+                    <MudIconButton Icon="@Icons.Material.Filled.StopCircle" Color="Color.Warning" Size="Size.Large" OnClick="DisableArticle" />
+                </MudTooltip>
+            }
+
+            <MudTooltip Text="Удалить объект">
+                <MudIconButton Icon="@Icons.Material.Filled.FolderOff" Color="Color.Error" Size="Size.Large" OnClick="DeleteArticle" />
+            </MudTooltip>
+
+            <MudTooltip Text="Отмена">
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Dark" Size="Size.Large" OnClick="CloseDialog" />
+            </MudTooltip>
+
+        </MudContainer>
+
+    </DialogContent>
+
+</MudDialog>

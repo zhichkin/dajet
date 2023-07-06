@@ -64,9 +64,18 @@ namespace DaJet.Studio.Controllers
             {
                 await OpenExchangeNodeContextMenu(node, dialogService);
             }
+            else if (node.Title == "Документ" || node.Title == "Справочник" || node.Title == "РегистрСведений")
+            {
+                await OpenArticleTypeContextMenu(node, dialogService);
+            }
+            else if (node.Parent is not null
+                && (node.Parent.Title == "Документ" || node.Parent.Title == "Справочник" || node.Parent.Title == "РегистрСведений"))
+            {
+                await OpenArticleContextMenu(node, dialogService);
+            }
             else if (node.Tag is ScriptModel script && !script.IsFolder)
             {
-                Navigator.NavigateTo($"/script-editor/{script.Uuid}");
+                await OpenScriptContextMenu(node, dialogService);
             }
         }
         private TreeNodeModel CreateScriptNodeTree(in TreeNodeModel parent, in ScriptModel model)
@@ -164,7 +173,7 @@ namespace DaJet.Studio.Controllers
                 { "Model", root }
             };
             var settings = new DialogOptions() { CloseButton = true };
-            var dialog = dialogService.Show<SelectPublicationDialog>("Select publication", parameters, settings);
+            var dialog = dialogService.Show<SelectPublicationDialog>("Выбор...", parameters, settings);
             var result = await dialog.Result;
             if (result.Cancelled) { return; }
             if (result.Data is not string name) { return; }
@@ -173,12 +182,18 @@ namespace DaJet.Studio.Controllers
             {
                 if (child.Title == name)
                 {
-                    AppState.FooterText = $"{name} exists!"; return;
+                    Navigator.NavigateTo("/error-page");
+                    AppState.LastErrorText = $"План обмена \"{name}\" уже добавлен!";
+                    return;
                 }
             }
 
             bool success = await CreatePublication(infobase, name);
-            if (!success) {/* CORS error may happen */ }
+            
+            if (!success)
+            {
+                Navigator.NavigateTo("/error-page"); return;
+            }
 
             HttpResponseMessage response = await Http.GetAsync($"{root.Url}/{name}");
 
@@ -199,14 +214,14 @@ namespace DaJet.Studio.Controllers
                     return true;
                 }
 
-                AppState.FooterText = response.ReasonPhrase;
-                return false;
+                AppState.LastErrorText = response.ReasonPhrase;
             }
             catch (Exception error)
             {
-                AppState.FooterText = error.Message;
-                return false;
+                AppState.LastErrorText = error.Message;
             }
+
+            return false;
         }
         private async Task DeleteExchange(TreeNodeModel node, IDialogService dialogService)
         {
@@ -221,7 +236,7 @@ namespace DaJet.Studio.Controllers
 
             if (!success)
             {
-                return;
+                Navigator.NavigateTo("/error-page"); return;
             }
 
             node.Parent.Nodes.Remove(node);
@@ -236,59 +251,17 @@ namespace DaJet.Studio.Controllers
 
                 if (response.StatusCode != HttpStatusCode.OK)
                 {
-                    AppState.FooterText = response.ReasonPhrase;
-                    return false;
+                    AppState.LastErrorText = response.ReasonPhrase;
                 }
                 return true;
             }
             catch (Exception error)
             {
-                AppState.FooterText = error.Message;
-                return false;
+                AppState.LastErrorText = error.Message;
             }
+            return false;
         }
-        private async Task DeleteArticle(TreeNodeModel node)
-        {
-            if (node.Tag is not ScriptModel script)
-            {
-                return;
-            }
 
-            bool success = await DeleteArticle(script);
-
-            if (!success)
-            {
-                return;
-            }
-
-            if (node.Parent.Tag is ScriptModel parent && node.Tag is ScriptModel child)
-            {
-                parent.Children.Remove(child);
-            }
-
-            node.Parent.Nodes.Remove(node);
-
-            node.IsVisible = false;
-        }
-        private async Task<bool> DeleteArticle(ScriptModel script)
-        {
-            try
-            {
-                HttpResponseMessage response = await Http.DeleteAsync($"/api/{script.Uuid}");
-
-                if (response.StatusCode != HttpStatusCode.OK)
-                {
-                    AppState.FooterText = response.ReasonPhrase;
-                    return false;
-                }
-                return true;
-            }
-            catch (Exception error)
-            {
-                AppState.FooterText = error.Message;
-                return false;
-            }
-        }
         private async Task<bool> CreatePipeline(TreeNodeModel node, IDialogService dialogService)
         {
             return true;
@@ -309,6 +282,349 @@ namespace DaJet.Studio.Controllers
             //    AppState.FooterText = error.Message;
             //    return false;
             //}
+        }
+
+        private async Task OpenArticleTypeContextMenu(TreeNodeModel node, IDialogService dialogService)
+        {
+            DialogParameters parameters = new()
+            {
+                { "Model", node }
+            };
+            DialogOptions options = new()
+            {
+                NoHeader = true,
+                CloseButton = false,
+                CloseOnEscapeKey = true,
+                DisableBackdropClick = false,
+                Position = DialogPosition.Center
+            };
+            var dialog = dialogService.Show<ArticleTypeDialog>(node.Url, parameters, options);
+            var result = await dialog.Result;
+            if (result.Cancelled) { return; }
+
+            if (result.Data is not ExchangeDialogResult dialogResult)
+            {
+                return;
+            }
+
+            if (dialogResult.CommandType == ExchangeDialogCommand.CreateArticle)
+            {
+                await CreateArticle(node, dialogResult.ArticleName);
+            }
+        }
+        private async Task CreateArticle(TreeNodeModel node, string articleName)
+        {
+            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseModel>(in node);
+
+            if (root is null || root.Tag is not InfoBaseModel database)
+            {
+                return; // owner database is not found
+            }
+
+            if (node.Tag is not ScriptModel)
+            {
+                return;
+            }
+
+            ScriptModel script = await CreateArticle(database.Name, node.Parent.Parent.Title, node.Title, articleName);
+
+            if (script is null)
+            {
+                Navigator.NavigateTo("/error-page");
+                AppState.LastErrorText = $"Объект метаданных \"{node.Title}.{articleName}\" уже добавлен, не входит в состав плана обмена или не существует.";
+                return;
+            }
+
+            TreeNodeModel child = CreateScriptNodeTree(in node, in script);
+            child.Parent = node;
+            node.Nodes.Add(child);
+        }
+        private async Task<ScriptModel> CreateArticle(string database, string publication, string type, string article)
+        {
+            try
+            {
+                string url = $"/exchange/{database}/{publication}/{type}/{article}";
+
+                HttpResponseMessage response = await Http.PostAsync(url, null);
+
+                if (response.StatusCode == HttpStatusCode.Created)
+                {
+                    return await response.Content.ReadFromJsonAsync<ScriptModel>();
+                }
+
+                AppState.LastErrorText = response.ReasonPhrase;
+            }
+            catch (Exception error)
+            {
+                AppState.LastErrorText = error.Message;
+            }
+
+            return null;
+        }
+
+        private async Task OpenArticleContextMenu(TreeNodeModel node, IDialogService dialogService)
+        {
+            DialogParameters parameters = new()
+            {
+                { "Model", node }
+            };
+            DialogOptions options = new()
+            {
+                NoHeader = true,
+                CloseButton = false,
+                CloseOnEscapeKey = true,
+                DisableBackdropClick = false,
+                Position = DialogPosition.Center
+            };
+            var dialog = dialogService.Show<ArticleDialog>(node.Url, parameters, options);
+            var result = await dialog.Result;
+            if (result.Cancelled) { return; }
+
+            if (result.Data is not ExchangeDialogResult dialogResult)
+            {
+                return;
+            }
+
+            if (dialogResult.CommandType == ExchangeDialogCommand.DeleteArticle)
+            {
+                await DeleteArticle(node);
+            }
+            else if (dialogResult.CommandType == ExchangeDialogCommand.EnableArticle)
+            {
+                await EnableArticle(node);
+            }
+            else if (dialogResult.CommandType == ExchangeDialogCommand.DisableArticle)
+            {
+                await DisableArticle(node);
+            }
+        }
+        private async Task EnableArticle(TreeNodeModel node)
+        {
+            if (node.Tag is not ScriptModel script)
+            {
+                return;
+            }
+
+            if (!node.Title.StartsWith('_'))
+            {
+                return;
+            }
+
+            string newName = node.Title.TrimStart('_');
+
+            bool success = await ChangeScriptTitle(new ScriptModel()
+            {
+                Uuid = script.Uuid,
+                Name = newName
+            });
+
+            if (success)
+            {
+                node.Title = newName;
+                script.Name = newName;
+            }
+            else
+            {
+                Navigator.NavigateTo("/error-page");
+            }
+        }
+        private async Task DisableArticle(TreeNodeModel node)
+        {
+            if (node.Tag is not ScriptModel script)
+            {
+                return;
+            }
+
+            if (node.Title.StartsWith('_'))
+            {
+                return;
+            }
+
+            string newName = $"_{node.Title}";
+
+            bool success = await ChangeScriptTitle(new ScriptModel()
+            {
+                Uuid = script.Uuid,
+                Name = newName
+            });
+
+            if (success)
+            {
+                node.Title = newName;
+                script.Name = newName;
+            }
+            else
+            {
+                Navigator.NavigateTo("/error-page");
+            }
+        }
+        private async Task<bool> ChangeScriptTitle(ScriptModel script)
+        {
+            try
+            {
+                HttpResponseMessage response = await Http.PutAsJsonAsync($"/api/name", script);
+
+                if (response.StatusCode == HttpStatusCode.OK) { return true; }
+
+                AppState.LastErrorText = response.ReasonPhrase;
+            }
+            catch (Exception error)
+            {
+                AppState.LastErrorText = error.Message;
+            }
+            return false;
+        }
+        private async Task DeleteArticle(TreeNodeModel node)
+        {
+            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseModel>(in node);
+
+            if (root is null || root.Tag is not InfoBaseModel database)
+            {
+                return; // owner database is not found
+            }
+
+            if (node.Parent.Tag is not ScriptModel parent)
+            {
+                return;
+            }
+
+            if (node.Tag is not ScriptModel child)
+            {
+                return;
+            }
+
+            bool success = await DeleteArticle(database.Name, node.Parent.Parent.Parent.Title, node.Parent.Title, node.Title);
+
+            if (!success)
+            {
+                Navigator.NavigateTo("/error-page"); return;
+            }
+
+            parent.Children.Remove(child);
+
+            node.Parent.Nodes.Remove(node);
+
+            node.IsVisible = false;
+        }
+        private async Task<bool> DeleteArticle(string database, string publication, string type, string article)
+        {
+            try
+            {
+                string url = $"/exchange/{database}/{publication}/{type}/{article}";
+
+                HttpResponseMessage response = await Http.DeleteAsync(url);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return true;
+                }
+                AppState.LastErrorText = response.ReasonPhrase;
+            }
+            catch (Exception error)
+            {
+                AppState.LastErrorText = error.Message;
+            }
+            return false;
+        }
+
+        private async Task OpenScriptContextMenu(TreeNodeModel node, IDialogService dialogService)
+        {
+            DialogParameters parameters = new()
+            {
+                { "Model", node }
+            };
+            DialogOptions options = new()
+            {
+                NoHeader = true,
+                CloseButton = false,
+                CloseOnEscapeKey = true,
+                DisableBackdropClick = false,
+                Position = DialogPosition.Center
+            };
+            var dialog = dialogService.Show<ScriptDialog>(node.Url, parameters, options);
+            var result = await dialog.Result;
+            if (result.Cancelled) { return; }
+
+            if (result.Data is not ExchangeDialogResult dialogResult)
+            {
+                return;
+            }
+
+            if (dialogResult.CommandType == ExchangeDialogCommand.EnableScript)
+            {
+                await EnableScript(node);
+            }
+            else if (dialogResult.CommandType == ExchangeDialogCommand.DisableScript)
+            {
+                await DisableScript(node);
+            }
+            else if (dialogResult.CommandType == ExchangeDialogCommand.OpenScriptInEditor)
+            {
+                if (node.Tag is ScriptModel script && !script.IsFolder)
+                {
+                    Navigator.NavigateTo($"/script-editor/{script.Uuid}");
+                }
+            }
+        }
+        private async Task EnableScript(TreeNodeModel node)
+        {
+            if (node.Tag is not ScriptModel script)
+            {
+                return;
+            }
+
+            if (!node.Title.StartsWith('_'))
+            {
+                return;
+            }
+
+            string newName = node.Title.TrimStart('_');
+
+            bool success = await ChangeScriptTitle(new ScriptModel()
+            {
+                Uuid = script.Uuid,
+                Name = newName
+            });
+
+            if (success)
+            {
+                node.Title = newName;
+                script.Name = newName;
+            }
+            else
+            {
+                Navigator.NavigateTo("/error-page");
+            }
+        }
+        private async Task DisableScript(TreeNodeModel node)
+        {
+            if (node.Tag is not ScriptModel script)
+            {
+                return;
+            }
+
+            if (node.Title.StartsWith('_'))
+            {
+                return;
+            }
+
+            string newName = $"_{node.Title}";
+
+            bool success = await ChangeScriptTitle(new ScriptModel()
+            {
+                Uuid = script.Uuid,
+                Name = newName
+            });
+
+            if (success)
+            {
+                node.Title = newName;
+                script.Name = newName;
+            }
+            else
+            {
+                Navigator.NavigateTo("/error-page");
+            }
         }
     }
 }

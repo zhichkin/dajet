@@ -1,0 +1,38 @@
+﻿@using DaJet.Studio.Model;
+
+<MudDialog OnBackdropClick="CloseDialog" DefaultFocus="DefaultFocus.Element" DisableSidePadding="true">
+
+    <DialogContent>
+
+        <MudContainer MaxWidth="MaxWidth.ExtraSmall" Class="mx-0 my-0">
+
+            <span Style="display:block; font-size:var(--mud-typography-default-size);">
+                @Model.Url
+            </span>
+
+            @if (Model.Title.StartsWith('_'))
+            {
+                <MudTooltip Text="Включить скрипт">
+                    <MudIconButton Icon="@Icons.Material.Filled.CheckCircleOutline" Color="Color.Success" Size="Size.Large" OnClick="EnableScript" />
+                </MudTooltip>
+            }
+            else if (Model.Title == "route" && Model.Parent.Title != "pub")
+            {
+                <MudTooltip Text="Выключить скрипт">
+                    <MudIconButton Icon="@Icons.Material.Filled.StopCircle" Color="Color.Warning" Size="Size.Large" OnClick="DisableScript" />
+                </MudTooltip>
+            }
+
+            <MudTooltip Text="Редактировать скрипт">
+                <MudIconButton Icon="@Icons.Material.Filled.EditNote" Color="Color.Success" Size="Size.Large" OnClick="OpenScriptInEditor" />
+            </MudTooltip>
+
+            <MudTooltip Text="Отмена">
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Dark" Size="Size.Large" OnClick="CloseDialog" />
+            </MudTooltip>
+
+        </MudContainer>
+
+    </DialogContent>
+
+</MudDialog>
