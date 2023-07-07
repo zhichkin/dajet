@@ -583,7 +583,8 @@ namespace DaJet.Scripting
         private void ConfigureTag(in Dictionary<UnionTag, ComparisonOperator> map, in ComparisonOperator comparison)
         {
             if (!map.TryGetValue(UnionTag.Tag, out ComparisonOperator item)) { return; }
-            if (item.Expression1 is null && item.Expression2 is null) { return; }
+            if (item.Expression1 is null && item.Expression2 is null) { return; } // Tag column is not used
+            if (item.Expression1 is not null && item.Expression2 is not null) { return; } // Tag column is mapped already
 
             UnionType target;
             UnionType source;
@@ -621,7 +622,8 @@ namespace DaJet.Scripting
         private void ConfigureTypeCode(in Dictionary<UnionTag, ComparisonOperator> map, in ComparisonOperator comparison)
         {
             if (!map.TryGetValue(UnionTag.TypeCode, out ComparisonOperator item)) { return; }
-            if (item.Expression1 is null && item.Expression2 is null) { return; }
+            if (item.Expression1 is null && item.Expression2 is null) { return; } // TypeCode column is not used
+            if (item.Expression1 is not null && item.Expression2 is not null) { return; } // TypeCode column is mapped already
 
             UnionType target;
 

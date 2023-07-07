@@ -132,6 +132,7 @@ namespace DaJet.Studio.Controllers
                 await SelectExchange(node, dialogService);
             }
         }
+
         private async Task OpenExchangeNodeContextMenu(TreeNodeModel node, IDialogService dialogService)
         {
             DialogParameters parameters = new()
@@ -157,12 +158,22 @@ namespace DaJet.Studio.Controllers
 
             if (dialogResult.CommandType == ExchangeDialogCommand.CreatePipeline)
             {
-                await CreatePipeline(node, dialogService);
+                NavigateToCreatePipelinePage(node, dialogService);
             }
             else if (dialogResult.CommandType == ExchangeDialogCommand.DeleteExchange)
             {
                 await DeleteExchange(node, dialogService);
             }
+        }
+        private void NavigateToCreatePipelinePage(TreeNodeModel node, IDialogService dialogService)
+        {
+            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseModel>(in node);
+
+            if (root is null || root.Tag is not InfoBaseModel database) { return; }
+
+            if (node.Tag is not ScriptModel exchange) { return; }
+
+            Navigator.NavigateTo($"/create-pipeline/{database.Name}/{exchange.Name}");
         }
         private async Task SelectExchange(TreeNodeModel root, IDialogService dialogService)
         {
@@ -260,28 +271,6 @@ namespace DaJet.Studio.Controllers
                 AppState.LastErrorText = error.Message;
             }
             return false;
-        }
-
-        private async Task<bool> CreatePipeline(TreeNodeModel node, IDialogService dialogService)
-        {
-            return true;
-
-            //try
-            //{
-            //    HttpResponseMessage response = await Http.PostAsJsonAsync($"/exchange/{infobase.Name}/{name}", name);
-
-            //    if (response.StatusCode != HttpStatusCode.Created)
-            //    {
-            //        AppState.FooterText = response.ReasonPhrase;
-            //        return false;
-            //    }
-            //    return true;
-            //}
-            //catch (Exception error)
-            //{
-            //    AppState.FooterText = error.Message;
-            //    return false;
-            //}
         }
 
         private async Task OpenArticleTypeContextMenu(TreeNodeModel node, IDialogService dialogService)

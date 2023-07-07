@@ -2,6 +2,7 @@
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Options;
+using DaJet.Scripting;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using System.Text;
@@ -103,6 +104,51 @@ namespace DaJet.Http.Controllers
             }
 
             string json = JsonSerializer.Serialize(list, JsonOptions);
+
+            return Content(json);
+        }
+        [HttpGet("{infobase}/{publication}/subscribers")] public ActionResult SelectSubscribers([FromRoute] string infobase, [FromRoute] string publication)
+        {
+            InfoBaseModel database = _databases.Select(infobase);
+
+            if (database is null)
+            {
+                return NotFound();
+            }
+
+            if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            {
+                return BadRequest(error);
+            }
+
+            StringBuilder script = new();
+            script.AppendLine($"DECLARE @EmptyUuid uuid;");
+            script.AppendLine($"SELECT Код FROM ПланОбмена.{publication} WHERE Предопределённый = @EmptyUuid ORDER BY Код ASC");
+
+            ScriptExecutor executor = new(provider, _metadata, _databases, _scripts);
+            executor.Parameters.Add("ThisNode", Guid.Empty);
+
+            List<string> subscribers = new();
+
+            try
+            {
+                foreach (var record in executor.ExecuteReader(script.ToString()))
+                {
+                    foreach (var column in record)
+                    {
+                        if (column.Value is string value)
+                        {
+                            subscribers.Add(value);
+                        }
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                return BadRequest(ExceptionHelper.GetErrorMessage(exception));
+            }
+
+            string json = JsonSerializer.Serialize(subscribers, JsonOptions);
 
             return Content(json);
         }

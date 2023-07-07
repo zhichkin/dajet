@@ -42,6 +42,26 @@ namespace DaJet.Http.Controllers
 
             return Content(json);
         }
+        [HttpGet("{infobase}/{**path}")] public ActionResult Select([FromRoute] string infobase, [FromRoute] string path)
+        {
+            InfoBaseModel database = _mapper.Select(infobase);
+            
+            if (database is null)
+            {
+                return NotFound();
+            }
+
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, path);
+            
+            if (script is null)
+            {
+                return NotFound();
+            }
+
+            string json = JsonSerializer.Serialize(script, JsonOptions);
+
+            return Content(json);
+        }
         [HttpGet("url/{uuid:guid}")] public ActionResult SelectScriptUrl([FromRoute] Guid uuid)
         {
             if (!_scripts.TrySelect(uuid, out ScriptRecord script))

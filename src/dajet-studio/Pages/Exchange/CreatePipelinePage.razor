@@ -1,0 +1,84 @@
+﻿@page "/create-pipeline/{database}/{exchange}"
+
+@inject HttpClient Http;
+@inject NavigationManager Navigator;
+@inject ISnackbar Snackbar;
+
+<div style="margin:0px 10px 0px 10px;overflow:scroll;">
+
+    <MudField Variant="Variant.Text" DisableUnderLine="true" FullWidth="false" Margin="Margin.Dense">
+        <b>Создание конвейера обмена данными</b>
+        <MudTooltip Text="Закрыть страницу">
+            <MudIconButton Icon="@Icons.Material.Outlined.Close" Color="Color.Error" Size="Size.Small" OnClick="NavigateToHomePage" />
+        </MudTooltip>
+    </MudField>
+
+    <MudTooltip Text="Создать конвейер">
+        <MudButton OnClick="CreatePipeline" Size="Size.Small" Variant="Variant.Filled" Color="Color.Success">Создать</MudButton>
+    </MudTooltip>
+
+    <MudTextField T="string" Label="Имя конвейера" @bind-Value="@Model.Name" Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+
+    <table style="margin:5px 0px 5px 0px">
+        <tr><td><b>Источник данных</b></td><td style="padding:0px 0px 0px 10px">@Database</td></tr>
+        <tr><td><b>План обмена</b></td><td style="padding:0px 0px 0px 10px">@Exchange</td></tr>
+    </table>
+
+    <MudSelect T="string" Label="Узел обмена" @bind-Value="@NodeName" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+               Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);">
+
+        @foreach (string node in NodeNames)
+        {
+            <MudSelectItem Value="@node" />
+        }
+
+    </MudSelect>
+
+    <MudSelect T="string" Label="Тип приёмника данных" @bind-Value="@TargetType" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+               Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);">
+        
+        @foreach (string target in TargetTypes)
+        {
+            <MudSelectItem Value="@target" />
+        }
+
+    </MudSelect>
+
+    @if (TargetType == "SqlServer" || TargetType == "PostgreSql")
+    {
+        <MudSelect T="InfoBaseModel" Label="Приёмник данных" @bind-Value="@TargetUrl" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                   Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);">
+
+            @foreach (InfoBaseModel target in TargetUrls)
+            {
+                @if (target.DatabaseProvider == TargetType)
+                {
+                    <MudSelectItem Value="@target">@target.Name</MudSelectItem>
+                }
+            }
+
+        </MudSelect>
+
+        <MudTextField T="string" Label="Скрипт приёма данных" @bind-Value="ScriptUrl" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+
+        <MudCheckBox @bind-Checked="@GenerateIncomingScript" Label="Сформировать скрипт приёма данных" LabelPosition="LabelPosition.Start" Color="Color.Primary" Class="ml-0 mt-3" />
+    }
+    else if (TargetType == "RabbitMQ")
+    {
+        <MudTextField T="string" Label="Сервер брокера приёмника" @bind-Value="BrokerUrl" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+
+        <MudTextField T="string" Label="Виртуальный хост брокера" @bind-Value="VirtualHost" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+
+        <MudTextField T="string" Label="Топик входящих сообщений" @bind-Value="TopicName" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+    }
+    else
+    {
+        <p>Apache Kafka находится в разработке ... ¯\_(ツ)_/¯</p>
+    }
+
+</div>

@@ -1,0 +1,349 @@
+﻿using DaJet.Flow.Model;
+using DaJet.Studio.Model;
+using Microsoft.AspNetCore.Components;
+using MudBlazor;
+using System.Net.Http.Json;
+using System.Text;
+using System.Web;
+
+namespace DaJet.Studio.Pages.Exchange
+{
+    public partial class CreatePipelinePage : ComponentBase
+    {
+        private const string ONEDB_MESSAGE_NAME = "DaJet.Exchange.OneDbMessage";
+        private const string BLOCK_NAME_EXCHANGE = "DaJet.Exchange.{0}.OneDbExchange";
+        private const string BLOCK_NAME_ROUTER = "DaJet.Exchange.{0}.OneDbRouter";
+        private const string BLOCK_NAME_TRANSFORMER = "DaJet.Exchange.{0}.OneDbTransformer";
+        private const string BLOCK_NAME_SERIALIZER = "DaJet.Exchange.OneDbSerializer";
+        private const string BLOCK_NAME_PRODUCER = "DaJet.Exchange.{0}.OneDbProducer";
+        private const string BLOCK_NAME_RABBITMQ = "DaJet.Exchange.RabbitMQ.Producer";
+        private const string BLOCK_NAME_APACHE_KAFKA = "DaJet.Exchange.Kafka.Producer";
+        [Parameter] public string Database { get; set; }
+        [Parameter] public string Exchange { get; set; }
+        protected PipelineOptions Model { get; set; } = new();
+        protected string NodeName { get; set; } = string.Empty;
+        protected List<string> NodeNames { get; set; } = new();
+        protected string TargetType { get; set; } = string.Empty;
+        protected List<string> TargetTypes { get; set; } = new()
+        {
+            "Apache Kafka", "PostgreSql", "SqlServer", "RabbitMQ"
+        };
+        protected InfoBaseModel TargetUrl { get; set; }
+        protected List<InfoBaseModel> TargetUrls { get; set; } = new();
+        protected string ScriptUrl { get; set; } = "/incoming-queue";
+        protected bool GenerateIncomingScript { get; set; } = false;
+        protected string BrokerUrl { get; set; } = "amqp://guest:guest@localhost:5672";
+        protected string VirtualHost { get; set; } = "/";
+        protected string TopicName { get; set; } = string.Empty;
+        protected override async Task OnParametersSetAsync()
+        {
+            Model.Name = Database;
+            TargetType = "RabbitMQ";
+            VirtualHost = Database;
+            TopicName = Exchange;
+
+            await SelectNodeNames();
+            await SelectTargetUrls();
+        }
+        protected void NavigateToHomePage() { Navigator.NavigateTo("/"); }
+        protected void NavigateToDaJetFlowPage() { Navigator.NavigateTo("/dajet-flow"); }
+        private async Task SelectNodeNames()
+        {
+            NodeNames.Clear();
+
+            try
+            {
+                HttpResponseMessage response = await Http.GetAsync($"/exchange/{Database}/{Exchange}/subscribers");
+
+                List<string> list = await response.Content.ReadFromJsonAsync<List<string>>();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    if (list is not null && list.Count > 0)
+                    {
+                        NodeName = list[0];
+                        NodeNames.AddRange(list);
+                    }
+                    else
+                    {
+                        NodeName = string.Empty;
+                    }
+                }
+                else
+                {
+                    string result = await response.Content?.ReadAsStringAsync();
+
+                    string error = response.ReasonPhrase
+                        + (string.IsNullOrEmpty(result)
+                        ? string.Empty
+                        : Environment.NewLine + result);
+
+                    Snackbar.Add(error, Severity.Error);
+                }   
+            }
+            catch (Exception error)
+            {
+                Snackbar.Add(error.Message, Severity.Error);
+            }
+        }
+        private async Task SelectTargetUrls()
+        {
+            TargetUrls.Clear();
+
+            try
+            {
+                HttpResponseMessage response = await Http.GetAsync("/md");
+
+                List<InfoBaseModel> list = await response.Content.ReadFromJsonAsync<List<InfoBaseModel>>();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    if (list is not null && list.Count > 0)
+                    {
+                        TargetUrl = list[0];
+
+                        foreach (InfoBaseModel database in list)
+                        {
+                            TargetUrls.Add(database);
+                        }
+                    }
+                    else
+                    {
+                        TargetUrl = null;
+                    }
+                }
+                else
+                {
+                    string result = await response.Content?.ReadAsStringAsync();
+
+                    string error = response.ReasonPhrase
+                        + (string.IsNullOrEmpty(result)
+                        ? string.Empty
+                        : Environment.NewLine + result);
+
+                    Snackbar.Add(error, Severity.Error);
+                }   
+            }
+            catch (Exception error)
+            {
+                Snackbar.Add(error.Message, Severity.Error);
+            }
+        }
+        protected async Task CreatePipeline()
+        {
+            InfoBaseModel source = TargetUrls.Where(db => db.Name == Database).FirstOrDefault();
+
+            if (source is null)
+            {
+                Snackbar.Add($"База данных [{Database}] не найдена!", Severity.Warning); return;
+            }
+
+            if (string.IsNullOrWhiteSpace(Model.Name))
+            {
+                Model.Name = Database;
+            }
+
+            Model.Activation = ActivationMode.Manual;
+
+            Model.Options.Clear();
+            Model.Options.Add(new OptionItem() { Name = "SleepTimeout", Type = "System.Int32", Value = "0" });
+            Model.Options.Add(new OptionItem() { Name = "ShowStackTrace", Type = "System.Boolean", Value = "false" });
+
+            Model.Blocks.Clear();
+            Model.Blocks.Add(new PipelineBlock()
+            {
+                Handler = string.Format(BLOCK_NAME_EXCHANGE, source.DatabaseProvider),
+                Message = ONEDB_MESSAGE_NAME,
+                Options =
+                {
+                    new OptionItem() { Name = "Pipeline", Type = "System.Guid", Value = Model.Uuid.ToString().ToLower() },
+                    new OptionItem() { Name = "Source", Type = "System.String", Value = Database },
+                    new OptionItem() { Name = "Exchange", Type = "System.String", Value = Exchange },
+                    new OptionItem() { Name = "NodeName", Type = "System.String", Value = NodeName },
+                    new OptionItem() { Name = "Timeout", Type = "System.Int32", Value = "10" },
+                    new OptionItem() { Name = "BatchSize", Type = "System.Int32", Value = "1000" }
+                }
+            });
+            Model.Blocks.Add(new PipelineBlock()
+            {
+                Handler = string.Format(BLOCK_NAME_ROUTER, source.DatabaseProvider),
+                Message = ONEDB_MESSAGE_NAME,
+                Options =
+                {
+                    new OptionItem() { Name = "Source", Type = "System.String", Value = Database },
+                    new OptionItem() { Name = "Exchange", Type = "System.String", Value = Exchange },
+                    new OptionItem() { Name = "MaxDop", Type = "System.Int32", Value = "1" },
+                    new OptionItem() { Name = "Timeout", Type = "System.Int32", Value = "10" }
+                }
+            });
+            Model.Blocks.Add(new PipelineBlock()
+            {
+                Handler = string.Format(BLOCK_NAME_TRANSFORMER, source.DatabaseProvider),
+                Message = ONEDB_MESSAGE_NAME,
+                Options =
+                {
+                    new OptionItem() { Name = "Source", Type = "System.String", Value = Database },
+                    new OptionItem() { Name = "Exchange", Type = "System.String", Value = Exchange },
+                    new OptionItem() { Name = "MaxDop", Type = "System.Int32", Value = "1" },
+                    new OptionItem() { Name = "Timeout", Type = "System.Int32", Value = "10" }
+                }
+            });
+            Model.Blocks.Add(new PipelineBlock()
+            {
+                Handler = BLOCK_NAME_SERIALIZER,
+                Message = ONEDB_MESSAGE_NAME,
+                Options =
+                {
+                    new OptionItem() { Name = "MaxDop", Type = "System.Int32", Value = "1" }
+                }
+            });
+
+            if (TargetType == "SqlServer" || TargetType == "PostgreSql")
+            {
+                Model.Blocks.Add(new PipelineBlock()
+                {
+                    Handler = string.Format(BLOCK_NAME_PRODUCER, TargetType),
+                    Message = ONEDB_MESSAGE_NAME,
+                    Options =
+                    {
+                        new OptionItem() { Name = "Target", Type = "System.String", Value = TargetUrl.Name },
+                        new OptionItem() { Name = "Script", Type = "System.String", Value = ScriptUrl },
+                        new OptionItem() { Name = "Timeout", Type = "System.Int32", Value = "10" }
+                    }
+                });
+            }
+            else if (TargetType == "RabbitMQ")
+            {
+                string url = BrokerUrl;
+
+                if (!string.IsNullOrWhiteSpace(VirtualHost))
+                {
+                    url += "/" + HttpUtility.UrlEncode(VirtualHost);
+                }
+
+                Model.Blocks.Add(new PipelineBlock()
+                {
+                    Handler = BLOCK_NAME_RABBITMQ,
+                    Message = ONEDB_MESSAGE_NAME,
+                    Options =
+                    {
+                        new OptionItem() { Name = "Target", Type = "System.String", Value = url },
+                        new OptionItem() { Name = "Exchange", Type = "System.String", Value = TopicName },
+                        new OptionItem() { Name = "Mandatory", Type = "System.Boolean", Value = "false" },
+                        new OptionItem() { Name = "RoutingKey", Type = "System.String", Value = string.Empty },
+                        new OptionItem() { Name = "CC", Type = "System.String", Value = string.Empty }
+                    }
+                });
+            }
+            else
+            {
+                Model.Blocks.Add(new PipelineBlock()
+                {
+                    Handler = BLOCK_NAME_APACHE_KAFKA,
+                    Message = ONEDB_MESSAGE_NAME,
+                    Options =
+                    {
+                        new OptionItem() { Name = "MaxDop", Type = "System.Int32", Value = "1" }
+                    }
+                });
+            }
+
+            await GenerateIncomingScriptAtServer();
+
+            try
+            {
+                HttpResponseMessage response = await Http.PostAsJsonAsync("/flow", Model);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    NavigateToDaJetFlowPage();
+                }
+                else
+                {
+                    string result = await response.Content?.ReadAsStringAsync();
+
+                    string error = response.ReasonPhrase
+                        + (string.IsNullOrEmpty(result)
+                        ? string.Empty
+                        : Environment.NewLine + result);
+
+                    Snackbar.Add(error, Severity.Error);
+                }
+            }
+            catch (Exception error)
+            {
+                Snackbar.Add(error.Message, Severity.Error);
+            }
+        }
+        private async Task GenerateIncomingScriptAtServer()
+        {
+            if (!GenerateIncomingScript)
+            {
+                return;
+            }
+
+            if (!(TargetType == "SqlServer" || TargetType == "PostgreSql"))
+            {
+                return;
+            }
+
+            try
+            {
+                ScriptModel script = await Http.GetFromJsonAsync<ScriptModel>($"/api/{TargetUrl.Name}/{ScriptUrl}");
+
+                if (script is null || string.IsNullOrWhiteSpace(script.Name))
+                {
+                    Snackbar.Add($"Скрипт /{TargetUrl.Name}{ScriptUrl} не найден.", Severity.Warning); return;
+                }
+
+                script.Script = GenerateIncomingScriptSourceCode();
+
+                HttpResponseMessage response = await Http.PutAsJsonAsync($"/api", script);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add($"Cкрипт /{TargetUrl.Name}{ScriptUrl} сформирован успешно.", Severity.Success);
+                }
+                else
+                {
+                    string result = await response.Content?.ReadAsStringAsync();
+
+                    string error = response.ReasonPhrase
+                        + (string.IsNullOrEmpty(result)
+                        ? string.Empty
+                        : Environment.NewLine + result);
+
+                    Snackbar.Add(error, Severity.Warning);
+                }
+            }
+            catch (Exception error)
+            {
+                Snackbar.Add($"Создание скрипта /{TargetUrl.Name}{ScriptUrl}: {error.Message}", Severity.Warning);
+            }
+        }
+        private string GenerateIncomingScriptSourceCode()
+        {
+            StringBuilder script = new();
+
+            script.AppendLine("DECLARE @msg_source string;");
+            script.AppendLine("DECLARE @msg_target string;");
+            script.AppendLine("DECLARE @msg_number number;");
+            script.AppendLine("DECLARE @msg_type   string;");
+            script.AppendLine("DECLARE @msg_body   string;");
+            script.AppendLine("DECLARE @msg_time   datetime;");
+            script.AppendLine();
+            script.AppendLine("CREATE COMPUTED TABLE source AS");
+            script.AppendLine("(");
+            script.AppendLine("  SELECT @msg_source AS Отправитель,");
+            script.AppendLine("         @msg_target AS Получатели,");
+            script.AppendLine("         @msg_number AS НомерСообщения,");
+            script.AppendLine("         @msg_type   AS ТипСообщения,");
+            script.AppendLine("         @msg_body   AS ТелоСообщения,");
+            script.AppendLine("         @msg_time   AS ОтметкаВремени");
+            script.AppendLine(")");
+            script.AppendLine("INSERT РегистрСведений.ОчередьВходящихСообщений FROM source");
+
+            return script.ToString();
+        }
+    }
+}
