@@ -14,6 +14,10 @@
                 <MudIconButton Icon="@Icons.Material.Outlined.SyncAlt" Color="Color.Success" Size="Size.Large" OnClick="CreatePipeline" />
             </MudTooltip>
 
+            <MudTooltip Text="Настроить RabbitMQ сервер">
+                <img src="/img/RabbitMQ.jpg" style="width:48px; height:48px;vertical-align:middle;cursor:pointer"  @onclick="ConfigureRabbitMQ" />
+            </MudTooltip>
+
             <MudTooltip Text="Удалить план обмена">
                 <MudIconButton Icon="@Icons.Material.Filled.FolderOff" Color="Color.Error" Size="Size.Large" OnClick="DeleteExchange" />
             </MudTooltip>

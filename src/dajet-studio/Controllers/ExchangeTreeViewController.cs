@@ -160,6 +160,10 @@ namespace DaJet.Studio.Controllers
             {
                 NavigateToCreatePipelinePage(node, dialogService);
             }
+            else if (dialogResult.CommandType == ExchangeDialogCommand.ConfigureRabbitMQ)
+            {
+                NavigateToConfigureRabbitMQPage(node, dialogService);
+            }
             else if (dialogResult.CommandType == ExchangeDialogCommand.DeleteExchange)
             {
                 await DeleteExchange(node, dialogService);
@@ -174,6 +178,16 @@ namespace DaJet.Studio.Controllers
             if (node.Tag is not ScriptModel exchange) { return; }
 
             Navigator.NavigateTo($"/create-pipeline/{database.Name}/{exchange.Name}");
+        }
+        private void NavigateToConfigureRabbitMQPage(TreeNodeModel node, IDialogService dialogService)
+        {
+            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseModel>(in node);
+
+            if (root is null || root.Tag is not InfoBaseModel database) { return; }
+
+            if (node.Tag is not ScriptModel exchange) { return; }
+
+            Navigator.NavigateTo($"/configure-rabbit/{database.Name}/{exchange.Name}");
         }
         private async Task SelectExchange(TreeNodeModel root, IDialogService dialogService)
         {

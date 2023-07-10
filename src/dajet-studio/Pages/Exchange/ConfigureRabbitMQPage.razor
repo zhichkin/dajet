@@ -1,0 +1,52 @@
+﻿@page "/configure-rabbit/{database}/{exchange}"
+
+@inject HttpClient Http;
+@inject NavigationManager Navigator;
+@inject ISnackbar Snackbar;
+
+<div style="margin:0px 10px 0px 10px;overflow:scroll;">
+
+    <MudField Variant="Variant.Text" DisableUnderLine="true" FullWidth="false" Margin="Margin.Dense">
+        <b>Конфигурирование сервера RabbitMQ</b>
+        <MudTooltip Text="Закрыть страницу">
+            <MudIconButton Icon="@Icons.Material.Outlined.Close" Color="Color.Error" Size="Size.Small" OnClick="NavigateToHomePage" />
+        </MudTooltip>
+    </MudField>
+
+    <MudTooltip Text="Выполнить конфигурирование RabbitMQ">
+        <MudButton OnClick="ConfigureCommand" Size="Size.Small" Variant="Variant.Filled" Color="Color.Success">Выполнить</MudButton>
+    </MudTooltip>
+
+    <table style="margin:5px 0px 5px 0px">
+        <tr><td><b>Источник данных</b></td><td style="padding:0px 0px 0px 10px">@Database</td></tr>
+        <tr><td><b>План обмена</b></td><td style="padding:0px 0px 0px 10px">@Exchange</td></tr>
+    </table>
+
+    <MudTextField T="string" Label="Сервер брокера RabbitMQ" @bind-Value="BrokerUrl" Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+
+    <MudTextField T="string" Label="Виртуальный хост брокера" @bind-Value="VirtualHost" Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+
+    <MudTextField T="string" Label="Топик входящих сообщений" @bind-Value="TopicName" Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+
+    <MudCard Outlined="true" Class="ml-0 mt-3">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Style="font-size:var(--mud-typography-default-size);font-weight:bold">Создавать очереди сообщений RabbitMQ</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardActions>
+            <MudRadioGroup @bind-SelectedOption="@ConfigurationStrategy" Class="ml-3">
+                <MudRadio Option="@("types")" Color="Color.Primary" Size="Size.Small" Dense="true">
+                    <MudText Style="font-size:var(--mud-typography-default-size);">По типам объектов</MudText>
+                </MudRadio>
+                <MudRadio Option="@("nodes")" Color="Color.Primary" Size="Size.Small" Dense="true">
+                    <MudText Style="font-size:var(--mud-typography-default-size);">По узлам обмена</MudText>
+                </MudRadio>
+            </MudRadioGroup>
+        </MudCardActions>
+    </MudCard>
+
+</div>

@@ -2,13 +2,16 @@
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Options;
+using DaJet.RabbitMQ.HttpApi;
 using DaJet.Scripting;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
 using System.Net;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
+using System.Web;
 
 namespace DaJet.Http.Controllers
 {
@@ -900,6 +903,191 @@ namespace DaJet.Http.Controllers
             }
 
             return type;
+        }
+
+
+
+        [HttpPost("configure/rabbit")] public ActionResult ConfigureRabbitMQ(Dictionary<string, string> parameters)
+        {
+            if (!parameters.TryGetValue("Database", out string infobase))
+            {
+                return BadRequest($"Parameter \"Database\" missing.");
+            }
+
+            if (!parameters.TryGetValue("Exchange", out string publication))
+            {
+                return BadRequest($"Parameter \"Exchange\" missing.");
+            }
+
+            if (!parameters.TryGetValue("BrokerUrl", out string brokerurl))
+            {
+                return BadRequest($"Parameter \"BrokerUrl\" missing.");
+            }
+
+            InfoBaseModel database = _databases.Select(infobase);
+
+            if (database is null) { return NotFound($"Database [{infobase}] not found."); }
+
+            ScriptRecord exchange = _scripts.SelectScriptByPath(database.Uuid, "/exchange");
+
+            if (exchange is null) { return NotFound("Exchange service not found."); }
+
+            if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            {
+                return BadRequest(error);
+            }
+
+            string metadataName = "ПланОбмена." + publication;
+
+            if (provider.GetMetadataObject(metadataName) is not Publication entity)
+            {
+                return BadRequest($"Metadata object not found: {metadataName}");
+            }
+
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, $"/exchange/{publication}");
+
+            if (script is null)
+            {
+                return NotFound($"Publication {publication} not found.");
+            }
+
+            List<MetadataObject> articles = GetPublicationArticles(in entity, in provider);
+
+            if (!TryConfigureRabbitMQ(in parameters, in articles, out error))
+            {
+                return BadRequest(error);
+            }
+
+            return Created(new Uri($"rabbit/{database.Name}/{publication}", UriKind.Relative), null);
+        }
+        private void ConfigureBrokerManager(in IRabbitMQHttpManager manager, in string brokerUrl)
+        {
+            if (string.IsNullOrWhiteSpace(brokerUrl)) { return; }
+
+            Uri uri = new(brokerUrl);
+
+            if (uri.Scheme != "amqp") { return; }
+
+            manager.UseHostName(uri.Host);
+            //manager.UseHostPort(uri.Port);
+
+            string[] userpass = uri.UserInfo.Split(':');
+
+            if (userpass is not null && userpass.Length == 2)
+            {
+                manager.UseUserName(HttpUtility.UrlDecode(userpass[0], Encoding.UTF8));
+                manager.UsePassword(HttpUtility.UrlDecode(userpass[1], Encoding.UTF8));
+            }
+
+            if (uri.Segments is not null && uri.Segments.Length > 1)
+            {
+                manager.UseVirtualHost(HttpUtility.UrlDecode(uri.Segments[1].TrimEnd('/'), Encoding.UTF8));
+            }
+        }
+        private bool TryConfigureRabbitMQ(in Dictionary<string, string> options, in List<MetadataObject> articles, out string error)
+        {
+            error = string.Empty;
+
+            if (!options.TryGetValue("Database", out string database))
+            {
+                error = $"Parameter \"Database\" missing."; return false;
+            }
+
+            if (!options.TryGetValue("Exchange", out string publication))
+            {
+                error = $"Parameter \"Exchange\" missing."; return false;
+            }
+
+            if (!options.TryGetValue("BrokerUrl", out string brokerurl))
+            {
+                error = $"Parameter \"BrokerUrl\" missing."; return false;
+            }
+
+            if (!options.TryGetValue("Strategy", out string strategy))
+            {
+                error = $"Parameter \"Strategy\" missing."; return false;
+            }
+
+            using (IRabbitMQHttpManager manager = new RabbitMQHttpManager())
+            {
+                ConfigureBrokerManager(in manager, in brokerurl);
+
+                VirtualHostInfo vhost = manager.GetVirtualHost(database).Result;
+
+                if (vhost is null)
+                {
+                    manager.CreateVirtualHost(database).Wait();
+                    vhost = manager.GetVirtualHost(database).Result;
+                }
+
+                ExchangeInfo exchange = manager.GetExchange(publication).Result;
+
+                if (exchange is null)
+                {
+                    manager.CreateExchange(publication).Wait();
+                    exchange = manager.GetExchange(publication).Result;
+                }
+
+                if (strategy == "types")
+                {
+                    ConfigureByArticles(in manager, in exchange, in articles);
+                }
+                else if (strategy == "nodes")
+                {
+
+                }
+                else
+                {
+                    error = $"Unknown RabbitMQ configuration strategy: [{strategy}]";
+                }
+            }
+
+            return string.IsNullOrEmpty(error);
+        }
+        private void ConfigureByArticles(in IRabbitMQHttpManager manager, in ExchangeInfo exchange, in List<MetadataObject> articles)
+        {
+            foreach (MetadataObject article in articles)
+            {
+                string queueName = article.Name;
+
+                if (article is Catalog catalog)
+                {
+                    queueName = $"Справочник.{catalog.Name}";
+                }
+                else if (article is Document document)
+                {
+                    queueName = $"Документ.{document.Name}";
+                }
+                else if (article is InformationRegister register)
+                {
+                    queueName = $"РегистрСведений.{register.Name}";
+                }
+
+                QueueInfo queue = manager.GetQueue(queueName).Result;
+
+                if (queue == null)
+                {
+                    manager.CreateQueue(queueName).Wait();
+                    queue = manager.GetQueue(queueName).Result;
+                }
+
+                List<BindingInfo> bindings = manager.GetBindings(queue).Result;
+
+                bool exists = false;
+
+                foreach (BindingInfo binding in bindings)
+                {
+                    if (binding.Source == exchange.Name)
+                    {
+                        exists = true; break;
+                    }
+                }
+
+                if (!exists)
+                {
+                    manager.CreateBinding(exchange, queue, queue.Name).Wait();
+                }
+            }
         }
     }
 }

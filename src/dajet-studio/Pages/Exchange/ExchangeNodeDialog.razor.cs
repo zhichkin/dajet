@@ -21,6 +21,15 @@ namespace DaJet.Studio.Pages.Exchange
 
             MudDialog.Close(result);
         }
+        private void ConfigureRabbitMQ()
+        {
+            ExchangeDialogResult result = new(Model, typeof(TreeNodeModel), false)
+            {
+                CommandType = ExchangeDialogCommand.ConfigureRabbitMQ
+            };
+
+            MudDialog.Close(result);
+        }
         private void DeleteExchange()
         {
             ExchangeDialogResult result = new(Model, typeof(TreeNodeModel), false)
