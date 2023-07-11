@@ -1,0 +1,28 @@
+﻿@page "/configure-rabbit-delete/{database}"
+
+@inject HttpClient Http;
+@inject NavigationManager Navigator;
+@inject ISnackbar Snackbar;
+
+<div style="margin:0px 10px 0px 10px;overflow:scroll;">
+
+    <MudField Variant="Variant.Text" DisableUnderLine="true" FullWidth="false" Margin="Margin.Dense">
+        <b>Удаление виртуального хоста на сервере RabbitMQ</b>
+        <MudTooltip Text="Закрыть страницу">
+            <MudIconButton Icon="@Icons.Material.Outlined.Close" Color="Color.Error" Size="Size.Small" OnClick="NavigateToHomePage" />
+        </MudTooltip>
+    </MudField>
+
+    <MudTooltip Text="Удалить виртуальный хост RabbitMQ">
+        <MudButton OnClick="ConfigureCommand" Size="Size.Small" Variant="Variant.Filled" Color="Color.Warning">Удалить</MudButton>
+    </MudTooltip>
+
+    <p style="padding:10px 0px 10px 0px"><b>База данных:</b> @Database</p>
+
+    <MudTextField T="string" Label="Сервер брокера RabbitMQ" @bind-Value="BrokerUrl" Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+
+    <MudTextField T="string" Label="Виртуальный хост брокера" @bind-Value="VirtualHost" Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+
+</div>

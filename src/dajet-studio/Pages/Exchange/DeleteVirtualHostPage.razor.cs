@@ -1,38 +1,48 @@
 ﻿using Microsoft.AspNetCore.Components;
 using MudBlazor;
-using System.Net.Http.Json;
+using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Unicode;
 
 namespace DaJet.Studio.Pages.Exchange
 {
-    public partial class ConfigureRabbitMQPage : ComponentBase
+    public partial class DeleteVirtualHostPage : ComponentBase
     {
+        private readonly JsonSerializerOptions JsonOptions = new()
+        {
+            WriteIndented = true,
+            Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+        };
         [Parameter] public string Database { get; set; }
-        [Parameter] public string Exchange { get; set; }
         protected string BrokerUrl { get; set; } = "http://guest:guest@localhost:15672";
         protected string VirtualHost { get; set; } = "/";
-        protected string TopicName { get; set; } = string.Empty;
-        protected string ConfigurationStrategy { get; set; } = "types";
         protected void NavigateToHomePage() { Navigator.NavigateTo("/"); }
         protected override void OnParametersSet()
         {
-            TopicName = Exchange;
             VirtualHost = Database;
         }
         protected async Task ConfigureCommand()
         {
             try
             {
-                Dictionary<string, string> parameters = new()
+                Dictionary<string, string> options = new()
                 {
                     { "Database", Database },
-                    { "Exchange", Exchange },
                     { "BrokerUrl", BrokerUrl },
-                    { "TopicName", TopicName },
-                    { "VirtualHost", VirtualHost },
-                    { "Strategy", ConfigurationStrategy }
+                    { "VirtualHost", VirtualHost }
                 };
 
-                HttpResponseMessage response = await Http.PostAsJsonAsync($"/exchange/configure/rabbit", parameters);
+                string json = JsonSerializer.Serialize(options, JsonOptions);
+
+                HttpRequestMessage request = new()
+                {
+                    Method = HttpMethod.Delete,
+                    Content = new StringContent(json, Encoding.UTF8, "application/json"),
+                    RequestUri = new Uri($"{Http.BaseAddress}exchange/configure/rabbit", UriKind.Absolute)
+                };
+
+                HttpResponseMessage response = await Http.SendAsync(request);
 
                 if (response.IsSuccessStatusCode)
                 {

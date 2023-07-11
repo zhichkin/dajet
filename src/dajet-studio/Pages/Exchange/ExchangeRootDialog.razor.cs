@@ -21,5 +21,14 @@ namespace DaJet.Studio.Pages.Exchange
 
             MudDialog.Close(result);
         }
+        private void ConfigureRabbitMQ()
+        {
+            ExchangeDialogResult result = new(Model, typeof(TreeNodeModel), false)
+            {
+                CommandType = ExchangeDialogCommand.DeleteVirtualHostRabbitMQ
+            };
+
+            MudDialog.Close(result);
+        }
     }
 }

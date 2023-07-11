@@ -4,7 +4,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
 
-namespace DaJet.Flow
+namespace DaJet.Flow.Transformers
 {
     [PipelineBlock] public sealed class PayloadToRecordTransformer : TransformerBlock<Payload, IDataRecord>
     {

@@ -66,6 +66,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-flow-kafka", "dajet-f
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-exchange", "dajet-exchange\dajet-exchange.csproj", "{8F985EAE-C461-4587-A94C-E589BC6C2439}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-rabbitmq", "dajet-rabbitmq\dajet-rabbitmq.csproj", "{F9ED175E-1D6A-4B2E-870F-1389F2D26CD8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-flow-transformers", "dajet-flow-transformers\dajet-flow-transformers.csproj", "{A67DEB7B-5997-4273-9533-458E76190EE8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -136,6 +140,14 @@ Global
 		{8F985EAE-C461-4587-A94C-E589BC6C2439}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8F985EAE-C461-4587-A94C-E589BC6C2439}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8F985EAE-C461-4587-A94C-E589BC6C2439}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F9ED175E-1D6A-4B2E-870F-1389F2D26CD8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F9ED175E-1D6A-4B2E-870F-1389F2D26CD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F9ED175E-1D6A-4B2E-870F-1389F2D26CD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F9ED175E-1D6A-4B2E-870F-1389F2D26CD8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A67DEB7B-5997-4273-9533-458E76190EE8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A67DEB7B-5997-4273-9533-458E76190EE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A67DEB7B-5997-4273-9533-458E76190EE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A67DEB7B-5997-4273-9533-458E76190EE8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

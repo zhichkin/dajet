@@ -131,6 +131,10 @@ namespace DaJet.Studio.Controllers
             {
                 await SelectExchange(node, dialogService);
             }
+            else if (dialogResult.CommandType == ExchangeDialogCommand.DeleteVirtualHostRabbitMQ)
+            {
+                NavigateToDeleteRabbitMQPage(node, dialogService);
+            }
         }
 
         private async Task OpenExchangeNodeContextMenu(TreeNodeModel node, IDialogService dialogService)
@@ -188,6 +192,14 @@ namespace DaJet.Studio.Controllers
             if (node.Tag is not ScriptModel exchange) { return; }
 
             Navigator.NavigateTo($"/configure-rabbit/{database.Name}/{exchange.Name}");
+        }
+        private void NavigateToDeleteRabbitMQPage(TreeNodeModel node, IDialogService dialogService)
+        {
+            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseModel>(in node);
+
+            if (root is null || root.Tag is not InfoBaseModel database) { return; }
+
+            Navigator.NavigateTo($"/configure-rabbit-delete/{database.Name}");
         }
         private async Task SelectExchange(TreeNodeModel root, IDialogService dialogService)
         {

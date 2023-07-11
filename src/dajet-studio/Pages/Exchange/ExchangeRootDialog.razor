@@ -12,6 +12,10 @@
                 <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder" Color="Color.Success" Size="Size.Large" OnClick="SelectExchange" />
             </MudTooltip>
 
+            <MudTooltip Text="Удалить виртуальный хост RabbitMQ">
+                <img src="/img/rabbit-delete.jpg" style="width:48px; height:48px;vertical-align:middle;cursor:pointer" @onclick="ConfigureRabbitMQ" />
+            </MudTooltip>
+
             <MudTooltip Text="Отмена">
                 <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Dark" Size="Size.Large" OnClick="CloseDialog" />
             </MudTooltip>

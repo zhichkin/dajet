@@ -14,7 +14,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DaJet.RabbitMQ.HttpApi" Version="1.4.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="7.0.0" />
   </ItemGroup>
@@ -23,6 +22,7 @@
     <ProjectReference Include="..\dajet-dbview-generator\dajet-dbview-generator.csproj" />
     <ProjectReference Include="..\dajet-flow-model\dajet-flow-model.csproj" />
     <ProjectReference Include="..\dajet-flow\dajet-flow.csproj" />
+    <ProjectReference Include="..\dajet-rabbitmq\dajet-rabbitmq.csproj" />
     <ProjectReference Include="..\dajet-scripting\dajet-scripting.csproj" />
   </ItemGroup>
 
