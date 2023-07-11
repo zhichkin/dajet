@@ -4,6 +4,7 @@ namespace DaJet.Exchange
 {
     public sealed class OneDbMessage
     {
+        public Guid Uuid { get; set; } = Guid.NewGuid();
         public long Sequence { get; set; }
         public string TypeName { get; set; } = string.Empty;
         public IDataRecord DataRecord { get; set; }

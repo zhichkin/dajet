@@ -76,9 +76,13 @@
         <MudTextField T="string" Label="Топик входящих сообщений" @bind-Value="TopicName" Variant="Variant.Outlined" Margin="Margin.Dense"
                       Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
     }
-    else
+    else // Apache Kafka
     {
-        <p>Apache Kafka находится в разработке ... ¯\_(ツ)_/¯</p>
+        <MudTextField T="string" Label="Сервер брокера Kafka" @bind-Value="KafkaBroker" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+
+        <MudTextField T="string" Label="Клиент брокера Kafka" @bind-Value="KafkaClient" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
     }
 
 </div>

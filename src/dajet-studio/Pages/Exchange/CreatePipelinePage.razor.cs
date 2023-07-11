@@ -35,12 +35,15 @@ namespace DaJet.Studio.Pages.Exchange
         protected string BrokerUrl { get; set; } = "amqp://guest:guest@localhost:5672";
         protected string VirtualHost { get; set; } = "/";
         protected string TopicName { get; set; } = string.Empty;
+        protected string KafkaBroker { get; set; } = "127.0.0.1:9092";
+        protected string KafkaClient { get; set; } = string.Empty;
         protected override async Task OnParametersSetAsync()
         {
             Model.Name = Database;
             TargetType = "RabbitMQ";
             VirtualHost = Database;
             TopicName = Exchange;
+            KafkaClient = Database;
 
             await SelectNodeNames();
             await SelectTargetUrls();
@@ -235,7 +238,7 @@ namespace DaJet.Studio.Pages.Exchange
                     }
                 });
             }
-            else
+            else // Apache Kafka
             {
                 Model.Blocks.Add(new PipelineBlock()
                 {
@@ -243,7 +246,12 @@ namespace DaJet.Studio.Pages.Exchange
                     Message = ONEDB_MESSAGE_NAME,
                     Options =
                     {
-                        new OptionItem() { Name = "MaxDop", Type = "System.Int32", Value = "1" }
+                        new OptionItem() { Name = "ClientId", Type = "System.String", Value = KafkaClient },
+                        new OptionItem() { Name = "BootstrapServers", Type = "System.String", Value = KafkaBroker },
+                        new OptionItem() { Name = "Acks", Type = "System.String", Value = "all" },
+                        new OptionItem() { Name = "MaxInFlight", Type = "System.String", Value = "1" },
+                        new OptionItem() { Name = "MessageTimeoutMs", Type = "System.String", Value = "30000" },
+                        new OptionItem() { Name = "EnableIdempotence", Type = "System.String", Value = "false" }
                     }
                 });
             }
@@ -328,6 +336,7 @@ namespace DaJet.Studio.Pages.Exchange
             script.AppendLine("DECLARE @msg_source string;");
             script.AppendLine("DECLARE @msg_target string;");
             script.AppendLine("DECLARE @msg_number number;");
+            script.AppendLine("DECLARE @msg_uuid   uuid;");
             script.AppendLine("DECLARE @msg_type   string;");
             script.AppendLine("DECLARE @msg_body   string;");
             script.AppendLine("DECLARE @msg_time   datetime;");
@@ -337,6 +346,7 @@ namespace DaJet.Studio.Pages.Exchange
             script.AppendLine("  SELECT @msg_source AS Отправитель,");
             script.AppendLine("         @msg_target AS Получатели,");
             script.AppendLine("         @msg_number AS НомерСообщения,");
+            script.AppendLine("         @msg_uuid   AS Идентификатор,");
             script.AppendLine("         @msg_type   AS ТипСообщения,");
             script.AppendLine("         @msg_body   AS ТелоСообщения,");
             script.AppendLine("         @msg_time   AS ОтметкаВремени");

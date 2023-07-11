@@ -94,6 +94,7 @@ namespace DaJet.Exchange.PostgreSql
             command.Parameters.AddWithValue("msg_target", string.Join(',', input.Subscribers));
             command.Parameters.AddWithValue("msg_time", DateTime.Now.AddYears(YearOffset));
             command.Parameters.AddWithValue("msg_number", input.Sequence);
+            command.Parameters.AddWithValue("msg_uuid", input.Uuid.ToByteArray());
             command.Parameters.AddWithValue("msg_type", input.TypeName);
             command.Parameters.AddWithValue("msg_body", input.Payload);
         }

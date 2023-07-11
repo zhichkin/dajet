@@ -323,16 +323,8 @@ namespace DaJet.Exchange.RabbitMQ
             }
             else if (string.IsNullOrWhiteSpace(RoutingKey))
             {
-                if (message.Subscribers.Contains("deleted")) //FIXME: hack ¯\_(ツ)_/¯
-                {
-                    // send message to the specified exchange and route it by deleted flag
-                    _channel.BasicPublish(Exchange, "deleted", Mandatory, _properties, payload);
-                }
-                else
-                {
-                    // send message to the specified exchange and route it by message type
-                    _channel.BasicPublish(Exchange, message.TypeName, Mandatory, _properties, payload);
-                }
+                // send message to the specified exchange and route it by message type
+                _channel.BasicPublish(Exchange, message.TypeName, Mandatory, _properties, payload);
             }
             else
             {

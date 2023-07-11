@@ -169,7 +169,7 @@ namespace DaJet.Exchange.RabbitMQ
             _message.Sender = args.BasicProperties.AppId;
             _message.TypeName = args.BasicProperties.Type;
             _message.Payload = Encoding.UTF8.GetString(args.Body.Span);
-            _message.Subscribers.Clear();
+            //_message.Subscribers.Clear();
 
             if (long.TryParse(args.BasicProperties.MessageId, out long sequence))
             {
@@ -178,11 +178,6 @@ namespace DaJet.Exchange.RabbitMQ
             else
             {
                 _message.Sequence = 0L;
-            }
-
-            if (args.RoutingKey == "deleted")
-            {
-                _message.Subscribers.Add("deleted"); //FIXME: hack the case for deleted records
             }
 
             try
