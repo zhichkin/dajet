@@ -6,14 +6,11 @@ using Microsoft.Extensions.Logging;
 using Npgsql.Replication;
 using Npgsql.Replication.PgOutput;
 using Npgsql.Replication.PgOutput.Messages;
-using System;
 using static Npgsql.Replication.PgOutput.Messages.RelationMessage;
-using System.Collections.Generic;
 
 namespace DaJet.Stream.PostgreSql
 {
-    [PipelineBlock]
-    public sealed class OneDbStream : SourceBlock<string>
+    [PipelineBlock] public sealed class OneDbStream : SourceBlock<string>
     {
         private bool _disposed = true;
         private CancellationTokenSource _cts;
@@ -42,10 +39,16 @@ namespace DaJet.Stream.PostgreSql
         {
             if (_disposed) { return; }
 
-            _disposed = true;
-            _cts?.Cancel();
-            _cts?.Dispose();
-            _next?.Dispose();
+            try
+            {
+                _cts?.Cancel();
+                _cts?.Dispose();
+                _next?.Dispose();
+            }
+            finally
+            {
+                _disposed = true;
+            }
         }
         public override void Execute()
         {

@@ -56,7 +56,7 @@ namespace DaJet.Exchange.Kafka
 
             try
             {
-                _producer.Produce(_topic, _message, _deliveryReportHandler);
+                _producer?.Produce(_topic, _message, _deliveryReportHandler);
             }
             catch
             {
@@ -110,7 +110,10 @@ namespace DaJet.Exchange.Kafka
         }
         protected override void _Dispose()
         {
-            try { _producer?.Dispose(); }
+            try
+            {
+                _producer?.Dispose();
+            }
             catch { /* IGNORE */ }
             finally { _producer = null; }
             
