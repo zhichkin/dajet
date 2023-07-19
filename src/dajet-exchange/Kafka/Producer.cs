@@ -14,7 +14,7 @@ namespace DaJet.Exchange.Kafka
         private string _topic;
         private ProducerConfig _options;
         private IProducer<byte[], byte[]> _producer;
-        private readonly Message<byte[], byte[]> _message = new();
+        private readonly Message<byte[], byte[]> _message = new(); // buffer
         private readonly Action<IProducer<byte[], byte[]>, Error> _errorHandler;
         private readonly Action<IProducer<byte[], byte[]>, LogMessage> _logHandler;
         private readonly Action<DeliveryReport<byte[], byte[]>> _deliveryReportHandler;
@@ -56,11 +56,11 @@ namespace DaJet.Exchange.Kafka
 
             try
             {
-                _producer?.Produce(_topic, _message, _deliveryReportHandler);
+                _producer?.Produce(_topic, _message, _deliveryReportHandler); // async inside - returns immediately
             }
             catch
             {
-                _Dispose(); throw;
+                DisposeProducer(); throw;
             }
         }
         private void LogHandler(IProducer<byte[], byte[]> _, LogMessage message)
@@ -88,40 +88,51 @@ namespace DaJet.Exchange.Kafka
         }
         protected override void _Synchronize()
         {
-            _producer?.Flush();
+            int produced = 0;
+            string error = _error;
 
-            int produced = Interlocked.Exchange(ref _produced, 0);
-
-            _logger?.LogInformation("[{clientid}] Produced {produced} messages", ClientId, produced);
-
-            _message.Value = null;
-            _message.Headers = null;
-
-            if (_error is not null)
+            try
             {
-                string error = _error;
-
-                _error = null;
-
-                throw new InvalidOperationException(error);
+                _producer?.Flush(); // synchronously wait for pending work to complete
+                
+                produced = _produced;
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                DisposeProducer();
             }
 
-            _error = null;
+            if (error is not null)
+            {
+                throw new InvalidOperationException(error);
+            }
+            else
+            {
+                _logger?.LogInformation("[{clientid}] Produced {produced} messages", ClientId, produced);
+            }
         }
         protected override void _Dispose()
         {
-            try
+            if (_producer is not null)
             {
-                _producer?.Dispose();
+                _Synchronize();
             }
-            catch { /* IGNORE */ }
-            finally { _producer = null; }
-            
+        }
+        private void DisposeProducer()
+        {
             _error = null;
             _topic = null;
             _produced = 0;
             _message.Value = null;
             _message.Headers = null;
+
+            try { _producer?.Dispose(); }
+            catch { /* IGNORE */ }
+            finally { _producer = null; }
         }
     }
 }

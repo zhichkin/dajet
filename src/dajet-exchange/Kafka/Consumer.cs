@@ -8,7 +8,6 @@ namespace DaJet.Exchange.Kafka
 {
     [PipelineBlock] public sealed class Consumer : SourceBlock<OneDbMessage>
     {
-        private bool _disposed = true;
         private CancellationTokenSource _cts;
         private int _consumed = 0;
         private int _batchSize = 1000;
@@ -45,11 +44,9 @@ namespace DaJet.Exchange.Kafka
         #endregion
         public override void Execute()
         {
-            if (!_disposed) { return; }
+            if (_cts is not null) { return; }
 
-            _disposed = false;
-
-            _cts = new CancellationTokenSource();
+            _cts ??= new CancellationTokenSource();
 
             _consumer ??= new ConsumerBuilder<byte[], byte[]>(_options)
                 .SetLogHandler(_logHandler)
@@ -70,40 +67,29 @@ namespace DaJet.Exchange.Kafka
                 catch (OperationCanceledException) { /* IGNORE */ }
                 catch
                 {
-                    _Dispose(); DisposeConsumer(); throw; // Unexpected exception
+                    DisposeConsumer(); throw; // Unexpected exception
                 }
+                
                 if (_cts.IsCancellationRequested)
                 {
-                    _Dispose(); DisposeConsumer(); return;
+                    _logger?.LogInformation("[{topic}] Consumed {consumed} messages", Topic, _consumed);
+
+                    DisposeConsumer(); return;
                 }
 
-                if (_cts is not null && !_cts.IsCancellationRequested && _result is not null && _result.Message is not null)
+                if (_result is not null && _result.Message is not null)
                 {
-                    _message ??= new OneDbMessage();
-
-                    _message.Sender = ClientId;
-                    _message.Uuid = Guid.NewGuid();
-                    _message.Sequence = BitConverter.ToInt64(_result.Message.Key);
-                    _message.TypeName = Topic;
-                    _message.Payload = Encoding.UTF8.GetString(_result.Message.Value);
-
-                    _next?.Process(in _message);
-
-                    _next?.Synchronize();
-
-                    _consumed++;
-
-                    if (_consumed == _batchSize)
+                    try
                     {
-                        _consumer.Commit();
-
-                        _logger?.LogInformation("[{topic}] Consumed {consumed} messages", Topic, _consumed);
-
-                        _consumed = 0; // prepare to consume next batch
+                        ConsumeMessage(_result.Message);
+                    }
+                    catch
+                    {
+                        DisposeConsumer(); throw;
                     }
                 }
             }
-            while (_cts is not null && !_cts.IsCancellationRequested && _result is not null && _result.Message is not null && !_disposed);
+            while (_result is not null && _result.Message is not null);
 
             try
             {
@@ -111,13 +97,38 @@ namespace DaJet.Exchange.Kafka
 
                 _logger?.LogInformation("[{topic}] Consumed {consumed} messages", Topic, _consumed);
             }
-            catch (Exception error)
+            catch
             {
-                _logger?.LogError("[{topic}] ERROR: {error}", Topic, error.Message);
+                throw;
             }
             finally
             {
-                _Dispose();
+                DisposeConsumer();
+            }
+        }
+        private void ConsumeMessage(in Message<byte[], byte[]> message)
+        {
+            _message ??= new OneDbMessage();
+
+            _message.Sender = ClientId;
+            _message.Uuid = Guid.NewGuid();
+            _message.Sequence = BitConverter.ToInt64(message.Key);
+            _message.TypeName = Topic;
+            _message.Payload = Encoding.UTF8.GetString(message.Value);
+
+            _next?.Process(in _message);
+
+            _next?.Synchronize();
+
+            _consumed++;
+
+            if (_consumed == _batchSize)
+            {
+                _consumer.Commit();
+
+                _logger?.LogInformation("[{topic}] Consumed {consumed} messages", Topic, _consumed);
+
+                _consumed = 0; // prepare to consume next batch
             }
         }
         private void LogHandler(IConsumer<byte[], byte[]> _, LogMessage log)
@@ -131,30 +142,27 @@ namespace DaJet.Exchange.Kafka
         }
         protected override void _Dispose()
         {
-            if (_disposed) { return; }
-
-            try
+            if (_cts is null || _cts.IsCancellationRequested)
             {
-                _cts?.Cancel();
-                _cts?.Dispose();
-                _next?.Dispose();
+                return;
             }
-            finally
-            {
-                _cts = null;
-                _result = null;
-                _message = null;
-                _disposed = true;
-            }
+            
+            _cts?.Cancel();
         }
         private void DisposeConsumer()
         {
+            _result = null;
+            _message = null;
+
             try
             {
                 _consumer?.Close();
+                _consumer?.Dispose();
             }
-            catch { /* IGNORE */ }
             finally { _consumer = null; }
+
+            try { _cts?.Dispose(); }
+            finally { _cts = null; }
         }
     }
 }
