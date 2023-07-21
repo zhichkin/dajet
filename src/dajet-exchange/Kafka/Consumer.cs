@@ -1,7 +1,7 @@
 ﻿using Confluent.Kafka;
 using DaJet.Flow;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 using System.Text;
 
 namespace DaJet.Exchange.Kafka
@@ -17,14 +17,15 @@ namespace DaJet.Exchange.Kafka
         private ConsumeResult<byte[], byte[]> _result;
         private readonly Action<IConsumer<byte[], byte[]>, Error> _errorHandler;
         private readonly Action<IConsumer<byte[], byte[]>, LogMessage> _logHandler;
-        private readonly ILogger _logger;
-        [ActivatorUtilitiesConstructor] public Consumer(ILogger<Consumer> logger)
+        private readonly IPipelineManager _manager;
+        [ActivatorUtilitiesConstructor] public Consumer(IPipelineManager manager)
         {
-            _logger = logger;
+            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
             _logHandler = LogHandler;
             _errorHandler = ErrorHandler;
         }
         #region "CONFIGURATION OPTIONS"
+        [Option] public Guid Pipeline { get; set; } = Guid.Empty;
         [Option] public string Topic { get; set; } = string.Empty;
         [Option] public string GroupId { get; set; } = "dajet";
         [Option] public string ClientId { get; set; } = "dajet-exchange";
@@ -38,6 +39,7 @@ namespace DaJet.Exchange.Kafka
             Dictionary<string, string> config = ConfigHelper.CreateConfigFromOptions(this);
 
             _ = config.Remove(nameof(Topic).ToLower());
+            _ = config.Remove(nameof(Pipeline).ToLower());
 
             _options = new ConsumerConfig(config);
         }
@@ -57,10 +59,14 @@ namespace DaJet.Exchange.Kafka
 
             _consumed = 0;
 
+            Stopwatch watch = new();
+            watch.Start();
+            
             do
             {
                 try
                 {
+                    
                     _result = _consumer.Consume(_cts.Token);
                 }
                 catch (ObjectDisposedException) { /* IGNORE */ }
@@ -72,7 +78,7 @@ namespace DaJet.Exchange.Kafka
                 
                 if (_cts.IsCancellationRequested)
                 {
-                    _logger?.LogInformation("[{topic}] Consumed {consumed} messages", Topic, _consumed);
+                    _manager?.UpdatePipelineStatus(Pipeline, $"Consumed {_consumed} messages in {watch.ElapsedMilliseconds} ms");
 
                     DisposeConsumer(); return;
                 }
@@ -87,24 +93,11 @@ namespace DaJet.Exchange.Kafka
                     {
                         DisposeConsumer(); throw;
                     }
+
+                    _manager?.UpdatePipelineStatus(Pipeline, $"Consumed {_consumed} messages in {watch.ElapsedMilliseconds} ms");
                 }
             }
             while (_result is not null && _result.Message is not null);
-
-            try
-            {
-                if (_consumed > 0) { _consumer.Commit(); }
-
-                _logger?.LogInformation("[{topic}] Consumed {consumed} messages", Topic, _consumed);
-            }
-            catch
-            {
-                throw;
-            }
-            finally
-            {
-                DisposeConsumer();
-            }
         }
         private void ConsumeMessage(in Message<byte[], byte[]> message)
         {
@@ -120,25 +113,19 @@ namespace DaJet.Exchange.Kafka
 
             _next?.Synchronize();
 
+            _consumer.Commit();
+
             _consumed++;
-
-            if (_consumed == _batchSize)
-            {
-                _consumer.Commit();
-
-                _logger?.LogInformation("[{topic}] Consumed {consumed} messages", Topic, _consumed);
-
-                _consumed = 0; // prepare to consume next batch
-            }
         }
         private void LogHandler(IConsumer<byte[], byte[]> _, LogMessage log)
         {
-            _logger?.LogInformation("[{topic}] [{client}]: {message}", Topic, log.Name, log.Message);
+            _manager?.UpdatePipelineFinishTime(Pipeline, DateTime.Now);
+            _manager?.UpdatePipelineStatus(Pipeline, $"[{Topic}] [{log.Name}]: {log.Message}");
         }
         private void ErrorHandler(IConsumer<byte[], byte[]> consumer, Error error)
         {
-            _logger?.LogError("[{topic}] [{consumer}] [{subscription}]: {error}",
-                Topic, consumer.Name, string.Concat(consumer.Subscription), error.Reason);
+            _manager?.UpdatePipelineFinishTime(Pipeline, DateTime.Now);
+            _manager?.UpdatePipelineStatus(Pipeline, $"[{Topic}] [{consumer.Name}] [{string.Concat(consumer.Subscription)}]: {error.Reason}");
         }
         protected override void _Dispose()
         {
@@ -147,7 +134,7 @@ namespace DaJet.Exchange.Kafka
                 return;
             }
             
-            _cts?.Cancel();
+            _cts?.Cancel(); // interrupt consumption
         }
         private void DisposeConsumer()
         {

@@ -1,7 +1,6 @@
 ﻿using Confluent.Kafka;
 using DaJet.Flow;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using System.Text;
 using Error = Confluent.Kafka.Error;
 
@@ -18,15 +17,16 @@ namespace DaJet.Exchange.Kafka
         private readonly Action<IProducer<byte[], byte[]>, Error> _errorHandler;
         private readonly Action<IProducer<byte[], byte[]>, LogMessage> _logHandler;
         private readonly Action<DeliveryReport<byte[], byte[]>> _deliveryReportHandler;
-        private readonly ILogger _logger;
-        [ActivatorUtilitiesConstructor] public Producer(ILogger<Producer> logger)
+        private readonly IPipelineManager _manager;
+        [ActivatorUtilitiesConstructor] public Producer(IPipelineManager manager)
         {
-            _logger = logger;
+            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
             _logHandler = LogHandler;
             _errorHandler = ErrorHandler;
             _deliveryReportHandler = HandleDeliveryReport;
         }
         #region "CONFIGURATION OPTIONS"
+        [Option] public Guid Pipeline { get; set; } = Guid.Empty;
         [Option] public string ClientId { get; set; } = "dajet-exchange";
         [Option] public string BootstrapServers { get; set; } = "127.0.0.1:9092";
         [Option] public string Acks { get; set; } = "all";
@@ -37,7 +37,7 @@ namespace DaJet.Exchange.Kafka
         {
             Dictionary<string, string> config = ConfigHelper.CreateConfigFromOptions(this);
 
-            //_ = config.Remove(nameof(Topic).ToLower());
+            _ = config.Remove(nameof(Pipeline).ToLower());
 
             _options = new ProducerConfig(config);
         }
@@ -56,7 +56,7 @@ namespace DaJet.Exchange.Kafka
 
             try
             {
-                _producer?.Produce(_topic, _message, _deliveryReportHandler); // async inside - returns immediately
+                _producer.Produce(_topic, _message, _deliveryReportHandler); // async inside - returns immediately
             }
             catch
             {
@@ -65,11 +65,15 @@ namespace DaJet.Exchange.Kafka
         }
         private void LogHandler(IProducer<byte[], byte[]> _, LogMessage message)
         {
-            _logger?.LogInformation(message.Message);
+            _manager?.UpdatePipelineStatus(Pipeline, message.Message);
         }
         private void ErrorHandler(IProducer<byte[], byte[]> _, Error error)
         {
-            _logger?.LogError(error.Reason);
+            if (error is not null)
+            {
+                _error = error.Reason;
+            }
+            _manager?.UpdatePipelineStatus(Pipeline, error?.Reason);
         }
         private void HandleDeliveryReport(DeliveryReport<byte[], byte[]> report)
         {
@@ -79,23 +83,17 @@ namespace DaJet.Exchange.Kafka
             }
             else if (report.Error is not null && report.Error.Code != ErrorCode.NoError)
             {
-                if (!string.IsNullOrWhiteSpace(_error))
-                {
-                    _error = report.Error.Reason;
-                }
-                _logger?.LogError(report.Error.Reason);
+                _error = report.Error.Reason; //FIXME: stop producing the batch !?
+                _manager?.UpdatePipelineStatus(Pipeline, report.Error.Reason); // show last error
             }
         }
         protected override void _Synchronize()
         {
-            int produced = 0;
-            string error = _error;
+            int produced = _produced;
 
             try
             {
                 _producer?.Flush(); // synchronously wait for pending work to complete
-                
-                produced = _produced;
             }
             catch
             {
@@ -103,35 +101,32 @@ namespace DaJet.Exchange.Kafka
             }
             finally
             {
+                _produced = 0;
                 DisposeProducer();
             }
 
-            if (error is not null)
+            if (_error is not null)
             {
+                string error = _error;
+                _error = null;
                 throw new InvalidOperationException(error);
             }
             else
             {
-                _logger?.LogInformation("[{clientid}] Produced {produced} messages", ClientId, produced);
+                _manager?.UpdatePipelineStatus(Pipeline, $"[{ClientId}] Produced {produced} messages");
             }
         }
-        protected override void _Dispose()
+        private void ClearBuffers()
         {
-            if (_producer is not null)
-            {
-                _Synchronize();
-            }
+            _topic = null;
+            _message.Value = null;
+            _message.Headers = null;
         }
         private void DisposeProducer()
         {
-            _error = null;
-            _topic = null;
-            _produced = 0;
-            _message.Value = null;
-            _message.Headers = null;
+            ClearBuffers();
 
             try { _producer?.Dispose(); }
-            catch { /* IGNORE */ }
             finally { _producer = null; }
         }
     }

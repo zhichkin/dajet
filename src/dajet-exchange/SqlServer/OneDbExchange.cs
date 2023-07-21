@@ -8,7 +8,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using System.Data;
 using System.Diagnostics;
-using System.Text;
 
 namespace DaJet.Exchange.SqlServer
 {
@@ -60,8 +59,6 @@ namespace DaJet.Exchange.SqlServer
             List<MetadataObject> entities = GetExchangeArticles(in publication, in provider);
 
             ConfigureConsumerScripts(database.Uuid, in entities, in provider);
-
-            //GenerateConsumingScripts(in entities, in provider);
         }
         private List<MetadataObject> GetExchangeArticles(in Publication publication, in IMetadataProvider provider)
         {
@@ -134,57 +131,9 @@ namespace DaJet.Exchange.SqlServer
                 throw new InvalidOperationException(command.Error);
             }
         }
-        private void GenerateConsumingScripts(in List<MetadataObject> entities, in IMetadataProvider provider)
-        {
-            foreach (MetadataObject entity in entities)
-            {
-                GenerateConsumingScript(in entity, in provider);
-            }
-        }
-        private void GenerateConsumingScript(in MetadataObject entity, in IMetadataProvider provider)
-        {
-            string typeName = string.Empty;
-            StringBuilder script = new();
-
-            if (entity is Catalog catalog)
-            {
-                typeName = "Справочник." + catalog.Name;
-                script.AppendLine($"DECLARE @node string = '{NodeName}';")
-                    .Append("CONSUME TOP ").Append(BatchSize).AppendLine(" Изменения.Ссылка AS Ссылка")
-                    .Append("FROM Справочник.").Append(catalog.Name).AppendLine(".Изменения AS Изменения")
-                    .Append("INNER JOIN ").Append(Exchange).AppendLine(" AS ПланОбмена")
-                    .Append("ON Изменения.УзелОбмена = ПланОбмена.Ссылка AND ПланОбмена.Код = @node");
-            }
-            else if (entity is Document document)
-            {
-                typeName = "Документ." + document.Name;
-                script.AppendLine($"DECLARE @node string = '{NodeName}';")
-                    .Append("CONSUME TOP ").Append(BatchSize).AppendLine(" Изменения.Ссылка AS Ссылка")
-                    .Append("FROM Документ.").Append(document.Name).AppendLine(".Изменения AS Изменения")
-                    .Append("INNER JOIN ").Append(Exchange).AppendLine(" AS ПланОбмена")
-                    .Append("ON Изменения.УзелОбмена = ПланОбмена.Ссылка AND ПланОбмена.Код = @node");
-            }
-            else if (entity is InformationRegister register)
-            {
-                //TODO: !!! Учесть основной отбор !!!
-            }
-
-            ScriptExecutor executor = new(provider, _metadata, _databases, _scripts);
-            GeneratorResult command = executor.PrepareScript(script.ToString());
-
-            if (command.Success)
-            {
-                _commands.Add(typeName, command);
-            }
-            else
-            {
-                throw new InvalidOperationException(command.Error);
-            }
-        }
         protected override void _Dispose()
         {
-            _disposed = true;
-            _next?.Dispose();
+            _disposed = true; // _next?.Dispose();
         }
         public override void Execute()
         {

@@ -135,8 +135,7 @@ namespace DaJet.Exchange.PostgreSql
         }
         protected override void _Dispose()
         {
-            _disposed = true;
-            _next?.Dispose();
+            _disposed = true; // _next?.Dispose();
         }
         public override void Execute()
         {

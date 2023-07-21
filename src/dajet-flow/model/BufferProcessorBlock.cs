@@ -64,10 +64,10 @@ namespace DaJet.Flow
             //    });
             //}
 
-            while (_channel.Reader.TryRead(out _))
-            {
-                // empty channel buffer
-            }
+            //while (_channel.Reader.TryRead(out _))
+            //{
+            //    // empty channel buffer
+            //}
 
             _next?.Dispose();
         }

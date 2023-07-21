@@ -28,8 +28,7 @@ namespace DaJet.Exchange.RabbitMQ
         private int _consumed = 0;
         private string _consumerTag;
         private readonly IPipelineManager _manager;
-        [ActivatorUtilitiesConstructor]
-        public Consumer(IPipelineManager manager)
+        [ActivatorUtilitiesConstructor] public Consumer(IPipelineManager manager)
         {
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
         }
