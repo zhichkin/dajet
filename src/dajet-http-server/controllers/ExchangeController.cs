@@ -497,7 +497,132 @@ namespace DaJet.Http.Controllers
 
             return Ok();
         }
-        
+
+        [HttpPut("configure/script/monitor/{infobase}/{publication}/{node}")] public ActionResult ConfigureScriptMonitor(
+            [FromRoute] string infobase, [FromRoute] string publication, [FromRoute] string node, [FromBody] ScriptRecord script)
+        {
+            InfoBaseModel database = _databases.Select(infobase);
+
+            if (database is null) { return NotFound(infobase); }
+
+            ScriptRecord record = _scripts.SelectScriptByPath(database.Uuid, script.Name);
+
+            if (record is null) { return NotFound(script.Name); }
+
+            if (string.IsNullOrWhiteSpace(node)) { return BadRequest("Node code is empty"); }
+
+            if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            {
+                return BadRequest(error);
+            }
+
+            string metadataName = "ПланОбмена." + publication;
+
+            if (provider.GetMetadataObject(metadataName) is not Publication exchange)
+            {
+                return BadRequest($"Metadata object not found: {metadataName}");
+            }
+
+            List<MetadataObject> articles = GetPublicationArticles(in exchange, in provider);
+
+            record.Script = GenerateMonitorScriptSourceCode(in publication, in node, in articles);
+
+            if (_scripts.Update(record))
+            {
+                return Ok();
+            }
+            else
+            {
+                return Conflict();
+            }
+        }
+        private string GenerateMonitorScriptSourceCode(in string publication, in string node, in List<MetadataObject> articles)
+        {
+            StringBuilder script = new();
+
+            script.AppendLine($"DECLARE @node string = '{node}';");
+            script.AppendLine();
+            script.AppendLine($"SELECT Ссылка INTO node FROM ПланОбмена.{publication} WHERE Код = @node;");
+            script.AppendLine();
+
+            int counter = 0;
+
+            for (int i = 0; i < articles.Count; i++)
+            {
+                MetadataObject article = articles[i];
+
+                string metadataName;
+
+                if (article is Catalog catalog) { metadataName = "Справочник." + catalog.Name; }
+                else if (article is Document document) { metadataName = "Документ." + document.Name; }
+                else if (article is InformationRegister register) { metadataName = "РегистрСведений." + register.Name; }
+                else
+                {
+                    continue; // unsupported metadata type - no processing ¯\_(ツ)_/¯
+                }
+
+                if (++counter > 1)
+                {
+                    script.AppendLine();
+                    script.AppendLine("UNION ALL");
+                    script.AppendLine();
+                }
+
+                script.AppendLine($"    SELECT '{metadataName}' AS TypeName, COUNT(*) AS KeyCount");
+                script.AppendLine($"      FROM {metadataName}.Изменения AS Изменения");
+                script.AppendLine($"INNER JOIN node AS node ON Изменения.УзелОбмена = node.Ссылка");
+            }
+            
+            return script.ToString();
+        }
+        [HttpPut("configure/script/inqueue/{infobase}")] public ActionResult ConfigureScriptInqueue(
+            [FromRoute] string infobase, [FromBody] ScriptRecord script)
+        {
+            InfoBaseModel database = _databases.Select(infobase);
+
+            if (database is null) { return NotFound(infobase); }
+
+            ScriptRecord record = _scripts.SelectScriptByPath(database.Uuid, script.Name);
+
+            if (record is null) { return NotFound(script.Name); }
+
+            record.Script = GenerateInqueueScriptSourceCode();
+
+            if (_scripts.Update(record))
+            {
+                return Ok();
+            }
+            else
+            {
+                return Conflict();
+            }
+        }
+        private string GenerateInqueueScriptSourceCode()
+        {
+            StringBuilder script = new();
+
+            script.AppendLine("DECLARE @msg_source string;");
+            script.AppendLine("DECLARE @msg_target string;");
+            script.AppendLine("DECLARE @msg_number number;");
+            script.AppendLine("DECLARE @msg_uuid   uuid;");
+            script.AppendLine("DECLARE @msg_type   string;");
+            script.AppendLine("DECLARE @msg_body   string;");
+            script.AppendLine("DECLARE @msg_time   datetime;");
+            script.AppendLine();
+            script.AppendLine("CREATE COMPUTED TABLE source AS");
+            script.AppendLine("(");
+            script.AppendLine("  SELECT @msg_source AS Отправитель,");
+            script.AppendLine("         @msg_target AS Получатели,");
+            script.AppendLine("         @msg_number AS НомерСообщения,");
+            script.AppendLine("         @msg_uuid   AS Идентификатор,");
+            script.AppendLine("         @msg_type   AS ТипСообщения,");
+            script.AppendLine("         @msg_body   AS ТелоСообщения,");
+            script.AppendLine("         @msg_time   AS ОтметкаВремени");
+            script.AppendLine(")");
+            script.AppendLine("INSERT РегистрСведений.ОчередьВходящихСообщений FROM source");
+
+            return script.ToString();
+        }
 
         [HttpPost("{infobase}/{publication}")]
         public ActionResult CreatePublication([FromRoute] string infobase, [FromRoute] string publication)

@@ -113,7 +113,7 @@ namespace DaJet.Exchange.Kafka
 
             _next?.Synchronize();
 
-            _consumer.Commit();
+            _consumer.Commit(); //TODO: commit batches
 
             _consumed++;
         }

@@ -3,7 +3,6 @@ using DaJet.Studio.Model;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using System.Net.Http.Json;
-using System.Text;
 using System.Web;
 
 namespace DaJet.Studio.Pages.Exchange
@@ -30,8 +29,10 @@ namespace DaJet.Studio.Pages.Exchange
         };
         protected InfoBaseModel TargetUrl { get; set; }
         protected List<InfoBaseModel> TargetUrls { get; set; } = new();
-        protected string ScriptUrl { get; set; } = "/incoming-queue";
-        protected bool GenerateIncomingScript { get; set; } = false;
+        protected string MonitorScriptUrl { get; set; } = "/monitor";
+        protected bool GenerateMonitorScript { get; set; } = false;
+        protected string InqueueScriptUrl { get; set; } = "/inqueue";
+        protected bool GenerateInqueueScript { get; set; } = false;
         protected string BrokerUrl { get; set; } = "amqp://guest:guest@localhost:5672";
         protected string VirtualHost { get; set; } = "/";
         protected string TopicName { get; set; } = string.Empty;
@@ -141,6 +142,15 @@ namespace DaJet.Studio.Pages.Exchange
                 Snackbar.Add($"База данных [{Database}] не найдена!", Severity.Warning); return;
             }
 
+            if (GenerateMonitorScript)
+            {
+                await GenerateMonitorScriptAtServer();
+            }
+
+            await GenerateInqueueScriptAtServer();
+
+            //TODO: move all the following code to the server
+
             if (string.IsNullOrWhiteSpace(Model.Name))
             {
                 Model.Name = Database;
@@ -210,7 +220,7 @@ namespace DaJet.Studio.Pages.Exchange
                     Options =
                     {
                         new OptionItem() { Name = "Target", Type = "System.String", Value = TargetUrl.Name },
-                        new OptionItem() { Name = "Script", Type = "System.String", Value = ScriptUrl },
+                        new OptionItem() { Name = "Script", Type = "System.String", Value = InqueueScriptUrl },
                         new OptionItem() { Name = "Timeout", Type = "System.Int32", Value = "10" }
                     }
                 });
@@ -246,6 +256,7 @@ namespace DaJet.Studio.Pages.Exchange
                     Message = ONEDB_MESSAGE_NAME,
                     Options =
                     {
+                        new OptionItem() { Name = "Pipeline", Type = "System.Guid", Value = Model.Uuid.ToString().ToLower() },
                         new OptionItem() { Name = "ClientId", Type = "System.String", Value = KafkaClient },
                         new OptionItem() { Name = "BootstrapServers", Type = "System.String", Value = KafkaBroker },
                         new OptionItem() { Name = "Acks", Type = "System.String", Value = "all" },
@@ -255,8 +266,6 @@ namespace DaJet.Studio.Pages.Exchange
                     }
                 });
             }
-
-            await GenerateIncomingScriptAtServer();
 
             try
             {
@@ -283,9 +292,9 @@ namespace DaJet.Studio.Pages.Exchange
                 Snackbar.Add(error.Message, Severity.Error);
             }
         }
-        private async Task GenerateIncomingScriptAtServer()
+        private async Task GenerateInqueueScriptAtServer()
         {
-            if (!GenerateIncomingScript)
+            if (!GenerateInqueueScript)
             {
                 return;
             }
@@ -295,22 +304,18 @@ namespace DaJet.Studio.Pages.Exchange
                 return;
             }
 
+            ScriptModel script = new()
+            {
+                Name = InqueueScriptUrl
+            };
+
             try
             {
-                ScriptModel script = await Http.GetFromJsonAsync<ScriptModel>($"/api/{TargetUrl.Name}/{ScriptUrl}");
-
-                if (script is null || string.IsNullOrWhiteSpace(script.Name))
-                {
-                    Snackbar.Add($"Скрипт /{TargetUrl.Name}{ScriptUrl} не найден.", Severity.Warning); return;
-                }
-
-                script.Script = GenerateIncomingScriptSourceCode();
-
-                HttpResponseMessage response = await Http.PutAsJsonAsync($"/api", script);
+                HttpResponseMessage response = await Http.PutAsJsonAsync($"/exchange/configure/script/inqueue/{TargetUrl.Name}", script);
 
                 if (response.IsSuccessStatusCode)
                 {
-                    Snackbar.Add($"Cкрипт /{TargetUrl.Name}{ScriptUrl} сформирован успешно.", Severity.Success);
+                    Snackbar.Add($"Cкрипт /{TargetUrl.Name}{InqueueScriptUrl} сформирован успешно.", Severity.Success);
                 }
                 else
                 {
@@ -326,34 +331,42 @@ namespace DaJet.Studio.Pages.Exchange
             }
             catch (Exception error)
             {
-                Snackbar.Add($"Создание скрипта /{TargetUrl.Name}{ScriptUrl}: {error.Message}", Severity.Warning);
+                Snackbar.Add($"Создание скрипта /{TargetUrl.Name}{InqueueScriptUrl}: {error.Message}", Severity.Warning);
             }
         }
-        private string GenerateIncomingScriptSourceCode()
+        private async Task GenerateMonitorScriptAtServer()
         {
-            StringBuilder script = new();
+            ScriptModel script = new()
+            {
+                Name = MonitorScriptUrl
+            };
 
-            script.AppendLine("DECLARE @msg_source string;");
-            script.AppendLine("DECLARE @msg_target string;");
-            script.AppendLine("DECLARE @msg_number number;");
-            script.AppendLine("DECLARE @msg_uuid   uuid;");
-            script.AppendLine("DECLARE @msg_type   string;");
-            script.AppendLine("DECLARE @msg_body   string;");
-            script.AppendLine("DECLARE @msg_time   datetime;");
-            script.AppendLine();
-            script.AppendLine("CREATE COMPUTED TABLE source AS");
-            script.AppendLine("(");
-            script.AppendLine("  SELECT @msg_source AS Отправитель,");
-            script.AppendLine("         @msg_target AS Получатели,");
-            script.AppendLine("         @msg_number AS НомерСообщения,");
-            script.AppendLine("         @msg_uuid   AS Идентификатор,");
-            script.AppendLine("         @msg_type   AS ТипСообщения,");
-            script.AppendLine("         @msg_body   AS ТелоСообщения,");
-            script.AppendLine("         @msg_time   AS ОтметкаВремени");
-            script.AppendLine(")");
-            script.AppendLine("INSERT РегистрСведений.ОчередьВходящихСообщений FROM source");
+            try
+            {
+                string url = $"/exchange/configure/script/monitor/{Database}/{Exchange}/{NodeName}";
 
-            return script.ToString();
+                HttpResponseMessage response = await Http.PutAsJsonAsync(url, script);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add($"Cкрипт /{Database}{MonitorScriptUrl} сформирован успешно.", Severity.Success);
+                }
+                else
+                {
+                    string result = await response.Content?.ReadAsStringAsync();
+
+                    string error = response.ReasonPhrase
+                        + (string.IsNullOrEmpty(result)
+                        ? string.Empty
+                        : Environment.NewLine + result);
+
+                    Snackbar.Add(error, Severity.Warning);
+                }
+            }
+            catch (Exception error)
+            {
+                Snackbar.Add($"Создание скрипта /{Database}{MonitorScriptUrl}: {error.Message}", Severity.Warning);
+            }
         }
     }
 }

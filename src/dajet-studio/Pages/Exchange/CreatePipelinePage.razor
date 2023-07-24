@@ -35,6 +35,11 @@
 
     </MudSelect>
 
+    <MudTextField T="string" Label="Скрипт мониторинга" @bind-Value="MonitorScriptUrl" Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+
+    <MudCheckBox @bind-Checked="@GenerateMonitorScript" Label="Сформировать скрипт мониторинга" LabelPosition="LabelPosition.Start" Color="Color.Primary" Class="ml-0 mt-3" />
+
     <MudSelect T="string" Label="Тип приёмника данных" @bind-Value="@TargetType" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
                Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);">
         
@@ -60,10 +65,10 @@
 
         </MudSelect>
 
-        <MudTextField T="string" Label="Скрипт приёма данных" @bind-Value="ScriptUrl" Variant="Variant.Outlined" Margin="Margin.Dense"
+        <MudTextField T="string" Label="Скрипт приёма данных" @bind-Value="InqueueScriptUrl" Variant="Variant.Outlined" Margin="Margin.Dense"
                       Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
 
-        <MudCheckBox @bind-Checked="@GenerateIncomingScript" Label="Сформировать скрипт приёма данных" LabelPosition="LabelPosition.Start" Color="Color.Primary" Class="ml-0 mt-3" />
+        <MudCheckBox @bind-Checked="@GenerateInqueueScript" Label="Сформировать скрипт приёма данных" LabelPosition="LabelPosition.Start" Color="Color.Primary" Class="ml-0 mt-3" />
     }
     else if (TargetType == "RabbitMQ")
     {

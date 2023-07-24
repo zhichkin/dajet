@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <AssemblyName>DaJet.Exchange</AssemblyName>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <Authors>Zhichkin</Authors>
     <Copyright>Zhichkin © 2023</Copyright>
     <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>
