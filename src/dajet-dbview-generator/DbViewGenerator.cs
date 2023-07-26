@@ -221,12 +221,64 @@ namespace DaJet.Metadata.Services
                     {
                         errors.Add(error);
                     }
+
+                    if (!TryCreateChangeTrackingTableView(in cache, in @object, out string errorMessage))
+                    {
+                        errors.Add(error);
+                    }
                 }
             }
 
             return (errors.Count == 0);
         }
-        
+        private bool TryCreateChangeTrackingTableView(in MetadataCache cache, in ApplicationObject entity, out string error)
+        {
+            error = string.Empty;
+            List<string> scripts = new();
+            StringBuilder script = new();
+            ChangeTrackingTable table = null!;
+
+            try
+            {
+                table = cache.GetChangeTrackingTable(entity);
+            }
+            catch (Exception exception)
+            {
+                error = $"[{entity.Name}] [ChangeTrackingTable] {ExceptionHelper.GetErrorMessage(exception)}";
+            }
+
+            if (!string.IsNullOrEmpty(error))
+            {
+                return false;
+            }
+
+            if (table is null) { return true; }
+
+            try
+            {
+                string viewName = Configurator.CreateViewName(entity, _options.Codify) + ".Изменения";
+
+                scripts.Add(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
+
+                if (_options.Codify)
+                {
+                    script.AppendLine($"--{{{Configurator.CreateViewName(entity)}}}");
+                }
+
+                script.AppendLine(GenerateViewScript(table, viewName));
+                
+                scripts.Add(script.ToString());
+
+                _executor.TxExecuteNonQuery(scripts, 10);
+            }
+            catch (Exception exception)
+            {
+                error = $"[{table.Name}] [{table.TableName}] {ExceptionHelper.GetErrorMessage(exception)}";
+            }
+
+            return string.IsNullOrEmpty(error);
+        }
+
         public int DropViews()
         {
             int result = 0;
