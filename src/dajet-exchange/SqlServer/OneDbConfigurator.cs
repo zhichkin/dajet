@@ -15,6 +15,16 @@ namespace DaJet.Exchange.SqlServer
         private const string DELETE_SEQUENCE_SCRIPT =
             "IF EXISTS(SELECT 1 FROM sys.sequences WHERE name = 'so_exchange_tuning') " +
             "BEGIN DROP SEQUENCE so_exchange_tuning; END;";
+        private const string DATA_MIGRATION_SCRIPT =
+            "SELECT NEXT VALUE FOR so_exchange_tuning AS Вектор, _NodeTRef, _NodeRRef, {КлючЗаписи}, " +
+            "{ДанныеЗначение} AS Данные INTO #{TABLE_NAME}_migrate FROM {TABLE_NAME} WITH (TABLOCKX, HOLDLOCK); " + 
+            "DELETE {TABLE_NAME} OUTPUT M.Вектор, 0x08, DELETED._NodeTRef, DELETED._NodeRRef, " +
+            "{Дискриминатор}, {СсылкаТип}, {DELETED.СсылкаЗначение}, 0, M.Данные " +
+            "INTO {TARGET_NAME} ({Вектор}, {Узел_TYPE}, {Узел_TRef}, {Узел_RRef}, " +
+            "{Ссылка_TYPE}, {Ссылка_TRef}, {Ссылка_RRef}, {Транзакция}, {Данные}) " +
+            "FROM {TABLE_NAME} AS T INNER JOIN #{TABLE_NAME}_migrate AS M " +
+            "ON T._NodeTRef = M._NodeTRef AND T._NodeRRef = M._NodeRRef AND {СоединениеПоКлючам}; " +
+            "DROP TABLE #{TABLE_NAME}_migrate;";
         private const string EXISTS_TRIGGER_SCRIPT =
             "SELECT 1 FROM sys.triggers WHERE name = '{TRIGGER_NAME}';";
         private const string CREATE_TRIGGER_SCRIPT =
@@ -23,8 +33,8 @@ namespace DaJet.Exchange.SqlServer
             "SELECT @current_transaction_id = transaction_id FROM sys.dm_tran_current_transaction; " +
             "INSERT {TARGET_NAME} " +
             "({Вектор}, {Узел_TYPE}, {Узел_TRef}, {Узел_RRef}, {Ссылка_TYPE}, {Ссылка_TRef}, {Ссылка_RRef}, {Транзакция}, {Данные}) " +
-            "SELECT NEXT VALUE FOR so_exchange_tuning, 0x08, i._NodeTRef, i._NodeRRef, " +
-            "{Дискриминатор}, {СсылкаТип}, {СсылкаЗначение}, @current_transaction_id, {ДанныеЗначение} FROM INSERTED AS i; " +
+            "SELECT NEXT VALUE FOR so_exchange_tuning, 0x08, _NodeTRef, _NodeRRef, " +
+            "{Дискриминатор}, {СсылкаТип}, {INSERTED.СсылкаЗначение}, @current_transaction_id, {ДанныеЗначение} FROM INSERTED; " +
             "END;";
         private const string ENABLE_TRIGGER_SCRIPT =
             "ALTER TABLE {TABLE_NAME} ENABLE TRIGGER {TRIGGER_NAME};";
@@ -184,7 +194,8 @@ namespace DaJet.Exchange.SqlServer
                         else if (column.Purpose == ColumnPurpose.Identity)
                         {
                             map.Add("{Ссылка_RRef}", column.Name);
-                            map.Add("{СсылкаЗначение}", reference ? "i._IDRRef" : "0x00000000000000000000000000000000");
+                            map.Add("{INSERTED.СсылкаЗначение}", reference ? "_IDRRef" : "0x00000000000000000000000000000000");
+                            map.Add("{DELETED.СсылкаЗначение}", reference ? "DELETED._IDRRef" : "0x00000000000000000000000000000000");
                         }
                     }
                 }
@@ -210,11 +221,15 @@ namespace DaJet.Exchange.SqlServer
 
                     if (article is Catalog)
                     {
+                        map.Add("{КлючЗаписи}", "_IDRRef");
                         map.Add("{ДанныеЗначение}", $"N'Справочник.{article.Name}'");
+                        map.Add("{СоединениеПоКлючам}", "T._IDRRef = M._IDRRef");
                     }
                     else if (article is Document)
                     {
+                        map.Add("{КлючЗаписи}", "_IDRRef");
                         map.Add("{ДанныеЗначение}", $"N'Документ.{article.Name}'");
+                        map.Add("{СоединениеПоКлючам}", "T._IDRRef = M._IDRRef");
                     }
                     else if (article is InformationRegister register)
                     {
@@ -222,13 +237,14 @@ namespace DaJet.Exchange.SqlServer
 
                         if (table is null)
                         {
-                            map.Add("{ДанныеЗначение}", $"N'Ошибка получения значений ключа для [РегистрСведений.{article.Name}]'");
+                            map.Add("{ДанныеЗначение}", $"N'Ошибка определения ключа для [РегистрСведений.{article.Name}]'");
                         }
                         else
                         {
-
                             StringBuilder value = new();
                             value.Append("(SELECT ");
+                            StringBuilder where = new();
+                            StringBuilder keyColumns = new();
 
                             int counter = 0;
                             for (int ii = 0; ii < table.Properties.Count; ii++)
@@ -242,17 +258,26 @@ namespace DaJet.Exchange.SqlServer
 
                                 foreach (MetadataColumn column in key.Columns)
                                 {
-                                    if (counter > 0) { value.Append(", "); }
+                                    if (counter > 0)
+                                    {
+                                        value.Append(", ");
+                                        keyColumns.Append(", ");
+                                        where.Append(" AND ");
+                                    }
 
                                     value.Append($"{column.Name} AS {key.Name}");
+                                    keyColumns.Append($"{column.Name}");
+                                    where.Append($"T.{column.Name} = M.{column.Name}");
 
                                     counter++;
                                 }
                             }
 
-                            value.Append(" FROM INSERTED FOR XML RAW('key'), BINARY BASE64)");
+                            value.Append(" FOR XML RAW('key'), BINARY BASE64)");
 
                             map.Add("{ДанныеЗначение}", value.ToString());
+                            map.Add("{КлючЗаписи}", keyColumns.ToString());
+                            map.Add("{СоединениеПоКлючам}", where.ToString());
                         }
                     }
                 }
@@ -283,6 +308,10 @@ namespace DaJet.Exchange.SqlServer
             bool exists = (executor.ExecuteScalar<int>(in triggerExists, 10) == 1);
             if (exists) { return; }
 
+            string dataMigration = DATA_MIGRATION_SCRIPT
+                .Replace("{TABLE_NAME}", tableName)
+                .Replace("{TARGET_NAME}", targetName);
+
             string createTrigger = CREATE_TRIGGER_SCRIPT
                 .Replace("{TABLE_NAME}", tableName)
                 .Replace("{TARGET_NAME}", targetName)
@@ -296,10 +325,11 @@ namespace DaJet.Exchange.SqlServer
 
             foreach (var map in columnMap)
             {
+                dataMigration = dataMigration.Replace(map.Key, map.Value);
                 createTrigger = createTrigger.Replace(map.Key, map.Value);
             }
             
-            List<string> scripts = new() { createTrigger, enableTrigger };
+            List<string> scripts = new() { dataMigration, createTrigger, enableTrigger };
 
             executor.TxExecuteNonQuery(in scripts, 60);
         }
