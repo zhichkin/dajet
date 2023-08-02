@@ -5,11 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace DaJet.Exchange
 {
-    public interface IOneDbConfigurator
-    {
-        void Configure(in IMetadataService metadata, in InfoBaseModel database);
-        void Uninstall(in IMetadataService metadata, in InfoBaseModel database);
-    }
     [PipelineBlock] public sealed class OneDbConfigurator : SourceBlock<string>
     {
         private readonly IPipelineManager _manager;

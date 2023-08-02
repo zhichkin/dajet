@@ -1,4 +1,5 @@
-﻿using DaJet.Metadata;
+﻿using DaJet.Data;
+using DaJet.Metadata;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Options;
@@ -6,6 +7,8 @@ using DaJet.RabbitMQ.HttpApi;
 using DaJet.Scripting;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using System.Reflection;
+using System.Runtime.Loader;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -247,6 +250,77 @@ namespace DaJet.Http.Controllers
             {
                 _scripts.DeleteScriptFolder(in script);
             }
+
+            return Ok();
+        }
+
+        private Type GetExchangeTuningServiceType(in InfoBaseModel database)
+        {
+            if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            Type serviceType = null;
+
+            string typeName = provider.DatabaseProvider == DatabaseProvider.SqlServer
+                ? "DaJet.Exchange.SqlServer.OneDbConfigurator"
+                : "DaJet.Exchange.PostgreSql.OneDbConfigurator";
+
+            foreach (Assembly assembly in AssemblyLoadContext.Default.Assemblies)
+            {
+                serviceType = assembly.GetType(typeName);
+
+                if (serviceType is not null)
+                {
+                    break;
+                }
+            }
+
+            if (serviceType is null)
+            {
+                throw new InvalidOperationException($"Component [{typeName}] is not found.");
+            }
+
+            return serviceType;
+        }
+        [HttpPost("configure/tuning/{infobase}")] public ActionResult EnableExchangeTuning([FromRoute] string infobase)
+        {
+            InfoBaseModel database = _databases.Select(infobase);
+
+            if (database is null) { return NotFound($"Database [{infobase}] not found."); }
+
+            Type serviceType = GetExchangeTuningServiceType(in database);
+
+            object instance = Activator.CreateInstance(serviceType);
+
+            if (instance is null) { return NotFound($"Failed to create exchange tuning service type."); }
+
+            MethodInfo method = serviceType.GetMethod("Configure");
+
+            if (method is null) { return NotFound($"Method [Configure] is not found."); }
+
+            _ = method.Invoke(instance, new object[] { _metadata, database });
+
+            return Created(new Uri($"tuning/{database.Name}", UriKind.Relative), null);
+        }
+        [HttpDelete("configure/tuning/{infobase}")] public ActionResult DisableExchangeTuning([FromRoute] string infobase)
+        {
+            InfoBaseModel database = _databases.Select(infobase);
+
+            if (database is null) { return NotFound($"Database [{infobase}] not found."); }
+
+            Type serviceType = GetExchangeTuningServiceType(in database);
+
+            object instance = Activator.CreateInstance(serviceType);
+
+            if (instance is null) { return NotFound($"Failed to create exchange tuning service type."); }
+
+            MethodInfo method = serviceType.GetMethod("Uninstall");
+
+            if (method is null) { return NotFound($"Method [Uninstall] is not found."); }
+
+            _ = method.Invoke(instance, new object[] { _metadata, database });
 
             return Ok();
         }

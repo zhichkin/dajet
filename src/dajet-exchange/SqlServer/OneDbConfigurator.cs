@@ -1,13 +1,12 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata;
-using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Options;
 using System.Text;
 
 namespace DaJet.Exchange.SqlServer
 {
-    public sealed class OneDbConfigurator : IOneDbConfigurator
+    public sealed class OneDbConfigurator : OneDbConfiguratorBase, IOneDbConfigurator
     {
         private const string CREATE_SEQUENCE_SCRIPT =
             "IF NOT EXISTS(SELECT 1 FROM sys.sequences WHERE name = 'so_exchange_tuning') " +
@@ -43,49 +42,6 @@ namespace DaJet.Exchange.SqlServer
         private const string DISABLE_TRIGGER_SCRIPT =
             "ALTER TABLE {TABLE_NAME} DISABLE TRIGGER {TRIGGER_NAME};";
 
-        private List<MetadataObject> GetExchangeArticles(in Publication publication, in IMetadataProvider provider)
-        {
-            List<MetadataObject> articles = new();
-
-            List<Guid> types = new() { MetadataTypes.Catalog, MetadataTypes.Document, MetadataTypes.InformationRegister };
-
-            foreach (Guid article in publication.Articles.Keys)
-            {
-                foreach (Guid type in types)
-                {
-                    MetadataObject entity = provider.GetMetadataObject(type, article);
-
-                    if (entity is not null)
-                    {
-                        articles.Add(entity); break;
-                    }
-                }
-            }
-
-            return articles;
-        }
-        private HashSet<MetadataObject> GetDistinctArticles(in IMetadataProvider provider)
-        {
-            HashSet<MetadataObject> distinct = new();
-
-            foreach (MetadataItem item in provider.GetMetadataItems(MetadataTypes.Publication))
-            {
-                MetadataObject entity = provider.GetMetadataObject(item.Type, item.Uuid);
-
-                if (entity is Publication publication)
-                {
-                    List<MetadataObject> articles = GetExchangeArticles(in publication, in provider);
-
-                    foreach (MetadataObject article in articles)
-                    {
-                        _ = distinct.Add(article);
-                    }
-                }
-            }
-
-            return distinct;
-        }
-
         public void Configure(in IMetadataService metadata, in InfoBaseModel database)
         {
             if (!metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
@@ -114,24 +70,13 @@ namespace DaJet.Exchange.SqlServer
                 CreateChangeTrackingTrigger(in executor, in provider, in article, in target);
             }
         }
-        private string GetTableName(in ApplicationObject entity)
+        private void CreateSequence(in IQueryExecutor executor)
         {
-            return entity.TableName;
-        }
-        private string GetTriggerName(in ApplicationObject entity)
-        {
-            return $"tr{entity.TableName}_exchange";
-        }
-        private ChangeTrackingTable GetChangeTrackingTable(in IMetadataProvider provider, in InformationRegister register)
-        {
-            MetadataObject article = provider.GetMetadataObject($"РегистрСведений.{register.Name}.Изменения");
-
-            if (article is not ChangeTrackingTable table)
+            List<string> scripts = new()
             {
-                return null; // объект метаданных не включён ни в один план обмена
-            }
-
-            return table;
+                CREATE_SEQUENCE_SCRIPT
+            };
+            executor.TxExecuteNonQuery(in scripts, 60);
         }
         private Dictionary<string, string> GetColumnMap(in IMetadataProvider provider, in MetadataObject article, in InformationRegister target)
         {
@@ -285,14 +230,6 @@ namespace DaJet.Exchange.SqlServer
 
             return map;
         }
-        private void CreateSequence(in IQueryExecutor executor)
-        {
-            List<string> scripts = new()
-            {
-                CREATE_SEQUENCE_SCRIPT
-            };
-            executor.TxExecuteNonQuery(in scripts, 60);
-        }
         private void CreateChangeTrackingTrigger(in IQueryExecutor executor, in IMetadataProvider provider, in MetadataObject article, in InformationRegister target)
         {
             if (provider is not MetadataCache cache) { return; }
@@ -343,14 +280,14 @@ namespace DaJet.Exchange.SqlServer
 
             IQueryExecutor executor = QueryExecutor.Create(DatabaseProvider.SqlServer, database.ConnectionString);
 
-            DeleteSequence(in executor);
-
             HashSet<MetadataObject> articles = GetDistinctArticles(in provider);
 
             foreach (MetadataObject article in articles)
             {
                 DeleteChangeTrackingTrigger(in executor, in article);
             }
+
+            DeleteSequence(in executor);
         }
         private void DeleteSequence(in IQueryExecutor executor)
         {
