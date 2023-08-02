@@ -5,7 +5,7 @@ namespace DaJet.Studio.Pages
     public enum ExchangeDialogCommand
     {
         SelectExchange, DeleteExchange, CreatePipeline, CreateArticle, DeleteArticle, EnableArticle, DisableArticle,
-        EnableScript, DisableScript, OpenScriptInEditor, ConfigureRabbitMQ, DeleteVirtualHostRabbitMQ
+        EnableScript, DisableScript, OpenScriptInEditor, ConfigureRabbitMQ, DeleteVirtualHostRabbitMQ, ExchangeTuning
     }
     public sealed class ExchangeDialogResult : DialogResult
     {

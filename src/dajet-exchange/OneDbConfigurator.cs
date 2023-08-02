@@ -61,24 +61,38 @@ namespace DaJet.Exchange
         }
         private void EnableChangeTracking(in InfoBaseModel database)
         {
+            IOneDbConfigurator configurator;
+
             if (database.ConnectionString.StartsWith("Host"))
             {
-                new PostgreSql.OneDbConfigurator().Configure(in _metadata, in database);
+                configurator = new PostgreSql.OneDbConfigurator();
             }
             else
             {
-                new SqlServer.OneDbConfigurator().Configure(in _metadata, in database);
+                configurator = new SqlServer.OneDbConfigurator();
+            }
+
+            if (!configurator.TryConfigure(in _metadata, in database, out Dictionary<string, string> log))
+            {
+                throw new Exception($"{log.Keys.First()} : {log.Values.First()}");
             }
         }
         private void DisableChangeTracking(in InfoBaseModel database)
         {
+            IOneDbConfigurator configurator;
+
             if (database.ConnectionString.StartsWith("Host"))
             {
-                new PostgreSql.OneDbConfigurator().Uninstall(in _metadata, in database);
+                configurator = new PostgreSql.OneDbConfigurator();
             }
             else
             {
-                new SqlServer.OneDbConfigurator().Uninstall(in _metadata, in database);
+                configurator = new SqlServer.OneDbConfigurator();
+            }
+
+            if (!configurator.TryUninstall(in _metadata, in database, out Dictionary<string, string> log))
+            {
+                throw new Exception($"{log.Keys.First()} : {log.Values.First()}");
             }
         }
     }

@@ -16,6 +16,10 @@
                 <img src="/img/rabbit-delete.jpg" style="width:48px; height:48px;vertical-align:middle;cursor:pointer" @onclick="ConfigureRabbitMQ" />
             </MudTooltip>
 
+            <MudTooltip Text="Тюнинг планов обмена">
+                <MudIconButton Icon="@Icons.Material.Outlined.SettingsSuggest" Color="Color.Primary" Size="Size.Large" OnClick="ExchangeTuning" />
+            </MudTooltip>
+
             <MudTooltip Text="Отмена">
                 <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Dark" Size="Size.Large" OnClick="CloseDialog" />
             </MudTooltip>

@@ -1,0 +1,55 @@
+﻿@page "/configure-exchange-tuning/{database}"
+
+@inject HttpClient Http;
+@inject NavigationManager Navigator;
+@inject ISnackbar Snackbar;
+
+<div style="margin:0px 10px 0px 10px;overflow:scroll;">
+
+    <MudField Variant="Variant.Text" DisableUnderLine="true" FullWidth="false" Margin="Margin.Dense">
+        <b>Тюнинг планов обмена</b>
+        <MudTooltip Text="Закрыть страницу">
+            <MudIconButton Icon="@Icons.Material.Outlined.Close" Color="Color.Error" Size="Size.Small" OnClick="NavigateToHomePage" />
+        </MudTooltip>
+    </MudField>
+
+    <table style="margin:5px 0px 10px 0px">
+        <tr style="margin:5px 0px 0px 0px"><td><b>База данных :</b></td><td style="padding:0px 0px 0px 10px">@Database</td></tr>
+    </table>
+
+    <table style="width:fit-content;">
+        <tr>
+            <td>
+                <MudTooltip Text="Включить тюнинг планов обмена">
+                    <MudButton OnClick="EnableExchangeTuningCommand" Size="Size.Small" Variant="Variant.Filled" Color="Color.Success">Включить</MudButton>
+                </MudTooltip>
+            </td>
+            <td style="padding-left:10px;">
+                <MudTooltip Text="Выключить тюнинг планов обмена">
+                    <MudButton OnClick="DisableExchangeTuningCommand" Size="Size.Small" Variant="Variant.Filled" Color="Color.Warning">Выключить</MudButton>
+                </MudTooltip>
+            </td>
+            @if (ShowProgressBar)
+            {
+                <td style="padding-left:10px;">
+                    <MudProgressCircular Indeterminate="true" Size="Size.Medium" Color="Color.Primary" />
+                </td>
+            }
+        </tr>
+    </table>
+
+    <div style="margin:20px 0px 0px 0px; width:fit-content; max-width:100%; height:350px; overflow:scroll;">
+        <table style="border: solid 1px black;">
+
+            @foreach (ExchangeTuningLogEntry entry in ExecutionLog)
+            {
+                <tr>
+                    <td style="padding:5px; border: solid 1px black;">@entry.TypeName</td>
+                    <td style="padding:5px; border: solid 1px black;">@entry.Description</td>
+                </tr>
+            }
+
+        </table>
+    </div>
+
+</div>

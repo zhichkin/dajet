@@ -70,7 +70,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-rabbitmq", "dajet-rab
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-flow-transformers", "dajet-flow-transformers\dajet-flow-transformers.csproj", "{A67DEB7B-5997-4273-9533-458E76190EE8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-stream", "dajet-stream\dajet-stream.csproj", "{B8C942F0-488D-4414-8093-79B7B1BF6E58}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-stream", "dajet-stream\dajet-stream.csproj", "{B8C942F0-488D-4414-8093-79B7B1BF6E58}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

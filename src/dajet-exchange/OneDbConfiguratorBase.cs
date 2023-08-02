@@ -7,8 +7,8 @@ namespace DaJet.Exchange
 {
     public interface IOneDbConfigurator
     {
-        void Configure(in IMetadataService metadata, in InfoBaseModel database);
-        void Uninstall(in IMetadataService metadata, in InfoBaseModel database);
+        bool TryConfigure(in IMetadataService metadata, in InfoBaseModel database, out Dictionary<string, string> log);
+        bool TryUninstall(in IMetadataService metadata, in InfoBaseModel database, out Dictionary<string, string> log);
     }
     public abstract class OneDbConfiguratorBase
     {

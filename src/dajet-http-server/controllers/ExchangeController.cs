@@ -296,13 +296,26 @@ namespace DaJet.Http.Controllers
 
             if (instance is null) { return NotFound($"Failed to create exchange tuning service type."); }
 
-            MethodInfo method = serviceType.GetMethod("Configure");
+            MethodInfo method = serviceType.GetMethod("TryConfigure");
 
             if (method is null) { return NotFound($"Method [Configure] is not found."); }
 
-            _ = method.Invoke(instance, new object[] { _metadata, database });
+            object[] parameters = new object[] { _metadata, database, null };
 
-            return Created(new Uri($"tuning/{database.Name}", UriKind.Relative), null);
+            object result = method.Invoke(instance, parameters);
+
+            if (result is bool success && success == false)
+            {
+                // ???
+            }
+
+            var log = parameters[2] as Dictionary<string, string>;
+
+            string json = JsonSerializer.Serialize(log, JsonOptions);
+
+            Response.StatusCode = (int)HttpStatusCode.Created;
+
+            return Content(json, "application/json", Encoding.UTF8);
         }
         [HttpDelete("configure/tuning/{infobase}")] public ActionResult DisableExchangeTuning([FromRoute] string infobase)
         {
@@ -316,13 +329,26 @@ namespace DaJet.Http.Controllers
 
             if (instance is null) { return NotFound($"Failed to create exchange tuning service type."); }
 
-            MethodInfo method = serviceType.GetMethod("Uninstall");
+            MethodInfo method = serviceType.GetMethod("TryUninstall");
 
             if (method is null) { return NotFound($"Method [Uninstall] is not found."); }
 
-            _ = method.Invoke(instance, new object[] { _metadata, database });
+            object[] parameters = new object[] { _metadata, database, null };
 
-            return Ok();
+            object result = method.Invoke(instance, parameters);
+
+            if (result is bool success && success == false)
+            {
+                // ???
+            }
+
+            var log = parameters[2] as Dictionary<string, string>;
+
+            string json = JsonSerializer.Serialize(log, JsonOptions);
+
+            Response.StatusCode = (int)HttpStatusCode.OK;
+
+            return Content(json, "application/json", Encoding.UTF8);
         }
 
         private List<string> GetSubscribers(in string publication, in IMetadataProvider provider)

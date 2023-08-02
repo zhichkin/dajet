@@ -30,5 +30,14 @@ namespace DaJet.Studio.Pages.Exchange
 
             MudDialog.Close(result);
         }
+        private void ExchangeTuning()
+        {
+            ExchangeDialogResult result = new(Model, typeof(TreeNodeModel), false)
+            {
+                CommandType = ExchangeDialogCommand.ExchangeTuning
+            };
+
+            MudDialog.Close(result);
+        }
     }
 }

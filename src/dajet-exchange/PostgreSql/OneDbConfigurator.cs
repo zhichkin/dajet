@@ -41,11 +41,13 @@ namespace DaJet.Exchange.PostgreSql
             "ALTER TABLE IF EXISTS {TABLE_NAME} ENABLE TRIGGER {TRIGGER_NAME};";
         private const string DISABLE_TRIGGER_SCRIPT =
             "ALTER TABLE IF EXISTS {TABLE_NAME} DISABLE TRIGGER {TRIGGER_NAME};";
-        public void Configure(in IMetadataService metadata, in InfoBaseModel database)
+        public bool TryConfigure(in IMetadataService metadata, in InfoBaseModel database, out Dictionary<string, string> log)
         {
+            log = new Dictionary<string, string>();
+
             if (!metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
             {
-                throw new InvalidOperationException(error);
+                log.Add($"Database [{database.Name}] is not accessible", error); return false;
             }
 
             IQueryExecutor executor = QueryExecutor.Create(DatabaseProvider.PostgreSql, database.ConnectionString);
@@ -54,20 +56,44 @@ namespace DaJet.Exchange.PostgreSql
 
             if (register is not InformationRegister target)
             {
-                throw new InvalidOperationException("Target register is not found [РегистрСведений.РегистрацияИзменений].");
+                log.Add("Target register is not found", "РегистрСведений.РегистрацияИзменений"); return false;
             }
 
             HashSet<MetadataObject> articles = GetDistinctArticles(in provider);
 
             if (articles.Count > 0)
             {
-                CreateSequence(in executor);
+                try
+                {
+                    CreateSequence(in executor);
+                }
+                catch (Exception exception)
+                {
+                    log.Add("Create sequence error", ExceptionHelper.GetErrorMessage(exception)); return false;
+                }
             }
+
+            bool success = true;
 
             foreach (MetadataObject article in articles)
             {
-                CreateChangeTrackingTrigger(in executor, in provider, in article, in target);
+                string metadataName = article.ToString();
+
+                try
+                {
+                    CreateChangeTrackingTrigger(in executor, in provider, in article, in target);
+
+                    _ = log.TryAdd(metadataName, "CREATED");
+                }
+                catch (Exception exception)
+                {
+                    success = false;
+
+                    _ = log.TryAdd(metadataName, ExceptionHelper.GetErrorMessage(exception));
+                }
             }
+
+            return success;
         }
         private void CreateSequence(in IQueryExecutor executor)
         {
@@ -259,23 +285,54 @@ namespace DaJet.Exchange.PostgreSql
             executor.TxExecuteNonQuery(in scripts, 60);
         }
         
-        public void Uninstall(in IMetadataService metadata, in InfoBaseModel database)
+        public bool TryUninstall(in IMetadataService metadata, in InfoBaseModel database, out Dictionary<string, string> log)
         {
+            log = new Dictionary<string, string>();
+
             if (!metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
             {
-                throw new InvalidOperationException(error);
+                log.Add($"Database [{database.Name}] is not accessible", error); return false;
             }
 
             IQueryExecutor executor = QueryExecutor.Create(DatabaseProvider.PostgreSql, database.ConnectionString);
 
             HashSet<MetadataObject> articles = GetDistinctArticles(in provider);
 
+            bool success = true;
+
             foreach (MetadataObject article in articles)
             {
-                DeleteChangeTrackingTrigger(in provider, in executor, in article);
+                string metadataName = article.ToString();
+
+                try
+                {
+                    DeleteChangeTrackingTrigger(in provider, in executor, in article);
+
+                    _ = log.TryAdd(metadataName, "DROPPED");
+                }
+                catch (Exception exception)
+                {
+                    success = false;
+
+                    _ = log.TryAdd(metadataName, ExceptionHelper.GetErrorMessage(exception));
+                }
             }
 
-            DeleteSequence(in executor);
+            if (!success)
+            {
+                return false; // do not drop sequence !
+            }
+
+            try
+            {
+                DeleteSequence(in executor);
+            }
+            catch (Exception exception)
+            {
+                log.Add($"Create sequence error", ExceptionHelper.GetErrorMessage(exception)); return false;
+            }
+
+            return success;
         }
         private void DeleteSequence(in IQueryExecutor executor)
         {
