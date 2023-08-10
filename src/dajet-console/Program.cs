@@ -13,13 +13,27 @@ namespace DaJet_Console
         private static MetadataCache _pg_cache;
         private static MetadataCache _ms_cache;
         private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;";
-        private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
+        private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-exchange;Integrated Security=True;Encrypt=False;";
         static void Main()
         {
+            //InitializeMetadataCache();
+            //MetadataObject metadata = _ms_cache.GetMetadataObject("Справочник.ИсторияДанных");
+            //if (metadata is not null)
+            //{
+            //    Console.WriteLine(metadata.Uuid.ToString());
+            //    Console.WriteLine(new Guid(SQLHelper.Get1CUuid(metadata.Uuid.ToByteArray())).ToString());
+            //}
+            //Console.WriteLine(DataHistory.GetMetadata());
+            //Console.WriteLine(DataHistory.GetContent());
+
+            DataHistory.GetDateTimeFromBinary();
+            Console.WriteLine("Press any key to exit ...");
+            _ = Console.ReadKey(false);
+
             // Этот код необязателен (!) для использования провайдера данных.
             // OneDbConnection выполняет его автоматически при вызове метода Open (!)
             // Эта строка нужна только для процедуры Использование_Типа_Entity (см. ниже)
-            InitializeMetadataCache();
+            //InitializeMetadataCache();
 
             // *******************************************
             // * Примеры использования провайдера данных *
@@ -31,7 +45,7 @@ namespace DaJet_Console
             //Отображение_Запроса_На_Класс();
             //Использование_Параметров_Запроса();
 
-            WriteConfigFile();
+            //WriteConfigFile();
             //TestDataRecordJsonConverter();
         }
         private static void InitializeMetadataCache()
@@ -235,7 +249,7 @@ namespace DaJet_Console
                 return;
             }
 
-            MetadataObject metadata = provider.GetMetadataObject("РегистрСведений.ЦеныНоменклатуры");
+            MetadataObject metadata = provider.GetMetadataObject("Справочник.ИсторияДанных");
 
             Console.WriteLine(metadata.Uuid);
 
@@ -243,7 +257,7 @@ namespace DaJet_Console
             {
                 ConfigObject configObject = new ConfigFileParser().Parse(reader);
 
-                new ConfigFileWriter().Write(configObject, "C:\\temp\\1c-dump\\РегистрСведений.ЦеныНоменклатуры.txt");
+                new ConfigFileWriter().Write(configObject, "C:\\temp\\1c-dump\\Справочник.ИсторияДанных.txt");
             }
 
             Console.WriteLine("Press any key to exit...");

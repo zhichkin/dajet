@@ -1,13 +1,14 @@
 ﻿using DaJet.Metadata;
 using DaJet.Options;
 using DaJet.Scripting;
-using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using System.Data;
 
-namespace DaJet.Flow.SqlServer
+namespace DaJet.Flow.PostgreSql
 {
-    [PipelineBlock] public sealed class OneDbMonitor : SourceBlock<IDataRecord>
+    // [PipelineBlock]
+    public sealed class OneDbSource : SourceBlock<IDataRecord>
     {
         #region "PRIVATE VARIABLES"
         private readonly IPipelineManager _manager;
@@ -22,7 +23,7 @@ namespace DaJet.Flow.SqlServer
         [Option] public Guid Pipeline { get; set; } = Guid.Empty;
         [Option] public string Source { get; set; } = string.Empty;
         [Option] public string Script { get; set; } = string.Empty;
-        [ActivatorUtilitiesConstructor] public OneDbMonitor(
+        [ActivatorUtilitiesConstructor] public OneDbSource(
             InfoBaseDataMapper databases, ScriptDataMapper scripts, IPipelineManager manager, IMetadataService metadata)
         {
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
@@ -57,33 +58,43 @@ namespace DaJet.Flow.SqlServer
         }
         public override void Execute()
         {
-            using (SqlConnection connection = new(ConnectionString))
+            int consumed;
+
+            using (NpgsqlConnection connection = new(ConnectionString))
             {
                 connection.Open();
 
-                using (SqlCommand command = connection.CreateCommand())
+                using (NpgsqlCommand command = connection.CreateCommand())
                 {
                     ConfigureCommand(in command);
 
-                    using (SqlTransaction transaction = connection.BeginTransaction())
+                    consumed = 0;
+
+                    using (NpgsqlTransaction transaction = connection.BeginTransaction())
                     {
                         command.Transaction = transaction;
 
-                        using (SqlDataReader reader = command.ExecuteReader())
+                        using (NpgsqlDataReader reader = command.ExecuteReader())
                         {
                             while (reader.Read())
                             {
-                                Process(in reader);
+                                Process(in reader); consumed++;
                             }
                             reader.Close();
                         }
 
-                        transaction.Commit();
+                        if (consumed > 0)
+                        {
+                            _next?.Synchronize();
+                            transaction.Commit();
+                        }
                     }
                 }
             }
+
+            _manager.UpdatePipelineStatus(Pipeline, $"Processed {consumed} messages");
         }
-        private void ConfigureCommand(in SqlCommand command)
+        private void ConfigureCommand(in NpgsqlCommand command)
         {
             command.CommandType = CommandType.Text;
             command.CommandText = CommandText;
@@ -96,12 +107,12 @@ namespace DaJet.Flow.SqlServer
                 command.Parameters.AddWithValue(parameter.Key, parameter.Value);
             }
         }
-        private void Process(in SqlDataReader reader)
+        private void Process(in NpgsqlDataReader reader)
         {
-            DbQueueMonitor info = ScriptGenerator.Mapper.Map<DbQueueMonitor>(reader);
+            //ScriptGenerator.Mapper.Map(reader, out IDataRecord record);
+            //_next?.Process(record);
 
-            _manager.UpdatePipelineStatus(Pipeline,
-                $"[{info.TimeStamp:yyyy-MM-dd HH:mm:ss}] {info.MessageType} ({info.MessageCount} x {info.DataSizeAvg} = {info.DataSizeSum})");
+            _next?.Process(new OneDbDataRecord(reader, ScriptGenerator.Mapper));
         }
     }
 }

@@ -1,12 +1,13 @@
 ﻿using DaJet.Data;
 using DaJet.Options;
-using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using System.Data;
 
-namespace DaJet.Flow.SqlServer
+namespace DaJet.Flow.PostgreSql
 {
-    [PipelineBlock] public sealed class Producer : TargetBlock<IDataRecord>
+    // [PipelineBlock]
+    public sealed class Producer : TargetBlock<IDataRecord>
     {
         private readonly ScriptDataMapper _scripts;
         private readonly InfoBaseDataMapper _databases;
@@ -32,12 +33,12 @@ namespace DaJet.Flow.SqlServer
         }
         public override void Process(in IDataRecord input)
         {
-            using (SqlConnection connection = new(ConnectionString))
+            using (NpgsqlConnection connection = new(ConnectionString))
             {
                 connection.Open();
 
-                SqlCommand command = connection.CreateCommand();
-                SqlTransaction transaction = connection.BeginTransaction();
+                NpgsqlCommand command = connection.CreateCommand();
+                NpgsqlTransaction transaction = connection.BeginTransaction();
 
                 command.Connection = connection;
                 command.Transaction = transaction;
@@ -66,7 +67,7 @@ namespace DaJet.Flow.SqlServer
                 }
             }
         }
-        private void ConfigureParameters(in SqlCommand command, in IDataRecord input)
+        private void ConfigureParameters(in NpgsqlCommand command, in IDataRecord input)
         {
             command.Parameters.Clear();
 

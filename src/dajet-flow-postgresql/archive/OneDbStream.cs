@@ -10,7 +10,8 @@ using System.Text;
 
 namespace DaJet.Flow.PostgreSql
 {
-    [PipelineBlock] public sealed class OneDbStream : SourceBlock<IDataRecord>
+    // [PipelineBlock]
+    public sealed class OneDbStream : SourceBlock<IDataRecord>
     {
         private int _state;
         private const int STATE_IS_IDLE = 0;

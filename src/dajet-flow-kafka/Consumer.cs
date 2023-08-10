@@ -1,31 +1,31 @@
 ﻿using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace DaJet.Flow.Kafka
 {
-    [PipelineBlock] public sealed class Consumer : SourceBlock<Payload>
+    // https://docs.confluent.io/platform/current/clients/consumer.html
+    [PipelineBlock] public sealed class Consumer : SourceBlock<ConsumeResult<byte[], byte[]>>
     {
-        private bool _disposed;
+        private CancellationTokenSource _cts;
         private int _consumed = 0;
-        private int _batchSize = 1000;
-        private Message _message;
         private ConsumerConfig _options;
-        private IConsumer<Ignore, byte[]> _consumer;
-        private ConsumeResult<Ignore, byte[]> _result;
-        private readonly Action<IConsumer<Ignore, byte[]>, Error> _errorHandler;
-        private readonly Action<IConsumer<Ignore, byte[]>, LogMessage> _logHandler;
-        private readonly ILogger _logger;
-        [ActivatorUtilitiesConstructor] public Consumer(ILogger<Consumer> logger)
+        private IConsumer<byte[], byte[]> _consumer;
+        private ConsumeResult<byte[], byte[]> _result;
+        private readonly Action<IConsumer<byte[], byte[]>, Error> _errorHandler;
+        private readonly Action<IConsumer<byte[], byte[]>, LogMessage> _logHandler;
+        private readonly IPipelineManager _manager;
+        [ActivatorUtilitiesConstructor] public Consumer(IPipelineManager manager)
         {
-            _logger = logger;
+            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
             _logHandler = LogHandler;
             _errorHandler = ErrorHandler;
         }
         #region "CONFIGURATION OPTIONS"
+        [Option] public Guid Pipeline { get; set; } = Guid.Empty;
         [Option] public string Topic { get; set; } = string.Empty;
-        [Option] public string GroupId { get; set; } = "dajet-group";
-        [Option] public string ClientId { get; set; } = "dajet-flow";
+        [Option] public string GroupId { get; set; } = "dajet";
+        [Option] public string ClientId { get; set; } = "dajet-exchange";
         [Option] public string BootstrapServers { get; set; } = "127.0.0.1:9092";
         [Option] public string EnableAutoCommit { get; set; } = "false";
         [Option] public string AutoOffsetReset { get; set; } = "earliest";
@@ -36,90 +36,108 @@ namespace DaJet.Flow.Kafka
             Dictionary<string, string> config = ConfigHelper.CreateConfigFromOptions(this);
 
             _ = config.Remove(nameof(Topic).ToLower());
+            _ = config.Remove(nameof(Pipeline).ToLower());
 
             _options = new ConsumerConfig(config);
         }
         #endregion
         public override void Execute()
         {
-            _disposed = false;
+            if (_cts is not null) { return; }
 
-            _consumer ??= new ConsumerBuilder<Ignore, byte[]>(_options)
+            _cts ??= new CancellationTokenSource();
+
+            _consumer ??= new ConsumerBuilder<byte[], byte[]>(_options)
                 .SetLogHandler(_logHandler)
                 .SetErrorHandler(_errorHandler)
                 .Build();
-            
+
             _consumer.Subscribe(Topic);
 
             _consumed = 0;
 
+            Stopwatch watch = new();
+            watch.Start();
+
             do
             {
-                _result = _consumer.Consume(TimeSpan.FromSeconds(1));
+                try
+                {
+
+                    _result = _consumer.Consume(_cts.Token);
+                }
+                catch (ObjectDisposedException) { /* IGNORE */ }
+                catch (OperationCanceledException) { /* IGNORE */ }
+                catch
+                {
+                    DisposeConsumer(); throw; // Unexpected exception
+                }
+
+                if (_cts.IsCancellationRequested)
+                {
+                    _manager?.UpdatePipelineStatus(Pipeline, $"Consumed {_consumed} messages in {watch.ElapsedMilliseconds} ms");
+
+                    DisposeConsumer(); return;
+                }
 
                 if (_result is not null && _result.Message is not null)
                 {
-                    Payload payload = new(new ReadOnlyMemory<byte>(_result.Message.Value, 0, _result.Message.Value.Length), null);
-                    
-                    //TODO: _result.Message.Headers; ?
-
-                    _next?.Process(in payload);
-
-                    _next?.Synchronize();
-
-                    _consumed++;
-
-                    if (_consumed == _batchSize)
+                    try
                     {
-                        _consumer.Commit();
-
-                        _logger?.LogInformation("[{topic}] Consumed {consumed} messages", Topic, _consumed);
-
-                        _consumed = 0; // prepare to consume next batch
+                        ConsumeMessage(in _result);
                     }
+                    catch
+                    {
+                        DisposeConsumer(); throw;
+                    }
+
+                    _manager?.UpdatePipelineStatus(Pipeline, $"Consumed {_consumed} messages in {watch.ElapsedMilliseconds} ms");
                 }
             }
-            while (_result is not null && _result.Message is not null && !_disposed);
-
-            try
-            {
-                if (_consumed > 0) { _consumer.Commit(); }
-
-                _logger?.LogInformation("[{topic}] Consumed {consumed} messages", Topic, _consumed);
-
-                _consumer.Unsubscribe();
-            }
-            catch (Exception error)
-            {
-                _logger?.LogError("[{topic}] ERROR: {error}", Topic, error.Message);
-            }
-            finally
-            {
-                _Dispose();
-            }
+            while (_result is not null && _result.Message is not null);
         }
-        private void LogHandler(IConsumer<Ignore, byte[]> _, LogMessage log)
+        private void ConsumeMessage(in ConsumeResult<byte[], byte[]> message)
         {
-            _logger?.LogInformation("[{topic}] [{client}]: {message}", Topic, log.Name, log.Message);
+            _next?.Process(in message);
+
+            _next?.Synchronize();
+
+            _consumer.Commit(); //TODO: commit batches
+
+            _consumed++;
         }
-        private void ErrorHandler(IConsumer<Ignore, byte[]> consumer, Error error)
+        private void LogHandler(IConsumer<byte[], byte[]> _, LogMessage log)
         {
-            _logger?.LogError("[{topic}] [{consumer}] [{subscription}]: {error}",
-                Topic, consumer.Name, string.Concat(consumer.Subscription), error.Reason);
+            _manager?.UpdatePipelineFinishTime(Pipeline, DateTime.Now);
+            _manager?.UpdatePipelineStatus(Pipeline, $"[{Topic}] [{log.Name}]: {log.Message}");
+        }
+        private void ErrorHandler(IConsumer<byte[], byte[]> consumer, Error error)
+        {
+            _manager?.UpdatePipelineFinishTime(Pipeline, DateTime.Now);
+            _manager?.UpdatePipelineStatus(Pipeline, $"[{Topic}] [{consumer.Name}] [{string.Concat(consumer.Subscription)}]: {error.Reason}");
         }
         protected override void _Dispose()
         {
+            if (_cts is null || _cts.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _cts?.Cancel(); // interrupt consumption
+        }
+        private void DisposeConsumer()
+        {
+            _result = null;
+
             try
             {
                 _consumer?.Close();
                 _consumer?.Dispose();
             }
-            catch { /* IGNORE */ }
             finally { _consumer = null; }
-            
-            _result = null;
-            _message = null;
-            _disposed = true;
+
+            try { _cts?.Dispose(); }
+            finally { _cts = null; }
         }
     }
 }

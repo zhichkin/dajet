@@ -1,13 +1,14 @@
 ﻿using DaJet.Metadata;
 using DaJet.Options;
 using DaJet.Scripting;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
-using Npgsql;
 using System.Data;
 
-namespace DaJet.Flow.PostgreSql
+namespace DaJet.Flow.SqlServer
 {
-    [PipelineBlock] public sealed class OneDbSource : SourceBlock<IDataRecord>
+    // [PipelineBlock]
+    public sealed class OneDbSource : SourceBlock<IDataRecord>
     {
         #region "PRIVATE VARIABLES"
         private readonly IPipelineManager _manager;
@@ -59,21 +60,21 @@ namespace DaJet.Flow.PostgreSql
         {
             int consumed;
 
-            using (NpgsqlConnection connection = new(ConnectionString))
+            using (SqlConnection connection = new(ConnectionString))
             {
                 connection.Open();
 
-                using (NpgsqlCommand command = connection.CreateCommand())
+                using (SqlCommand command = connection.CreateCommand())
                 {
                     ConfigureCommand(in command);
 
                     consumed = 0;
 
-                    using (NpgsqlTransaction transaction = connection.BeginTransaction())
+                    using (SqlTransaction transaction = connection.BeginTransaction())
                     {
                         command.Transaction = transaction;
 
-                        using (NpgsqlDataReader reader = command.ExecuteReader())
+                        using (SqlDataReader reader = command.ExecuteReader())
                         {
                             while (reader.Read())
                             {
@@ -93,7 +94,7 @@ namespace DaJet.Flow.PostgreSql
 
             _manager.UpdatePipelineStatus(Pipeline, $"Processed {consumed} messages");
         }
-        private void ConfigureCommand(in NpgsqlCommand command)
+        private void ConfigureCommand(in SqlCommand command)
         {
             command.CommandType = CommandType.Text;
             command.CommandText = CommandText;
@@ -106,7 +107,7 @@ namespace DaJet.Flow.PostgreSql
                 command.Parameters.AddWithValue(parameter.Key, parameter.Value);
             }
         }
-        private void Process(in NpgsqlDataReader reader)
+        private void Process(in SqlDataReader reader)
         {
             //ScriptGenerator.Mapper.Map(reader, out IDataRecord record);
             //_next?.Process(record);

@@ -1,11 +1,12 @@
 ﻿using DaJet.Options;
-using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using System.Data;
 
-namespace DaJet.Flow.SqlServer
+namespace DaJet.Flow.PostgreSql
 {
-    [PipelineBlock] public sealed class QuerySource : SourceBlock<IDataRecord>
+    // [PipelineBlock]
+    public sealed class QuerySource : SourceBlock<IDataRecord>
     {
         private readonly IPipelineManager _manager;
         private readonly ScriptDataMapper _scripts;
@@ -36,12 +37,12 @@ namespace DaJet.Flow.SqlServer
         {
             int consumed = 0;
 
-            using (SqlConnection connection = new(ConnectionString))
+            using (NpgsqlConnection connection = new(ConnectionString))
             {
                 connection.Open();
 
-                SqlCommand command = connection.CreateCommand();
-                SqlTransaction transaction = connection.BeginTransaction();
+                NpgsqlCommand command = connection.CreateCommand();
+                NpgsqlTransaction transaction = connection.BeginTransaction();
 
                 command.Connection = connection;
                 command.Transaction = transaction;
@@ -51,7 +52,7 @@ namespace DaJet.Flow.SqlServer
 
                 try
                 {
-                    using (SqlDataReader reader = command.ExecuteReader())
+                    using (NpgsqlDataReader reader = command.ExecuteReader())
                     {
                         while (reader.Read())
                         {
