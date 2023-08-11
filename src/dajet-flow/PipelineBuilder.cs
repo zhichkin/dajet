@@ -39,7 +39,7 @@ namespace DaJet.Flow
 
             string catalogPath = Path.Combine(AppContext.BaseDirectory, "flow");
 
-            foreach (string filePath in Directory.GetFiles(catalogPath, "DaJet.*"))
+            foreach (string filePath in Directory.GetFiles(catalogPath, "*.dll"))
             {
                 if (_assemblies.ContainsKey(filePath))
                 {
