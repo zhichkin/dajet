@@ -321,15 +321,16 @@ namespace DaJet.Scripting
             else if (expression is TableVariableExpression table_variable) { Visit(in table_variable, in script); }
             else if (expression is TemporaryTableExpression temporary_table) { Visit(in temporary_table, in script); }
             else if (expression is StarExpression star) { Visit(in star, in script); }
-            else if (expression is ValuesExpression values) { Visit(in values, in script); }
             else if (expression is SetExpression set) { Visit(in set, in script); }
             else if (expression is InsertStatement insert) { Visit(in insert, in script); }
             else if (expression is UpdateStatement update) { Visit(in update, in script); }
             else if (expression is DeleteStatement delete) { Visit(in delete, in script); }
             else if (expression is CreateTypeStatement type) { Visit(in type, in script); }
+            else if (expression is CreateSequenceStatement sequence) { Visit(in sequence, in script); }
         }
 
         public abstract void Visit(in CreateTypeStatement node, in StringBuilder script);
+        public abstract void Visit(in CreateSequenceStatement node, in StringBuilder script);
 
         #region "SELECT STATEMENT"
         protected virtual void Visit(in SelectStatement node, in StringBuilder script)
@@ -1060,6 +1061,10 @@ namespace DaJet.Scripting
 
             ConfigureTableAlias(node.Source); // @variable and #temporary tables
 
+            InsertStatementTransformer transformer = new();
+            
+            transformer.Transform(node);
+
             if (node.CommonTables is not null)
             {
                 script.Append("WITH ");
@@ -1067,6 +1072,13 @@ namespace DaJet.Scripting
             }
 
             string[] columns = GetInsertSelectColumnLists(node.Target, node.Source);
+
+            string vectorColumn = transformer.GetVectorColumnName(in node);
+
+            if (vectorColumn is not null)
+            {
+                columns[1] = columns[1].Replace(vectorColumn, VisitVectorFunction(node.Target));
+            }
 
             script.AppendLine().Append("INSERT INTO ");
             VisitTargetTable(node.Target, in script);
@@ -1099,6 +1111,26 @@ namespace DaJet.Scripting
             }
 
             script.Append(";");
+        }
+        private string VisitVectorFunction(in SyntaxNode target)
+        {
+            FunctionExpression function = new()
+            {
+                Name = "VECTOR"
+            };
+
+            if (target is TableReference table && table.Binding is ApplicationObject entity)
+            {
+                function.Parameters.Add(new ScalarExpression()
+                {
+                    Token = TokenType.String,
+                    Literal = $"{entity.TableName}_so"
+                });
+            }
+            
+            StringBuilder script = new();
+            Visit(in function, in script);
+            return script.ToString();
         }
         protected virtual void Visit(in ValuesExpression node, in StringBuilder script)
         {
@@ -1718,6 +1750,10 @@ namespace DaJet.Scripting
             else if (functionName == "TYPEOF")
             {
                 //union.IsInteger = true; return;
+            }
+            else if (name == "VECTOR")
+            {
+                //union.IsNumeric = true; return;
             }
 
             foreach (SyntaxNode parameter in function.Parameters)

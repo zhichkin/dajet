@@ -82,7 +82,11 @@ namespace DaJet.Scripting
             { "CONSUME", TokenType.CONSUME },
             { "STRICT", TokenType.STRICT },
             { "RANDOM", TokenType.RANDOM },
-            { "IMPORT", TokenType.IMPORT }
+            { "IMPORT", TokenType.IMPORT },
+            { "SEQUENCE", TokenType.SEQUENCE },
+            { "START", TokenType.START },
+            { "INCREMENT", TokenType.INCREMENT },
+            { "CACHE", TokenType.CACHE }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {
@@ -179,7 +183,8 @@ namespace DaJet.Scripting
             { "DATALENGTH", TokenType.DATALENGTH },
             { "NOW", TokenType.NOW },
             { "TYPEOF", TokenType.TYPEOF },
-            { "UUIDOF", TokenType.UUIDOF }
+            { "UUIDOF", TokenType.UUIDOF },
+            { "VECTOR", TokenType.VECTOR }
         };
         private static Dictionary<string, TokenType> _function_ru = new()
         {

@@ -28,9 +28,11 @@
         Plus, Minus, Divide, Modulo, Multiply,
 
         CREATE, TABLE, COMPUTED, TEMPORARY, VARIABLE, TYPE, COLUMN, DROP, OF,
+        
+        SEQUENCE, START, INCREMENT, CACHE,
 
         CONSUME, STRICT, RANDOM, IMPORT,
 
-        TYPEOF, UUIDOF, DATALENGTH
+        TYPEOF, UUIDOF, DATALENGTH, VECTOR
     }
 }

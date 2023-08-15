@@ -250,6 +250,10 @@ namespace DaJet.Scripting
             {
                 union.IsInteger = true; return;
             }
+            else if (name == "VECTOR")
+            {
+                union.IsNumeric = true; return;
+            }
 
             foreach (SyntaxNode parameter in function.Parameters)
             {
@@ -319,6 +323,31 @@ namespace DaJet.Scripting
             }
             
             return null;
+        }
+        public static string GetColumnSourceName(in SyntaxNode node)
+        {
+            if (node is TableExpression table)
+            {
+                return table.Alias;
+            }
+            else if (node is CommonTableExpression cte)
+            {
+                return cte.Name;
+            }
+            else if (node is TableVariableExpression variable)
+            {
+                return variable.Name;
+            }
+            else if (node is TemporaryTableExpression temporary)
+            {
+                return temporary.Name;
+            }
+            else if (node is TableReference reference)
+            {
+                return string.IsNullOrEmpty(reference.Alias) ? reference.Identifier : reference.Alias;
+            }
+
+            return string.Empty;
         }
 
         public static EntityMap CreateEntityMap(in SyntaxNode node)

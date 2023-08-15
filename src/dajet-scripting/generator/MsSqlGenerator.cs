@@ -1,7 +1,9 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
+using System.ComponentModel.Design;
 using System.Text;
+using static Npgsql.Replication.PgOutput.Messages.RelationMessage;
 
 namespace DaJet.Scripting
 {
@@ -123,6 +125,13 @@ namespace DaJet.Scripting
                 else
                 {
                     script.Append("DATEADD(year, " + YearOffset.ToString() + ", GETDATE())");
+                }
+            }
+            else if (name == "VECTOR")
+            {
+                if (node.Parameters is not null && node.Parameters.Count > 0 && node.Parameters[0] is ScalarExpression scalar)
+                {
+                    script.Append("NEXT VALUE FOR ").Append(scalar.Literal);
                 }
             }
             else
@@ -899,6 +908,62 @@ namespace DaJet.Scripting
             }
 
             script.AppendLine().AppendLine(")");
+        }
+
+        public override void Visit(in CreateSequenceStatement node, in StringBuilder script)
+        {
+            // IF NOT EXISTS(SELECT 1 FROM sys.sequences WHERE name = '{SEQUENCE_NAME}')
+            // BEGIN
+            // CREATE SEQUENCE {SEQUENCE_NAME} AS numeric(19,0) START WITH 1 INCREMENT BY 1 CACHE 1;
+            // END;
+
+            script.Append("IF NOT EXISTS(SELECT 1 FROM sys.sequences WHERE name = '").Append(node.Identifier).Append("') BEGIN ");
+
+            script.Append("CREATE SEQUENCE ").Append(node.Identifier).Append(" AS ");
+
+            if (node.DataType is TypeIdentifier info)
+            {
+                if (info.Binding is Type type)
+                {
+                    if (type == typeof(decimal)) // number(p,s))
+                    {
+                        if (info.Qualifier1 > 0)
+                        {
+                            script.Append("numeric(").Append(info.Qualifier1).Append(',').Append(info.Qualifier2).Append(')');
+                        }
+                        else
+                        {
+                            script.Append("bigint");
+                        }
+                    }
+                    else if (type == typeof(int))
+                    {
+                        script.Append("int");
+                    }
+                    else
+                    {
+                        script.Append("bigint");
+                    }   
+                }
+                else
+                {
+                    script.Append("bigint");
+                }
+            }
+            else
+            {
+                script.Append("bigint");
+            }
+
+            script.Append(" START WITH ").Append(node.StartWith)
+                .Append(" INCREMENT BY ").Append(node.Increment);
+
+            if (node.CacheSize > 0)
+            {
+                script.Append(" CACHE ").Append(node.CacheSize);
+            }
+
+            script.Append(" END");
         }
     }
 }

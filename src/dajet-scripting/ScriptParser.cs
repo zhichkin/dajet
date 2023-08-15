@@ -190,13 +190,16 @@ namespace DaJet.Scripting
 
             throw new FormatException($"Unknown statement: {Previous()}");
         }
-
-        #region "CREATE TABLE STATEMENT"
         private SyntaxNode create_statement()
         {
             if (Match(TokenType.TYPE))
             {
                 return create_type();
+            }
+
+            if (Match(TokenType.SEQUENCE))
+            {
+                return create_sequence();
             }
 
             TokenType token = TokenType.TABLE;
@@ -241,6 +244,8 @@ namespace DaJet.Scripting
 
             throw new FormatException("Invalid CREATE TABLE statement.");
         }
+
+        #region "CREATE TABLE STATEMENT"
         private SyntaxNode create_table()
         {
             if (!Match(TokenType.Identifier)) { throw new FormatException("Table identifier expected."); }
@@ -1589,6 +1594,65 @@ namespace DaJet.Scripting
             column.Type = type();
 
             return column;
+        }
+        #endregion
+
+        #region "CREATE SEQUENCE STATEMENT"
+        private SyntaxNode create_sequence()
+        {
+            CreateSequenceStatement statement = new();
+
+            if (!Match(TokenType.Identifier)) { throw new FormatException("Sequence identifier expected."); }
+
+            statement.Identifier = Previous().Lexeme;
+
+            if (!Match(TokenType.AS)) { throw new FormatException("AS keyword expected."); }
+
+            if (!Match(TokenType.Identifier)) { throw new FormatException("Data type identifier expected."); }
+
+            statement.DataType = type();
+
+            if (Match(TokenType.START))
+            {
+                if (!Match(TokenType.WITH)) { throw new FormatException("START WITH keyword expected."); }
+
+                if (!Match(TokenType.Number)) { throw new FormatException("Integer literal expected."); }
+
+                if (!int.TryParse(Previous().Lexeme, out int start))
+                {
+                    throw new FormatException("Integer literal expected.");
+                }
+
+                statement.StartWith = start;
+            }
+            
+            if (Match(TokenType.INCREMENT))
+            {
+                if (!Match(TokenType.BY)) { throw new FormatException("INCREMENT BY keyword expected."); }
+
+                if (!Match(TokenType.Number)) { throw new FormatException("Integer literal expected."); }
+
+                if (!int.TryParse(Previous().Lexeme, out int increment))
+                {
+                    throw new FormatException("Integer literal expected.");
+                }
+
+                statement.Increment = increment;
+            }
+
+            if (Match(TokenType.CACHE))
+            {
+                if (!Match(TokenType.Number)) { throw new FormatException("Integer literal expected."); }
+
+                if (!int.TryParse(Previous().Lexeme, out int cache))
+                {
+                    throw new FormatException("Integer literal expected.");
+                }
+
+                statement.CacheSize = cache;
+            }
+
+            return statement;
         }
         #endregion
 

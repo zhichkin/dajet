@@ -270,6 +270,14 @@ namespace DaJet.Scripting
             {
                 script.Append("NOW()::timestamp"); return;
             }
+            else if (name == "VECTOR")
+            {
+                if (node.Parameters[0] is ScalarExpression scalar)
+                {
+                    script.Append($"CAST(nextval('{scalar.Literal.ToLower()}') AS numeric(19, 0))");
+                }
+                return;
+            }
 
             script.Append(node.Name).Append("(");
 
@@ -1453,6 +1461,25 @@ namespace DaJet.Scripting
             }
 
             script.AppendLine().AppendLine(")");
+        }
+
+        public override void Visit(in CreateSequenceStatement node, in StringBuilder script)
+        {
+            // CREATE SEQUENCE IF NOT EXISTS {SEQUENCE_NAME} AS bigint INCREMENT BY 1 START WITH 1 CACHE 1;
+
+            script.Append("CREATE SEQUENCE IF NOT EXISTS ").Append(node.Identifier)
+                .Append(" AS bigint")
+                .Append(" INCREMENT BY ").Append(node.Increment)
+                .Append(" START WITH ").Append(node.StartWith);
+
+            if (node.CacheSize > 0)
+            {
+                script.Append(" CACHE ").Append(node.CacheSize);
+            }
+            else
+            {
+                script.Append(" CACHE 1");
+            }
         }
     }
 }
