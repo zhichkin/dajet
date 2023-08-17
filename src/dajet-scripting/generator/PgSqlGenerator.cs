@@ -272,7 +272,7 @@ namespace DaJet.Scripting
             }
             else if (name == "VECTOR")
             {
-                if (node.Parameters[0] is ScalarExpression scalar)
+                if (node.Parameters is not null && node.Parameters.Count > 0 && node.Parameters[0] is ScalarExpression scalar)
                 {
                     script.Append($"CAST(nextval('{scalar.Literal.ToLower()}') AS numeric(19, 0))");
                 }

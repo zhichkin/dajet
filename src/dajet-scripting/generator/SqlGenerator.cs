@@ -1124,7 +1124,7 @@ namespace DaJet.Scripting
                 function.Parameters.Add(new ScalarExpression()
                 {
                     Token = TokenType.String,
-                    Literal = $"{entity.TableName}_so"
+                    Literal = $"so{entity.TableName}"
                 });
             }
             
