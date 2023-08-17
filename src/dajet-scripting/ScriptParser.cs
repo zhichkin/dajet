@@ -184,6 +184,7 @@ namespace DaJet.Scripting
             else if (Check(TokenType.UPSERT)) { return upsert_statement(); }
             else if (Check(TokenType.CONSUME)) { return consume_statement(); }
             else if (Check(TokenType.IMPORT)) { return import_statement(); }
+            else if (Match(TokenType.DROP)) { return drop_statement(); }
             else if (Match(TokenType.EndOfStatement)) { return null; }
 
             Ignore();
@@ -243,6 +244,15 @@ namespace DaJet.Scripting
             }
 
             throw new FormatException("Invalid CREATE TABLE statement.");
+        }
+        private SyntaxNode drop_statement()
+        {
+            if (Match(TokenType.SEQUENCE))
+            {
+                return drop_sequence();
+            }
+
+            throw new FormatException("Unknown DROP statement.");
         }
 
         #region "CREATE TABLE STATEMENT"
@@ -1181,6 +1191,33 @@ namespace DaJet.Scripting
                 function.Over = over_clause();
             }
 
+            //TODO: implement function parameters validation
+            if (function.Name.ToUpperInvariant() == "VECTOR")
+            {
+                if (function.Parameters is null)
+                {
+                    throw new FormatException("VECTOR function: missing parameter.");
+                }
+                else if (function.Parameters.Count == 0)
+                {
+                    throw new FormatException("VECTOR function: missing parameter.");
+                }
+                else if (function.Parameters.Count > 1)
+                {
+                    throw new FormatException("VECTOR function: too many parameters.");
+                }
+
+                if (function.Parameters[0] is not ScalarExpression scalar || scalar.Token != TokenType.String)
+                {
+                    throw new FormatException("VECTOR function: string parameter type expected.");
+                }
+
+                if (string.IsNullOrWhiteSpace(scalar.Literal))
+                {
+                    throw new FormatException("VECTOR function: parameter value must be non-empty string.");
+                }
+            }
+
             return function;
         }
         private OverClause over_clause()
@@ -1597,7 +1634,17 @@ namespace DaJet.Scripting
         }
         #endregion
 
-        #region "CREATE SEQUENCE STATEMENT"
+        #region "SEQUENCE"
+        private SyntaxNode drop_sequence()
+        {
+            DropSequenceStatement statement = new();
+
+            if (!Match(TokenType.Identifier)) { throw new FormatException("Sequence identifier expected."); }
+
+            statement.Identifier = Previous().Lexeme;
+
+            return statement;
+        }
         private SyntaxNode create_sequence()
         {
             CreateSequenceStatement statement = new();
@@ -1606,12 +1653,13 @@ namespace DaJet.Scripting
 
             statement.Identifier = Previous().Lexeme;
 
-            if (!Match(TokenType.AS)) { throw new FormatException("AS keyword expected."); }
+            if (Match(TokenType.AS))
+            {
+                if (!Match(TokenType.Identifier)) { throw new FormatException("Data type identifier expected."); }
 
-            if (!Match(TokenType.Identifier)) { throw new FormatException("Data type identifier expected."); }
-
-            statement.DataType = type();
-
+                statement.DataType = type();
+            }
+            
             if (Match(TokenType.START))
             {
                 if (!Match(TokenType.WITH)) { throw new FormatException("START WITH keyword expected."); }

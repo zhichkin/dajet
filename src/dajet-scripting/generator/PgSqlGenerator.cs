@@ -274,7 +274,8 @@ namespace DaJet.Scripting
             {
                 if (node.Parameters is not null && node.Parameters.Count > 0 && node.Parameters[0] is ScalarExpression scalar)
                 {
-                    script.Append($"CAST(nextval('{scalar.Literal.ToLower()}') AS numeric(19, 0))");
+                    //script.Append($"CAST(nextval('{scalar.Literal.ToLower()}') AS numeric(19, 0))");
+                    script.Append($"nextval('{scalar.Literal.ToLower()}')");
                 }
                 return;
             }
@@ -1480,6 +1481,8 @@ namespace DaJet.Scripting
             {
                 script.Append(" CACHE 1");
             }
+
+            script.AppendLine(";");
         }
     }
 }

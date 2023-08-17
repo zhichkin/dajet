@@ -1,9 +1,7 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
-using System.ComponentModel.Design;
 using System.Text;
-using static Npgsql.Replication.PgOutput.Messages.RelationMessage;
 
 namespace DaJet.Scripting
 {
@@ -917,7 +915,9 @@ namespace DaJet.Scripting
             // CREATE SEQUENCE {SEQUENCE_NAME} AS numeric(19,0) START WITH 1 INCREMENT BY 1 CACHE 1;
             // END;
 
-            script.Append("IF NOT EXISTS(SELECT 1 FROM sys.sequences WHERE name = '").Append(node.Identifier).Append("') BEGIN ");
+            script.Append("IF NOT EXISTS(SELECT 1 FROM sys.sequences WHERE name = '")
+                .Append(node.Identifier).AppendLine("')")
+                .AppendLine("BEGIN");
 
             script.Append("CREATE SEQUENCE ").Append(node.Identifier).Append(" AS ");
 
@@ -963,7 +963,7 @@ namespace DaJet.Scripting
                 script.Append(" CACHE ").Append(node.CacheSize);
             }
 
-            script.Append(" END");
+            script.AppendLine(";").AppendLine("END;");
         }
     }
 }

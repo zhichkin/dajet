@@ -327,10 +327,10 @@ namespace DaJet.Scripting
             else if (expression is DeleteStatement delete) { Visit(in delete, in script); }
             else if (expression is CreateTypeStatement type) { Visit(in type, in script); }
             else if (expression is CreateSequenceStatement sequence) { Visit(in sequence, in script); }
+            else if (expression is DropSequenceStatement drop_sequence) { Visit(in drop_sequence, in script); }
         }
 
         public abstract void Visit(in CreateTypeStatement node, in StringBuilder script);
-        public abstract void Visit(in CreateSequenceStatement node, in StringBuilder script);
 
         #region "SELECT STATEMENT"
         protected virtual void Visit(in SelectStatement node, in StringBuilder script)
@@ -1051,6 +1051,14 @@ namespace DaJet.Scripting
             }
         }
 
+        #region "SEQUENCE"
+        public abstract void Visit(in CreateSequenceStatement node, in StringBuilder script);
+        protected virtual void Visit(in DropSequenceStatement node, in StringBuilder script)
+        {
+            script.Append("DROP SEQUENCE ").Append(node.Identifier).AppendLine(";");
+        }
+        #endregion
+
         #region "INSERT STATEMENT"
         protected virtual void Visit(in InsertStatement node, in StringBuilder script)
         {
@@ -1074,10 +1082,14 @@ namespace DaJet.Scripting
             string[] columns = GetInsertSelectColumnLists(node.Target, node.Source);
 
             string vectorColumn = transformer.GetVectorColumnName(in node);
+            FunctionExpression vectorFunction = transformer.GetVectorFunctionExpression(in node);
 
-            if (vectorColumn is not null)
+            if (vectorColumn is not null && vectorFunction is not null)
             {
-                columns[1] = columns[1].Replace(vectorColumn, VisitVectorFunction(node.Target));
+                StringBuilder functionCall = new();
+                Visit(in vectorFunction, in functionCall);
+                string functionScript = functionCall.ToString();
+                columns[1] = columns[1].Replace(vectorColumn, functionScript);
             }
 
             script.AppendLine().Append("INSERT INTO ");
@@ -1111,26 +1123,6 @@ namespace DaJet.Scripting
             }
 
             script.Append(";");
-        }
-        private string VisitVectorFunction(in SyntaxNode target)
-        {
-            FunctionExpression function = new()
-            {
-                Name = "VECTOR"
-            };
-
-            if (target is TableReference table && table.Binding is ApplicationObject entity)
-            {
-                function.Parameters.Add(new ScalarExpression()
-                {
-                    Token = TokenType.String,
-                    Literal = $"so{entity.TableName}"
-                });
-            }
-            
-            StringBuilder script = new();
-            Visit(in function, in script);
-            return script.ToString();
         }
         protected virtual void Visit(in ValuesExpression node, in StringBuilder script)
         {

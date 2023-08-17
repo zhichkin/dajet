@@ -50,6 +50,34 @@ namespace DaJet.Scripting
 
             return null;
         }
+        public FunctionExpression GetVectorFunctionExpression(in InsertStatement insert)
+        {
+            object source = DataMapper.GetColumnSource(insert.Source);
+
+            if (source is not SelectExpression select) { return null; }
+
+            ColumnExpression vectorColumn = GetVectorColumn(in select);
+
+            if (vectorColumn is null) { return null; }
+
+            ColumnExpression column;
+            List<ColumnExpression> columns = select.Select;
+
+            for (int i = 0; i < columns.Count; i++)
+            {
+                column = columns[i];
+
+                if (column.Expression is FunctionExpression function)
+                {
+                    if (function.Name.ToUpperInvariant() == "VECTOR")
+                    {
+                        return function;
+                    }
+                }
+            }
+
+            return null;
+        }
         private ColumnExpression GetVectorColumn(in SelectExpression select)
         {
             ColumnExpression column;
