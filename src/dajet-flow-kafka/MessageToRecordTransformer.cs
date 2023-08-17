@@ -8,7 +8,7 @@ using System.Runtime.Loader;
 namespace DaJet.Flow.Kafka
 {
     // https://protobuf.dev/getting-started/csharptutorial/
-    [PipelineBlock] public sealed class PbToJsonTransformer : TransformerBlock<ConsumeResult<byte[], byte[]>, IDataRecord>
+    [PipelineBlock] public sealed class MessageToRecordTransformer : TransformerBlock<ConsumeResult<byte[], byte[]>, IDataRecord>
     {
         private object _parser = null;
         private MethodInfo _parseFrom = null;

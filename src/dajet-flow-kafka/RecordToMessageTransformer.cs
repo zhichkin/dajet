@@ -3,8 +3,8 @@ using System.Data;
 
 namespace DaJet.Flow.Kafka
 {
-    // [PipelineBlock]
-    public sealed class RecordToPbTransformer : TransformerBlock<IDataRecord, Message<byte[], byte[]>>
+    // https://protobuf.dev/getting-started/csharptutorial/
+    [PipelineBlock] public sealed class RecordToMessageTransformer : TransformerBlock<IDataRecord, Message<byte[], byte[]>>
     {
         private readonly Message<byte[], byte[]> _output = new();
         protected override void _Configure()

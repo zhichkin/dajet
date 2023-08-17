@@ -2,9 +2,11 @@
 using DaJet.Metadata;
 using DaJet.Options;
 using DaJet.Scripting;
+using DaJet.Scripting.Model;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using System.Data;
+using System.Text;
 
 namespace DaJet.Flow.PostgreSql
 {
@@ -24,10 +26,11 @@ namespace DaJet.Flow.PostgreSql
         }
         private string CommandText { get; set; }
         private string ConnectionString { get; set; }
-        private GeneratorResult ScriptGenerator { get; set; }
         private Dictionary<string, object> ScriptParameters { get; set; }
         protected override void _Configure()
         {
+            if (Timeout < 0) { Timeout = 10; }
+
             InfoBaseModel database = _databases.Select(Target) ?? throw new ArgumentException($"Target not found: {Target}");
             ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, Script) ?? throw new ArgumentException($"Script not found: {Script}");
 
@@ -36,19 +39,41 @@ namespace DaJet.Flow.PostgreSql
                 throw new Exception(error);
             }
 
-            ScriptExecutor executor = new(provider, _metadata, _databases, _scripts);
-            ScriptGenerator = executor.PrepareScript(script.Script);
-            ScriptParameters = executor.Parameters;
-
-            if (!ScriptGenerator.Success)
-            {
-                throw new Exception(ScriptGenerator.Error);
-            }
-
-            CommandText = ScriptGenerator.Script;
             ConnectionString = database.ConnectionString;
 
-            if (Timeout < 0) { Timeout = 10; }
+            ScriptExecutor executor = new(provider, _metadata, _databases, _scripts);
+            executor.PrepareScript(script.Script, out ScriptModel _, out List<ScriptCommand> commands);
+            ScriptParameters = executor.Parameters;
+            CommandText = GetInsertStatementScript(in commands);
+
+            for (int i = 0; i < commands.Count; i++)
+            {
+                if (commands[i].Statement is CreateSequenceStatement) // configure sequence database object
+                {
+                    provider.CreateQueryExecutor().ExecuteNonQuery(commands[i].Script, 10); break;
+                }
+            }
+        }
+        private string GetInsertStatementScript(in List<ScriptCommand> commands)
+        {
+            StringBuilder script = new();
+
+            for (int i = 0; i < commands.Count; i++)
+            {
+                ScriptCommand command = commands[i];
+
+                if (string.IsNullOrEmpty(command.Script))
+                {
+                    continue;
+                }
+
+                if (command.Statement is InsertStatement)
+                {
+                    script.AppendLine(command.Script); break;
+                }
+            }
+
+            return script.ToString();
         }
         public override void Process(in IDataRecord input)
         {
