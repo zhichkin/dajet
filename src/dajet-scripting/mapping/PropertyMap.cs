@@ -31,7 +31,7 @@ namespace DaJet.Scripting
         }
         public ColumnMap MapColumn(UnionTag tag)
         {
-            ColumnMap column = null;
+            ColumnMap column;
 
             if (Columns.TryGetValue(tag, out column))
             {
@@ -45,6 +45,10 @@ namespace DaJet.Scripting
             else if (tag == UnionTag.Uuid && Columns.TryGetValue(UnionTag.Entity, out column))
             {
                 return column; // convertion of Entity to Uuid
+            }
+            else if (tag == UnionTag.Numeric && Columns.TryGetValue(UnionTag.Version, out column))
+            {
+                return column; //TODO: convertion of numeric to bigint (VECTOR function hack)
             }
 
             return column;

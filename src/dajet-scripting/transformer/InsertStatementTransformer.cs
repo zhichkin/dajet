@@ -41,7 +41,7 @@ namespace DaJet.Scripting
 
                 if (column.Expression is FunctionExpression function)
                 {
-                    if (function.Name.ToUpper() == "VECTOR")
+                    if (function.Name.ToUpperInvariant() == "VECTOR")
                     {
                         return column.Alias;
                     }
@@ -89,7 +89,7 @@ namespace DaJet.Scripting
 
                 if (column.Expression is FunctionExpression function)
                 {
-                    if (function.Name.ToUpper() == "VECTOR")
+                    if (function.Name.ToUpperInvariant() == "VECTOR")
                     {
                         return column;
                     }
@@ -120,14 +120,6 @@ namespace DaJet.Scripting
                 column = columns[i];
 
                 columnSource.Select.Add(column);
-
-                //if (column.Expression is FunctionExpression function)
-                //{
-                //    if (function.Name.ToUpper() == "VECTOR")
-                //    {
-                //        return column;
-                //    }
-                //}
             }
 
             return table;

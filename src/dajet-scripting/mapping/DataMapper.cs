@@ -252,7 +252,9 @@ namespace DaJet.Scripting
             }
             else if (name == "VECTOR")
             {
-                union.IsNumeric = true; return;
+                //union.IsNumeric = true; return;
+                //TODO: IsVersion is int64 (bigint) hack
+                union.IsVersion = true; return;
             }
 
             foreach (SyntaxNode parameter in function.Parameters)
