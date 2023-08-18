@@ -133,6 +133,10 @@ namespace DaJet.Flow.PostgreSql
                 {
                     command.Parameters.AddWithValue(input.GetName(i), entity.Identity.ToByteArray());
                 }
+                else if (value is Guid uuid)
+                {
+                    command.Parameters.AddWithValue(input.GetName(i), uuid.ToByteArray());
+                }
                 else
                 {
                     command.Parameters.AddWithValue(input.GetName(i), value);

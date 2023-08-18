@@ -12,19 +12,15 @@ namespace DaJet.Flow.Kafka
     [PipelineBlock] public sealed class RecordToMessageTransformer : TransformerBlock<IDataRecord, Message<byte[], byte[]>>
     {
         private const string HEADER_TOPIC = "topic";
+        private const string CONTENT_TYPE_PROTOBUF = "protobuf";
 
         private readonly Message<byte[], byte[]> _output = new();
         private readonly Dictionary<string, MessageDescriptor> _descriptors = new();
         [Option] public string PackageName { get; set; } = string.Empty;
-        [Option] public string ContentType { get; set; } = "JSON";
+        [Option] public string ContentType { get; set; } = string.Empty;
         protected override void _Configure()
         {
-            if (string.IsNullOrWhiteSpace(ContentType))
-            {
-                ContentType = "JSON";
-            }
-
-            if (ContentType.ToUpperInvariant() == "JSON")
+            if (string.IsNullOrWhiteSpace(ContentType) || ContentType != CONTENT_TYPE_PROTOBUF)
             {
                 return;
             }
@@ -126,11 +122,11 @@ namespace DaJet.Flow.Kafka
             {
                 return uuid.ToByteArray();
             }
-            else if (key is string text)
+            else if (key is string text && Guid.TryParse(text, out Guid guid))
             {
-                return Encoding.UTF8.GetBytes(text);
+                return guid.ToByteArray();
             }
-            else if (key is byte[] binary)
+            else if (key is byte[] binary && binary.Length == 16)
             {
                 return binary;
             }
@@ -140,7 +136,7 @@ namespace DaJet.Flow.Kafka
         {
             if (value is not string json) { return null; }
 
-            if (ContentType.ToUpperInvariant() == "JSON")
+            if (ContentType != CONTENT_TYPE_PROTOBUF)
             {
                 return Encoding.UTF8.GetBytes(json);
             }

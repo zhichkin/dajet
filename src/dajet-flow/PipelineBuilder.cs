@@ -58,6 +58,34 @@ namespace DaJet.Flow
                     _logger?.LogInformation("[{AssemblyFullName}] loaded successfully.", assembly.FullName);
                 }
             }
+
+            // load protobuf packages
+            InitializeProtoPackages();
+        }
+        private void InitializeProtoPackages()
+        {
+            string catalogPath = Path.Combine(AppContext.BaseDirectory, "protobuf");
+
+            if (!Directory.Exists(catalogPath)) { return; }
+
+            Assembly assembly;
+
+            foreach (string filePath in Directory.GetFiles(catalogPath, "*.dll"))
+            {
+                if (_assemblies.ContainsKey(filePath))
+                {
+                    continue;
+                }
+
+                assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(filePath);
+
+                if (assembly is not null)
+                {
+                    _assemblies.Add(filePath, assembly);
+                }
+
+                _logger?.LogInformation("[{AssemblyFullName}] loaded successfully.", assembly.FullName);
+            }
         }
         public Type ResolveHandler(string name)
         {

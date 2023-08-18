@@ -11,21 +11,18 @@ namespace DaJet.Flow.Kafka
     // https://protobuf.dev/getting-started/csharptutorial/
     [PipelineBlock] public sealed class MessageToRecordTransformer : TransformerBlock<ConsumeResult<byte[], byte[]>, IDataRecord>
     {
+        private const string CONTENT_TYPE_PROTOBUF = "protobuf";
+
         private object _parser = null;
         private MethodInfo _parseFrom = null;
         private readonly object[] _parameters = new object[1];
         private readonly DataRecord _output = new();
         [Option] public string PackageName { get; set; } = string.Empty;
         [Option] public string MessageType { get; set; } = string.Empty;
-        [Option] public string ContentType { get; set; } = "JSON";
+        [Option] public string ContentType { get; set; } = string.Empty;
         protected override void _Configure()
         {
-            if (string.IsNullOrWhiteSpace(ContentType))
-            {
-                ContentType = "JSON";
-            }
-
-            if (ContentType.ToUpperInvariant() == "JSON")
+            if (string.IsNullOrWhiteSpace(ContentType) || ContentType != CONTENT_TYPE_PROTOBUF)
             {
                 return;
             }
@@ -70,7 +67,7 @@ namespace DaJet.Flow.Kafka
         }
         protected override void _Transform(in ConsumeResult<byte[], byte[]> input, out IDataRecord output)
         {
-            if (ContentType.ToUpperInvariant() == "JSON")
+            if (ContentType != CONTENT_TYPE_PROTOBUF)
             {
                 _output.SetValue("type", input.Topic);
                 _output.SetValue("uuid", DeserializeKey(input.Message.Key));
