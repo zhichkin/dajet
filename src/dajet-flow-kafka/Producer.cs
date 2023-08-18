@@ -1,5 +1,6 @@
 ﻿using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
+using System.Text;
 using Error = Confluent.Kafka.Error;
 
 namespace DaJet.Flow.Kafka
@@ -7,8 +8,11 @@ namespace DaJet.Flow.Kafka
     // https://docs.confluent.io/platform/current/clients/producer.html
     [PipelineBlock] public sealed class Producer : TargetBlock<Message<byte[], byte[]>>
     {
+        private const string HEADER_TOPIC = "topic";
+
         private int _produced;
         private string _error;
+        private string _topic;
         private ProducerConfig _options;
         private IProducer<byte[], byte[]> _producer;
         private readonly Action<IProducer<byte[], byte[]>, Error> _errorHandler;
@@ -50,11 +54,43 @@ namespace DaJet.Flow.Kafka
 
             try
             {
-                _producer.Produce(Topic, message, _deliveryReportHandler); // async inside - returns immediately
+                ProcessTopicHeader(in message);
+
+                _producer.Produce(_topic, message, _deliveryReportHandler); // async inside - returns immediately
             }
             catch
             {
                 DisposeProducer(); throw;
+            }
+        }
+        private void ProcessTopicHeader(in Message<byte[], byte[]> message)
+        {
+            _topic = Topic;
+
+            if (message.Headers is null)
+            {
+                return;
+            }
+
+            Headers headers = message.Headers;
+
+            for (int i = 0; i < headers.Count; i++)
+            {
+                IHeader header = headers[i];
+
+                if (header.Key == HEADER_TOPIC)
+                {
+                    byte[] value = header.GetValueBytes();
+
+                    if (value is not null && value.Length > 0)
+                    {
+                        _topic = Encoding.UTF8.GetString(value);
+                    }
+
+                    headers.Remove(HEADER_TOPIC);
+
+                    break;
+                }
             }
         }
         private void LogHandler(IProducer<byte[], byte[]> _, LogMessage message)

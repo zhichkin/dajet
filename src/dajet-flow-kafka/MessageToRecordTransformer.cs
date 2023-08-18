@@ -4,6 +4,7 @@ using Google.Protobuf;
 using System.Data;
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Text;
 
 namespace DaJet.Flow.Kafka
 {
@@ -16,8 +17,19 @@ namespace DaJet.Flow.Kafka
         private readonly DataRecord _output = new();
         [Option] public string PackageName { get; set; } = string.Empty;
         [Option] public string MessageType { get; set; } = string.Empty;
+        [Option] public string ContentType { get; set; } = "JSON";
         protected override void _Configure()
         {
+            if (string.IsNullOrWhiteSpace(ContentType))
+            {
+                ContentType = "JSON";
+            }
+
+            if (ContentType.ToUpperInvariant() == "JSON")
+            {
+                return;
+            }
+
             Assembly package = null;
 
             foreach (Assembly assembly in AssemblyLoadContext.Default.Assemblies)
@@ -58,23 +70,40 @@ namespace DaJet.Flow.Kafka
         }
         protected override void _Transform(in ConsumeResult<byte[], byte[]> input, out IDataRecord output)
         {
-            _parameters[0] = input.Message.Value;
-            object instance = _parseFrom.Invoke(_parser, _parameters);
-
-            if (instance is not IMessage message)
+            if (ContentType.ToUpperInvariant() == "JSON")
             {
-                _output.Clear();
+                _output.SetValue("type", input.Topic);
+                _output.SetValue("uuid", DeserializeKey(input.Message.Key));
+                _output.SetValue("body", Encoding.UTF8.GetString(input.Message.Value));
+                _output.SetValue("time", input.Message.Timestamp.UtcDateTime);
             }
             else
             {
-                _output.SetValue("type", input.Topic);
-                _output.SetValue("uuid", input.Message.Key);
-                _output.SetValue("body", JsonFormatter.Default.Format(message));
-                _output.SetValue("time", input.Message.Timestamp.UtcDateTime);
-                _output.SetValue("unix", input.Message.Timestamp.UnixTimestampMs);
+                _parameters[0] = input.Message.Value;
+                object instance = _parseFrom.Invoke(_parser, _parameters);
+
+                if (instance is not IMessage message)
+                {
+                    _output.Clear();
+                }
+                else
+                {
+                    _output.SetValue("type", input.Topic);
+                    _output.SetValue("uuid", DeserializeKey(input.Message.Key));
+                    _output.SetValue("body", JsonFormatter.Default.Format(message));
+                    _output.SetValue("time", input.Message.Timestamp.UtcDateTime);
+                }
             }
 
             output = _output;
+        }
+        private Guid DeserializeKey(in byte[] key)
+        {
+            if (key is null || key.Length != 16)
+            {
+                return Guid.Empty;
+            }
+            return new Guid(key);
         }
         protected override void _Dispose()
         {
