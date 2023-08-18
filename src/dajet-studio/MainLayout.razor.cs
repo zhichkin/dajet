@@ -151,10 +151,17 @@ namespace DaJet.Studio
         {
             Navigator.NavigateTo("/script-editor");
         }
-
         protected void OpenPipelineList(MouseEventArgs args)
         {
             Navigator.NavigateTo("/dajet-flow");
+        }
+        protected void OpenKafkaProducerPage(MouseEventArgs args)
+        {
+            Navigator.NavigateTo("/create-kafka-producer");
+        }
+        protected void OpenKafkaConsumerPage(MouseEventArgs args)
+        {
+            Navigator.NavigateTo("/create-kafka-consumer");
         }
     }
 }

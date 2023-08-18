@@ -1,0 +1,66 @@
+﻿@page "/create-kafka-consumer"
+
+@inject HttpClient Http;
+@inject NavigationManager Navigator;
+@inject ISnackbar Snackbar;
+
+<div style="margin:0px 10px 0px 10px;overflow:scroll;">
+
+    <MudField Variant="Variant.Text" DisableUnderLine="true" FullWidth="false" Margin="Margin.Dense">
+        <b>Создание консюмера: Kafka -> 1C</b>
+        <MudTooltip Text="Закрыть страницу">
+            <MudIconButton Icon="@Icons.Material.Outlined.Close" Color="Color.Error" Size="Size.Small" OnClick="NavigateToHomePage" />
+        </MudTooltip>
+    </MudField>
+
+    <MudTooltip Text="Создать конвейер">
+        <MudButton OnClick="CreatePipeline" Size="Size.Small" Variant="Variant.Filled" Color="Color.Success">Создать</MudButton>
+    </MudTooltip>
+
+    <MudTextField T="string" Label="Имя конвейера" @bind-Value="@Model.Name" Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+
+    <MudTextField T="string" Label="Кластер Kafka" @bind-Value="KafkaServer" Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+
+    <MudTextField T="string" Label="Наименование топика" @bind-Value="KafkaTopic" Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+
+    <MudTextField T="string" Label="Пакет Protobuf" @bind-Value="PackageName" Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+
+    <MudTextField T="string" Label="Тип сообщения Protobuf" @bind-Value="MessageType" Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+
+    <MudSelect T="string" Label="Тип приёмника данных" @bind-Value="@DataSourceType" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+               Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);">
+
+        @foreach (string target in DataSourceTypes)
+        {
+            <MudSelectItem Value="@target" />
+        }
+
+    </MudSelect>
+
+    @if (DataSourceType == "SqlServer" || DataSourceType == "PostgreSql")
+    {
+        <MudSelect T="InfoBaseModel" Label="Приёмник данных" @bind-Value="@DataSourceUrl" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                   Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);">
+
+            @foreach (InfoBaseModel target in DataSourceUrls)
+            {
+                @if (target.DatabaseProvider == DataSourceType)
+                {
+                    <MudSelectItem Value="@target">@target.Name</MudSelectItem>
+                }
+            }
+
+        </MudSelect>
+    }
+
+    <MudTextField T="string" Label="Скрипт приёмника данных" @bind-Value="InsertScriptUrl" Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);" />
+
+    <MudCheckBox @bind-Checked="@GenerateInsertScript" Label="Сформировать скрипт приёмника данных" LabelPosition="LabelPosition.Start" Color="Color.Primary" Class="ml-0 mt-3" />
+
+</div>

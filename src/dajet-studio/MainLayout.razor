@@ -42,9 +42,12 @@
                 <MudTooltip Text="DaJet Flow Pipelines">
                     <MudIconButton Icon="@Icons.Material.Outlined.SyncAlt" Color="Color.Default" Size="Size.Small" OnClick="OpenPipelineList" />
                 </MudTooltip>
-                @*<MudTooltip Text="Создать новый скрипт">
-                    <MudIconButton Icon="@Icons.Material.Outlined.Description" Color="Color.Default" Size="Size.Small" OnClick="CreateNewScript" />
-                </MudTooltip>*@
+                <MudTooltip Text="Создать продюсера">
+                    <img src="/img/kafka-produce.png" style="margin-left:20px; width:24px; height:24px; vertical-align:middle; cursor:pointer" @onclick="OpenKafkaProducerPage" />
+                </MudTooltip>
+                <MudTooltip Text="Создать консюмера">
+                    <img src="/img/kafka-consume.png" style="width:24px; height:24px;vertical-align:middle;cursor:pointer" @onclick="OpenKafkaConsumerPage" />
+                </MudTooltip>
             </MudContainer>
 
             <MudSpacer />
