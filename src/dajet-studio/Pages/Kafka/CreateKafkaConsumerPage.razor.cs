@@ -8,14 +8,11 @@ namespace DaJet.Studio.Pages.Kafka
 {
     public partial class CreateKafkaConsumerPage : ComponentBase
     {
-        private const string ONEDB_MESSAGE_NAME = "DaJet.Exchange.OneDbMessage";
-        private const string BLOCK_NAME_EXCHANGE = "DaJet.Exchange.{0}.OneDbExchange";
-        private const string BLOCK_NAME_ROUTER = "DaJet.Exchange.{0}.OneDbRouter";
-        private const string BLOCK_NAME_TRANSFORMER = "DaJet.Exchange.{0}.OneDbTransformer";
-        private const string BLOCK_NAME_SERIALIZER = "DaJet.Exchange.OneDbSerializer";
-        private const string BLOCK_NAME_PRODUCER = "DaJet.Exchange.{0}.OneDbProducer";
-        private const string BLOCK_NAME_RABBITMQ = "DaJet.Exchange.RabbitMQ.Producer";
-        private const string BLOCK_NAME_APACHE_KAFKA = "DaJet.Exchange.Kafka.Producer";
+        private const string BLOCK_NAME_KAFKA_CONSUMER = "DaJet.Flow.Kafka.Consumer";
+        private const string MESSAGE_NAME_CONSUME_RESULT = "Confluent.Kafka.ConsumeResult`2[System.Byte[],System.Byte[]]";
+        private const string BLOCK_NAME_TRANSFORMER = "DaJet.Flow.Kafka.MessageToRecordTransformer";
+        private const string MESSAGE_NAME_DATA_RECORD = "System.Data.IDataRecord";
+        private const string BLOCK_NAME_DATABASE_PRODUCER = "DaJet.Flow.{0}.OneDbProducer";
         protected PipelineOptions Model { get; set; } = new();
         protected string KafkaServer { get; set; } = "127.0.0.1:9092";
         protected string KafkaTopic { get; set; } = string.Empty;
@@ -28,7 +25,7 @@ namespace DaJet.Studio.Pages.Kafka
         };
         protected InfoBaseModel DataSourceUrl { get; set; }
         protected List<InfoBaseModel> DataSourceUrls { get; set; } = new();
-        protected string InsertScriptUrl { get; set; } = "/insert";
+        protected string InsertScriptUrl { get; set; } = "/produce";
         protected bool GenerateInsertScript { get; set; } = false;
         protected override async Task OnParametersSetAsync()
         {
@@ -95,80 +92,48 @@ namespace DaJet.Studio.Pages.Kafka
             Model.Blocks.Clear();
             Model.Blocks.Add(new PipelineBlock()
             {
-                Handler = string.Format(BLOCK_NAME_EXCHANGE, DataSourceUrl.DatabaseProvider),
-                Message = ONEDB_MESSAGE_NAME,
+                Handler = BLOCK_NAME_KAFKA_CONSUMER,
+                Message = MESSAGE_NAME_CONSUME_RESULT,
                 Options =
-                {
-                    new OptionItem() { Name = "Pipeline", Type = "System.Guid", Value = Model.Uuid.ToString().ToLower() },
-                    new OptionItem() { Name = "Source", Type = "System.String", Value = DataSourceUrl.Name },
-                    new OptionItem() { Name = "Timeout", Type = "System.Int32", Value = "10" },
-                    new OptionItem() { Name = "BatchSize", Type = "System.Int32", Value = "1000" }
-                }
-            });
-            Model.Blocks.Add(new PipelineBlock()
-            {
-                Handler = string.Format(BLOCK_NAME_ROUTER, DataSourceUrl.DatabaseProvider),
-                Message = ONEDB_MESSAGE_NAME,
-                Options =
-                {
-                    new OptionItem() { Name = "Source", Type = "System.String", Value = DataSourceUrl.Name },
-                    new OptionItem() { Name = "MaxDop", Type = "System.Int32", Value = "1" },
-                    new OptionItem() { Name = "Timeout", Type = "System.Int32", Value = "10" }
-                }
-            });
-            Model.Blocks.Add(new PipelineBlock()
-            {
-                Handler = string.Format(BLOCK_NAME_TRANSFORMER, DataSourceUrl.DatabaseProvider),
-                Message = ONEDB_MESSAGE_NAME,
-                Options =
-                {
-                    new OptionItem() { Name = "Source", Type = "System.String", Value = DataSourceUrl.Name },
-                    new OptionItem() { Name = "MaxDop", Type = "System.Int32", Value = "1" },
-                    new OptionItem() { Name = "Timeout", Type = "System.Int32", Value = "10" }
-                }
-            });
-            Model.Blocks.Add(new PipelineBlock()
-            {
-                Handler = BLOCK_NAME_SERIALIZER,
-                Message = ONEDB_MESSAGE_NAME,
-                Options =
-                {
-                    new OptionItem() { Name = "MaxDop", Type = "System.Int32", Value = "1" }
-                }
-            });
-
-            if (DataSourceType == "SqlServer" || DataSourceType == "PostgreSql")
-            {
-                Model.Blocks.Add(new PipelineBlock()
-                {
-                    Handler = string.Format(BLOCK_NAME_PRODUCER, DataSourceType),
-                    Message = ONEDB_MESSAGE_NAME,
-                    Options =
-                    {
-                        new OptionItem() { Name = "Target", Type = "System.String", Value = DataSourceUrl.Name },
-                        new OptionItem() { Name = "Script", Type = "System.String", Value = InsertScriptUrl },
-                        new OptionItem() { Name = "Timeout", Type = "System.Int32", Value = "10" }
-                    }
-                });
-            }
-            else // Apache Kafka
-            {
-                Model.Blocks.Add(new PipelineBlock()
-                {
-                    Handler = BLOCK_NAME_APACHE_KAFKA,
-                    Message = ONEDB_MESSAGE_NAME,
-                    Options =
                     {
                         new OptionItem() { Name = "Pipeline", Type = "System.Guid", Value = Model.Uuid.ToString().ToLower() },
+                        new OptionItem() { Name = "GroupId", Type = "System.String", Value = DataSourceUrl.Name },
                         new OptionItem() { Name = "ClientId", Type = "System.String", Value = DataSourceUrl.Name },
                         new OptionItem() { Name = "BootstrapServers", Type = "System.String", Value = KafkaServer },
-                        new OptionItem() { Name = "Acks", Type = "System.String", Value = "all" },
-                        new OptionItem() { Name = "MaxInFlight", Type = "System.String", Value = "1" },
-                        new OptionItem() { Name = "MessageTimeoutMs", Type = "System.String", Value = "30000" },
-                        new OptionItem() { Name = "EnableIdempotence", Type = "System.String", Value = "false" }
+                        new OptionItem() { Name = "Topic", Type = "System.String", Value = KafkaTopic },
+                        new OptionItem() { Name = "AutoOffsetReset", Type = "System.String", Value = "earliest" },
+                        new OptionItem() { Name = "EnableAutoCommit", Type = "System.String", Value = "false" },
+                        new OptionItem() { Name = "SessionTimeoutMs", Type = "System.String", Value = "60000" },
+                        new OptionItem() { Name = "HeartbeatIntervalMs", Type = "System.String", Value = "20000" }
                     }
-                });
-            }
+            });
+            Model.Blocks.Add(new PipelineBlock()
+            {
+                Handler = BLOCK_NAME_TRANSFORMER,
+                Message = MESSAGE_NAME_DATA_RECORD,
+                Options =
+                {
+                    new OptionItem() { Name = "PackageName", Type = "System.String", Value = PackageName },
+                    new OptionItem() { Name = "MessageType", Type = "System.String", Value = MessageType },
+                    new OptionItem()
+                    {
+                        Name = "ContentType",
+                        Type = "System.String",
+                        Value = string.IsNullOrWhiteSpace(PackageName) ? string.Empty : "protobuf"
+                    }
+                }
+            });
+            Model.Blocks.Add(new PipelineBlock()
+            {
+                Handler = string.Format(BLOCK_NAME_DATABASE_PRODUCER, DataSourceType),
+                Message = MESSAGE_NAME_DATA_RECORD,
+                Options =
+                {
+                    new OptionItem() { Name = "Target", Type = "System.String", Value = DataSourceUrl.Name },
+                    new OptionItem() { Name = "Script", Type = "System.String", Value = InsertScriptUrl },
+                    new OptionItem() { Name = "Timeout", Type = "System.Int32", Value = "10" }
+                }
+            });
 
             try
             {
@@ -206,7 +171,7 @@ namespace DaJet.Studio.Pages.Kafka
 
             try
             {
-                HttpResponseMessage response = await Http.PutAsJsonAsync($"/exchange/configure/script/inqueue/{DataSourceUrl.Name}", script);
+                HttpResponseMessage response = await Http.PutAsJsonAsync($"/exchange/configure/script/produce/{DataSourceUrl.Name}", script);
 
                 if (response.IsSuccessStatusCode)
                 {

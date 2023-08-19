@@ -1358,5 +1358,93 @@ namespace DaJet.Http.Controllers
 
             return type;
         }
+
+        // *******************
+
+        [HttpPut("configure/script/consume/{infobase}")]
+        public ActionResult ConfigureConsumeScript([FromRoute] string infobase, [FromBody] ScriptRecord script)
+        {
+            InfoBaseModel database = _databases.Select(infobase);
+
+            if (database is null) { return NotFound(infobase); }
+
+            ScriptRecord record = _scripts.SelectScriptByPath(database.Uuid, script.Name);
+
+            if (record is null) { return NotFound(script.Name); }
+
+            record.Script = GenerateConsumeScriptSourceCode();
+
+            if (_scripts.Update(record))
+            {
+                return Ok();
+            }
+            else
+            {
+                return Conflict();
+            }
+        }
+        private string GenerateConsumeScriptSourceCode()
+        {
+            StringBuilder script = new();
+
+            script.AppendLine("CONSUME TOP 1000");
+            script.AppendLine("  ТелоСообщения AS ТелоСообщения, -- JSON UTF-8 или protobuf");
+            script.AppendLine("  Получатели    AS Получатель,    -- наименование топика Kafka");
+            script.AppendLine("  Идентификатор AS КлючСообщения, -- необязательный");
+            script.AppendLine("  ТипСообщения  AS ТипСообщения   -- тип сообщения protobuf");
+            script.AppendLine("FROM");
+            script.AppendLine("  РегистрСведений.ИсходящаяОчередьKafka");
+            script.AppendLine("ORDER BY");
+            script.AppendLine("  МоментВремени ASC -- порядковый номер сообщения");
+
+            return script.ToString();
+        }
+
+        [HttpPut("configure/script/produce/{infobase}")]
+        public ActionResult ConfigureProduceScript([FromRoute] string infobase, [FromBody] ScriptRecord script)
+        {
+            InfoBaseModel database = _databases.Select(infobase);
+
+            if (database is null) { return NotFound(infobase); }
+
+            ScriptRecord record = _scripts.SelectScriptByPath(database.Uuid, script.Name);
+
+            if (record is null) { return NotFound(script.Name); }
+
+            record.Script = GenerateProduceScriptSourceCode();
+
+            if (_scripts.Update(record))
+            {
+                return Ok();
+            }
+            else
+            {
+                return Conflict();
+            }
+        }
+        private string GenerateProduceScriptSourceCode()
+        {
+            StringBuilder script = new();
+
+            script.AppendLine("DECLARE @uuid uuid     = '00000000-0000-0000-0000-000000000000';");
+            script.AppendLine("DECLARE @type string   = 'message-type';        -- наименование топика Kafka");
+            script.AppendLine("DECLARE @body string   = 'message-body';        -- тело сообщения JSON UTF-8");
+            script.AppendLine("DECLARE @time datetime = '2025-08-01T12:34:56'; -- отметка времени Kafka (UTC)");
+            script.AppendLine();
+            script.AppendLine("CREATE SEQUENCE so_kafka_incoming_queue;");
+            script.AppendLine();
+            script.AppendLine("CREATE COMPUTED TABLE source AS");
+            script.AppendLine("(");
+            script.AppendLine("  SELECT VECTOR('so_kafka_incoming_queue') AS МоментВремени,");
+            script.AppendLine("         @uuid AS Идентификатор,     @type AS ТипСообщения,");
+            script.AppendLine("         @time AS ДатаВремя,         @body AS ТелоСообщения");
+            script.AppendLine(")");
+            script.AppendLine("INSERT РегистрСведений.ВходящаяОчередьKafka FROM source");
+            script.AppendLine();
+            script.AppendLine("SELECT TOP 1 МоментВремени, ТипСообщения, ТелоСообщения, ДатаВремя");
+            script.AppendLine("  FROM РегистрСведений.ВходящаяОчередьKafka ORDER BY МоментВремени DESC");
+
+            return script.ToString();
+        }
     }
 }

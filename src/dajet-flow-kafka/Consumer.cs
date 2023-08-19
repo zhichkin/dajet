@@ -47,23 +47,29 @@ namespace DaJet.Flow.Kafka
 
             _cts ??= new CancellationTokenSource();
 
-            _consumer ??= new ConsumerBuilder<byte[], byte[]>(_options)
-                .SetLogHandler(_logHandler)
-                .SetErrorHandler(_errorHandler)
-                .Build();
+            try
+            {
+                _consumer ??= new ConsumerBuilder<byte[], byte[]>(_options)
+                    .SetLogHandler(_logHandler)
+                    .SetErrorHandler(_errorHandler)
+                    .Build();
 
-            _consumer.Subscribe(Topic);
-
-            _consumed = 0;
+                _consumer.Subscribe(Topic);
+            }
+            catch
+            {
+                DisposeConsumer(); throw;
+            }
 
             Stopwatch watch = new();
             watch.Start();
+
+            _consumed = 0;
 
             do
             {
                 try
                 {
-
                     _result = _consumer.Consume(_cts.Token);
                 }
                 catch (ObjectDisposedException) { /* IGNORE */ }
