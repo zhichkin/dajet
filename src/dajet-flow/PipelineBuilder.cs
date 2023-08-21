@@ -23,6 +23,7 @@ namespace DaJet.Flow
             _logger = logger;
             _services = services;
             InitializeAssemblies();
+            InitializeProtoPackages();
         }
         private void InitializeAssemblies()
         {
@@ -58,9 +59,6 @@ namespace DaJet.Flow
                     _logger?.LogInformation("[{AssemblyFullName}] loaded successfully.", assembly.FullName);
                 }
             }
-
-            // load protobuf packages
-            InitializeProtoPackages();
         }
         private void InitializeProtoPackages()
         {

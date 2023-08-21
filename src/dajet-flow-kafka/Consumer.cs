@@ -1,6 +1,5 @@
 ﻿using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
-using System.Diagnostics;
 
 namespace DaJet.Flow.Kafka
 {
@@ -61,9 +60,6 @@ namespace DaJet.Flow.Kafka
                 DisposeConsumer(); throw;
             }
 
-            Stopwatch watch = new();
-            watch.Start();
-
             _consumed = 0;
 
             do
@@ -81,7 +77,7 @@ namespace DaJet.Flow.Kafka
 
                 if (_cts.IsCancellationRequested)
                 {
-                    _manager?.UpdatePipelineStatus(Pipeline, $"Consumed {_consumed} messages in {watch.ElapsedMilliseconds} ms");
+                    _manager?.UpdatePipelineStatus(Pipeline, $"Consumed {_consumed} messages");
 
                     DisposeConsumer(); return;
                 }
@@ -97,7 +93,7 @@ namespace DaJet.Flow.Kafka
                         DisposeConsumer(); throw;
                     }
 
-                    _manager?.UpdatePipelineStatus(Pipeline, $"Consumed {_consumed} messages in {watch.ElapsedMilliseconds} ms");
+                    _manager?.UpdatePipelineStatus(Pipeline, $"Consumed {_consumed} messages");
                 }
             }
             while (_result is not null && _result.Message is not null);
@@ -114,13 +110,15 @@ namespace DaJet.Flow.Kafka
         }
         private void LogHandler(IConsumer<byte[], byte[]> _, LogMessage log)
         {
+            _manager?.UpdatePipelineStatus(Pipeline, log.Message);
             _manager?.UpdatePipelineFinishTime(Pipeline, DateTime.Now);
-            _manager?.UpdatePipelineStatus(Pipeline, $"[{Topic}] [{log.Name}]: {log.Message}");
+            FileLogger.Default.Write($"[{Topic}] [{log.Name}]: {log.Message}");
         }
         private void ErrorHandler(IConsumer<byte[], byte[]> consumer, Error error)
         {
+            _manager?.UpdatePipelineStatus(Pipeline, error.Reason);
             _manager?.UpdatePipelineFinishTime(Pipeline, DateTime.Now);
-            _manager?.UpdatePipelineStatus(Pipeline, $"[{Topic}] [{consumer.Name}] [{string.Concat(consumer.Subscription)}]: {error.Reason}");
+            FileLogger.Default.Write($"[{Topic}] [{consumer.Name}] [{string.Concat(consumer.Subscription)}]: {error.Reason}");
         }
         protected override void _Dispose()
         {

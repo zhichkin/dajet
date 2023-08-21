@@ -96,6 +96,7 @@ namespace DaJet.Flow.Kafka
         private void LogHandler(IProducer<byte[], byte[]> _, LogMessage message)
         {
             _manager?.UpdatePipelineStatus(Pipeline, message.Message);
+            FileLogger.Default.Write($"[{Topic}] [{message.Name}]: {message.Message}");
         }
         private void ErrorHandler(IProducer<byte[], byte[]> _, Error error)
         {
@@ -104,6 +105,7 @@ namespace DaJet.Flow.Kafka
                 _error = error.Reason;
             }
             _manager?.UpdatePipelineStatus(Pipeline, error?.Reason);
+            FileLogger.Default.Write($"[{Topic}] [{ClientId}]: {error?.Reason}");
         }
         private void HandleDeliveryReport(DeliveryReport<byte[], byte[]> report)
         {
@@ -115,6 +117,7 @@ namespace DaJet.Flow.Kafka
             {
                 _error = report.Error.Reason; //FIXME: stop producing the batch !?
                 _manager?.UpdatePipelineStatus(Pipeline, report.Error.Reason); // show last error
+                FileLogger.Default.Write($"[{report.Topic}] [{ClientId}]: {report.Error.Reason}");
             }
         }
         protected override void _Synchronize()

@@ -65,14 +65,11 @@ namespace DaJet.Flow
                 }
                 catch (Exception error)
                 {
-                    if (ShowStackTrace)
-                    {
-                        _manager.UpdatePipelineStatus(Uuid, ExceptionHelper.GetErrorMessageAndStackTrace(error));
-                    }
-                    else
-                    {
-                        _manager.UpdatePipelineStatus(Uuid, ExceptionHelper.GetErrorMessage(error));
-                    }
+                    string errorMessage = ShowStackTrace
+                        ? ExceptionHelper.GetErrorMessageAndStackTrace(error)
+                        : ExceptionHelper.GetErrorMessage(error);
+                    _manager.UpdatePipelineStatus(Uuid, errorMessage);
+                    FileLogger.Default.Write($"[{Name}]: {errorMessage}");
                 }
 
                 _manager.UpdatePipelineFinishTime(Uuid, DateTime.Now);

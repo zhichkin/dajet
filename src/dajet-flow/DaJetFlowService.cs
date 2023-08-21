@@ -21,7 +21,7 @@ namespace DaJet.Flow
 
             return Task.Factory.StartNew(TryDoWork, TaskCreationOptions.LongRunning);
 
-            // NOTE: running DoWork procedure once
+            // NOTE: to run DoWork procedure once do the following:
             // DoWork(); // blocks other services to run
             // return Task.CompletedTask;
         }

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace DaJet.Metadata
+namespace DaJet
 {
     public static class ExceptionHelper
     {
