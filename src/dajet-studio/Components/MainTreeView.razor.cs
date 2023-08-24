@@ -29,13 +29,16 @@ namespace DaJet.Studio.Components
         #endregion
         protected string FilterValue { get; set; } = string.Empty;
         protected List<TreeNodeModel> Nodes { get; set; } = new();
+        [Inject] private FlowTreeViewController FlowController { get; set; }
         [Inject] private DbViewController DbViewController { get; set; }
         [Inject] private ApiTreeViewController ApiTreeViewController { get; set; }
         [Inject] private ExchangeTreeViewController ExchangeTreeViewController { get; set; }
-        protected override async Task OnInitializedAsync()
+        protected override void OnInitialized()
         {
-            await IntializeInfoBaseList();
-            
+            Nodes.Add(FlowController.CreateRootNode());
+
+            Nodes.Add(CreateDbmsRootNode());
+
             AppState.RefreshInfoBaseCommand += Refresh;
         }
         public void Dispose()
@@ -49,9 +52,14 @@ namespace DaJet.Studio.Components
         {
             try
             {
-                await IntializeInfoBaseList();
-                
-                StateHasChanged();
+                TreeNodeModel dbms = Nodes.Where(node => node.Title == "dbms").FirstOrDefault();
+
+                if (dbms is not null)
+                {
+                    await OpenDbmsNodeHandler(dbms);
+
+                    StateHasChanged();
+                }
             }
             catch (Exception error)
             {
@@ -59,6 +67,45 @@ namespace DaJet.Studio.Components
             }
         }
 
+        private TreeNodeModel CreateDbmsRootNode()
+        {
+            return new TreeNodeModel()
+            {
+                Url = $"/md",
+                Title = "dbms",
+                OpenNodeHandler = OpenDbmsNodeHandler
+            };
+        }
+        private async Task OpenDbmsNodeHandler(TreeNodeModel root)
+        {
+            if (root is null) { return; }
+
+            try
+            {
+                root.Nodes.Clear();
+
+                HttpResponseMessage response = await Http.GetAsync(root.Url);
+
+                List<InfoBaseModel> list = await response.Content.ReadFromJsonAsync<List<InfoBaseModel>>();
+
+                foreach (InfoBaseModel model in list)
+                {
+                    TreeNodeModel node = new();
+
+                    ConfigureInfoBaseNode(in node, in model);
+
+                    root.Nodes.Add(node);
+                }
+            }
+            catch
+            {
+                root.Nodes.Add(new TreeNodeModel()
+                {
+                    UseToggle = false,
+                    Title = "Ошибка загрузки данных!"
+                });
+            }
+        }
         private void ConfigureDbViewNode(in TreeNodeModel node, in InfoBaseModel model)
         {
             try
@@ -99,34 +146,6 @@ namespace DaJet.Studio.Components
             }
         }
 
-        private async Task IntializeInfoBaseList()
-        {
-            try
-            {
-                Nodes.Clear();
-
-                HttpResponseMessage response = await Http.GetAsync("/md");
-
-                List<InfoBaseModel> list = await response.Content.ReadFromJsonAsync<List<InfoBaseModel>>();
-
-                foreach (InfoBaseModel model in list)
-                {
-                    TreeNodeModel node = new();
-
-                    ConfigureInfoBaseNode(in node, in model);
-
-                    Nodes.Add(node);
-                }
-            }
-            catch (Exception error)
-            {
-                Nodes.Add(new TreeNodeModel()
-                {
-                    UseToggle = false,
-                    Title = "Ошибка загрузки данных!"
-                });
-            }
-        }
         private async Task OpenExtensionsNodeHandler(TreeNodeModel node)
         {
             if (node == null || node.Nodes.Count > 0)
@@ -463,11 +482,15 @@ namespace DaJet.Studio.Components
         #region "FILTER TREE VIEW"
         protected async Task FilterTreeView(string filter)
         {
+            TreeNodeModel dbms = Nodes.Where(node => node.Title == "dbms").FirstOrDefault();
+
+            if (dbms is null) { return; }
+
             InfoBaseModel database = AppState.CurrentDatabase;
 
             TreeNodeModel target = null;
 
-            foreach (TreeNodeModel node in Nodes)
+            foreach (TreeNodeModel node in dbms.Nodes)
             {
                 if (node.Title == database.Name)
                 {
