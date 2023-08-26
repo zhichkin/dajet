@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace DaJet.Model
+﻿namespace DaJet
 {
     public sealed class BiDictionary<T1, T2>
     {

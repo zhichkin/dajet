@@ -1,7 +1,4 @@
-﻿using System;
-using System.Data;
-
-namespace DaJet.Orm
+﻿namespace DaJet.Dto
 {
     //public partial class Entity
     //{

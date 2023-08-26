@@ -1,9 +1,23 @@
-using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 namespace DaJet.Model
 {
+    public enum PersistentState : byte
+    {
+        New,      // объект только что создан в памяти, ещё не существует в источнике данных
+        Virtual,  // объект существует в источнике данных, но ещё не загружены его свойства
+        Original, // объект загружен из источника данных и ещё ни разу с тех пор не изменялся
+        Changed,  // объект загружен из источника данных и с тех пор был уже изменен
+        Deleted,  // объект удалён из источника данных, но пока ещё существует в памяти
+        Loading   // объект в данный момент загружается из источника данных, это состояние
+        // необходимо исключительно для случаев когда data mapper загружает из базы
+        // данных объект, находящийсяв состоянии Virtual, чтобы иметь возможность
+        // загружать значения свойств объекта обращаясь к ним напрямую и косвенно
+        // вызывая метод Persistent.Set() - без этого состояния подобная стратегия
+        // вызывает циклический вызов методов Persistent.Set(), Persistent.LazyLoad(),
+        // IPersistent.Load(), IDataMapper.Select() и далее по кругу.
+    }
     public interface IPersistent
     {
         PersistentState State { get; }
@@ -20,45 +34,12 @@ namespace DaJet.Model
     }
     public abstract class PersistentObject : IPersistent, INotifyPropertyChanged
     {
-        protected IDataMapper _mapper;
+        protected IDataSource _source;
         protected PersistentState _state = PersistentState.New;
         private PersistentObject() { }
-        protected PersistentObject(IDataMapper mapper) { _mapper = mapper; }
-        public PersistentState State { get { return _state; } }
-        //public void SetStateLoading()
-        //{
-        //    if (_state == PersistentState.New)
-        //    {
-        //        _state = PersistentState.Loading;
-        //    }
-        //    else
-        //    {
-        //        throw new InvalidOperationException($"State transition from [{_state}] to [{PersistentState.Loading}] is not allowed!");
-        //    }
-        //}
-        //set
-        //{
-        //    if (state == PersistentState.New && value == PersistentState.Loading)
-        //    {
-        //        state = value;
-        //    }
-        //    else if (state == PersistentState.Loading && value == PersistentState.Original)
-        //    {
-        //        state = value;
-        //        UpdateKeyValues();
-        //    }
-        //    else
-        //    {
-        //        throw new NotSupportedException("The transition from the current state to the new one is not allowed!"
-        //            + Environment.NewLine
-        //            + string.Format("Current state: {0}. New state: {1}.", state.ToString(), value.ToString()));
-        //    }
-        //}
-        protected virtual void UpdateKeyValues()
-        {
-            // Compound keys can have fields changeable by user code.
-            // When changed key is stored to the database, object's key values in memory must be synchronized.
-        }
+        protected PersistentObject(IDataSource source) { _source = source; }
+        public PersistentState State { get { return _state; } protected set { _state = value; } }
+        private void LazyLoad() { if (_state == PersistentState.Virtual) Load(); }
         protected TValue Get<TValue>(ref TValue storage) { LazyLoad(); return storage; }
         protected void Set<TValue>(TValue value, ref TValue storage, [CallerMemberName] string propertyName = null)
         {
@@ -116,6 +97,28 @@ namespace DaJet.Model
             if (string.IsNullOrWhiteSpace(propertyName)) throw new ArgumentOutOfRangeException(nameof(propertyName));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+        public void MarkAsLoading()
+        {
+            if (_state == PersistentState.New || _state == PersistentState.Virtual)
+            {
+                _state = PersistentState.Loading;
+            }
+            else
+            {
+                throw new InvalidOperationException($"State transition from [{_state}] to [{PersistentState.Loading}] is not allowed!");
+            }
+        }
+        public void MarkAsOriginal()
+        {
+            if (_state == PersistentState.Loading)
+            {
+                _state = PersistentState.Original;
+            }
+            else
+            {
+                throw new InvalidOperationException($"State transition from [{_state}] to [{PersistentState.Original}] is not allowed!");
+            }
+        }
 
         #region "PERSISTENT STATE EVENTS HANDLING"
 
@@ -127,17 +130,11 @@ namespace DaJet.Model
         }
         protected void OnStateChanged(StateEventArgs args)
         {
-            if (args.NewState == PersistentState.Original)
-            {
-                UpdateKeyValues();
-            }
             StateChanged?.Invoke(this, args);
         }
 
         #endregion
-
-        private void LazyLoad() { if (_state == PersistentState.Virtual) Load(); }
-
+        
         #region "ACTIVE RECORD METHODS AND EVENTS"
 
         public event SavingEventHandler Saving;
@@ -159,8 +156,10 @@ namespace DaJet.Model
 
             while (count > 0)
             {
-                count--;
-                ((KillingEventHandler)list[count])(this);
+                if (list[--count] is KillingEventHandler handler)
+                {
+                    handler(this);
+                }
             }
         }
         private void OnKilled() { Killed?.Invoke(this); }
@@ -178,11 +177,11 @@ namespace DaJet.Model
 
                 if (_state == PersistentState.New)
                 {
-                    _mapper.Insert(this);
+                    _source.Create(this);
                 }
                 else
                 {
-                    _mapper.Update(this);
+                    _source.Update(this);
                 }
 
                 _state = PersistentState.Original;
@@ -202,7 +201,7 @@ namespace DaJet.Model
 
                 OnStateChanging(args);
 
-                _mapper.Delete(this);
+                _source.Delete(this);
 
                 _state = PersistentState.Deleted;
 
@@ -225,7 +224,7 @@ namespace DaJet.Model
                 {
                     OnStateChanging(args);
 
-                    _mapper.Select(this);
+                    _source.Select(this);
 
                     _state = PersistentState.Original;
 
@@ -235,7 +234,11 @@ namespace DaJet.Model
                 }
                 catch
                 {
-                    if (_state == PersistentState.Loading) { _state = old; }
+                    if (_state == PersistentState.Loading)
+                    {
+                        _state = old;
+                    }
+
                     throw;
                 }
             }

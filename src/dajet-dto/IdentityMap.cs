@@ -1,15 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace DaJet.Model
+﻿namespace DaJet.Model
 {
     public sealed class IdentityMap
     {
-        private readonly Dictionary<Guid, ReferenceObject> _map = new();
+        private readonly Dictionary<Guid, EntityObject> _map = new();
         public IdentityMap() { }
-        public void Add(ReferenceObject item)
+        public void Add(EntityObject item)
         {
-            if (item == null) throw new ArgumentNullException("item");
+            if (item == null) throw new ArgumentNullException(nameof(item));
 
             if (item.State == PersistentState.New)
             {
@@ -20,7 +17,7 @@ namespace DaJet.Model
                 item.StateChanged += Item_StateChanged;
             }
         }
-        public bool Get(Guid identity, ref ReferenceObject item)
+        public bool TryGet(Guid identity, ref EntityObject item)
         {
             return _map.TryGetValue(identity, out item);
         }
@@ -28,9 +25,9 @@ namespace DaJet.Model
         {
             if (args.OldState == PersistentState.New && args.NewState == PersistentState.Original)
             {
-                ReferenceObject item = (ReferenceObject)sender;
+                EntityObject item = (EntityObject)sender;
 
-                _map.Add(item.Ref, item);
+                _map.Add(item.Identity, item);
 
                 item.StateChanged -= NewItem_StateChanged;
 
@@ -41,9 +38,9 @@ namespace DaJet.Model
         {
             if (args.NewState == PersistentState.Deleted)
             {
-                ReferenceObject item = (ReferenceObject)sender;
+                EntityObject item = (EntityObject)sender;
 
-                _map.Remove(item.Ref);
+                _map.Remove(item.Identity);
 
                 item.StateChanged -= Item_StateChanged;
             }

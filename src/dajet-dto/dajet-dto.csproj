@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <RootNamespace>DaJet.Dto</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <AssemblyName>DaJet.Dto</AssemblyName>
+    <Version>1.0.0</Version>
+    <Authors>Zhichkin</Authors>
+    <Copyright>Zhichkin © 2023</Copyright>
+    <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>
+    <RepositoryType>https://github.com/zhichkin/dajet/tree/main/src/dajet-dto</RepositoryType>
+  </PropertyGroup>
+
+</Project>
