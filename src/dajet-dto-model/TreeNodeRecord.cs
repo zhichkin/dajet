@@ -2,7 +2,7 @@
 
 namespace DaJet.Model
 {
-    [Entity(10)]
+    [Entity(-10)]
     public sealed class TreeNodeRecord : EntityObject
     {
         private static readonly int MY_TYPE_CODE;

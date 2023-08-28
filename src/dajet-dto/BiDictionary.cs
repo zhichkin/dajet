@@ -2,8 +2,8 @@
 {
     public sealed class BiDictionary<T1, T2>
     {
-        private readonly Dictionary<T1, T2> LeftToRight = new Dictionary<T1, T2>();
-        private readonly Dictionary<T2, T1> RightToLeft = new Dictionary<T2, T1>();
+        private readonly Dictionary<T1, T2> LeftToRight = new();
+        private readonly Dictionary<T2, T1> RightToLeft = new();
 
         public void Add(T1 left, T2 right)
         {

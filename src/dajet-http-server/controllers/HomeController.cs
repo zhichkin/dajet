@@ -1,153 +1,66 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using System.Net;
-using System.Text;
+﻿using DaJet.Json;
+using DaJet.Model;
+using Microsoft.AspNetCore.Mvc;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Unicode;
 
 namespace DaJet.Http.Controllers
 {
-    //[ApiController][Route("")]
-    //public class HomeController : ControllerBase
-    //{
-    //    public HomeController() { }
-    //    [HttpGet()] public ContentResult Home()
-    //    {
-    //        string root = AppContext.BaseDirectory;
-    //        string filePath = Path.Combine(root, "readme.html");
+    [ApiController][Route("home")]
+    [Consumes("application/json")]
+    [Produces("application/json")]
+    public class HomeController : ControllerBase
+    {
+        private readonly IDataSource _source;
+        private readonly IDomainModel _domain;
+        public HomeController(IDomainModel domain, IDataSource source)
+        {
+            _domain = domain;
+            _source = source;
+        }
+        [HttpGet()] public ActionResult Home()
+        {
+            throw new NotImplementedException();
+        }
+        [HttpPost("select")] public async Task<ActionResult> Select() //TODO: [FromBody] QueryObject query
+        {
+            HttpRequest request = HttpContext.Request;
 
-    //        FileInfo info = new(filePath);
+            if (request.ContentLength == 0)
+            {
+                return null;
+            }
 
-    //        if (!info.Exists)
-    //        {
-    //            return new ContentResult()
-    //            {
-    //                ContentType = "text/html",
-    //                StatusCode = (int)HttpStatusCode.NotFound,
-    //                Content = "<html><body>Page is not found!</body></html>"
-    //            };
-    //        }
+            JsonSerializerOptions options = new()
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
+                Converters =
+                {
+                    new QueryObjectJsonConverter(_domain)
+                }
+            };
 
-    //        string content = string.Empty;
+            QueryObject query = await JsonSerializer.DeserializeAsync<QueryObject>(request.Body, options);
 
-    //        using (StreamReader reader = new(filePath, Encoding.UTF8))
-    //        {
-    //            content = reader.ReadToEnd();
-    //        }
-            
-    //        return new ContentResult()
-    //        {
-    //            ContentType = "text/html",
-    //            StatusCode = (int)HttpStatusCode.OK,
-    //            Content = content
-    //        };
-    //    }
-    //    [HttpGet("ui/js/{fileName}")] public ContentResult LoadJavaScript([FromRoute] string fileName)
-    //    {
-    //        string root = AppContext.BaseDirectory;
-    //        string filePath = Path.Combine(root, "ui", fileName);
+            List<EntityObject> result = _source.Select(query);
 
-    //        FileInfo info = new(filePath);
+            string json = JsonSerializer.Serialize(result, options);
 
-    //        if (!info.Exists)
-    //        {
-    //            return new ContentResult()
-    //            {
-    //                ContentType = "text/html",
-    //                StatusCode = (int)HttpStatusCode.NotFound,
-    //                Content = "<html><body>JavaScript is not found!</body></html>"
-    //            };
-    //        }
-
-    //        string content = string.Empty;
-
-    //        using (StreamReader reader = new(filePath, Encoding.UTF8))
-    //        {
-    //            content = reader.ReadToEnd();
-    //        }
-
-    //        return new ContentResult()
-    //        {
-    //            ContentType = "text/javascript",
-    //            StatusCode = (int)HttpStatusCode.OK,
-    //            Content = content
-    //        };
-    //    }
-    //    [HttpGet("ui/css/{fileName}")] public ContentResult LoadStyleSheet([FromRoute] string fileName)
-    //    {
-    //        string root = AppContext.BaseDirectory;
-    //        string filePath = Path.Combine(root, "ui", fileName);
-
-    //        FileInfo info = new(filePath);
-
-    //        if (!info.Exists)
-    //        {
-    //            return new ContentResult()
-    //            {
-    //                ContentType = "text/html",
-    //                StatusCode = (int)HttpStatusCode.NotFound,
-    //                Content = "<html><body>Style sheet is not found!</body></html>"
-    //            };
-    //        }
-
-    //        string content = string.Empty;
-
-    //        using (StreamReader reader = new(filePath, Encoding.UTF8))
-    //        {
-    //            content = reader.ReadToEnd();
-    //        }
-
-    //        return new ContentResult()
-    //        {
-    //            ContentType = "text/css",
-    //            StatusCode = (int)HttpStatusCode.OK,
-    //            Content = content
-    //        };
-    //    }
-    //    [HttpGet("ui/img/{fileName}")] public IActionResult LoadImageFile([FromRoute] string fileName)
-    //    {
-    //        string root = AppContext.BaseDirectory;
-    //        string filePath = Path.Combine(root, "ui", "img", fileName);
-
-    //        FileInfo info = new(filePath);
-
-    //        if (!info.Exists)
-    //        {
-    //            return NotFound();
-    //        }
-
-    //        return PhysicalFile(filePath, "image/png");
-
-    //        //byte[] bytes = System.IO.File.ReadAllBytes(filePath);
-    //        //return File(bytes, "image/png");
-    //    }
-    //    [HttpGet("ui/html/{fileName}")] public IActionResult LoadHtmlFile([FromRoute] string fileName)
-    //    {
-    //        string root = AppContext.BaseDirectory;
-    //        string filePath = Path.Combine(root, "ui", fileName);
-
-    //        FileInfo info = new(filePath);
-
-    //        if (!info.Exists)
-    //        {
-    //            return new ContentResult()
-    //            {
-    //                ContentType = "text/html",
-    //                StatusCode = (int)HttpStatusCode.NotFound,
-    //                Content = "<html><body>JavaScript is not found!</body></html>"
-    //            };
-    //        }
-
-    //        string content = string.Empty;
-
-    //        using (StreamReader reader = new(filePath, Encoding.UTF8))
-    //        {
-    //            content = reader.ReadToEnd();
-    //        }
-
-    //        return new ContentResult()
-    //        {
-    //            ContentType = "text/html",
-    //            StatusCode = (int)HttpStatusCode.OK,
-    //            Content = content
-    //        };
-    //    }
-    //}
+            return Content(json);
+        }
+        [HttpPost("create")] public ActionResult Create()
+        {
+            return null;
+        }
+        [HttpPut("update")] public ActionResult Update()
+        {
+            return null;
+        }
+        [HttpDelete("delete")] public ActionResult Delete()
+        {
+            return null;
+        }
+    }
 }

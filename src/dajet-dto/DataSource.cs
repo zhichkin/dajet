@@ -6,13 +6,14 @@
         void Select(IPersistent entity);
         void Update(IPersistent entity);
         void Delete(IPersistent entity);
-        List<TEntity> Select<TEntity>(QueryObject query) where TEntity : IPersistent;
+        List<EntityObject> Select(QueryObject query);
+        Task<List<EntityObject>> SelectAsync(QueryObject query);
     }
     public sealed class QueryObject
     {
         public string Query { get; set; }
         public string Script { get; set; }
-        public Dictionary<string, object> Parameters { get; } = new();
+        public Dictionary<string, object> Parameters { get; set; }
     }
     public interface IDataMapper
     {
@@ -20,5 +21,9 @@
         void Insert(IPersistent entity);
         void Update(IPersistent entity);
         void Delete(IPersistent entity);
+    }
+    public sealed class DataSourceOptions
+    {
+        public string ConnectionString { get; set; }
     }
 }

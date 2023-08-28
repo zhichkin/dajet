@@ -1,4 +1,6 @@
-﻿using DaJet.Flow.Model;
+﻿using DaJet.Dto.Client;
+using DaJet.Flow.Model;
+using DaJet.Model;
 using DaJet.Studio.Components;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
@@ -9,13 +11,15 @@ namespace DaJet.Studio.Controllers
     public sealed class FlowTreeViewController
     {
         private HttpClient Http { get; set; }
+        private DataSource DataSource { get; set; }
         private IJSRuntime JSRuntime { get; set; }
         private NavigationManager Navigator { get; set; }
-        public FlowTreeViewController(HttpClient http, IJSRuntime js, NavigationManager navigator)
+        public FlowTreeViewController(HttpClient http, IJSRuntime js, NavigationManager navigator, DataSource source)
         {
             Http = http;
             JSRuntime = js;
             Navigator = navigator;
+            DataSource = source;
         }
         public TreeNodeModel CreateRootNode()
         {
@@ -32,6 +36,17 @@ namespace DaJet.Studio.Controllers
             {
                 return;
             }
+
+            QueryObject query = new()
+            {
+                Query = "SELECT uuid, parent, name, is_folder, entity_type, entity_uuid FROM maintree WHERE name = @name;",
+                Parameters = new()
+                {
+                    { "name", "test тест" }
+                }
+            };
+
+            List<EntityObject> records = await DataSource.SelectAsync(query);
 
             try
             {

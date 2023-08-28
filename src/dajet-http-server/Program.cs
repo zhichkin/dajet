@@ -1,18 +1,23 @@
 using DaJet.Data;
 using DaJet.Flow;
 using DaJet.Metadata;
+using DaJet.Model;
 using DaJet.Options;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IO;
+using DaJet.Dto.Server;
 
 namespace DaJet.Http.Server
 {
     public static class Program
     {
         private static readonly string DATABASE_FILE_NAME = "dajet.db";
-        private static readonly string[] webapi = new string[] { "/api", "/md", "/mdex", "/exchange", "/flow", "/query", "/db" };
+        private static readonly string[] webapi = new string[]
+        {
+            "/home", "/api", "/md", "/mdex", "/exchange", "/flow", "/query", "/db"
+        };
         private static string OptionsFileConnectionString
         {
             get
@@ -48,6 +53,9 @@ namespace DaJet.Http.Server
 
             builder.Services.UseDaJetFlow(OptionsFileConnectionString);
             builder.Services.AddSingleton<RecyclableMemoryStreamManager>();
+
+            builder.Services.UseDataSource(OptionsFileConnectionString);
+            builder.Services.UseDomainFromAssembly(typeof(TreeNodeRecord).Assembly);
 
             WebApplication app = builder.Build();
             //app.UseAuthentication();

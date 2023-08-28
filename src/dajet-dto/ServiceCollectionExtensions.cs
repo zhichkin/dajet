@@ -10,7 +10,7 @@ namespace DaJet
         {
             services.AddSingleton(serviceProvider =>
             {
-                return new DomainModel(serviceProvider).ConfigureFromAssembly(in assembly, in services);
+                return new DomainModel(serviceProvider).ConfigureFromAssembly(in assembly);
             });
 
             return services;

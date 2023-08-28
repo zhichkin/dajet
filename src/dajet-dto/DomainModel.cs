@@ -9,6 +9,7 @@ namespace DaJet.Model
         IDomainModel ConfigureFromAssembly(in Assembly assembly);
         T New<T>() where T : EntityObject; // New
         T New<T>(Guid identity) where T : EntityObject; // Virtual
+        EntityObject Create(int typeCode, Guid identity); // Virtual
     }
     public sealed class DomainModel : IDomainModel
     {
@@ -36,23 +37,9 @@ namespace DaJet.Model
 
             return this;
         }
-        public IDomainModel ConfigureFromAssembly(in Assembly assembly, in IServiceCollection services)
-        {
-            foreach (Type type in assembly.GetExportedTypes())
-            {
-                if (type.IsSubclassOf(typeof(EntityObject)))
-                {
-                    services.AddTransient(type);
-                }
-            }
-
-            return this;
-        }
         public T New<T>() where T : EntityObject
         {
-            //T entity = ActivatorUtilities.CreateInstance<T>(_services);
-
-            T entity = _services.GetRequiredService<T>();
+            T entity = ActivatorUtilities.CreateInstance<T>(_services);
 
             _cache.Add(entity);
 
@@ -67,7 +54,32 @@ namespace DaJet.Model
                 return item as T;
             }
 
+            if (!_map.TryGet(typeof(T), out int typeCode))
+            {
+                throw new UnknownTypeException(nameof(T));
+            }
+
             T entity = ActivatorUtilities.CreateInstance<T>(_services, identity);
+
+            _cache.Add(entity);
+
+            return entity;
+        }
+        public EntityObject Create(int typeCode, Guid identity)
+        {
+            EntityObject entity = null;
+
+            if (_cache.TryGet(identity, ref entity))
+            {
+                return entity;
+            }
+
+            if (!_map.TryGet(typeCode, out Type type))
+            {
+                throw new UnknownTypeException(typeCode.ToString());
+            }
+
+            entity = ActivatorUtilities.CreateInstance(_services, type, identity) as EntityObject;
 
             _cache.Add(entity);
 
