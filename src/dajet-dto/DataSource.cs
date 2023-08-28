@@ -6,7 +6,6 @@
         void Select(IPersistent entity);
         void Update(IPersistent entity);
         void Delete(IPersistent entity);
-        EntityObject Select(EntityObject entity);
         List<TEntity> Select<TEntity>(QueryObject query) where TEntity : IPersistent;
     }
     public sealed class QueryObject

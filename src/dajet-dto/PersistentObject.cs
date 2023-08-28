@@ -36,9 +36,8 @@ namespace DaJet.Model
     {
         protected IDataSource _source;
         protected PersistentState _state = PersistentState.New;
-        private PersistentObject() { }
         protected PersistentObject(IDataSource source) { _source = source; }
-        public PersistentState State { get { return _state; } protected set { _state = value; } }
+        public PersistentState State { get { return _state; } }
         private void LazyLoad() { if (_state == PersistentState.Virtual) Load(); }
         protected TValue Get<TValue>(ref TValue storage) { LazyLoad(); return storage; }
         protected void Set<TValue>(TValue value, ref TValue storage, [CallerMemberName] string propertyName = null)
@@ -177,11 +176,11 @@ namespace DaJet.Model
 
                 if (_state == PersistentState.New)
                 {
-                    _source.Create(this);
+                    _source?.Create(this);
                 }
                 else
                 {
-                    _source.Update(this);
+                    _source?.Update(this);
                 }
 
                 _state = PersistentState.Original;
@@ -201,7 +200,7 @@ namespace DaJet.Model
 
                 OnStateChanging(args);
 
-                _source.Delete(this);
+                _source?.Delete(this);
 
                 _state = PersistentState.Deleted;
 
@@ -224,7 +223,7 @@ namespace DaJet.Model
                 {
                     OnStateChanging(args);
 
-                    _source.Select(this);
+                    _source?.Select(this);
 
                     _state = PersistentState.Original;
 

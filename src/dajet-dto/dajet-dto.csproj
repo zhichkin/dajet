@@ -13,4 +13,8 @@
     <RepositoryType>https://github.com/zhichkin/dajet/tree/main/src/dajet-dto</RepositoryType>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
+  </ItemGroup>
+
 </Project>
