@@ -1,8 +1,9 @@
-﻿using DaJet.Metadata;
+﻿using DaJet.Data;
+using DaJet.Metadata;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Metadata.Services;
-using DaJet.Options;
+using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.FileProviders;
 using System.Text;
@@ -31,7 +32,7 @@ namespace DaJet.Http.Controllers
 
         [HttpGet("select/{infobase}")] public ActionResult Select([FromRoute] string infobase, [FromQuery] string schema = null)
         {
-            InfoBaseModel record = _mapper.Select(infobase);
+            InfoBaseRecord record = _mapper.Select(infobase);
 
             if (record == null)
             {
@@ -75,7 +76,7 @@ namespace DaJet.Http.Controllers
         [HttpGet("{infobase}")]
         public ActionResult ScriptViews([FromRoute] string infobase, [FromQuery] string schema = null, [FromQuery] bool? codify = null)
         {
-            InfoBaseModel record = _mapper.Select(infobase);
+            InfoBaseRecord record = _mapper.Select(infobase);
 
             if (record == null)
             {
@@ -186,7 +187,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseModel record = _mapper.Select(infobase);
+            InfoBaseRecord record = _mapper.Select(infobase);
 
             if (record == null)
             {
@@ -308,7 +309,7 @@ namespace DaJet.Http.Controllers
         [HttpPost("{infobase}")]
         public ActionResult CreateViews([FromRoute] string infobase, [FromBody] DbViewGeneratorOptions options)
         {
-            InfoBaseModel record = _mapper.Select(infobase);
+            InfoBaseRecord record = _mapper.Select(infobase);
 
             if (record == null)
             {
@@ -368,7 +369,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseModel record = _mapper.Select(infobase);
+            InfoBaseRecord record = _mapper.Select(infobase);
 
             if (record == null)
             {
@@ -445,7 +446,7 @@ namespace DaJet.Http.Controllers
         [HttpDelete("{infobase}")]
         public ActionResult DeleteViews([FromRoute] string infobase, [FromQuery] string schema = null)
         {
-            InfoBaseModel record = _mapper.Select(infobase);
+            InfoBaseRecord record = _mapper.Select(infobase);
 
             if (record == null)
             {
@@ -488,7 +489,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseModel record = _mapper.Select(infobase);
+            InfoBaseRecord record = _mapper.Select(infobase);
 
             if (record == null)
             {

@@ -1,9 +1,9 @@
-﻿using DaJet.Dto.Client;
-using DaJet.Flow.Model;
+﻿using DaJet.Flow.Model;
 using DaJet.Model;
 using DaJet.Studio.Components;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using Microsoft.OData.Client;
 using System.Net.Http.Json;
 
 namespace DaJet.Studio.Controllers
@@ -11,15 +11,13 @@ namespace DaJet.Studio.Controllers
     public sealed class FlowTreeViewController
     {
         private HttpClient Http { get; set; }
-        private DataSource DataSource { get; set; }
         private IJSRuntime JSRuntime { get; set; }
         private NavigationManager Navigator { get; set; }
-        public FlowTreeViewController(HttpClient http, IJSRuntime js, NavigationManager navigator, DataSource source)
+        public FlowTreeViewController(HttpClient http, IJSRuntime js, NavigationManager navigator)
         {
             Http = http;
             JSRuntime = js;
             Navigator = navigator;
-            DataSource = source;
         }
         public TreeNodeModel CreateRootNode()
         {
@@ -37,16 +35,19 @@ namespace DaJet.Studio.Controllers
                 return;
             }
 
-            QueryObject query = new()
+            var serviceRoot = Http.BaseAddress + "home/";
+            var context = new Default.Container(new Uri(serviceRoot))
             {
-                Query = "SELECT uuid, parent, name, is_folder, entity_type, entity_uuid FROM maintree WHERE name = @name;",
-                Parameters = new()
-                {
-                    { "name", "test тест" }
-                }
+                HttpRequestTransportMode = HttpRequestTransportMode.HttpClient
             };
+            context.Format.UseJson();
 
-            List<EntityObject> records = await DataSource.SelectAsync(query);
+            IEnumerable<TreeNodeRecord> nodes = await context.TreeNodeRecord.ExecuteAsync();
+            
+            foreach (var node in nodes)
+            {
+                Console.WriteLine(node.Name);
+            }
 
             try
             {

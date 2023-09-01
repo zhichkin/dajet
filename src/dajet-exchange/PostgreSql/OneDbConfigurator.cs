@@ -1,7 +1,7 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
-using DaJet.Options;
+using DaJet.Model;
 using System.Text;
 
 namespace DaJet.Exchange.PostgreSql
@@ -41,7 +41,7 @@ namespace DaJet.Exchange.PostgreSql
             "ALTER TABLE IF EXISTS {TABLE_NAME} ENABLE TRIGGER {TRIGGER_NAME};";
         private const string DISABLE_TRIGGER_SCRIPT =
             "ALTER TABLE IF EXISTS {TABLE_NAME} DISABLE TRIGGER {TRIGGER_NAME};";
-        public bool TryConfigure(in IMetadataService metadata, in InfoBaseModel database, out Dictionary<string, string> log)
+        public bool TryConfigure(in IMetadataService metadata, in InfoBaseRecord database, out Dictionary<string, string> log)
         {
             log = new Dictionary<string, string>();
 
@@ -285,7 +285,7 @@ namespace DaJet.Exchange.PostgreSql
             executor.TxExecuteNonQuery(in scripts, 60);
         }
         
-        public bool TryUninstall(in IMetadataService metadata, in InfoBaseModel database, out Dictionary<string, string> log)
+        public bool TryUninstall(in IMetadataService metadata, in InfoBaseRecord database, out Dictionary<string, string> log)
         {
             log = new Dictionary<string, string>();
 

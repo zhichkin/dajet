@@ -1,4 +1,5 @@
-﻿using DaJet.Options;
+﻿using DaJet.Data;
+using DaJet.Model;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using System.Data;
@@ -25,7 +26,7 @@ namespace DaJet.Flow.PostgreSql
         private string ConnectionString { get; set; }
         protected override void _Configure()
         {
-            InfoBaseModel database = _databases.Select(Source) ?? throw new ArgumentException($"Source not found: {Source}");
+            InfoBaseRecord database = _databases.Select(Source) ?? throw new ArgumentException($"Source not found: {Source}");
             ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, Script) ?? throw new ArgumentException($"Script not found: {Script}");
 
             CommandText = script.Script;

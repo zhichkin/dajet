@@ -1,4 +1,4 @@
-﻿using DaJet.Studio.Model;
+﻿using DaJet.Model;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -6,15 +6,15 @@ namespace DaJet.Studio
 {
     public sealed class AppState : INotifyPropertyChanged
     {
-        private InfoBaseModel _database;
+        private InfoBaseRecord _database;
         public Action RefreshInfoBaseCommand;
-        public InfoBaseModel CurrentDatabase
+        public InfoBaseRecord CurrentDatabase
         {
             get { return _database; }
             set { ChangeState(ref _database, value); }
         }
-        public List<InfoBaseModel> DatabaseList { get; set; } = new();
-        public InfoBaseModel GetDatabase(Guid uuid)
+        public List<InfoBaseRecord> DatabaseList { get; set; } = new();
+        public InfoBaseRecord GetDatabase(Guid uuid)
         {
             for (int i = 0; i < DatabaseList.Count; i++)
             {
@@ -25,9 +25,9 @@ namespace DaJet.Studio
             }
             return null;
         }
-        public InfoBaseModel GetDatabaseOrThrowException(Guid uuid)
+        public InfoBaseRecord GetDatabaseOrThrowException(Guid uuid)
         {
-            InfoBaseModel database = GetDatabase(uuid);
+            InfoBaseRecord database = GetDatabase(uuid);
 
             if (database is null)
             {
@@ -56,7 +56,7 @@ namespace DaJet.Studio
         }
         private void ChangeState<T>(ref T target, T value, [CallerMemberName] string propertyName = null)
         {
-            if (value is InfoBaseModel && propertyName == nameof(CurrentDatabase))
+            if (value is InfoBaseRecord && propertyName == nameof(CurrentDatabase))
             {
                 target = value;
                 OnPropertyChanged(propertyName);

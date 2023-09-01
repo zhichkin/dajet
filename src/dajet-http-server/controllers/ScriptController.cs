@@ -1,7 +1,7 @@
 ﻿using DaJet.Data;
 using DaJet.Json;
 using DaJet.Metadata;
-using DaJet.Options;
+using DaJet.Model;
 using DaJet.Scripting;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Encodings.Web;
@@ -28,7 +28,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("select/{infobase}")] public ActionResult Select([FromRoute] string infobase)
         {
-            InfoBaseModel database = _mapper.Select(infobase);
+            InfoBaseRecord database = _mapper.Select(infobase);
             if (database is null) { return NotFound(); }
 
             List<ScriptRecord> list = _scripts.Select(database.Uuid);
@@ -44,7 +44,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("{infobase}/{**path}")] public ActionResult Select([FromRoute] string infobase, [FromRoute] string path)
         {
-            InfoBaseModel database = _mapper.Select(infobase);
+            InfoBaseRecord database = _mapper.Select(infobase);
             
             if (database is null)
             {
@@ -69,7 +69,7 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            InfoBaseModel database = _mapper.Select(script.Owner);
+            InfoBaseRecord database = _mapper.Select(script.Owner);
             if (database is null) { return NotFound(); }
 
             string url = "/" + script.Name;
@@ -167,7 +167,7 @@ namespace DaJet.Http.Controllers
         [HttpPost("{infobase}/{**path}")]
         public async Task<ActionResult> ExecuteScript([FromRoute] string infobase, [FromRoute] string path)
         {
-            InfoBaseModel database = _mapper.Select(infobase);
+            InfoBaseRecord database = _mapper.Select(infobase);
             if (database is null) { return NotFound(); }
 
             ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, path);

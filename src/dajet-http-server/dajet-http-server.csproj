@@ -14,14 +14,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OData" Version="8.2.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="7.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\dajet-dbview-generator\dajet-dbview-generator.csproj" />
-    <ProjectReference Include="..\dajet-dto-server\dajet-dto-server.csproj" />
-    <ProjectReference Include="..\dajet-flow-model\dajet-flow-model.csproj" />
     <ProjectReference Include="..\dajet-flow\dajet-flow.csproj" />
     <ProjectReference Include="..\dajet-rabbitmq\dajet-rabbitmq.csproj" />
     <ProjectReference Include="..\dajet-scripting\dajet-scripting.csproj" />

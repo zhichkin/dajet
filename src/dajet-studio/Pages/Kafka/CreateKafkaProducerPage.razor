@@ -41,10 +41,10 @@
 
     @if (DataSourceType == "SqlServer" || DataSourceType == "PostgreSql")
     {
-        <MudSelect T="InfoBaseModel" Label="Источник данных" @bind-Value="@DataSourceUrl" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+        <MudSelect T="InfoBaseRecord" Label="Источник данных" @bind-Value="@DataSourceUrl" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
                    Class="ml-0 mt-3" Style="font-size:var(--mud-typography-default-size);">
 
-            @foreach (InfoBaseModel target in DataSourceUrls)
+            @foreach (InfoBaseRecord target in DataSourceUrls)
             {
                 @if (target.DatabaseProvider == DataSourceType)
                 {

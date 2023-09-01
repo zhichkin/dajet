@@ -72,13 +72,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-flow-transformers", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-stream", "dajet-stream\dajet-stream.csproj", "{B8C942F0-488D-4414-8093-79B7B1BF6E58}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-dto", "dajet-dto\dajet-dto.csproj", "{E4B5A680-827C-4291-A596-79F4D5AC5EAF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-proxy", "dajet-proxy\dajet-proxy.csproj", "{E4B5A680-827C-4291-A596-79F4D5AC5EAF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-dto-server", "dajet-dto-server\dajet-dto-server.csproj", "{4045CA1D-4425-4D35-8CA5-512D9FC8EC54}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-data", "dajet-data\dajet-data.csproj", "{EDDE7105-3E77-4FA0-A2BD-E390EF812AE8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-dto-client", "dajet-dto-client\dajet-dto-client.csproj", "{75D4FCEF-B606-4472-A85A-3D4CD99C6C75}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-dto-model", "dajet-dto-model\dajet-dto-model.csproj", "{9D43D556-DA70-4339-87DE-A74C0BB535A3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-file-logger", "dajet-file-logger\dajet-file-logger.csproj", "{212A8AA8-5AA2-4D5B-8311-D25B6B9C7D79}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -166,18 +164,14 @@ Global
 		{E4B5A680-827C-4291-A596-79F4D5AC5EAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E4B5A680-827C-4291-A596-79F4D5AC5EAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E4B5A680-827C-4291-A596-79F4D5AC5EAF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4045CA1D-4425-4D35-8CA5-512D9FC8EC54}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4045CA1D-4425-4D35-8CA5-512D9FC8EC54}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4045CA1D-4425-4D35-8CA5-512D9FC8EC54}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4045CA1D-4425-4D35-8CA5-512D9FC8EC54}.Release|Any CPU.Build.0 = Release|Any CPU
-		{75D4FCEF-B606-4472-A85A-3D4CD99C6C75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{75D4FCEF-B606-4472-A85A-3D4CD99C6C75}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{75D4FCEF-B606-4472-A85A-3D4CD99C6C75}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{75D4FCEF-B606-4472-A85A-3D4CD99C6C75}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9D43D556-DA70-4339-87DE-A74C0BB535A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9D43D556-DA70-4339-87DE-A74C0BB535A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9D43D556-DA70-4339-87DE-A74C0BB535A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9D43D556-DA70-4339-87DE-A74C0BB535A3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EDDE7105-3E77-4FA0-A2BD-E390EF812AE8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EDDE7105-3E77-4FA0-A2BD-E390EF812AE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EDDE7105-3E77-4FA0-A2BD-E390EF812AE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EDDE7105-3E77-4FA0-A2BD-E390EF812AE8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{212A8AA8-5AA2-4D5B-8311-D25B6B9C7D79}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{212A8AA8-5AA2-4D5B-8311-D25B6B9C7D79}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{212A8AA8-5AA2-4D5B-8311-D25B6B9C7D79}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{212A8AA8-5AA2-4D5B-8311-D25B6B9C7D79}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

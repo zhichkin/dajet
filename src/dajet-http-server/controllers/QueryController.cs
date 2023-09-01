@@ -1,7 +1,7 @@
 ﻿using DaJet.Data;
 using DaJet.Http.Model;
 using DaJet.Metadata;
-using DaJet.Options;
+using DaJet.Model;
 using DaJet.Scripting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -30,7 +30,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseModel record = _mapper.Select(query.DbName);
+            InfoBaseRecord record = _mapper.Select(query.DbName);
 
             if (record == null)
             {
@@ -72,7 +72,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseModel record = _mapper.Select(query.DbName);
+            InfoBaseRecord record = _mapper.Select(query.DbName);
 
             if (record == null)
             {
@@ -126,7 +126,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseModel record = _mapper.Select(query.DbName);
+            InfoBaseRecord record = _mapper.Select(query.DbName);
 
             if (record == null)
             {

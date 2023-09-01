@@ -1,9 +1,8 @@
 ﻿using DaJet.Data;
 using DaJet.Flow;
 using DaJet.Metadata;
-using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
-using DaJet.Options;
+using DaJet.Model;
 using DaJet.Scripting;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -35,7 +34,7 @@ namespace DaJet.Exchange.PostgreSql
             if (Timeout < 0) { Timeout = 10; }
             if (MaxDop < 1) { MaxDop = Environment.ProcessorCount; }
 
-            InfoBaseModel database = _databases.Select(Source) ?? throw new Exception($"Source not found: {Source}");
+            InfoBaseRecord database = _databases.Select(Source) ?? throw new Exception($"Source not found: {Source}");
 
             ConnectionString = database.ConnectionString;
 

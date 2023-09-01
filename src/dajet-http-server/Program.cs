@@ -2,12 +2,13 @@ using DaJet.Data;
 using DaJet.Flow;
 using DaJet.Metadata;
 using DaJet.Model;
-using DaJet.Options;
 using Microsoft.AspNetCore.Cors.Infrastructure;
+using Microsoft.AspNetCore.OData;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IO;
-using DaJet.Dto.Server;
+using Microsoft.OData.ModelBuilder;
+using System.Reflection;
 
 namespace DaJet.Http.Server
 {
@@ -44,7 +45,9 @@ namespace DaJet.Http.Server
             WebApplicationBuilder builder = WebApplication.CreateBuilder(options);
             builder.Host.UseSystemd();
             builder.Host.UseWindowsService();
-            builder.Services.AddControllers();
+
+            builder.Services.AddControllers().AddOData(ConfigureEdm);
+
             builder.Services.AddCors(ConfigureCors);
             ConfigureFileProvider(builder.Services);
 
@@ -54,9 +57,6 @@ namespace DaJet.Http.Server
             builder.Services.UseDaJetFlow(OptionsFileConnectionString);
             builder.Services.AddSingleton<RecyclableMemoryStreamManager>();
 
-            builder.Services.UseDataSource(OptionsFileConnectionString);
-            builder.Services.UseDomainFromAssembly(typeof(TreeNodeRecord).Assembly);
-
             WebApplication app = builder.Build();
             //app.UseAuthentication();
             //app.UseAuthorization();
@@ -65,6 +65,23 @@ namespace DaJet.Http.Server
             app.MapWhen(IsWebApiRequest, ConfigureWebApiPipeline);
             app.MapWhen(IsBlazorRequest, ConfigureBlazorPipeline);
             app.Run();
+        }
+        private static void ConfigureEdm(ODataOptions options)
+        {
+            ODataConventionModelBuilder builder = new();
+            builder.EntityType<EntityObject>();
+            //builder.EntitySet<TreeNodeRecord>("TreeNodes");
+
+            foreach (Type type in typeof(EntityObject).Assembly.GetExportedTypes())
+            {
+                if (type.IsSubclassOf(typeof(EntityObject)))
+                {
+                    builder.AddEntitySet(type.Name, new EntityTypeConfiguration(builder, type));
+                }
+            }
+
+            options.EnableQueryFeatures(10);
+            options.AddRouteComponents("home", builder.GetEdmModel());
         }
         private static void ConfigureCors(CorsOptions options)
         {
@@ -128,9 +145,9 @@ namespace DaJet.Http.Server
 
             InfoBaseDataMapper mapper = new(OptionsFileConnectionString);
             
-            List<InfoBaseModel> list = mapper.Select();
+            List<InfoBaseRecord> list = mapper.Select();
 
-            foreach (InfoBaseModel entity in list)
+            foreach (InfoBaseRecord entity in list)
             {
                 if (!Enum.TryParse(entity.DatabaseProvider, out DatabaseProvider provider))
                 {

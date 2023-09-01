@@ -19,7 +19,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\dajet-model\dajet-model.csproj" />
+    <ProjectReference Include="..\dajet-data\dajet-data.csproj" />
   </ItemGroup>
 
 </Project>

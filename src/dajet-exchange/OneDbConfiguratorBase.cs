@@ -1,14 +1,14 @@
 ﻿using DaJet.Metadata;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
-using DaJet.Options;
+using DaJet.Model;
 
 namespace DaJet.Exchange
 {
     public interface IOneDbConfigurator
     {
-        bool TryConfigure(in IMetadataService metadata, in InfoBaseModel database, out Dictionary<string, string> log);
-        bool TryUninstall(in IMetadataService metadata, in InfoBaseModel database, out Dictionary<string, string> log);
+        bool TryConfigure(in IMetadataService metadata, in InfoBaseRecord database, out Dictionary<string, string> log);
+        bool TryUninstall(in IMetadataService metadata, in InfoBaseRecord database, out Dictionary<string, string> log);
     }
     public abstract class OneDbConfiguratorBase
     {

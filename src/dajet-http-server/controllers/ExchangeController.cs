@@ -2,7 +2,7 @@
 using DaJet.Metadata;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
-using DaJet.Options;
+using DaJet.Model;
 using DaJet.RabbitMQ.HttpApi;
 using DaJet.Scripting;
 using Microsoft.AspNetCore.Mvc;
@@ -34,7 +34,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("{infobase}")] public ActionResult Select([FromRoute] string infobase)
         {
-            InfoBaseModel database = _databases.Select(infobase);
+            InfoBaseRecord database = _databases.Select(infobase);
 
             if (database is null)
             {
@@ -66,7 +66,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("{infobase}/{publication}")] public ActionResult Select([FromRoute] string infobase, [FromRoute] string publication)
         {
-            InfoBaseModel database = _databases.Select(infobase);
+            InfoBaseRecord database = _databases.Select(infobase);
 
             if (database is null)
             {
@@ -88,7 +88,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("{infobase}/publications")] public ActionResult SelectPublications([FromRoute] string infobase)
         {
-            InfoBaseModel database = _databases.Select(infobase);
+            InfoBaseRecord database = _databases.Select(infobase);
 
             if (database is null)
             {
@@ -113,7 +113,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("{infobase}/{publication}/subscribers")] public ActionResult SelectSubscribers([FromRoute] string infobase, [FromRoute] string publication)
         {
-            InfoBaseModel database = _databases.Select(infobase);
+            InfoBaseRecord database = _databases.Select(infobase);
 
             if (database is null)
             {
@@ -141,7 +141,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpDelete("{infobase}/{publication}")] public ActionResult DeletePublication([FromRoute] string infobase, [FromRoute] string publication)
         {
-            InfoBaseModel database = _databases.Select(infobase);
+            InfoBaseRecord database = _databases.Select(infobase);
 
             if (database is null)
             {
@@ -168,7 +168,7 @@ namespace DaJet.Http.Controllers
         [HttpPost("{infobase}/{publication}/{type}/{article}")]
         public ActionResult CreateArticle([FromRoute] string infobase, [FromRoute] string publication, [FromRoute] string type, [FromRoute] string article)
         {
-            InfoBaseModel database = _databases.Select(infobase);
+            InfoBaseRecord database = _databases.Select(infobase);
 
             if (database is null) { return NotFound(); }
 
@@ -240,7 +240,7 @@ namespace DaJet.Http.Controllers
         [HttpDelete("{infobase}/{publication}/{type}/{article}")]
         public ActionResult DeleteArticle([FromRoute] string infobase, [FromRoute] string publication, [FromRoute] string type, [FromRoute] string article)
         {
-            InfoBaseModel database = _databases.Select(infobase);
+            InfoBaseRecord database = _databases.Select(infobase);
 
             if (database is null) { return NotFound(); }
 
@@ -254,7 +254,7 @@ namespace DaJet.Http.Controllers
             return Ok();
         }
 
-        private Type GetExchangeTuningServiceType(in InfoBaseModel database)
+        private Type GetExchangeTuningServiceType(in InfoBaseRecord database)
         {
             if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
             {
@@ -286,7 +286,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpPost("configure/tuning/{infobase}")] public ActionResult EnableExchangeTuning([FromRoute] string infobase)
         {
-            InfoBaseModel database = _databases.Select(infobase);
+            InfoBaseRecord database = _databases.Select(infobase);
 
             if (database is null) { return NotFound($"Database [{infobase}] not found."); }
 
@@ -319,7 +319,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpDelete("configure/tuning/{infobase}")] public ActionResult DisableExchangeTuning([FromRoute] string infobase)
         {
-            InfoBaseModel database = _databases.Select(infobase);
+            InfoBaseRecord database = _databases.Select(infobase);
 
             if (database is null) { return NotFound($"Database [{infobase}] not found."); }
 
@@ -399,7 +399,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest($"Parameter \"BrokerUrl\" missing.");
             }
 
-            InfoBaseModel database = _databases.Select(infobase);
+            InfoBaseRecord database = _databases.Select(infobase);
 
             if (database is null) { return NotFound($"Database [{infobase}] not found."); }
 
@@ -601,7 +601,7 @@ namespace DaJet.Http.Controllers
         [HttpPut("configure/script/monitor/{infobase}/{publication}/{node}")] public ActionResult ConfigureScriptMonitor(
             [FromRoute] string infobase, [FromRoute] string publication, [FromRoute] string node, [FromBody] ScriptRecord script)
         {
-            InfoBaseModel database = _databases.Select(infobase);
+            InfoBaseRecord database = _databases.Select(infobase);
 
             if (database is null) { return NotFound(infobase); }
 
@@ -678,7 +678,7 @@ namespace DaJet.Http.Controllers
         [HttpPut("configure/script/inqueue/{infobase}")] public ActionResult ConfigureScriptInqueue(
             [FromRoute] string infobase, [FromBody] ScriptRecord script)
         {
-            InfoBaseModel database = _databases.Select(infobase);
+            InfoBaseRecord database = _databases.Select(infobase);
 
             if (database is null) { return NotFound(infobase); }
 
@@ -727,7 +727,7 @@ namespace DaJet.Http.Controllers
         [HttpPost("{infobase}/{publication}")]
         public ActionResult CreatePublication([FromRoute] string infobase, [FromRoute] string publication)
         {
-            InfoBaseModel database = _databases.Select(infobase);
+            InfoBaseRecord database = _databases.Select(infobase);
 
             if (database is null)
             {
@@ -1364,7 +1364,7 @@ namespace DaJet.Http.Controllers
         [HttpPut("configure/script/consume/{infobase}")]
         public ActionResult ConfigureConsumeScript([FromRoute] string infobase, [FromBody] ScriptRecord script)
         {
-            InfoBaseModel database = _databases.Select(infobase);
+            InfoBaseRecord database = _databases.Select(infobase);
 
             if (database is null) { return NotFound(infobase); }
 
@@ -1403,7 +1403,7 @@ namespace DaJet.Http.Controllers
         [HttpPut("configure/script/produce/{infobase}")]
         public ActionResult ConfigureProduceScript([FromRoute] string infobase, [FromBody] ScriptRecord script)
         {
-            InfoBaseModel database = _databases.Select(infobase);
+            InfoBaseRecord database = _databases.Select(infobase);
 
             if (database is null) { return NotFound(infobase); }
 

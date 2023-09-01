@@ -1,6 +1,7 @@
-﻿using DaJet.Metadata;
+﻿using DaJet.Data;
+using DaJet.Metadata;
 using DaJet.Metadata.Services;
-using DaJet.Options;
+using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -24,7 +25,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("{infobase}")] public ActionResult Select([FromRoute] string infobase)
         {
-            InfoBaseModel record = _mapper.Select(infobase);
+            InfoBaseRecord record = _mapper.Select(infobase);
 
             if (record == null)
             {
@@ -49,7 +50,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpPost("{infobase}/{schema}")] public ActionResult Create([FromRoute] string infobase, [FromRoute] string schema)
         {
-            InfoBaseModel record = _mapper.Select(infobase);
+            InfoBaseRecord record = _mapper.Select(infobase);
 
             if (record == null)
             {
@@ -76,7 +77,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpDelete("{infobase}/{schema}")] public ActionResult Delete([FromRoute] string infobase, [FromRoute] string schema)
         {
-            InfoBaseModel record = _mapper.Select(infobase);
+            InfoBaseRecord record = _mapper.Select(infobase);
 
             if (record == null)
             {

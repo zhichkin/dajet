@@ -1,6 +1,7 @@
-﻿using DaJet.Flow;
+﻿using DaJet.Data;
+using DaJet.Flow;
 using DaJet.Metadata;
-using DaJet.Options;
+using DaJet.Model;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DaJet.Exchange
@@ -31,7 +32,7 @@ namespace DaJet.Exchange
         }
         public override void Execute()
         {
-            InfoBaseModel database = _databases.Select(Database) ?? throw new InvalidOperationException($"Database is not found: {Database}");
+            InfoBaseRecord database = _databases.Select(Database) ?? throw new InvalidOperationException($"Database is not found: {Database}");
 
             if (string.IsNullOrWhiteSpace(database.ConnectionString))
             {
@@ -59,7 +60,7 @@ namespace DaJet.Exchange
                 _manager.UpdatePipelineStatus(Pipeline, $"Тюнинг [{Database}] выключён.");
             }
         }
-        private void EnableChangeTracking(in InfoBaseModel database)
+        private void EnableChangeTracking(in InfoBaseRecord database)
         {
             IOneDbConfigurator configurator;
 
@@ -77,7 +78,7 @@ namespace DaJet.Exchange
                 throw new Exception($"{log.Keys.First()} : {log.Values.First()}");
             }
         }
-        private void DisableChangeTracking(in InfoBaseModel database)
+        private void DisableChangeTracking(in InfoBaseRecord database)
         {
             IOneDbConfigurator configurator;
 

@@ -1,7 +1,7 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
-using DaJet.Options;
+using DaJet.Model;
 using DaJet.Scripting.Model;
 using System.Data;
 using System.Globalization;
@@ -301,7 +301,7 @@ namespace DaJet.Scripting
             string target = uri.Host;
             string script = uri.AbsolutePath;
 
-            InfoBaseModel database = _databases.Select(target) ?? throw new ArgumentException($"Target not found: {target}");
+            InfoBaseRecord database = _databases.Select(target) ?? throw new ArgumentException($"Target not found: {target}");
             ScriptRecord record = _scripts.SelectScriptByPath(database.Uuid, script) ?? throw new ArgumentException($"Script not found: {script}");
 
             if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))

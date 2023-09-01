@@ -1,4 +1,5 @@
 ﻿using DaJet.Flow.Model;
+using DaJet.Model;
 using DaJet.Studio.Model;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
@@ -23,8 +24,8 @@ namespace DaJet.Studio.Pages.Kafka
         {
             "SqlServer", "PostgreSql"
         };
-        protected InfoBaseModel DataSourceUrl { get; set; }
-        protected List<InfoBaseModel> DataSourceUrls { get; set; } = new();
+        protected InfoBaseRecord DataSourceUrl { get; set; }
+        protected List<InfoBaseRecord> DataSourceUrls { get; set; } = new();
         protected string InsertScriptUrl { get; set; } = "/produce";
         protected bool GenerateInsertScript { get; set; } = false;
         protected override async Task OnParametersSetAsync()
@@ -42,7 +43,7 @@ namespace DaJet.Studio.Pages.Kafka
             {
                 HttpResponseMessage response = await Http.GetAsync("/md");
 
-                List<InfoBaseModel> list = await response.Content.ReadFromJsonAsync<List<InfoBaseModel>>();
+                List<InfoBaseRecord> list = await response.Content.ReadFromJsonAsync<List<InfoBaseRecord>>();
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -50,7 +51,7 @@ namespace DaJet.Studio.Pages.Kafka
                     {
                         DataSourceUrl = list[0];
 
-                        foreach (InfoBaseModel database in list)
+                        foreach (InfoBaseRecord database in list)
                         {
                             DataSourceUrls.Add(database);
                         }

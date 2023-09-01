@@ -1,5 +1,5 @@
 ﻿using DaJet.Data;
-using DaJet.Options;
+using DaJet.Model;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using System.Data;
@@ -23,7 +23,7 @@ namespace DaJet.Flow.SqlServer
         private string ConnectionString { get; set; }
         protected override void _Configure()
         {
-            InfoBaseModel database = _databases.Select(Target) ?? throw new ArgumentException($"Target not found: {Target}");
+            InfoBaseRecord database = _databases.Select(Target) ?? throw new ArgumentException($"Target not found: {Target}");
             ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, Script) ?? throw new ArgumentException($"Script not found: {Script}");
 
             CommandText = script.Script;

@@ -1,4 +1,5 @@
-﻿using DaJet.Data;
+﻿using DaJet;
+using DaJet.Data;
 using DaJet.Data.Provider;
 using DaJet.Metadata;
 using DaJet.Metadata.Core;

@@ -2,7 +2,7 @@
 using DaJet.Flow;
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
-using DaJet.Options;
+using DaJet.Model;
 using DaJet.Scripting;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,7 +34,7 @@ namespace DaJet.Exchange.SqlServer
             if (Timeout < 0) { Timeout = 10; }
             if (MaxDop < 1) { MaxDop = Environment.ProcessorCount; }
 
-            InfoBaseModel database = _databases.Select(Source) ?? throw new Exception($"Source not found: {Source}");
+            InfoBaseRecord database = _databases.Select(Source) ?? throw new Exception($"Source not found: {Source}");
 
             ConnectionString = database.ConnectionString;
 

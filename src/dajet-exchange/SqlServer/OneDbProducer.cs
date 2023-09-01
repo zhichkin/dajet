@@ -1,6 +1,7 @@
-﻿using DaJet.Flow;
+﻿using DaJet.Data;
+using DaJet.Flow;
 using DaJet.Metadata;
-using DaJet.Options;
+using DaJet.Model;
 using DaJet.Scripting;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,7 +31,7 @@ namespace DaJet.Exchange.SqlServer
         {
             if (Timeout < 0) { Timeout = 10; }
 
-            InfoBaseModel database = _databases.Select(Target) ?? throw new ArgumentException($"Target not found: {Target}");
+            InfoBaseRecord database = _databases.Select(Target) ?? throw new ArgumentException($"Target not found: {Target}");
             ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, Script) ?? throw new ArgumentException($"Script not found: {Script}");
 
             if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))

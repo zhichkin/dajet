@@ -2,7 +2,7 @@
 using DaJet.Metadata;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
-using DaJet.Options;
+using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -25,7 +25,7 @@ namespace DaJet.Http.Controllers
         
         [HttpGet("")] public ActionResult Select()
         {
-            List<InfoBaseModel> list = _mapper.Select();
+            List<InfoBaseRecord> list = _mapper.Select();
             JsonSerializerOptions options = new()
             {
                 WriteIndented = true,
@@ -36,7 +36,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("{infobase}")] public ActionResult Select([FromRoute] string infobase)
         {
-            InfoBaseModel record = _mapper.Select(infobase);
+            InfoBaseRecord record = _mapper.Select(infobase);
 
             if (record == null)
             {
@@ -60,7 +60,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("reset/{infobase}")] public ActionResult ResetCache([FromRoute] string infobase)
         {
-            InfoBaseModel options = _mapper.Select(infobase);
+            InfoBaseRecord options = _mapper.Select(infobase);
 
             if (options == null)
             {
@@ -93,7 +93,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseModel entity = _mapper.Select(infobase);
+            InfoBaseRecord entity = _mapper.Select(infobase);
 
             if (entity == null)
             {
@@ -145,7 +145,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseModel entity = _mapper.Select(infobase);
+            InfoBaseRecord entity = _mapper.Select(infobase);
 
             if (entity == null)
             {
@@ -191,7 +191,7 @@ namespace DaJet.Http.Controllers
             return Content(json);
         }
 
-        [HttpPost("")] public ActionResult Insert([FromBody] InfoBaseModel entity)
+        [HttpPost("")] public ActionResult Insert([FromBody] InfoBaseRecord entity)
         {
             if (string.IsNullOrWhiteSpace(entity.Name) ||
                 string.IsNullOrWhiteSpace(entity.ConnectionString) ||
@@ -217,7 +217,7 @@ namespace DaJet.Http.Controllers
 
             return Created($"{entity.Name}", $"{entity.Uuid}");
         }
-        [HttpPut("")] public ActionResult Update([FromBody] InfoBaseModel entity)
+        [HttpPut("")] public ActionResult Update([FromBody] InfoBaseRecord entity)
         {
             if (string.IsNullOrWhiteSpace(entity.Name) ||
                 string.IsNullOrWhiteSpace(entity.ConnectionString) ||
@@ -226,7 +226,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest("Неверно указаны параметры!");
             }
 
-            InfoBaseModel record = _mapper.Select(entity.Uuid)!;
+            InfoBaseRecord record = _mapper.Select(entity.Uuid)!;
 
             if (record == null)
             {
@@ -252,14 +252,14 @@ namespace DaJet.Http.Controllers
 
             return Ok();
         }
-        [HttpDelete("")] public ActionResult Delete([FromBody] InfoBaseModel entity)
+        [HttpDelete("")] public ActionResult Delete([FromBody] InfoBaseRecord entity)
         {
             if (string.IsNullOrWhiteSpace(entity.Name))
             {
                 return BadRequest("Неверно указаны параметры!");
             }
 
-            InfoBaseModel record = _mapper.Select(entity.Uuid)!;
+            InfoBaseRecord record = _mapper.Select(entity.Uuid)!;
 
             if (record == null)
             {

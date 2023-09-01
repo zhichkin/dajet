@@ -1,66 +1,52 @@
-﻿using DaJet.Json;
-using DaJet.Model;
+﻿using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using System.Text.Unicode;
+using Microsoft.AspNetCore.OData.Query;
+using Microsoft.AspNetCore.OData.Routing.Controllers;
 
 namespace DaJet.Http.Controllers
 {
-    [ApiController][Route("home")]
-    [Consumes("application/json")]
-    [Produces("application/json")]
-    public class HomeController : ControllerBase
+    [Route("home")]
+    public class HomeController : ODataController
     {
-        private readonly IDataSource _source;
-        private readonly IDomainModel _domain;
-        public HomeController(IDomainModel domain, IDataSource source)
+        public HomeController() { }
+        
+        [EnableQuery]
+        [HttpGet("TreeNodeRecord")]
+        public ActionResult<IEnumerable<TreeNodeRecord>> Select()
         {
-            _domain = domain;
-            _source = source;
-        }
-        [HttpGet()] public ActionResult Home()
-        {
-            throw new NotImplementedException();
-        }
-        [HttpPost("select")] public async Task<ActionResult> Select() //TODO: [FromBody] QueryObject query
-        {
-            HttpRequest request = HttpContext.Request;
-
-            if (request.ContentLength == 0)
+            return new List<TreeNodeRecord>()
             {
-                return null;
-            }
-
-            JsonSerializerOptions options = new()
-            {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
-                Converters =
+                new()
                 {
-                    new QueryObjectJsonConverter(_domain)
+                    Identity = new Guid("b0ff0ee5-dfb7-4f88-8fcb-58e56e190d57"),
+                    Name = "Node 1",
+                    Value = new PipelineRecord() { Name = "Pipeline 1" }
+                },
+                new()
+                {
+                    Identity = new Guid("b0ff0ee5-dfb7-8fcb-4f88-58e56e190d57"),
+                    Name = "Node 2",
+                    Value = new PipelineRecord() { Name = "Pipeline 2" }
+                },
+                new()
+                {
+                    Identity = new Guid("b0ff0ee5-4f88-8fcb-dfb7-58e56e190d57"),
+                    Name = "Node 3",
+                    Value = new PipelineBlockRecord() { Name = "Pipeline Block 123" }
                 }
             };
-
-            QueryObject query = await JsonSerializer.DeserializeAsync<QueryObject>(request.Body, options);
-
-            List<EntityObject> result = _source.Select(query);
-
-            string json = JsonSerializer.Serialize(result, options);
-
-            return Content(json);
         }
-        [HttpPost("create")] public ActionResult Create()
+
+        [EnableQuery]
+        [HttpGet("TreeNodeRecord({uuid:guid})")]
+        public ActionResult<TreeNodeRecord> Select([FromRoute] Guid uuid)
         {
-            return null;
-        }
-        [HttpPut("update")] public ActionResult Update()
-        {
-            return null;
-        }
-        [HttpDelete("delete")] public ActionResult Delete()
-        {
-            return null;
+            return new TreeNodeRecord()
+            {
+                Identity = uuid,
+                Name = $"Node 1",
+                Value = new PipelineRecord() { Name = "Pipeline 1"}
+            };
         }
     }
 }

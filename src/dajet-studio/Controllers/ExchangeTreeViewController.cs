@@ -1,4 +1,5 @@
-﻿using DaJet.Studio.Components;
+﻿using DaJet.Model;
+using DaJet.Studio.Components;
 using DaJet.Studio.Model;
 using DaJet.Studio.Pages;
 using DaJet.Studio.Pages.Exchange;
@@ -20,7 +21,7 @@ namespace DaJet.Studio.Controllers
             AppState = appState;
             Navigator = navigator;
         }
-        public TreeNodeModel CreateRootNode(InfoBaseModel model)
+        public TreeNodeModel CreateRootNode(InfoBaseRecord model)
         {
             return new TreeNodeModel()
             {
@@ -38,7 +39,7 @@ namespace DaJet.Studio.Controllers
                 return;
             }
 
-            if (root.Tag is not InfoBaseModel)
+            if (root.Tag is not InfoBaseRecord)
             {
                 return;
             }
@@ -56,11 +57,11 @@ namespace DaJet.Studio.Controllers
         }
         private async Task ContextMenuHandler(TreeNodeModel node, IDialogService dialogService)
         {
-            if (node.Tag is InfoBaseModel)
+            if (node.Tag is InfoBaseRecord)
             {
                 await OpenExchangeRootContextMenu(node, dialogService);
             }
-            else if (node.Parent is not null && node.Parent.Tag is InfoBaseModel)
+            else if (node.Parent is not null && node.Parent.Tag is InfoBaseRecord)
             {
                 await OpenExchangeNodeContextMenu(node, dialogService);
             }
@@ -179,9 +180,9 @@ namespace DaJet.Studio.Controllers
         }
         private void NavigateToCreatePipelinePage(TreeNodeModel node, IDialogService dialogService)
         {
-            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseModel>(in node);
+            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseRecord>(in node);
 
-            if (root is null || root.Tag is not InfoBaseModel database) { return; }
+            if (root is null || root.Tag is not InfoBaseRecord database) { return; }
 
             if (node.Tag is not ScriptModel exchange) { return; }
 
@@ -189,9 +190,9 @@ namespace DaJet.Studio.Controllers
         }
         private void NavigateToConfigureRabbitMQPage(TreeNodeModel node, IDialogService dialogService)
         {
-            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseModel>(in node);
+            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseRecord>(in node);
 
-            if (root is null || root.Tag is not InfoBaseModel database) { return; }
+            if (root is null || root.Tag is not InfoBaseRecord database) { return; }
 
             if (node.Tag is not ScriptModel exchange) { return; }
 
@@ -199,23 +200,23 @@ namespace DaJet.Studio.Controllers
         }
         private void NavigateToDeleteRabbitMQPage(TreeNodeModel node, IDialogService dialogService)
         {
-            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseModel>(in node);
+            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseRecord>(in node);
 
-            if (root is null || root.Tag is not InfoBaseModel database) { return; }
+            if (root is null || root.Tag is not InfoBaseRecord database) { return; }
 
             Navigator.NavigateTo($"/configure-rabbit-delete/{database.Name}");
         }
         private void NavigateToExchangeTuningPage(TreeNodeModel node, IDialogService dialogService)
         {
-            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseModel>(in node);
+            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseRecord>(in node);
 
-            if (root is null || root.Tag is not InfoBaseModel database) { return; }
+            if (root is null || root.Tag is not InfoBaseRecord database) { return; }
 
             Navigator.NavigateTo($"/configure-exchange-tuning/{database.Name}");
         }
         private async Task SelectExchange(TreeNodeModel root, IDialogService dialogService)
         {
-            if (root.Tag is not InfoBaseModel infobase) { return; }
+            if (root.Tag is not InfoBaseRecord infobase) { return; }
 
             DialogParameters parameters = new()
             {
@@ -252,7 +253,7 @@ namespace DaJet.Studio.Controllers
             node.Parent = root;
             root.Nodes.Add(node);
         }
-        private async Task<bool> CreatePublication(InfoBaseModel infobase, string name)
+        private async Task<bool> CreatePublication(InfoBaseRecord infobase, string name)
         {
             try
             {
@@ -275,7 +276,7 @@ namespace DaJet.Studio.Controllers
         private async Task DeleteExchange(TreeNodeModel node, IDialogService dialogService)
         {
             if (node.Parent is null ||
-                node.Parent.Tag is not InfoBaseModel infobase ||
+                node.Parent.Tag is not InfoBaseRecord infobase ||
                 node.Tag is not ScriptModel script)
             {
                 return;
@@ -292,7 +293,7 @@ namespace DaJet.Studio.Controllers
 
             node.IsVisible = false;
         }
-        private async Task<bool> DeletePublication(InfoBaseModel infobase, string name)
+        private async Task<bool> DeletePublication(InfoBaseRecord infobase, string name)
         {
             try
             {
@@ -341,9 +342,9 @@ namespace DaJet.Studio.Controllers
         }
         private async Task CreateArticle(TreeNodeModel node, string articleName)
         {
-            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseModel>(in node);
+            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseRecord>(in node);
 
-            if (root is null || root.Tag is not InfoBaseModel database)
+            if (root is null || root.Tag is not InfoBaseRecord database)
             {
                 return; // owner database is not found
             }
@@ -503,9 +504,9 @@ namespace DaJet.Studio.Controllers
         }
         private async Task DeleteArticle(TreeNodeModel node)
         {
-            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseModel>(in node);
+            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseRecord>(in node);
 
-            if (root is null || root.Tag is not InfoBaseModel database)
+            if (root is null || root.Tag is not InfoBaseRecord database)
             {
                 return; // owner database is not found
             }

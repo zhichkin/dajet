@@ -1,4 +1,5 @@
-﻿using DaJet.Studio.Model;
+﻿using DaJet.Model;
+using DaJet.Studio.Model;
 using Microsoft.AspNetCore.Components;
 using System.Net;
 using System.Net.Http.Json;
@@ -30,7 +31,7 @@ namespace DaJet.Studio.Pages
                 ScriptUrl = Model.Name;
             }
 
-            InfoBaseModel database = AppState.GetDatabase(Model.Owner);
+            InfoBaseRecord database = AppState.GetDatabase(Model.Owner);
             DatabaseName = (database == null ? "База данных не определена" : database.Name);
 
             ErrorText = string.Empty;
@@ -129,7 +130,7 @@ namespace DaJet.Studio.Pages
 
             try
             {
-                InfoBaseModel database = AppState.GetDatabaseOrThrowException(Model.Owner);
+                InfoBaseRecord database = AppState.GetDatabaseOrThrowException(Model.Owner);
 
                 QueryRequest request = new()
                 {
@@ -175,7 +176,7 @@ namespace DaJet.Studio.Pages
 
             try
             {
-                InfoBaseModel database = AppState.GetDatabaseOrThrowException(Model.Owner);
+                InfoBaseRecord database = AppState.GetDatabaseOrThrowException(Model.Owner);
 
                 Dictionary<string, object> parameters = new();
 
@@ -208,7 +209,7 @@ namespace DaJet.Studio.Pages
 
             try
             {
-                InfoBaseModel database = AppState.GetDatabaseOrThrowException(Model.Owner);
+                InfoBaseRecord database = AppState.GetDatabaseOrThrowException(Model.Owner);
 
                 Dictionary<string, object> parameters = new();
 
@@ -242,7 +243,7 @@ namespace DaJet.Studio.Pages
 
             try
             {
-                InfoBaseModel database = AppState.GetDatabaseOrThrowException(Model.Owner);
+                InfoBaseRecord database = AppState.GetDatabaseOrThrowException(Model.Owner);
 
                 QueryRequest request = new()
                 {

@@ -1,10 +1,7 @@
-﻿using DaJet.Studio.Model;
+﻿using DaJet.Model;
+using DaJet.Studio.Components;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
-using static System.Net.WebRequestMethods;
-using System.Reflection;
-using System.Xml.Linq;
-using DaJet.Studio.Components;
 
 namespace DaJet.Studio.Pages
 {
@@ -13,7 +10,7 @@ namespace DaJet.Studio.Pages
         [CascadingParameter] MudDialogInstance MudDialog { get; set; }
         [Parameter] public MainTreeView MainTreeView { get; set; }
         [Parameter] public TreeNodeModel TreeNode { get; set; }
-        [Parameter] public InfoBaseModel Model { get; set; } = new();
+        [Parameter] public InfoBaseRecord Model { get; set; } = new();
         private void Cancel()
         {
             MudDialog.Cancel();

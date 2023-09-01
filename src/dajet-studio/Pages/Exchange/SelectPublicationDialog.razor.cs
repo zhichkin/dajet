@@ -1,6 +1,5 @@
-﻿using DaJet.Flow.Model;
+﻿using DaJet.Model;
 using DaJet.Studio.Components;
-using DaJet.Studio.Model;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using System.Net.Http.Json;
@@ -28,7 +27,7 @@ namespace DaJet.Studio.Pages.Exchange
         {
             List<string> list = new();
 
-            if (Model.Tag is not InfoBaseModel infobase)
+            if (Model.Tag is not InfoBaseRecord infobase)
             {
                 return list;
             }

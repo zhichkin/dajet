@@ -10,7 +10,7 @@
                 @Model.Url
             </span>
 
-            @if (Model.Tag is InfoBaseModel || (Model.Tag is ScriptModel script && script.IsFolder))
+            @if (Model.Tag is InfoBaseRecord || (Model.Tag is ScriptModel script && script.IsFolder))
             {
                 <MudTooltip Text="Создать новый каталог">
                     <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder" Color="Color.Success" Size="Size.Large" OnClick="CreateFolder" />

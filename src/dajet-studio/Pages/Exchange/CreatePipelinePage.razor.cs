@@ -1,4 +1,5 @@
 ﻿using DaJet.Flow.Model;
+using DaJet.Model;
 using DaJet.Studio.Model;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
@@ -27,8 +28,8 @@ namespace DaJet.Studio.Pages.Exchange
         {
             "Apache Kafka", "PostgreSql", "SqlServer", "RabbitMQ"
         };
-        protected InfoBaseModel TargetUrl { get; set; }
-        protected List<InfoBaseModel> TargetUrls { get; set; } = new();
+        protected InfoBaseRecord TargetUrl { get; set; }
+        protected List<InfoBaseRecord> TargetUrls { get; set; } = new();
         protected string MonitorScriptUrl { get; set; } = "/monitor";
         protected bool GenerateMonitorScript { get; set; } = false;
         protected string InqueueScriptUrl { get; set; } = "/inqueue";
@@ -98,7 +99,7 @@ namespace DaJet.Studio.Pages.Exchange
             {
                 HttpResponseMessage response = await Http.GetAsync("/md");
 
-                List<InfoBaseModel> list = await response.Content.ReadFromJsonAsync<List<InfoBaseModel>>();
+                List<InfoBaseRecord> list = await response.Content.ReadFromJsonAsync<List<InfoBaseRecord>>();
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -106,7 +107,7 @@ namespace DaJet.Studio.Pages.Exchange
                     {
                         TargetUrl = list[0];
 
-                        foreach (InfoBaseModel database in list)
+                        foreach (InfoBaseRecord database in list)
                         {
                             TargetUrls.Add(database);
                         }
@@ -135,7 +136,7 @@ namespace DaJet.Studio.Pages.Exchange
         }
         protected async Task CreatePipeline()
         {
-            InfoBaseModel source = TargetUrls.Where(db => db.Name == Database).FirstOrDefault();
+            InfoBaseRecord source = TargetUrls.Where(db => db.Name == Database).FirstOrDefault();
 
             if (source is null)
             {

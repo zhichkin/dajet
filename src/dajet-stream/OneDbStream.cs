@@ -1,6 +1,7 @@
-﻿using DaJet.Flow;
+﻿using DaJet.Data;
+using DaJet.Flow;
 using DaJet.Flow.Model;
-using DaJet.Options;
+using DaJet.Model;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Npgsql.Replication;
@@ -31,7 +32,7 @@ namespace DaJet.Stream.PostgreSql
         }
         protected override void _Configure()
         {
-            InfoBaseModel database = _databases.Select(Source) ?? throw new Exception($"Source not found: {Source}");
+            InfoBaseRecord database = _databases.Select(Source) ?? throw new Exception($"Source not found: {Source}");
 
             ConnectionString = database.ConnectionString;
         }

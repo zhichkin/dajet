@@ -1,4 +1,4 @@
-﻿using DaJet.Studio.Model;
+﻿using DaJet.Model;
 using DaJet.Studio.Pages;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -48,9 +48,9 @@ namespace DaJet.Studio
 
                 HttpResponseMessage response = await Http.GetAsync("/md");
 
-                List<InfoBaseModel> list = await response.Content.ReadFromJsonAsync<List<InfoBaseModel>>();
+                List<InfoBaseRecord> list = await response.Content.ReadFromJsonAsync<List<InfoBaseRecord>>();
 
-                foreach (InfoBaseModel model in list)
+                foreach (InfoBaseRecord model in list)
                 {
                     AppState.DatabaseList.Add(model);
                 }
@@ -79,7 +79,7 @@ namespace DaJet.Studio
         }
         protected async Task RegisterNewInfoBase(MouseEventArgs args)
         {
-            InfoBaseModel model = new();
+            InfoBaseRecord model = new();
             DialogOptions options = new() { CloseButton = true };
             DialogParameters parameters = new()
             {
@@ -89,7 +89,7 @@ namespace DaJet.Studio
             var result = await dialog.Result;
             if (result.Cancelled) { return; }
 
-            if (result.Data is not InfoBaseModel entity)
+            if (result.Data is not InfoBaseRecord entity)
             {
                 return;
             }
@@ -114,7 +114,7 @@ namespace DaJet.Studio
         }
         protected async Task UnRegisterInfoBase(MouseEventArgs args)
         {
-            InfoBaseModel database = AppState.CurrentDatabase;
+            InfoBaseRecord database = AppState.CurrentDatabase;
             if (database is null) { return; }
 
             bool? result = await DialogService.ShowMessageBox(

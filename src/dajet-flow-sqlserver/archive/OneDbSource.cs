@@ -1,5 +1,6 @@
-﻿using DaJet.Metadata;
-using DaJet.Options;
+﻿using DaJet.Data;
+using DaJet.Metadata;
+using DaJet.Model;
 using DaJet.Scripting;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,7 +34,7 @@ namespace DaJet.Flow.SqlServer
         }
         protected override void _Configure()
         {
-            InfoBaseModel database = _databases.Select(Source);
+            InfoBaseRecord database = _databases.Select(Source);
             if (database is null) { throw new Exception($"Source not found: {Source}"); }
 
             ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, Script);

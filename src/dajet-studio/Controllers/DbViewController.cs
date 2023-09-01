@@ -1,4 +1,5 @@
-﻿using DaJet.Studio.Components;
+﻿using DaJet.Model;
+using DaJet.Studio.Components;
 using DaJet.Studio.Model;
 using DaJet.Studio.Pages;
 using Microsoft.AspNetCore.Components;
@@ -32,7 +33,7 @@ namespace DaJet.Studio.Controllers
             AppState = state;
             Navigator = navigator;
         }
-        public TreeNodeModel CreateRootNode(InfoBaseModel model)
+        public TreeNodeModel CreateRootNode(InfoBaseRecord model)
         {
             return new TreeNodeModel()
             {
@@ -82,7 +83,7 @@ namespace DaJet.Studio.Controllers
                 return;
             }
 
-            if (root.Tag is not InfoBaseModel database)
+            if (root.Tag is not InfoBaseRecord database)
             {
                 return;
             }
@@ -163,9 +164,9 @@ namespace DaJet.Studio.Controllers
                 return;
             }
 
-            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseModel>(in node);
+            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseRecord>(in node);
 
-            if (root == null || root.Tag is not InfoBaseModel infobase)
+            if (root == null || root.Tag is not InfoBaseRecord infobase)
             {
                 return;
             }
@@ -282,9 +283,9 @@ namespace DaJet.Studio.Controllers
         }
         private async Task ScriptViewsAndDownload(TreeNodeModel node)
         {
-            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseModel>(in node);
+            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseRecord>(in node);
 
-            if (root == null || root.Tag is not InfoBaseModel infobase)
+            if (root == null || root.Tag is not InfoBaseRecord infobase)
             {
                 return;
             }
@@ -307,9 +308,9 @@ namespace DaJet.Studio.Controllers
         }
         private async Task<bool> CreateViews(TreeNodeModel node)
         {
-            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseModel>(in node);
+            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseRecord>(in node);
 
-            if (root == null || root.Tag is not InfoBaseModel infobase)
+            if (root == null || root.Tag is not InfoBaseRecord infobase)
             {
                 return false;
             }
@@ -341,9 +342,9 @@ namespace DaJet.Studio.Controllers
         }
         private async Task<bool> DeleteViews(TreeNodeModel node)
         {
-            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseModel>(in node);
+            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseRecord>(in node);
 
-            if (root == null || root.Tag is not InfoBaseModel infobase)
+            if (root == null || root.Tag is not InfoBaseRecord infobase)
             {
                 return false;
             }

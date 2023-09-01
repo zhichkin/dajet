@@ -1,7 +1,7 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
-using DaJet.Options;
+using DaJet.Model;
 using System.Text;
 
 namespace DaJet.Exchange.SqlServer
@@ -42,7 +42,7 @@ namespace DaJet.Exchange.SqlServer
         private const string DISABLE_TRIGGER_SCRIPT =
             "ALTER TABLE {TABLE_NAME} DISABLE TRIGGER {TRIGGER_NAME};";
 
-        public bool TryConfigure(in IMetadataService metadata, in InfoBaseModel database, out Dictionary<string, string> log)
+        public bool TryConfigure(in IMetadataService metadata, in InfoBaseRecord database, out Dictionary<string, string> log)
         {
             log = new Dictionary<string, string>();
 
@@ -297,7 +297,7 @@ namespace DaJet.Exchange.SqlServer
             executor.TxExecuteNonQuery(in scripts, 60);
         }
         
-        public bool TryUninstall(in IMetadataService metadata, in InfoBaseModel database, out Dictionary<string, string> log)
+        public bool TryUninstall(in IMetadataService metadata, in InfoBaseRecord database, out Dictionary<string, string> log)
         {
             log = new Dictionary<string, string>();
 

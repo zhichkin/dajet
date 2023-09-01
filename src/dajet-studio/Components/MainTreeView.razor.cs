@@ -1,4 +1,5 @@
-﻿using DaJet.Studio.Controllers;
+﻿using DaJet.Model;
+using DaJet.Studio.Controllers;
 using DaJet.Studio.Model;
 using DaJet.Studio.Pages;
 using Microsoft.AspNetCore.Components;
@@ -86,9 +87,9 @@ namespace DaJet.Studio.Components
 
                 HttpResponseMessage response = await Http.GetAsync(root.Url);
 
-                List<InfoBaseModel> list = await response.Content.ReadFromJsonAsync<List<InfoBaseModel>>();
+                List<InfoBaseRecord> list = await response.Content.ReadFromJsonAsync<List<InfoBaseRecord>>();
 
-                foreach (InfoBaseModel model in list)
+                foreach (InfoBaseRecord model in list)
                 {
                     TreeNodeModel node = new();
 
@@ -106,7 +107,7 @@ namespace DaJet.Studio.Components
                 });
             }
         }
-        private void ConfigureDbViewNode(in TreeNodeModel node, in InfoBaseModel model)
+        private void ConfigureDbViewNode(in TreeNodeModel node, in InfoBaseRecord model)
         {
             try
             {
@@ -119,7 +120,7 @@ namespace DaJet.Studio.Components
                 Snackbar.Add(error.Message, Severity.Error);
             }
         }
-        private void ConfigureApiTreeViewNode(in TreeNodeModel node, in InfoBaseModel model)
+        private void ConfigureApiTreeViewNode(in TreeNodeModel node, in InfoBaseRecord model)
         {
             try
             {
@@ -132,7 +133,7 @@ namespace DaJet.Studio.Components
                 Snackbar.Add(error.Message, Severity.Error);
             }
         }
-        private void ConfigureExchangeTreeViewNode(in TreeNodeModel node, in InfoBaseModel model)
+        private void ConfigureExchangeTreeViewNode(in TreeNodeModel node, in InfoBaseRecord model)
         {
             try
             {
@@ -179,7 +180,7 @@ namespace DaJet.Studio.Components
                 //TODO: show error
             }
         }
-        public void ConfigureInfoBaseNode(in TreeNodeModel node, in InfoBaseModel model)
+        public void ConfigureInfoBaseNode(in TreeNodeModel node, in InfoBaseRecord model)
         {
             node.Tag = model;
             node.Title = model.Name;
@@ -300,7 +301,7 @@ namespace DaJet.Studio.Components
 
         private async Task InfoBaseContextMenuHandler(TreeNodeModel node, IDialogService dialogService)
         {
-            if (node.Tag is not InfoBaseModel model)
+            if (node.Tag is not InfoBaseRecord model)
             {
                 return;
             }
@@ -322,7 +323,7 @@ namespace DaJet.Studio.Components
                 return;
             }
 
-            if (result.Data is not InfoBaseModel entity)
+            if (result.Data is not InfoBaseRecord entity)
             {
                 return;
             }
@@ -341,7 +342,7 @@ namespace DaJet.Studio.Components
                 node.Nodes.Clear();
                 ConfigureInfoBaseNode(node, entity);
 
-                InfoBaseModel database = AppState.GetDatabase(entity.Uuid);
+                InfoBaseRecord database = AppState.GetDatabase(entity.Uuid);
                 if (database != null)
                 {
                     database.Name = entity.Name;
@@ -486,7 +487,7 @@ namespace DaJet.Studio.Components
 
             if (dbms is null) { return; }
 
-            InfoBaseModel database = AppState.CurrentDatabase;
+            InfoBaseRecord database = AppState.CurrentDatabase;
 
             TreeNodeModel target = null;
 
@@ -569,7 +570,7 @@ namespace DaJet.Studio.Components
 
                 FilterNodes(node.Nodes, filter, culture);
 
-                if (node.Tag is InfoBaseModel)
+                if (node.Tag is InfoBaseRecord)
                 {
                     node.IsExpanded = true;
                 }

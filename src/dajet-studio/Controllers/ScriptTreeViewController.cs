@@ -1,4 +1,5 @@
-﻿using DaJet.Studio.Components;
+﻿using DaJet.Model;
+using DaJet.Studio.Components;
 using DaJet.Studio.Model;
 using DaJet.Studio.Pages;
 using Microsoft.AspNetCore.Components;
@@ -23,7 +24,7 @@ namespace DaJet.Studio.Controllers
 
             _updateTitleCommandHandler = new(UpdateTitleCommandHandler);
         }
-        public TreeNodeModel CreateRootNode(InfoBaseModel model)
+        public TreeNodeModel CreateRootNode(InfoBaseRecord model)
         {
             return new TreeNodeModel()
             {
@@ -45,7 +46,7 @@ namespace DaJet.Studio.Controllers
                 return;
             }
 
-            if (root.Tag is not InfoBaseModel)
+            if (root.Tag is not InfoBaseRecord)
             {
                 return;
             }
@@ -73,7 +74,7 @@ namespace DaJet.Studio.Controllers
         {
             string url = string.Empty;
 
-            if (parent.Tag is InfoBaseModel infobase)
+            if (parent.Tag is InfoBaseRecord infobase)
             {
                 url = $"/api/{infobase.Name}/{model.Name}";
             }
@@ -169,9 +170,9 @@ namespace DaJet.Studio.Controllers
         }
         private async Task CreateFolderScript(TreeNodeModel node, ScriptModel script)
         {
-            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseModel>(in node);
+            TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseRecord>(in node);
 
-            if (root == null || root.Tag is not InfoBaseModel infobase)
+            if (root == null || root.Tag is not InfoBaseRecord infobase)
             {
                 return; // owner database is not found
             }
@@ -248,7 +249,7 @@ namespace DaJet.Studio.Controllers
 
                 if (node.Parent is not null)
                 {
-                    if (node.Parent.Tag is InfoBaseModel infobase)
+                    if (node.Parent.Tag is InfoBaseRecord infobase)
                     {
                         node.Url = $"/api/{infobase.Name}/{script.Name}";
                     }
