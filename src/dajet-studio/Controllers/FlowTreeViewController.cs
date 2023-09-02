@@ -1,9 +1,7 @@
 ﻿using DaJet.Flow.Model;
-using DaJet.Model;
 using DaJet.Studio.Components;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
-using Microsoft.OData.Client;
 using System.Net.Http.Json;
 
 namespace DaJet.Studio.Controllers
@@ -33,20 +31,6 @@ namespace DaJet.Studio.Controllers
             if (root is null || root.Nodes.Count > 0)
             {
                 return;
-            }
-
-            var serviceRoot = Http.BaseAddress + "home/";
-            var context = new Default.Container(new Uri(serviceRoot))
-            {
-                HttpRequestTransportMode = HttpRequestTransportMode.HttpClient
-            };
-            context.Format.UseJson();
-
-            IEnumerable<TreeNodeRecord> nodes = await context.TreeNodeRecord.ExecuteAsync();
-            
-            foreach (var node in nodes)
-            {
-                Console.WriteLine(node.Name);
             }
 
             try

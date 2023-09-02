@@ -22,14 +22,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="Connected Services\ODataSource\ODataSourceCsdl.xml" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="Connected Services\ODataSource\ODataSourceCsdl.xml" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Include="wwwroot\css\tree-view.css" />
     <None Include="wwwroot\css\script-editor.css" />
     <None Include="wwwroot\css\app.css" />
@@ -40,12 +32,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="7.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="7.0.1" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="7.0.0" />
-    <PackageReference Include="Microsoft.OData.Client" Version="7.17.0" />
-    <PackageReference Include="Microsoft.OData.Core" Version="7.17.0" />
-    <PackageReference Include="Microsoft.OData.Edm" Version="7.17.0" />
-    <PackageReference Include="Microsoft.Spatial" Version="7.17.0" />
     <PackageReference Include="MudBlazor" Version="6.1.6" />
-    <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
     <PackageReference Include="System.Text.Json" Version="7.0.3" />
   </ItemGroup>
 
