@@ -8,7 +8,6 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IO;
 using Microsoft.OData.ModelBuilder;
-using System.Reflection;
 
 namespace DaJet.Http.Server
 {
@@ -54,7 +53,7 @@ namespace DaJet.Http.Server
             ConfigureOptionProviders(builder.Services);
             ConfigureMetadataService(builder.Services);
 
-            builder.Services.UseDaJetFlow(OptionsFileConnectionString);
+            builder.Services.AddDaJetFlow(OptionsFileConnectionString);
             builder.Services.AddSingleton<RecyclableMemoryStreamManager>();
 
             WebApplication app = builder.Build();

@@ -4,7 +4,7 @@ namespace DaJet.Flow
 {
     public static class DaJetFlowExtensions
     {
-        public static IServiceCollection UseDaJetFlow(this IServiceCollection services, string connectionString)
+        public static IServiceCollection AddDaJetFlow(this IServiceCollection services, string connectionString)
         {
             PipelineOptionsProvider options = new(connectionString);
             
