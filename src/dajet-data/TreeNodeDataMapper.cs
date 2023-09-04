@@ -135,7 +135,7 @@ namespace DaJet.Data
                     {
                         if (reader.Read())
                         {
-                            record.Parent = new TreeNodeRecord(new Guid(reader.GetString(1)));
+                            record.Parent = new TreeNodeRecord() { Identity = new Guid(reader.GetString(1)) };
                             record.Name = reader.GetString(2);
                             record.IsFolder = (reader.GetInt64(3) == 1L);
 

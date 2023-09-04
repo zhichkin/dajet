@@ -32,6 +32,8 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="7.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="7.0.1" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="7.0.0" />
+    <PackageReference Include="Microsoft.OData.Client" Version="7.17.0" />
+    <PackageReference Include="Microsoft.OData.ModelBuilder" Version="1.0.9" />
     <PackageReference Include="MudBlazor" Version="6.1.6" />
     <PackageReference Include="System.Text.Json" Version="7.0.3" />
   </ItemGroup>
