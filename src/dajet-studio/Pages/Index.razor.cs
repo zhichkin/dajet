@@ -48,31 +48,6 @@ namespace DaJet.Studio.Pages
                         Console.WriteLine($"{item.Name} = [{item.Value.GetType()}] {block.Name}");
                     }
                 }
-
-                // ***************************************************************
-
-                //var result = await context.LoadPropertyAsync(treeNode, "Value");
-
-                //foreach (var item in result)
-                //{
-                //    if (item is PipelineRecord pipeline)
-                //    {
-                //        Console.WriteLine($"[{item.GetType()}] {pipeline.Name}");
-                //    }
-                //    else if (item is PipelineBlockRecord block)
-                //    {
-                //        Console.WriteLine($"[{item.GetType()}] {block.Name}");
-                //    }
-
-                //    //if (treeNode.Value is PipelineRecord pipeline)
-                //    //{
-                //    //    Console.WriteLine($"[{treeNode.Value.GetType()}] {pipeline.Name}");
-                //    //}
-                //    //else if (treeNode.Value is PipelineBlockRecord block)
-                //    //{
-                //    //    Console.WriteLine($"[{treeNode.Value.GetType()}] {block.Name}");
-                //    //}
-                //}
             }
         }
     }
