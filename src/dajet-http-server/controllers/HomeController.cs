@@ -1,63 +1,74 @@
-﻿using DaJet.Model;
+﻿using DaJet.Json;
+using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OData.Query;
-using Microsoft.AspNetCore.OData.Routing.Controllers;
+using System.Security;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Unicode;
 
 namespace DaJet.Http.Controllers
 {
-    public class TreeNodeRecordController : ODataController
+    [ApiController][Route("home")]
+    [Consumes("application/json")]
+    [Produces("application/json")]
+    public class HomeController : ControllerBase
     {
         private static List<TreeNodeRecord> _nodes = new()
         {
-            new()
+            new(null)
             {
-                Parent = new() { Name = "root" },
-                Identity = new Guid("b0ff0ee5-dfb7-4f88-8fcb-58e56e190d57"),
+                Parent = new(null) { Name = "root" },
                 Name = "Node 1",
-                Value = new PipelineRecord() { Name = "Pipeline" }
+                Value = new TreeNodeRecord(null) { Name = "Pipeline" }
             },
-            new()
+            new(null)
             {
-                Parent = new() { Name = "root" },
-                Identity = new Guid("b0ff0ee5-dfb7-8fcb-4f88-58e56e190d57"),
+                Parent = new(null) { Name = "root" },
                 Name = "Node 2",
-                Value = new PipelineBlockRecord() { Name = "Block" }
+                Value = new TreeNodeRecord(null) { Name = "Block" }
             },
-            new()
+            new(null)
             {
-                Parent = new() { Name = "Parent 1" },
+                Parent = new(null) { Name = "Parent 1" },
                 Name = "Node 3",
-                Identity = new Guid("b0ff0ee5-4f88-8fcb-dfb7-58e56e190d57"),
-                Value = new PipelineBlockRecord() { Name = "Pipeline Block 123" }
+                Value = new TreeNodeRecord(null) { Name = "Pipeline Block 123" }
             }
         };
-
-        [EnableQuery()]
-        public ActionResult<TreeNodeRecord> Get([FromRoute] Guid key)
+        private readonly IDomainModel _domain;
+        public HomeController(IDomainModel domain)
         {
-            return new TreeNodeRecord()
+            _domain = domain;
+        }
+        [HttpGet("")] public ActionResult<IEnumerable<TreeNodeRecord>> SelectTreeNodes()
+        {
+            JsonSerializerOptions options = new()
             {
-                Identity = key,
-                Name = $"Node 1",
-                Value = new PipelineRecord() { Name = "Pipeline 1" }
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
             };
-        }
-        public ActionResult<TreeNodeRecord> GetParent([FromRoute] Guid key)
-        {
-            TreeNodeRecord value = new() { Identity = key, Name = "Get parent test" };
 
-            return value;
-        }
-        public ActionResult<EntityObject> GetValue([FromRoute] Guid key)
-        {
-            TreeNodeRecord node = _nodes.Where(e => e.Identity == key).FirstOrDefault();
+            options.Converters.Add(new EntityJsonConverter(_domain));
+            
+            string json = JsonSerializer.Serialize(_nodes, options);
 
-            return node?.Value;
+            return Content(json);
         }
-        [EnableQuery()]
-        public ActionResult<IEnumerable<TreeNodeRecord>> Get()
+        [HttpGet("{type}/{uuid:guid}")]
+        public ActionResult<TreeNodeRecord> Select([FromRoute] string type, [FromRoute] Guid uuid)
         {
-            return _nodes;
+            JsonSerializerOptions options = new()
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+            };
+
+            options.Converters.Add(new EntityJsonConverter(_domain));
+
+            TreeNodeRecord node = _nodes.Where(e => e.Value.Identity == uuid).FirstOrDefault();
+
+            string json = JsonSerializer.Serialize(node, options);
+
+            return Content(json);
         }
     }
 }

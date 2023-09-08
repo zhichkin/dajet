@@ -1,5 +1,8 @@
 ﻿@page "/"
 
+@inject IDataSource DataSource;
+@inject IDomainModel DomainModel;
+
 <h6>DaJet Studio © 2.3.4</h6>
 
 <button @onclick="Test">test</button>

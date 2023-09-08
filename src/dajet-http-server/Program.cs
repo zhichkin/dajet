@@ -3,12 +3,9 @@ using DaJet.Flow;
 using DaJet.Metadata;
 using DaJet.Model;
 using Microsoft.AspNetCore.Cors.Infrastructure;
-using Microsoft.AspNetCore.OData;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IO;
-using Microsoft.OData.Edm;
-using Microsoft.OData.ModelBuilder;
 
 namespace DaJet.Http.Server
 {
@@ -46,8 +43,9 @@ namespace DaJet.Http.Server
             builder.Host.UseSystemd();
             builder.Host.UseWindowsService();
 
-            builder.Services.AddControllers().AddOData(ConfigureOData);
+            builder.Services.AddSingleton<IDomainModel, DomainModel>();
 
+            builder.Services.AddControllers();
             builder.Services.AddCors(ConfigureCors);
             ConfigureFileProvider(builder.Services);
 
@@ -65,30 +63,6 @@ namespace DaJet.Http.Server
             app.MapWhen(IsWebApiRequest, ConfigureWebApiPipeline);
             app.MapWhen(IsBlazorRequest, ConfigureBlazorPipeline);
             app.Run();
-        }
-        private static void ConfigureOData(ODataOptions options)
-        {
-            ODataConventionModelBuilder builder = new();
-            
-            builder.EntityType<EntityObject>();
-            builder.EntitySet<EntityObject>(nameof(EntityObject));
-
-            builder.EntityType<TreeNodeRecord>().ContainsOptional(e => e.Parent);
-            builder.EntityType<TreeNodeRecord>().ContainsOptional(e => e.Value);
-
-            foreach (Type type in typeof(EntityObject).Assembly.GetExportedTypes())
-            {
-                if (type.IsSubclassOf(typeof(EntityObject)))
-                {
-                    builder.AddEntityType(type);
-                    builder.AddEntitySet(type.Name, new EntityTypeConfiguration(builder, type));
-                }
-            }
-
-            IEdmModel model = builder.GetEdmModel();
-
-            options.EnableQueryFeatures(null);
-            options.AddRouteComponents("home", model);
         }
         private static void ConfigureCors(CorsOptions options)
         {

@@ -9,36 +9,20 @@ namespace DaJet.Model
 {
     public interface IDomainModel
     {
-        IDomainModel ConfigureFromAssembly(in Assembly assembly);
         T New<T>() where T : EntityObject; // New
         T New<T>(Guid identity) where T : EntityObject; // Virtual
-        EntityObject Create(int typeCode, Guid identity); // Virtual
+        EntityObject New(Type type); // New
+        EntityObject New(Type type, Guid identity); // Virtual
+
+        void Update(Guid uuid, EntityObject entity);
     }
     public sealed class DomainModel : IDomainModel
     {
         private readonly IdentityMap _cache = new();
         private readonly IServiceProvider _services;
-        private readonly BiDictionary<int, Type> _map = new();
         public DomainModel(IServiceProvider services)
         {
             _services = services;
-        }
-        public IDomainModel ConfigureFromAssembly(in Assembly assembly)
-        {
-            foreach (Type type in assembly.GetExportedTypes())
-            {
-                if (type.IsSubclassOf(typeof(EntityObject)))
-                {
-                    EntityAttribute attribute = type.GetCustomAttribute<EntityAttribute>();
-
-                    if (attribute is not null)
-                    {
-                        _map.Add(attribute.TypeCode, type);
-                    }
-                }
-            }
-
-            return this;
         }
         public T New<T>() where T : EntityObject
         {
@@ -57,36 +41,53 @@ namespace DaJet.Model
                 return item as T;
             }
 
-            if (!_map.TryGet(typeof(T), out int typeCode))
-            {
-                throw new UnknownTypeException(nameof(T));
-            }
+            T entity = ActivatorUtilities.CreateInstance<T>(_services);
 
-            T entity = ActivatorUtilities.CreateInstance<T>(_services, identity);
+            entity.SetVirtualState(identity);
 
             _cache.Add(entity);
 
             return entity;
         }
-        public EntityObject Create(int typeCode, Guid identity)
+        public EntityObject New(Type type)
         {
-            EntityObject entity = null;
-
-            if (_cache.TryGet(identity, ref entity))
+            if (!type.IsSubclassOf(typeof(EntityObject)))
             {
-                return entity;
+                throw new InvalidOperationException();
             }
 
-            if (!_map.TryGet(typeCode, out Type type))
-            {
-                throw new UnknownTypeException(typeCode.ToString());
-            }
-
-            entity = ActivatorUtilities.CreateInstance(_services, type, identity) as EntityObject;
+            EntityObject entity = ActivatorUtilities.CreateInstance(_services, type) as EntityObject;
 
             _cache.Add(entity);
 
             return entity;
+        }
+        public EntityObject New(Type type, Guid identity)
+        {
+            if (!type.IsSubclassOf(typeof(EntityObject)))
+            {
+                throw new InvalidOperationException();
+            }
+
+            EntityObject item = null;
+
+            if (_cache.TryGet(identity, ref item))
+            {
+                return item;
+            }
+
+            EntityObject entity = ActivatorUtilities.CreateInstance(_services, type) as EntityObject;
+
+            entity.SetVirtualState(identity);
+
+            _cache.Add(entity);
+
+            return entity;
+        }
+
+        public void Update(Guid uuid, EntityObject entity)
+        {
+            _cache.Update(uuid, entity);
         }
 
         #region "CONSTRUCTOR IL GENERATION"

@@ -1,4 +1,6 @@
-﻿using DaJet.Model;
+﻿using DaJet.Data;
+using DaJet.Http.Client;
+using DaJet.Model;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 
@@ -6,6 +8,7 @@ namespace DaJet.Studio.Pages
 {
     public partial class Index : ComponentBase, IDisposable
     {
+
         protected override async Task OnInitializedAsync()
         {
             
@@ -16,37 +19,29 @@ namespace DaJet.Studio.Pages
         }
         protected async Task Test(MouseEventArgs args)
         {
-            ODataSource context = new(new Uri("https://localhost:5001/home"));
-            //IEnumerable<TreeNodeRecord> records = await context.TreeNodes.ExecuteAsync();
-            //IEnumerable<TreeNodeRecord> records = await context.TreeNodes.Expand("Value").ExecuteAsync();
+            DaJetHttpClient client = DataSource as DaJetHttpClient;
 
-            IEnumerable<TreeNodeRecord> records = await context.TreeNodes
-                .AddQueryOption("$filter", "Parent/Name eq 'root'")
-                // .Expand("Value") does not work !!!
-                .ExecuteAsync();
+            List<TreeNodeRecord> nodes = await client.SelectTreeNodes();
 
-            foreach (TreeNodeRecord treeNode in records)
+            foreach (TreeNodeRecord node in nodes)
             {
-                Console.WriteLine($"[{treeNode.GetType()}] {{{treeNode.Identity}}} {treeNode.Name}");
-
-                ODataSource source = new(new Uri("https://localhost:5001/home"));
-                IEnumerable<TreeNodeRecord> result = await source.TreeNodes
-                    .AddQueryOption("$filter", "Identity eq " + treeNode.Identity.ToString().ToLowerInvariant())
-                    .Expand("Value")
-                    .ExecuteAsync();
-
-                foreach (var item in result)
+                if (node.Value is TreeNodeRecord value)
                 {
-                    Console.WriteLine($"[{item.GetType()}] {{{item.Identity}}} {item.Name}");
+                    Console.WriteLine($"{node} : {node.Parent} {{{value.State}}} [{value.Name}]");
+                    
+                    value.Load();
 
-                    if (item.Value is PipelineRecord pipeline)
-                    {
-                        Console.WriteLine($"{item.Name} = [{item.Value.GetType()}] {pipeline.Name}");
-                    }
-                    else if (item.Value is PipelineBlockRecord block)
-                    {
-                        Console.WriteLine($"{item.Name} = [{item.Value.GetType()}] {block.Name}");
-                    }
+                    Console.WriteLine($"{node} : {node.Parent} {{{value.State}}} [{value.Name}]");
+
+                    node.Value = DomainModel.New<TreeNodeRecord>(value.Identity);
+
+                    value = node.Value as TreeNodeRecord;
+
+                    Console.WriteLine($"{node} : {node.Parent} {{{value.State}}} [{value.Name}]");
+                }
+                else
+                {
+                    Console.WriteLine($"{node} : {node.Parent} [{node.Value}]");
                 }
             }
         }

@@ -24,12 +24,15 @@ namespace DaJet.Data
         private const string DELETE_COMMAND = "DELETE FROM maintree WHERE uuid = @uuid;";
         #endregion
 
+        private readonly int MY_TYPE_CODE = -10;
         private readonly string _connectionString;
-        public TreeNodeDataMapper(string connectionString)
+        private readonly IDataSource _source;
+        public TreeNodeDataMapper(IDataSource source, string connectionString)
         {
+            _source = source;
             _connectionString = connectionString;
         }
-        public void Insert(EntityObject entity)
+        public void Insert(Persistent entity)
         {
             if (entity is not TreeNodeRecord record)
             {
@@ -50,7 +53,7 @@ namespace DaJet.Data
                     command.Parameters.AddWithValue("parent", record.Parent.ToString().ToLower());
                     command.Parameters.AddWithValue("name", record.Name);
                     command.Parameters.AddWithValue("is_folder", record.IsFolder);
-                    command.Parameters.AddWithValue("entity_type", record.Value.TypeCode);
+                    command.Parameters.AddWithValue("entity_type", MY_TYPE_CODE);
                     command.Parameters.AddWithValue("entity_uuid", record.Value.Identity.ToString().ToLower());
 
                     result = command.ExecuteNonQuery();
@@ -59,7 +62,7 @@ namespace DaJet.Data
 
             //return (result == 1);
         }
-        public void Update(EntityObject entity)
+        public void Update(Persistent entity)
         {
             if (entity is not TreeNodeRecord record)
             {
@@ -80,7 +83,7 @@ namespace DaJet.Data
                     command.Parameters.AddWithValue("parent", record.Parent.ToString().ToLower());
                     command.Parameters.AddWithValue("name", record.Name);
                     command.Parameters.AddWithValue("is_folder", record.IsFolder);
-                    command.Parameters.AddWithValue("entity_type", record.Value.TypeCode);
+                    command.Parameters.AddWithValue("entity_type", MY_TYPE_CODE);
                     command.Parameters.AddWithValue("entity_uuid", record.Value.Identity.ToString().ToLower());
 
                     result = command.ExecuteNonQuery();
@@ -89,7 +92,7 @@ namespace DaJet.Data
 
             //return (result == 1);
         }
-        public void Delete(EntityObject entity)
+        public void Delete(Persistent entity)
         {
             if (entity is not TreeNodeRecord record)
             {
@@ -114,7 +117,7 @@ namespace DaJet.Data
 
             //return (result > 0);
         }
-        public void Select(EntityObject entity)
+        public void Select(Persistent entity)
         {
             if (entity is not TreeNodeRecord record)
             {
@@ -135,9 +138,13 @@ namespace DaJet.Data
                     {
                         if (reader.Read())
                         {
-                            record.Parent = new TreeNodeRecord() { Identity = new Guid(reader.GetString(1)) };
+                            record.Parent = new TreeNodeRecord(_source);
+                            record.SetVirtualState(new Guid(reader.GetString(1)));
+                            
+                            record.SetLoadingState();
                             record.Name = reader.GetString(2);
                             record.IsFolder = (reader.GetInt64(3) == 1L);
+                            record.SetOriginalState();
 
                             //long code = reader.GetInt64(4);
                             //Guid uuid = new(reader.GetString(5));

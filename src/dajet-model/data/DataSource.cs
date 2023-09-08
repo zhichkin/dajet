@@ -9,15 +9,15 @@ namespace DaJet.Data
     }
     public interface IDataSource
     {
-        void Create(EntityObject entity);
-        void Select(EntityObject entity);
-        void Update(EntityObject entity);
-        void Delete(EntityObject entity);
+        void Create(Persistent entity);
+        void Select(Persistent entity);
+        void Update(Persistent entity);
+        void Delete(Persistent entity);
         List<EntityObject> Select(QueryObject query);
-        Task CreateAsync(EntityObject entity);
-        Task SelectAsync(EntityObject entity);
-        Task UpdateAsync(EntityObject entity);
-        Task DeleteAsync(EntityObject entity);
+        Task CreateAsync(Persistent entity);
+        Task SelectAsync(Persistent entity);
+        Task UpdateAsync(Persistent entity);
+        Task DeleteAsync(Persistent entity);
         Task<List<EntityObject>> SelectAsync(QueryObject query);
     }
     public sealed class QueryObject
@@ -28,9 +28,9 @@ namespace DaJet.Data
     }
     public interface IDataMapper
     {
-        void Select(EntityObject entity);
-        void Insert(EntityObject entity);
-        void Update(EntityObject entity);
-        void Delete(EntityObject entity);
+        void Select(Persistent entity);
+        void Insert(Persistent entity);
+        void Update(Persistent entity);
+        void Delete(Persistent entity);
     }
 }

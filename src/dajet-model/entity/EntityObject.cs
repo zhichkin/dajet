@@ -5,46 +5,44 @@ using System.Runtime.CompilerServices;
 
 namespace DaJet.Data
 {
-    public abstract class EntityObject
+    public enum PersistentState : byte
     {
-        private PersistentState _state;
-        private readonly Guid _identity;
+        New,      // объект только что создан в памяти, ещё не существует в источнике данных
+        Virtual,  // объект существует в источнике данных, но ещё не загружены его свойства
+        Original, // объект загружен из источника данных и ещё ни разу с тех пор не изменялся
+        Changed,  // объект загружен из источника данных и с тех пор был уже изменен
+        Deleted,  // объект удалён из источника данных, но пока ещё существует в памяти
+        Loading   // объект в данный момент загружается из источника данных, это состояние
+        // необходимо исключительно для случаев когда data mapper загружает из базы
+        // данных объект, находящийсяв состоянии Virtual, чтобы иметь возможность
+        // загружать значения свойств объекта обращаясь к ним напрямую и косвенно
+        // вызывая метод Persistent.Set() - без этого состояния подобная стратегия
+        // вызывает циклический вызов методов Persistent.Set(), Persistent.LazyLoad(),
+        // IPersistent.Load(), IDataMapper.Select() и далее по кругу.
+    }
+    public class StateEventArgs : EventArgs
+    {
+        private readonly PersistentState _old;
+        private readonly PersistentState _new;
+        private StateEventArgs() { }
+        public StateEventArgs(PersistentState old_state, PersistentState new_state)
+        {
+            _old = old_state;
+            _new = new_state;
+        }
+        public PersistentState OldState { get { return _old; } }
+        public PersistentState NewState { get { return _new; } }
+    }
+    public delegate void StateChangedEventHandler(Persistent sender, StateEventArgs args);
+    public delegate void StateChangingEventHandler(Persistent sender, StateEventArgs args);
+    public abstract class Persistent : INotifyPropertyChanged
+    {
         protected readonly IDataSource _source;
-        protected EntityObject(IDataSource source)
-        {
-            _source = source;
-            _identity = Guid.NewGuid();
-            _state = PersistentState.New;
-        }
-        protected EntityObject(IDataSource source, Guid identity)
-        {
-            _source = source;
-            _identity = identity;
-            _state = PersistentState.Virtual;
-        }
-        [Key] public Guid Identity { get { return _identity; } }
-        public override string ToString() { return _identity.ToString(); }
-        public override int GetHashCode() { return _identity.GetHashCode(); }
-        public override bool Equals(object target)
-        {
-            if (target is not EntityObject test) { return false; }
-
-            return GetType() == target.GetType() && _identity == test._identity;
-        }
-        public static bool operator ==(EntityObject left, EntityObject right)
-        {
-            if (ReferenceEquals(left, right)) { return true; }
-
-            if (left is null || right is null) { return false; }
-
-            return left.Equals(right);
-        }
-        public static bool operator !=(EntityObject left, EntityObject right)
-        {
-            return !(left == right);
-        }
-
-        public PersistentState GetState() { return _state; }
+        protected PersistentState _state = PersistentState.New;
+        protected Persistent(IDataSource source) { _source = source; }
+        public void SetLoadingState() { _state = PersistentState.Loading; }
+        public void SetOriginalState() { _state = PersistentState.Original; }
+        public PersistentState State { get { return _state; } }
         public event StateChangedEventHandler StateChanged;
         public event StateChangingEventHandler StateChanging;
         public event PropertyChangedEventHandler PropertyChanged;
@@ -56,8 +54,6 @@ namespace DaJet.Data
         protected TValue Get<TValue>(ref TValue storage) { LazyLoad(); return storage; }
         protected void Set<TValue>(TValue value, ref TValue storage, [CallerMemberName] string propertyName = null)
         {
-            if (_state == PersistentState.Deleted) { return; }
-
             if (_state == PersistentState.Loading)
             {
                 storage = value; return;
@@ -71,6 +67,8 @@ namespace DaJet.Data
 
                 return;
             }
+
+            if (_state == PersistentState.Deleted) { return; }
 
             LazyLoad(); // this code is executed for Virtual state of reference objects
 
@@ -107,38 +105,10 @@ namespace DaJet.Data
 
         #region "PERSISTENT INTERFACE IMPLEMENTATION"
 
-        public event SavingEventHandler Saving;
-        public event SavedEventHandler Saved;
-        public event KillingEventHandler Killing;
-        public event KilledEventHandler Killed;
-        public event LoadedEventHandler Loaded;
-        private void OnSaving() { Saving?.Invoke(this); }
-        private void OnSaved() { Saved?.Invoke(this); }
-        private void OnKilling()
-        {
-            if (Killing == null) return;
-
-            Delegate[] list = Killing.GetInvocationList();
-
-            int count = list.Length;
-
-            while (count > 0)
-            {
-                if (list[--count] is KillingEventHandler handler)
-                {
-                    handler(this);
-                }
-            }
-        }
-        private void OnKilled() { Killed?.Invoke(this); }
-        private void OnLoaded() { Loaded?.Invoke(this); }
-
         public void Save()
         {
             if (_state == PersistentState.New || _state == PersistentState.Changed)
             {
-                OnSaving();
-
                 StateEventArgs args = new(_state, PersistentState.Original);
 
                 OnStateChanging(args);
@@ -156,15 +126,11 @@ namespace DaJet.Data
 
                 OnStateChanged(args);
             }
-
-            OnSaved(); // is invoked for all states to notify dependent classes on event
         }
         public void Kill()
         {
             if (_state == PersistentState.Original || _state == PersistentState.Changed || _state == PersistentState.Virtual)
             {
-                OnKilling();
-
                 StateEventArgs args = new(_state, PersistentState.Deleted);
 
                 OnStateChanging(args);
@@ -174,8 +140,6 @@ namespace DaJet.Data
                 _state = PersistentState.Deleted;
 
                 OnStateChanged(args);
-
-                OnKilled();
             }
         }
         public void Load()
@@ -197,8 +161,6 @@ namespace DaJet.Data
                     _state = PersistentState.Original;
 
                     OnStateChanged(args);
-
-                    OnLoaded();
                 }
                 catch
                 {
@@ -213,5 +175,36 @@ namespace DaJet.Data
         }
 
         #endregion
+    }
+    public abstract class EntityObject : Persistent
+    {
+        private Guid _identity = Guid.NewGuid();
+        protected EntityObject(IDataSource source) : base(source) { }
+        [Key] public Guid Identity { get { return _identity; } }
+        public void SetVirtualState(Guid identity)
+        {
+            _identity = identity;
+            _state = PersistentState.Virtual;
+        }
+        public override string ToString() { return _identity.ToString(); }
+        public override int GetHashCode() { return _identity.GetHashCode(); }
+        public override bool Equals(object target)
+        {
+            if (target is not EntityObject test) { return false; }
+
+            return GetType() == target.GetType() && _identity == test._identity;
+        }
+        public static bool operator ==(EntityObject left, EntityObject right)
+        {
+            if (ReferenceEquals(left, right)) { return true; }
+
+            if (left is null || right is null) { return false; }
+
+            return left.Equals(right);
+        }
+        public static bool operator !=(EntityObject left, EntityObject right)
+        {
+            return !(left == right);
+        }
     }
 }

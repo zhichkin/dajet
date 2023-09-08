@@ -1,3 +1,6 @@
+using DaJet.Data;
+using DaJet.Http.Client;
+using DaJet.Model;
 using DaJet.Studio.Controllers;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
@@ -33,6 +36,9 @@ namespace DaJet.Studio
             {
                 return services.GetRequiredService<IHttpClientFactory>().CreateClient(DAJET_HTTP_CLIENT);
             });
+
+            builder.Services.AddSingleton<IDomainModel, DomainModel>();
+            builder.Services.AddSingleton<IDataSource, DaJetHttpClient>();
 
             builder.Services.AddMudServices();
             builder.Services.AddSingleton<AppState>();
