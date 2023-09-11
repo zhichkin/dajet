@@ -1,4 +1,5 @@
 ﻿using DaJet.Data;
+using System;
 
 namespace DaJet.Model
 {
@@ -10,6 +11,15 @@ namespace DaJet.Model
         public override string ToString()
         {
             return string.IsNullOrEmpty(Name) ? base.ToString() : Name;
+        }
+        protected override void CopyFrom(in Persistent data)
+        {
+            if (data is not PipelineBlockRecord source)
+            {
+                throw new InvalidOperationException();
+            }
+
+            _name = source._name;
         }
     }
 }

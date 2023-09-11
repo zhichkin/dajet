@@ -1,4 +1,5 @@
 ﻿using DaJet.Data;
+using System;
 using System.Collections.Generic;
 
 namespace DaJet.Model
@@ -18,6 +19,19 @@ namespace DaJet.Model
         {
             return string.IsNullOrEmpty(Name) ? base.ToString() : Name;
         }
+        protected override void CopyFrom(in Persistent data)
+        {
+            if (data is not TreeNodeRecord source)
+            {
+                throw new InvalidOperationException();
+            }
+
+            _name = source._name;
+            _is_folder = source._is_folder;
+            _value = source._value;
+            _parent = source._parent;
+        }
+
         public IEnumerable<TreeNodeRecord> Children { get; }
     }
 }

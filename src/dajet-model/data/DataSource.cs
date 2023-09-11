@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace DaJet.Data
@@ -19,6 +20,8 @@ namespace DaJet.Data
         Task UpdateAsync(Persistent entity);
         Task DeleteAsync(Persistent entity);
         Task<List<EntityObject>> SelectAsync(QueryObject query);
+
+        Task<Persistent> SelectAsync(Type type, Guid uuid);
     }
     public sealed class QueryObject
     {

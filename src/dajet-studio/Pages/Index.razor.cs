@@ -3,6 +3,7 @@ using DaJet.Http.Client;
 using DaJet.Model;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using static MudBlazor.Colors;
 
 namespace DaJet.Studio.Pages
 {
@@ -27,22 +28,34 @@ namespace DaJet.Studio.Pages
             {
                 if (node.Value is TreeNodeRecord value)
                 {
-                    Console.WriteLine($"{node} : {node.Parent} {{{value.State}}} [{value.Name}]");
-                    
-                    value.Load();
+                    if (value.State == PersistentState.Virtual)
+                    {
+                        Console.WriteLine($"{node} : {node.Parent} {{{value.State}}} [{value.Name}]");
 
-                    Console.WriteLine($"{node} : {node.Parent} {{{value.State}}} [{value.Name}]");
+                        await node.Value.LoadAsync();
 
-                    node.Value = DomainModel.New<TreeNodeRecord>(value.Identity);
-
-                    value = node.Value as TreeNodeRecord;
-
-                    Console.WriteLine($"{node} : {node.Parent} {{{value.State}}} [{value.Name}]");
+                        Console.WriteLine($"{node} : {node.Parent} {{{value.State}}} [{value.Name}]");
+                    }
                 }
-                else
-                {
-                    Console.WriteLine($"{node} : {node.Parent} [{node.Value}]");
-                }
+
+                //if (node.Value is TreeNodeRecord value)
+                //{
+                //    Console.WriteLine($"{node} : {node.Parent} {{{value.State}}} [{value.Name}]");
+
+                //    value.Load();
+
+                //    Console.WriteLine($"{node} : {node.Parent} {{{value.State}}} [{value.Name}]");
+
+                //    node.Value = DomainModel.New<TreeNodeRecord>(value.Identity);
+
+                //    value = node.Value as TreeNodeRecord;
+
+                //    Console.WriteLine($"{node} : {node.Parent} {{{value.State}}} [{value.Name}]");
+                //}
+                //else
+                //{
+                //    Console.WriteLine($"{node} : {node.Parent} [{node.Value}]");
+                //}
             }
         }
     }

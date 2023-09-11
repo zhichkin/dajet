@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace DaJet.Data
 {
@@ -206,5 +207,15 @@ namespace DaJet.Data
         {
             return !(left == right);
         }
+
+        public async Task LoadAsync()
+        {
+            Persistent data = await _source.SelectAsync(GetType(), _identity);
+
+            CopyFrom(in data);
+
+            _state = PersistentState.Original;
+        }
+        protected abstract void CopyFrom(in Persistent data);
     }
 }

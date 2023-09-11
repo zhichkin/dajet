@@ -66,7 +66,9 @@ namespace DaJet.Http.Controllers
 
             TreeNodeRecord node = _nodes.Where(e => e.Value.Identity == uuid).FirstOrDefault();
 
-            string json = JsonSerializer.Serialize(node, options);
+            TreeNodeRecord value = node.Value as TreeNodeRecord;
+
+            string json = JsonSerializer.Serialize(value, options);
 
             return Content(json);
         }

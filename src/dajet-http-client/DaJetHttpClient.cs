@@ -1,7 +1,6 @@
 ﻿using DaJet.Data;
 using DaJet.Json;
 using DaJet.Model;
-using System.Collections.Generic;
 using System.Net.Http.Json;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -55,66 +54,16 @@ namespace DaJet.Http.Client
         }
 
         #endregion
-        public async void Select(Persistent entity)
+        public void Select(Persistent entity)
         {
-            if (entity is not EntityObject item)
+            if (Environment.OSVersion.Platform == PlatformID.Other)
             {
-                throw new InvalidOperationException();
-            }
-
-            try
-            {
-                EntityObject data = await SelectEntityAsync(entity);
-
-                _domain.Update(item.Identity, data);
-            }
-            catch
-            {
-                throw; //TODO: _errorHandler?.HandleError(error);
+                // Any other operating system. This includes Browser (WASM).
             }
         }
         public async Task SelectAsync(Persistent entity)
         {
-            if (entity is not EntityObject item)
-            {
-                throw new InvalidOperationException();
-            }
-
-            entity = await SelectEntityAsync(entity);
-        }
-        private async Task<EntityObject> SelectEntityAsync(Persistent entity)
-        {
-            if (entity is not EntityObject item)
-            {
-                throw new InvalidOperationException();
-            }
-
-            string url = $"/home/{entity.GetType().FullName}/{item.Identity}";
-            HttpResponseMessage response = await _client.GetAsync(url);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                string result = await response.Content.ReadAsStringAsync();
-
-                throw new Exception(result);
-
-                //ErrorText = response.ReasonPhrase
-                //    + (string.IsNullOrEmpty(result)
-                //    ? string.Empty
-                //    : Environment.NewLine + result);
-            }
-            else
-            {
-                JsonSerializerOptions options = new()
-                {
-                    WriteIndented = true,
-                    Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-                };
-
-                options.Converters.Add(new EntityJsonConverter(_domain));
-
-                return await response.Content.ReadFromJsonAsync<TreeNodeRecord>(options);
-            }
+            throw new NotImplementedException();
         }
         public async Task<List<TreeNodeRecord>> SelectTreeNodes()
         {
@@ -146,6 +95,36 @@ namespace DaJet.Http.Client
             }
 
             return list;
+        }
+
+        public async Task<Persistent> SelectAsync(Type type, Guid uuid)
+        {
+            string url = $"/home/{type.FullName}/{uuid}";
+            HttpResponseMessage response = await _client.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                string result = await response.Content.ReadAsStringAsync();
+
+                throw new Exception(result);
+
+                //ErrorText = response.ReasonPhrase
+                //    + (string.IsNullOrEmpty(result)
+                //    ? string.Empty
+                //    : Environment.NewLine + result);
+            }
+            else
+            {
+                JsonSerializerOptions options = new()
+                {
+                    WriteIndented = true,
+                    Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+                };
+
+                options.Converters.Add(new EntityJsonConverter(_domain));
+
+                return await response.Content.ReadFromJsonAsync<TreeNodeRecord>(options);
+            }
         }
     }
 }
