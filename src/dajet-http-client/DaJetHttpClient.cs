@@ -1,7 +1,7 @@
 ﻿using DaJet.Data;
-using DaJet.Json;
 using DaJet.Model;
 using System.Net.Http.Json;
+using System.Reflection;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
@@ -20,19 +20,16 @@ namespace DaJet.Http.Client
 
         #region "IDataSource interface implementation"
 
-        public void Create(Persistent entity)
+        public void Create(EntityObject entity)
         {
             throw new NotImplementedException();
         }
-        public Task CreateAsync(Persistent entity)
+        
+        public void Delete(EntityObject entity)
         {
             throw new NotImplementedException();
         }
-        public void Delete(Persistent entity)
-        {
-            throw new NotImplementedException();
-        }
-        public Task DeleteAsync(Persistent entity)
+        public Task DeleteAsync(EntityObject entity)
         {
             throw new NotImplementedException();
         }
@@ -40,28 +37,25 @@ namespace DaJet.Http.Client
         {
             throw new NotImplementedException();
         }
-        public Task<List<EntityObject>> SelectAsync(QueryObject query)
+        
+        public void Update(EntityObject entity)
         {
             throw new NotImplementedException();
         }
-        public void Update(Persistent entity)
-        {
-            throw new NotImplementedException();
-        }
-        public Task UpdateAsync(Persistent entity)
+        public Task UpdateAsync(EntityObject entity)
         {
             throw new NotImplementedException();
         }
 
         #endregion
-        public void Select(Persistent entity)
+        public void Select(EntityObject entity)
         {
             if (Environment.OSVersion.Platform == PlatformID.Other)
             {
                 // Any other operating system. This includes Browser (WASM).
             }
         }
-        public async Task SelectAsync(Persistent entity)
+        public async Task SelectAsync(EntityObject entity)
         {
             throw new NotImplementedException();
         }
@@ -89,15 +83,20 @@ namespace DaJet.Http.Client
                     Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
                 };
 
-                options.Converters.Add(new EntityJsonConverter(_domain));
+                //options.Converters.Add(new EntityJsonConverter(_domain));
 
                 list = await response.Content.ReadFromJsonAsync<List<TreeNodeRecord>>(options);
+
+                foreach (TreeNodeRecord record in list)
+                {
+                    record.MarkAsOriginal();
+                }
             }
 
             return list;
         }
 
-        public async Task<Persistent> SelectAsync(Type type, Guid uuid)
+        public async Task<EntityObject> SelectAsync(Type type, Guid uuid)
         {
             string url = $"/home/{type.FullName}/{uuid}";
             HttpResponseMessage response = await _client.GetAsync(url);
@@ -121,10 +120,60 @@ namespace DaJet.Http.Client
                     Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
                 };
 
-                options.Converters.Add(new EntityJsonConverter(_domain));
+                //options.Converters.Add(new EntityJsonConverter(_domain));
 
                 return await response.Content.ReadFromJsonAsync<TreeNodeRecord>(options);
             }
+        }
+        public async Task<EntityObject> SelectAsync(Entity entity)
+        {
+            Type type = _domain.GetEntityType(entity.TypeCode);
+
+            if (type is null)
+            {
+                throw new InvalidOperationException($"Entity type [{entity.TypeCode}] not found");
+            }
+
+            string url = $"/home/{type.FullName}/{entity.Identity}";
+            HttpResponseMessage response = await _client.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                string result = await response.Content.ReadAsStringAsync();
+
+                throw new Exception(result);
+
+                //ErrorText = response.ReasonPhrase
+                //    + (string.IsNullOrEmpty(result)
+                //    ? string.Empty
+                //    : Environment.NewLine + result);
+            }
+            else
+            {
+                JsonSerializerOptions options = new()
+                {
+                    WriteIndented = true,
+                    Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+                };
+
+                //options.Converters.Add(new EntityJsonConverter(_domain));
+
+                TreeNodeRecord record = await response.Content.ReadFromJsonAsync<TreeNodeRecord>(options);
+
+                record.MarkAsOriginal();
+
+                return record;
+            }
+        }
+
+        public Task CreateAsync(EntityObject entity)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<EntityObject>> SelectAsync(QueryObject query)
+        {
+            throw new NotImplementedException();
         }
     }
 }

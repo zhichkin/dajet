@@ -1,9 +1,7 @@
-﻿using DaJet.Data;
-using DaJet.Http.Client;
+﻿using DaJet.Http.Client;
 using DaJet.Model;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
-using static MudBlazor.Colors;
 
 namespace DaJet.Studio.Pages
 {
@@ -26,36 +24,12 @@ namespace DaJet.Studio.Pages
 
             foreach (TreeNodeRecord node in nodes)
             {
-                if (node.Value is TreeNodeRecord value)
-                {
-                    if (value.State == PersistentState.Virtual)
-                    {
-                        Console.WriteLine($"{node} : {node.Parent} {{{value.State}}} [{value.Name}]");
+                TreeNodeRecord value = await client.SelectAsync(node.Value) as TreeNodeRecord;
 
-                        await node.Value.LoadAsync();
+                value.Name = "new name";
+                //value.Name = node.Name; // does not change !
 
-                        Console.WriteLine($"{node} : {node.Parent} {{{value.State}}} [{value.Name}]");
-                    }
-                }
-
-                //if (node.Value is TreeNodeRecord value)
-                //{
-                //    Console.WriteLine($"{node} : {node.Parent} {{{value.State}}} [{value.Name}]");
-
-                //    value.Load();
-
-                //    Console.WriteLine($"{node} : {node.Parent} {{{value.State}}} [{value.Name}]");
-
-                //    node.Value = DomainModel.New<TreeNodeRecord>(value.Identity);
-
-                //    value = node.Value as TreeNodeRecord;
-
-                //    Console.WriteLine($"{node} : {node.Parent} {{{value.State}}} [{value.Name}]");
-                //}
-                //else
-                //{
-                //    Console.WriteLine($"{node} : {node.Parent} [{node.Value}]");
-                //}
+                Console.WriteLine($"{node.Name} ({node.IsOriginal()}) [{value.Name}] {value.IsChanged()}");
             }
         }
     }

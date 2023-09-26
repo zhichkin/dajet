@@ -1,7 +1,5 @@
-﻿using DaJet.Json;
-using DaJet.Model;
+﻿using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
-using System.Security;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
@@ -15,23 +13,23 @@ namespace DaJet.Http.Controllers
     {
         private static List<TreeNodeRecord> _nodes = new()
         {
-            new(null)
+            new()
             {
-                Parent = new(null) { Name = "root" },
+                Parent = new Entity(10, Guid.NewGuid()),
                 Name = "Node 1",
-                Value = new TreeNodeRecord(null) { Name = "Pipeline" }
+                Value = new Entity(10, Guid.NewGuid())
             },
-            new(null)
+            new()
             {
-                Parent = new(null) { Name = "root" },
+                Parent = new Entity(10, Guid.NewGuid()),
                 Name = "Node 2",
-                Value = new TreeNodeRecord(null) { Name = "Block" }
+                Value = new Entity(10, Guid.NewGuid())
             },
-            new(null)
+            new()
             {
-                Parent = new(null) { Name = "Parent 1" },
+                Parent = new Entity(10, Guid.NewGuid()),
                 Name = "Node 3",
-                Value = new TreeNodeRecord(null) { Name = "Pipeline Block 123" }
+                Value = new Entity(10, Guid.NewGuid())
             }
         };
         private readonly IDomainModel _domain;
@@ -47,12 +45,18 @@ namespace DaJet.Http.Controllers
                 Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
             };
 
-            options.Converters.Add(new EntityJsonConverter(_domain));
-            
+            //options.Converters.Add(new EntityJsonConverter(_domain));
+
+            foreach (TreeNodeRecord record in _nodes)
+            {
+                record.MarkAsOriginal();
+            }
+
             string json = JsonSerializer.Serialize(_nodes, options);
 
-            return Content(json);
+            return Content(json); // return _nodes;
         }
+        
         [HttpGet("{type}/{uuid:guid}")]
         public ActionResult<TreeNodeRecord> Select([FromRoute] string type, [FromRoute] Guid uuid)
         {
@@ -62,13 +66,13 @@ namespace DaJet.Http.Controllers
                 Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
             };
 
-            options.Converters.Add(new EntityJsonConverter(_domain));
+            //options.Converters.Add(new EntityJsonConverter(_domain));
 
             TreeNodeRecord node = _nodes.Where(e => e.Value.Identity == uuid).FirstOrDefault();
 
-            TreeNodeRecord value = node.Value as TreeNodeRecord;
+            //TreeNodeRecord value = node.Value as TreeNodeRecord;
 
-            string json = JsonSerializer.Serialize(value, options);
+            string json = JsonSerializer.Serialize(node, options);
 
             return Content(json);
         }

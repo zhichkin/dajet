@@ -1,8 +1,4 @@
 ﻿using System;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 
 namespace DaJet.Data
 {
@@ -21,179 +17,43 @@ namespace DaJet.Data
         // вызывает циклический вызов методов Persistent.Set(), Persistent.LazyLoad(),
         // IPersistent.Load(), IDataMapper.Select() и далее по кругу.
     }
-    public class StateEventArgs : EventArgs
+    public abstract class EntityObject
     {
-        private readonly PersistentState _old;
-        private readonly PersistentState _new;
-        private StateEventArgs() { }
-        public StateEventArgs(PersistentState old_state, PersistentState new_state)
+        private PersistentState _state = PersistentState.New;
+        public int TypeCode { get; init; }
+        public Guid Identity { get; init; }
+        public byte[] Version { get; init; }
+        public bool IsEmpty() { return TypeCode > 0 && Identity == Guid.Empty; }
+        public bool IsUndefined() { return TypeCode == 0 && Identity == Guid.Empty; }
+        public bool IsNew() { return _state == PersistentState.New; }
+        public bool IsChanged() { return _state == PersistentState.Changed; }
+        public bool IsOriginal() { return _state == PersistentState.Original; }
+        public void MarkAsOriginal() { _state = PersistentState.Original; }
+        protected void Set<TValue>(TValue value, ref TValue storage)
         {
-            _old = old_state;
-            _new = new_state;
-        }
-        public PersistentState OldState { get { return _old; } }
-        public PersistentState NewState { get { return _new; } }
-    }
-    public delegate void StateChangedEventHandler(Persistent sender, StateEventArgs args);
-    public delegate void StateChangingEventHandler(Persistent sender, StateEventArgs args);
-    public abstract class Persistent : INotifyPropertyChanged
-    {
-        protected readonly IDataSource _source;
-        protected PersistentState _state = PersistentState.New;
-        protected Persistent(IDataSource source) { _source = source; }
-        public void SetLoadingState() { _state = PersistentState.Loading; }
-        public void SetOriginalState() { _state = PersistentState.Original; }
-        public PersistentState State { get { return _state; } }
-        public event StateChangedEventHandler StateChanged;
-        public event StateChangingEventHandler StateChanging;
-        public event PropertyChangedEventHandler PropertyChanged;
-        private void OnStateChanged(StateEventArgs args) { StateChanged?.Invoke(this, args); }
-        private void OnStateChanging(StateEventArgs args) { StateChanging?.Invoke(this, args); }
-        public void OnPropertyChanged(string propertyName) { PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)); }
-
-        private void LazyLoad() { if (_state == PersistentState.Virtual) Load(); }
-        protected TValue Get<TValue>(ref TValue storage) { LazyLoad(); return storage; }
-        protected void Set<TValue>(TValue value, ref TValue storage, [CallerMemberName] string propertyName = null)
-        {
-            if (_state == PersistentState.Loading)
-            {
-                storage = value; return;
-            }
-
             if (_state == PersistentState.New || _state == PersistentState.Changed)
             {
                 storage = value;
-
-                OnPropertyChanged(propertyName);
-
-                return;
             }
-
-            if (_state == PersistentState.Deleted) { return; }
-
-            LazyLoad(); // this code is executed for Virtual state of reference objects
-
-            // The code below is executed for Original state only
-
-            if (_state != PersistentState.Original) { return; }
-
-            bool changed;
-
-            if (storage is not null)
+            else if (_state == PersistentState.Original)
             {
-                changed = !storage.Equals(value);
-            }
-            else
-            {
-                changed = value is not null;
-            }
+                bool changed = (storage is null) ? value is not null : !storage.Equals(value);
 
-            if (changed)
-            {
-                StateEventArgs args = new(PersistentState.Original, PersistentState.Changed);
-
-                OnStateChanging(args);
-
-                storage = value;
-
-                _state = PersistentState.Changed;
-
-                OnStateChanged(args);
-            }
-
-            OnPropertyChanged(propertyName);
-        }
-
-        #region "PERSISTENT INTERFACE IMPLEMENTATION"
-
-        public void Save()
-        {
-            if (_state == PersistentState.New || _state == PersistentState.Changed)
-            {
-                StateEventArgs args = new(_state, PersistentState.Original);
-
-                OnStateChanging(args);
-
-                if (_state == PersistentState.New)
+                if (changed)
                 {
-                    _source?.Create(this);
-                }
-                else
-                {
-                    _source?.Update(this);
-                }
-
-                _state = PersistentState.Original;
-
-                OnStateChanged(args);
-            }
-        }
-        public void Kill()
-        {
-            if (_state == PersistentState.Original || _state == PersistentState.Changed || _state == PersistentState.Virtual)
-            {
-                StateEventArgs args = new(_state, PersistentState.Deleted);
-
-                OnStateChanging(args);
-
-                _source?.Delete(this);
-
-                _state = PersistentState.Deleted;
-
-                OnStateChanged(args);
-            }
-        }
-        public void Load()
-        {
-            if (_state == PersistentState.Changed || _state == PersistentState.Original || _state == PersistentState.Virtual)
-            {
-                PersistentState old = _state;
-
-                _state = PersistentState.Loading;
-
-                StateEventArgs args = new(_state, PersistentState.Original);
-
-                try
-                {
-                    OnStateChanging(args);
-
-                    _source?.Select(this);
-
-                    _state = PersistentState.Original;
-
-                    OnStateChanged(args);
-                }
-                catch
-                {
-                    if (_state == PersistentState.Loading)
-                    {
-                        _state = old;
-                    }
-
-                    throw;
+                    storage = value;
+                    
+                    _state = PersistentState.Changed;
                 }
             }
         }
-
-        #endregion
-    }
-    public abstract class EntityObject : Persistent
-    {
-        private Guid _identity = Guid.NewGuid();
-        protected EntityObject(IDataSource source) : base(source) { }
-        [Key] public Guid Identity { get { return _identity; } }
-        public void SetVirtualState(Guid identity)
-        {
-            _identity = identity;
-            _state = PersistentState.Virtual;
-        }
-        public override string ToString() { return _identity.ToString(); }
-        public override int GetHashCode() { return _identity.GetHashCode(); }
+        public override string ToString() { return $"{{{TypeCode}:{Identity}}}"; }
+        public override int GetHashCode() { return Identity.GetHashCode(); }
         public override bool Equals(object target)
         {
             if (target is not EntityObject test) { return false; }
 
-            return GetType() == target.GetType() && _identity == test._identity;
+            return GetType() == target.GetType() && Identity == test.Identity;
         }
         public static bool operator ==(EntityObject left, EntityObject right)
         {
@@ -207,15 +67,5 @@ namespace DaJet.Data
         {
             return !(left == right);
         }
-
-        public async Task LoadAsync()
-        {
-            Persistent data = await _source.SelectAsync(GetType(), _identity);
-
-            CopyFrom(in data);
-
-            _state = PersistentState.Original;
-        }
-        protected abstract void CopyFrom(in Persistent data);
     }
 }

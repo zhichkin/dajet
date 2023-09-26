@@ -44,7 +44,7 @@ namespace DaJet
 
             return true;
         }
-        public Entity(int typeCode, Guid identity)
+        [JsonConstructor] public Entity(int typeCode, Guid identity)
         {
             TypeCode = typeCode;
             Identity = identity;

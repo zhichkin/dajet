@@ -1,5 +1,6 @@
 ﻿using DaJet.Model;
 using Microsoft.Data.Sqlite;
+using System.Security.Principal;
 
 namespace DaJet.Data
 {
@@ -32,7 +33,7 @@ namespace DaJet.Data
             _source = source;
             _connectionString = connectionString;
         }
-        public void Insert(Persistent entity)
+        public void Insert(EntityObject entity)
         {
             if (entity is not TreeNodeRecord record)
             {
@@ -62,7 +63,7 @@ namespace DaJet.Data
 
             //return (result == 1);
         }
-        public void Update(Persistent entity)
+        public void Update(EntityObject entity)
         {
             if (entity is not TreeNodeRecord record)
             {
@@ -92,7 +93,7 @@ namespace DaJet.Data
 
             //return (result == 1);
         }
-        public void Delete(Persistent entity)
+        public void Delete(EntityObject entity)
         {
             if (entity is not TreeNodeRecord record)
             {
@@ -117,7 +118,7 @@ namespace DaJet.Data
 
             //return (result > 0);
         }
-        public void Select(Persistent entity)
+        public void Select(EntityObject entity)
         {
             if (entity is not TreeNodeRecord record)
             {
@@ -138,13 +139,11 @@ namespace DaJet.Data
                     {
                         if (reader.Read())
                         {
-                            record.Parent = new TreeNodeRecord(_source);
-                            record.SetVirtualState(new Guid(reader.GetString(1)));
-                            
-                            record.SetLoadingState();
+                            record.Parent = new Entity(-10, new Guid(reader.GetString(1)));
                             record.Name = reader.GetString(2);
                             record.IsFolder = (reader.GetInt64(3) == 1L);
-                            record.SetOriginalState();
+
+                            record.MarkAsOriginal();
 
                             //long code = reader.GetInt64(4);
                             //Guid uuid = new(reader.GetString(5));

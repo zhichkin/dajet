@@ -10,42 +10,39 @@ namespace DaJet.Model
     public interface IDomainModel
     {
         T New<T>() where T : EntityObject; // New
-        T New<T>(Guid identity) where T : EntityObject; // Virtual
+        T New<T>(Guid identity) where T : EntityObject; // Original
         EntityObject New(Type type); // New
-        EntityObject New(Type type, Guid identity); // Virtual
-
-        void Update(Guid uuid, EntityObject entity);
+        EntityObject New(Type type, Guid identity); // Original
+        void Entity<T>(int typeCode);
+        Type GetEntityType(int typeCode);
     }
     public sealed class DomainModel : IDomainModel
     {
-        private readonly IdentityMap _cache = new();
+        private readonly Dictionary<int, Type> _types = new();
         private readonly IServiceProvider _services;
         public DomainModel(IServiceProvider services)
         {
             _services = services;
+
+            ConfigureDomainModel();
+        }
+        private void ConfigureDomainModel()
+        {
+            Entity<TreeNodeRecord>(10);
+            Entity<PipelineRecord>(20);
+            Entity<PipelineBlockRecord>(30);
         }
         public T New<T>() where T : EntityObject
         {
-            T entity = ActivatorUtilities.CreateInstance<T>(_services);
-
-            _cache.Add(entity);
-
-            return entity;
+            return ActivatorUtilities.CreateInstance<T>(_services);
         }
         public T New<T>(Guid identity) where T : EntityObject
         {
-            EntityObject item = null;
-
-            if (_cache.TryGet(identity, ref item))
-            {
-                return item as T;
-            }
-
             T entity = ActivatorUtilities.CreateInstance<T>(_services);
 
-            entity.SetVirtualState(identity);
+            typeof(T).GetProperty(nameof(EntityObject.Identity)).SetValue(entity, identity);
 
-            _cache.Add(entity);
+            entity.MarkAsOriginal();
 
             return entity;
         }
@@ -56,11 +53,7 @@ namespace DaJet.Model
                 throw new InvalidOperationException();
             }
 
-            EntityObject entity = ActivatorUtilities.CreateInstance(_services, type) as EntityObject;
-
-            _cache.Add(entity);
-
-            return entity;
+            return ActivatorUtilities.CreateInstance(_services, type) as EntityObject;
         }
         public EntityObject New(Type type, Guid identity)
         {
@@ -69,25 +62,26 @@ namespace DaJet.Model
                 throw new InvalidOperationException();
             }
 
-            EntityObject item = null;
-
-            if (_cache.TryGet(identity, ref item))
-            {
-                return item;
-            }
-
             EntityObject entity = ActivatorUtilities.CreateInstance(_services, type) as EntityObject;
 
-            entity.SetVirtualState(identity);
+            type.GetProperty(nameof(EntityObject.Identity)).SetValue(entity, identity);
 
-            _cache.Add(entity);
+            entity.MarkAsOriginal();
 
             return entity;
         }
 
-        public void Update(Guid uuid, EntityObject entity)
+        public void Entity<T>(int typeCode)
         {
-            _cache.Update(uuid, entity);
+            _ = _types.TryAdd(typeCode, typeof(T));
+        }
+        public Type GetEntityType(int typeCode)
+        {
+            if (_types.TryGetValue(typeCode, out Type type))
+            {
+                return type;
+            }
+            return null;
         }
 
         #region "CONSTRUCTOR IL GENERATION"
@@ -139,4 +133,5 @@ namespace DaJet.Model
         #endregion
     }
 }
+
 // tip: if (type.IsPublic && type.IsAbstract && type.IsSealed) /* that means static class */
