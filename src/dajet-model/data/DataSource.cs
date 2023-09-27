@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -14,15 +15,12 @@ namespace DaJet.Data
         void Select(EntityObject entity);
         void Update(EntityObject entity);
         void Delete(EntityObject entity);
-        List<EntityObject> Select(QueryObject query);
+
         Task CreateAsync(EntityObject entity);
-        Task SelectAsync(EntityObject entity);
         Task UpdateAsync(EntityObject entity);
         Task DeleteAsync(EntityObject entity);
-        
         Task<EntityObject> SelectAsync(Entity entity);
-        Task<EntityObject> SelectAsync(Type type, Guid uuid);
-        Task<List<EntityObject>> SelectAsync(QueryObject query);
+        Task<IEnumerable> SelectAsync(int typeCode, string propertyName, Entity value);
     }
     public sealed class QueryObject
     {

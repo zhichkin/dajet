@@ -1,5 +1,7 @@
-﻿using DaJet.Model;
+﻿using DaJet.Json;
+using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
@@ -11,6 +13,12 @@ namespace DaJet.Http.Controllers
     [Produces("application/json")]
     public class HomeController : ControllerBase
     {
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            WriteIndented = true,
+            Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+        };
+
         private static List<TreeNodeRecord> _nodes = new()
         {
             new()
@@ -28,7 +36,7 @@ namespace DaJet.Http.Controllers
             new()
             {
                 Parent = new Entity(10, Guid.NewGuid()),
-                Name = "Node 3",
+                Name = "Привет, мир!",
                 Value = new Entity(10, Guid.NewGuid())
             }
         };
@@ -37,44 +45,32 @@ namespace DaJet.Http.Controllers
         {
             _domain = domain;
         }
-        [HttpGet("")] public ActionResult<IEnumerable<TreeNodeRecord>> SelectTreeNodes()
+        [HttpGet("")] public ActionResult SelectTreeNodes()
         {
-            JsonSerializerOptions options = new()
-            {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-            };
-
-            //options.Converters.Add(new EntityJsonConverter(_domain));
-
-            foreach (TreeNodeRecord record in _nodes)
-            {
-                record.MarkAsOriginal();
-            }
-
-            string json = JsonSerializer.Serialize(_nodes, options);
-
-            return Content(json); // return _nodes;
+            return NotFound();
         }
         
-        [HttpGet("{type}/{uuid:guid}")]
-        public ActionResult<TreeNodeRecord> Select([FromRoute] string type, [FromRoute] Guid uuid)
+        [HttpGet("{typeCode:int}/{uuid:guid}")]
+        public ActionResult Select([FromRoute] int typeCode, [FromRoute] Guid uuid)
         {
-            JsonSerializerOptions options = new()
-            {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-            };
-
-            //options.Converters.Add(new EntityJsonConverter(_domain));
-
             TreeNodeRecord node = _nodes.Where(e => e.Value.Identity == uuid).FirstOrDefault();
 
-            //TreeNodeRecord value = node.Value as TreeNodeRecord;
+            string json = JsonSerializer.Serialize(node, JsonOptions);
 
-            string json = JsonSerializer.Serialize(node, options);
+            return Content(json, "application/json", Encoding.UTF8);
+        }
 
-            return Content(json);
+        [HttpGet("{typeCode:int}/{propertyName}/{value}")]
+        public ActionResult Select([FromRoute] int typeCode, [FromRoute] string propertyName, [FromRoute] string value)
+        {
+            if (!Entity.TryParse(value, out Entity entity))
+            {
+                return BadRequest();
+            }
+            
+            string json = JsonSerializer.Serialize(_nodes, JsonOptions);
+
+            return Content(json, "application/json", Encoding.UTF8);
         }
     }
 }

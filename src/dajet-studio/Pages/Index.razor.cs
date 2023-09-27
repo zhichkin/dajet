@@ -1,4 +1,5 @@
-﻿using DaJet.Http.Client;
+﻿using DaJet.Data;
+using DaJet.Http.Client;
 using DaJet.Model;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -20,11 +21,21 @@ namespace DaJet.Studio.Pages
         {
             DaJetHttpClient client = DataSource as DaJetHttpClient;
 
-            List<TreeNodeRecord> nodes = await client.SelectTreeNodes();
+            var list = await client.SelectAsync(10, "Parent", new Entity(10, Guid.Empty));
 
-            foreach (TreeNodeRecord node in nodes)
+            foreach (var item in list)
             {
-                TreeNodeRecord value = await client.SelectAsync(node.Value) as TreeNodeRecord;
+                if (item is not TreeNodeRecord node)
+                {
+                    continue;
+                }
+
+                EntityObject entity = await client.SelectAsync(node.Value);
+
+                if (entity is not TreeNodeRecord value)
+                {
+                    continue;
+                }
 
                 value.Name = "new name";
                 //value.Name = node.Name; // does not change !
