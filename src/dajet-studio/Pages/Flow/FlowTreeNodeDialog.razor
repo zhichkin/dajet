@@ -1,0 +1,44 @@
+﻿
+<MudDialog OnBackdropClick="CloseDialog" DefaultFocus="DefaultFocus.Element" DisableSidePadding="true">
+
+    <DialogContent>
+
+        <MudContainer MaxWidth="MaxWidth.ExtraSmall" Class="mx-0 my-0">
+
+            <span Style="display:block; font-size:var(--mud-typography-default-size);">
+                @Model.Title
+            </span>
+
+            @if (Model.Tag is TreeNodeRecord record && record.IsFolder)
+            {
+                <MudTooltip Text="Создать новый каталог">
+                    <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder" Color="Color.Success" Size="Size.Large" OnClick="CreateFolder" />
+                </MudTooltip>
+
+                <MudTooltip Text="Создать новый конвейер">
+                    <MudIconButton Icon="@Icons.Material.Outlined.SyncAlt" Color="Color.Info" Size="Size.Large" OnClick="CreatePipeline" />
+                </MudTooltip>
+
+                @if (!(record.Parent.IsEmpty || record.Parent.IsUndefined))
+                {
+                    <MudTooltip Text="Удалить каталог">
+                        <MudIconButton Icon="@Icons.Material.Filled.FolderOff" Color="Color.Error" Size="Size.Large" OnClick="DeleteFolder" />
+                    </MudTooltip>
+                }
+            }
+            else
+            {
+                <MudTooltip Text="Редактировать конвейер">
+                    <MudIconButton Icon="@Icons.Material.Filled.EditNote" Color="Color.Success" Size="Size.Large" OnClick="UpdatePipeline" />
+                </MudTooltip>
+            }
+
+            <MudTooltip Text="Отмена">
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Dark" Size="Size.Large" OnClick="CloseDialog" />
+            </MudTooltip>
+
+        </MudContainer>
+
+    </DialogContent>
+
+</MudDialog>

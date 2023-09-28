@@ -1,4 +1,5 @@
 ﻿using System;
+using static DaJet.Union;
 
 namespace DaJet.Data
 {
@@ -22,6 +23,7 @@ namespace DaJet.Data
         private PersistentState _state = PersistentState.New;
         public int TypeCode { get; init; }
         public Guid Identity { get; init; }
+        public Entity GetEntity() { return new Entity(TypeCode, Identity); }
         public bool IsEmpty() { return TypeCode > 0 && Identity == Guid.Empty; }
         public bool IsUndefined() { return TypeCode == 0 && Identity == Guid.Empty; }
         public bool IsNew() { return _state == PersistentState.New; }

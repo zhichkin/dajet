@@ -1,88 +1,196 @@
-﻿using DaJet.Flow.Model;
+﻿using DaJet.Http.Client;
+using DaJet.Model;
 using DaJet.Studio.Components;
+using DaJet.Studio.Pages;
+using DaJet.Studio.Pages.Flow;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
-using System.Net.Http.Json;
+using MudBlazor;
+using System.ComponentModel;
 
 namespace DaJet.Studio.Controllers
 {
     public sealed class FlowTreeViewController
     {
-        private HttpClient Http { get; set; }
+        private IDomainModel DomainModel { get; set; }
+        private DaJetHttpClient DataSource { get; set; }
         private IJSRuntime JSRuntime { get; set; }
         private NavigationManager Navigator { get; set; }
-        public FlowTreeViewController(HttpClient http, IJSRuntime js, NavigationManager navigator)
+        public FlowTreeViewController(IDomainModel domain, DaJetHttpClient client, IJSRuntime js, NavigationManager navigator)
         {
-            Http = http;
+            DomainModel = domain;
+            DataSource = client;
             JSRuntime = js;
             Navigator = navigator;
         }
-        public TreeNodeModel CreateRootNode()
+        public TreeNodeModel CreateRootNode(TreeNodeRecord root)
         {
             return new TreeNodeModel()
             {
-                Url = $"/flow",
+                Tag = root,
                 Title = "flow",
-                OpenNodeHandler = OpenRootNodeHandler
+                OpenNodeHandler = OpenNodeHandler,
+                ContextMenuHandler = ContextMenuHandler
             };
         }
-        private async Task OpenRootNodeHandler(TreeNodeModel root)
+        private async Task OpenNodeHandler(TreeNodeModel parent)
         {
-            if (root is null || root.Nodes.Count > 0)
+            if (parent.Tag is not TreeNodeRecord node)
+            {
+                return;
+            }
+
+            if (parent is null || parent.Nodes.Count > 0)
+            {
+                return;
+            }
+
+            var list = await DataSource.SelectAsync(node.TypeCode, "parent", node.GetEntity());
+
+            foreach (var item in list)
+            {
+                CreateTreeNode(in parent, in item);
+            }
+        }
+        private void CreateTreeNode(in TreeNodeModel parent, in object model)
+        {
+            if (model is TreeNodeRecord node)
+            {
+                TreeNodeModel child = new()
+                {
+                    Tag = model,
+                    Parent = parent,
+                    Title = node.Name,
+                    UseToggle = node.IsFolder,
+                    CanBeEdited = true,
+                    OpenNodeHandler = node.IsFolder ? OpenNodeHandler : null,
+                    ContextMenuHandler = ContextMenuHandler,
+                    UpdateTitleCommand = UpdateTitleHandler
+                };
+
+                parent.Nodes.Add(child);
+            }
+        }
+        private async Task UpdateTitleHandler(TreeNodeModel node, CancelEventArgs args)
+        {
+            if (node.Tag is not TreeNodeRecord record)
+            {
+                return;
+            }
+
+            string name = record.Name;
+
+            try
+            {
+                record.Name = node.Title;
+
+                if (record.IsNew())
+                {
+                    await DataSource.CreateAsync(record);
+                }
+                else if (record.IsChanged())
+                {
+                    await DataSource.UpdateAsync(record);
+                }
+
+                record.MarkAsOriginal();
+            }
+            catch
+            {
+                args.Cancel = true;
+                record.Name = name;
+            }
+        }
+        private async Task ContextMenuHandler(TreeNodeModel node, IDialogService dialogService)
+        {
+            DialogParameters parameters = new()
+            {
+                { "Model", node }
+            };
+            DialogOptions options = new()
+            {
+                NoHeader = true,
+                CloseButton = false,
+                CloseOnEscapeKey = true,
+                DisableBackdropClick = false,
+                Position = DialogPosition.Center
+            };
+            var dialog = dialogService.Show<FlowTreeNodeDialog>(node.Title, parameters, options);
+            var result = await dialog.Result;
+            if (result.Cancelled) { return; }
+
+            if (result.Data is not TreeNodeDialogResult dialogResult)
+            {
+                return;
+            }
+
+            if (dialogResult.CommandType == TreeNodeDialogCommand.CreateFolder)
+            {
+                await CreateFolder(node);
+            }
+            else if (dialogResult.CommandType == TreeNodeDialogCommand.DeleteFolder)
+            {
+                await DeleteFolder(node);
+            }
+            else if (dialogResult.CommandType == TreeNodeDialogCommand.CreateEntity)
+            {
+                //await CreateScript(node);
+            }
+            else if (dialogResult.CommandType == TreeNodeDialogCommand.UpdateEntity)
+            {
+                //UpdateScript(node);
+            }
+            else if (dialogResult.CommandType == TreeNodeDialogCommand.DeleteEntity)
+            {
+                //await DeleteFolderScript(node);
+            }
+        }
+        private async Task CreateFolder(TreeNodeModel node)
+        {
+            if (node.Tag is not TreeNodeRecord parent)
+            {
+                return;
+            }
+
+            TreeNodeRecord record = DomainModel.New<TreeNodeRecord>();
+
+            record.Parent = parent.GetEntity();
+            record.Name = "New folder";
+            record.IsFolder = true;
+            record.Value = Entity.Undefined;
+
+            try
+            {
+                await DataSource.CreateAsync(record);
+
+                record.MarkAsOriginal();
+
+                CreateTreeNode(in node, record);
+            }
+            catch
+            {
+                throw;
+            }
+        }
+        private async Task DeleteFolder(TreeNodeModel node)
+        {
+            if (node.Tag is not TreeNodeRecord record)
             {
                 return;
             }
 
             try
             {
-                HttpResponseMessage response = await Http.GetAsync(root.Url);
+                await DataSource.DeleteAsync(record.GetEntity());
 
-                if (response.IsSuccessStatusCode)
-                {
-                    List<PipelineInfo> pipelines = await response.Content.ReadFromJsonAsync<List<PipelineInfo>>();
+                node.Parent.Nodes.Remove(node);
 
-                    CreateRootNodeChildren(in root, in pipelines);
-                }
-                else
-                {
-                    //TODO: show error message
-
-                    string result = await response.Content?.ReadAsStringAsync();
-
-                    string error = response.ReasonPhrase
-                        + (string.IsNullOrEmpty(result)
-                        ? string.Empty
-                        : Environment.NewLine + result);
-                }
+                node.IsVisible = false;
             }
-            catch (Exception error)
+            catch
             {
-                //TODO: show error message
+                throw;
             }
-        }
-        private void CreateRootNodeChildren(in TreeNodeModel root, in List<PipelineInfo> pipelines)
-        {
-            foreach (PipelineInfo model in pipelines)
-            {
-                root.Nodes.Add(CreatePipelineNode(in root, in model));
-            }
-        }
-        private TreeNodeModel CreatePipelineNode(in TreeNodeModel parent, in PipelineInfo model)
-        {
-            TreeNodeModel node = new()
-            {
-                Parent = parent,
-                Tag = model,
-                Title = model.Name,
-                UseToggle = false,
-                Url = $"{parent.Url}/{model.Uuid.ToString().ToLower()}"
-            };
-
-            return node;
-        }
-        private void NavigateToPipelinePage()
-        {
-            // /dajet-flow/pipeline/{uuid:guid?}
         }
     }
 }

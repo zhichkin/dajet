@@ -78,7 +78,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-data", "dajet-data\da
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-file-logger", "dajet-file-logger\dajet-file-logger.csproj", "{212A8AA8-5AA2-4D5B-8311-D25B6B9C7D79}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-http-client", "dajet-http-client\dajet-http-client.csproj", "{B4598294-3D1E-4999-AEAA-1064E04C11C4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-http-client", "dajet-http-client\dajet-http-client.csproj", "{B4598294-3D1E-4999-AEAA-1064E04C11C4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

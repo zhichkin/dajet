@@ -1,4 +1,3 @@
-using DaJet.Data;
 using DaJet.Http.Client;
 using DaJet.Model;
 using DaJet.Studio.Controllers;
@@ -38,7 +37,7 @@ namespace DaJet.Studio
             });
 
             builder.Services.AddSingleton<IDomainModel, DomainModel>();
-            builder.Services.AddSingleton<IDataSource, DaJetHttpClient>();
+            builder.Services.AddSingleton<DaJetHttpClient>();
 
             builder.Services.AddMudServices();
             builder.Services.AddSingleton<AppState>();

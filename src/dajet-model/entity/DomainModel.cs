@@ -14,16 +14,17 @@ namespace DaJet.Model
         EntityObject New(Type type); // New
         EntityObject New(Type type, Guid identity); // Original
         void Entity<T>(int typeCode);
+        int GetTypeCode(Type entityType);
         Type GetEntityType(int typeCode);
     }
     public sealed class DomainModel : IDomainModel
     {
         private readonly Dictionary<int, Type> _types = new();
+        private readonly Dictionary<Type, int> _codes = new();
         private readonly IServiceProvider _services;
         public DomainModel(IServiceProvider services)
         {
             _services = services;
-
             ConfigureDomainModel();
         }
         private void ConfigureDomainModel()
@@ -32,14 +33,51 @@ namespace DaJet.Model
             Entity<PipelineRecord>(20);
             Entity<PipelineBlockRecord>(30);
         }
+        public void Entity<T>(int typeCode)
+        {
+            _ = _codes.TryAdd(typeof(T), typeCode);
+            _ = _types.TryAdd(typeCode, typeof(T));
+        }
+        public int GetTypeCode(Type entityType)
+        {
+            if (_codes.TryGetValue(entityType, out int code))
+            {
+                return code;
+            }
+            return 0;
+        }
+        public Type GetEntityType(int typeCode)
+        {
+            if (_types.TryGetValue(typeCode, out Type type))
+            {
+                return type;
+            }
+            return null;
+        }
         public T New<T>() where T : EntityObject
         {
-            return ActivatorUtilities.CreateInstance<T>(_services);
+            if (!_codes.TryGetValue(typeof(T), out int typeCode))
+            {
+                throw new InvalidOperationException();
+            }
+
+            T entity = ActivatorUtilities.CreateInstance<T>(_services);
+
+            typeof(T).GetProperty(nameof(EntityObject.TypeCode)).SetValue(entity, typeCode);
+            typeof(T).GetProperty(nameof(EntityObject.Identity)).SetValue(entity, Guid.NewGuid());
+
+            return entity;
         }
         public T New<T>(Guid identity) where T : EntityObject
         {
+            if (!_codes.TryGetValue(typeof(T), out int typeCode))
+            {
+                throw new InvalidOperationException();
+            }
+
             T entity = ActivatorUtilities.CreateInstance<T>(_services);
 
+            typeof(T).GetProperty(nameof(EntityObject.TypeCode)).SetValue(entity, typeCode);
             typeof(T).GetProperty(nameof(EntityObject.Identity)).SetValue(entity, identity);
 
             entity.MarkAsOriginal();
@@ -53,7 +91,17 @@ namespace DaJet.Model
                 throw new InvalidOperationException();
             }
 
-            return ActivatorUtilities.CreateInstance(_services, type) as EntityObject;
+            if (!_codes.TryGetValue(type, out int typeCode))
+            {
+                throw new InvalidOperationException();
+            }
+
+            EntityObject entity = ActivatorUtilities.CreateInstance(_services, type) as EntityObject;
+
+            type.GetProperty(nameof(EntityObject.TypeCode)).SetValue(entity, typeCode);
+            type.GetProperty(nameof(EntityObject.Identity)).SetValue(entity, Guid.NewGuid());
+
+            return entity;
         }
         public EntityObject New(Type type, Guid identity)
         {
@@ -62,26 +110,19 @@ namespace DaJet.Model
                 throw new InvalidOperationException();
             }
 
+            if (!_codes.TryGetValue(type, out int typeCode))
+            {
+                throw new InvalidOperationException();
+            }
+
             EntityObject entity = ActivatorUtilities.CreateInstance(_services, type) as EntityObject;
 
+            type.GetProperty(nameof(EntityObject.TypeCode)).SetValue(entity, typeCode);
             type.GetProperty(nameof(EntityObject.Identity)).SetValue(entity, identity);
 
             entity.MarkAsOriginal();
 
             return entity;
-        }
-
-        public void Entity<T>(int typeCode)
-        {
-            _ = _types.TryAdd(typeCode, typeof(T));
-        }
-        public Type GetEntityType(int typeCode)
-        {
-            if (_types.TryGetValue(typeCode, out Type type))
-            {
-                return type;
-            }
-            return null;
         }
 
         #region "CONSTRUCTOR IL GENERATION"

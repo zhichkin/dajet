@@ -1,19 +1,18 @@
 ﻿using DaJet.Model;
 using Microsoft.Data.Sqlite;
-using System.Security.Principal;
 
 namespace DaJet.Data
 {
-    public sealed class TreeNodeDataMapper : IDataMapper
+    public sealed class TreeNodeDataMapper
     {
         #region "SQL SCRIPTS"
         private const string CREATE_TABLE_COMMAND = "CREATE TABLE IF NOT EXISTS " +
             "maintree (uuid TEXT NOT NULL, parent TEXT NOT NULL, name TEXT NOT NULL, is_folder INTEGER NOT NULL, " +
             "entity_type INTEGER NOT NULL, entity_uuid TEXT NOT NULL, PRIMARY KEY (uuid)) WITHOUT ROWID;";
-        private const string SELECT_ALL =
-            "SELECT uuid, parent, name, is_folder, entity_type, entity_uuid FROM maintree ORDER BY name ASC;";
         private const string SELECT_BY_UUID =
             "SELECT uuid, parent, name, is_folder, entity_type, entity_uuid FROM maintree WHERE uuid = @uuid;";
+        private const string SELECT_BY_PARENT =
+            "SELECT uuid, parent, name, is_folder, entity_type, entity_uuid FROM maintree WHERE parent = @value;";
         private const string INSERT_COMMAND =
             "INSERT INTO maintree (uuid, parent, name, is_folder, entity_type, entity_uuid) " +
             "VALUES (@uuid, @parent, @name, @is_folder, @entity_type, @entity_uuid);";
@@ -25,23 +24,35 @@ namespace DaJet.Data
         private const string DELETE_COMMAND = "DELETE FROM maintree WHERE uuid = @uuid;";
         #endregion
 
-        private readonly int MY_TYPE_CODE = -10;
+        private readonly int MY_TYPE_CODE;
         private readonly string _connectionString;
-        private readonly IDataSource _source;
-        public TreeNodeDataMapper(IDataSource source, string connectionString)
+        private readonly IDomainModel _domain;
+        public TreeNodeDataMapper(IDomainModel domain, string connectionString)
         {
-            _source = source;
             _connectionString = connectionString;
+
+            ConfigureDatabase();
+
+            _domain = domain;
+
+            MY_TYPE_CODE = _domain.GetTypeCode(typeof(TreeNodeRecord));
         }
-        public void Insert(EntityObject entity)
+        private void ConfigureDatabase()
         {
-            if (entity is not TreeNodeRecord record)
+            using (SqliteConnection connection = new(_connectionString))
             {
-                throw new ArgumentException(null, nameof(entity));
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = CREATE_TABLE_COMMAND;
+
+                    _ = command.ExecuteNonQuery();
+                }
             }
-
-            int result;
-
+        }
+        public void Insert(TreeNodeRecord entity)
+        {
             using (SqliteConnection connection = new(_connectionString))
             {
                 connection.Open();
@@ -50,28 +61,19 @@ namespace DaJet.Data
                 {
                     command.CommandText = INSERT_COMMAND;
 
-                    command.Parameters.AddWithValue("uuid", record.Identity.ToString().ToLower());
-                    command.Parameters.AddWithValue("parent", record.Parent.ToString().ToLower());
-                    command.Parameters.AddWithValue("name", record.Name);
-                    command.Parameters.AddWithValue("is_folder", record.IsFolder);
-                    command.Parameters.AddWithValue("entity_type", MY_TYPE_CODE);
-                    command.Parameters.AddWithValue("entity_uuid", record.Value.Identity.ToString().ToLower());
+                    command.Parameters.AddWithValue("uuid", entity.Identity.ToString().ToLower());
+                    command.Parameters.AddWithValue("parent", entity.Parent.Identity.ToString().ToLower());
+                    command.Parameters.AddWithValue("name", entity.Name);
+                    command.Parameters.AddWithValue("is_folder", entity.IsFolder ? 1L : 0L);
+                    command.Parameters.AddWithValue("entity_type", entity.Value.TypeCode);
+                    command.Parameters.AddWithValue("entity_uuid", entity.Value.Identity.ToString().ToLower());
 
-                    result = command.ExecuteNonQuery();
+                    int result = command.ExecuteNonQuery();
                 }
             }
-
-            //return (result == 1);
         }
-        public void Update(EntityObject entity)
+        public void Update(TreeNodeRecord entity)
         {
-            if (entity is not TreeNodeRecord record)
-            {
-                throw new ArgumentException(null, nameof(entity));
-            }
-
-            int result;
-
             using (SqliteConnection connection = new(_connectionString))
             {
                 connection.Open();
@@ -80,28 +82,23 @@ namespace DaJet.Data
                 {
                     command.CommandText = UPDATE_COMMAND;
 
-                    command.Parameters.AddWithValue("uuid", record.Identity.ToString().ToLower());
-                    command.Parameters.AddWithValue("parent", record.Parent.ToString().ToLower());
-                    command.Parameters.AddWithValue("name", record.Name);
-                    command.Parameters.AddWithValue("is_folder", record.IsFolder);
-                    command.Parameters.AddWithValue("entity_type", MY_TYPE_CODE);
-                    command.Parameters.AddWithValue("entity_uuid", record.Value.Identity.ToString().ToLower());
+                    command.Parameters.AddWithValue("uuid", entity.Identity.ToString().ToLower());
+                    command.Parameters.AddWithValue("parent", entity.Parent.Identity.ToString().ToLower());
+                    command.Parameters.AddWithValue("name", entity.Name);
+                    command.Parameters.AddWithValue("is_folder", entity.IsFolder ? 1L : 0L);
+                    command.Parameters.AddWithValue("entity_type", entity.Value.TypeCode);
+                    command.Parameters.AddWithValue("entity_uuid", entity.Value.Identity.ToString().ToLower());
 
-                    result = command.ExecuteNonQuery();
+                    int result = command.ExecuteNonQuery();
                 }
             }
-
-            //return (result == 1);
         }
-        public void Delete(EntityObject entity)
+        public void Delete(Entity entity)
         {
-            if (entity is not TreeNodeRecord record)
-            {
-                throw new ArgumentException(null, nameof(entity));
-            }
-
-            int result;
-
+            DeleteRecursively(entity);
+        }
+        public void DeleteTreeNode(Entity entity)
+        {
             using (SqliteConnection connection = new(_connectionString))
             {
                 connection.Open();
@@ -110,20 +107,37 @@ namespace DaJet.Data
                 {
                     command.CommandText = DELETE_COMMAND;
 
-                    command.Parameters.AddWithValue("uuid", record.Identity.ToString().ToLower());
+                    command.Parameters.AddWithValue("uuid", entity.Identity.ToString().ToLower());
 
-                    result = command.ExecuteNonQuery();
+                    int result = command.ExecuteNonQuery();
+                }
+            }
+        }
+        public void DeleteRecursively(Entity entity)
+        {
+            List<TreeNodeRecord> children = Select("parent", entity);
+
+            foreach (TreeNodeRecord child in children)
+            {
+                if (child.IsFolder)
+                {
+                    DeleteRecursively(child.GetEntity());
+                }
+                else
+                {
+                    DeleteTreeNode(child.GetEntity());
                 }
             }
 
-            //return (result > 0);
+            DeleteTreeNode(entity);
         }
-        public void Select(EntityObject entity)
+        public List<TreeNodeRecord> Select()
         {
-            if (entity is not TreeNodeRecord record)
-            {
-                throw new ArgumentException(null, nameof(entity));
-            }
+            return Select("parent", Entity.Undefined);
+        }
+        public TreeNodeRecord Select(Entity entity)
+        {
+            TreeNodeRecord record = null;
 
             using (SqliteConnection connection = new(_connectionString))
             {
@@ -133,26 +147,75 @@ namespace DaJet.Data
                 {
                     command.CommandText = SELECT_BY_UUID;
 
-                    command.Parameters.AddWithValue("uuid", record.Identity.ToString().ToLower());
+                    command.Parameters.AddWithValue("uuid", entity.Identity.ToString().ToLower());
 
                     using (SqliteDataReader reader = command.ExecuteReader())
                     {
                         if (reader.Read())
                         {
-                            record.Parent = new Entity(-10, new Guid(reader.GetString(1)));
-                            record.Name = reader.GetString(2);
-                            record.IsFolder = (reader.GetInt64(3) == 1L);
+                            record = new TreeNodeRecord()
+                            {
+                                TypeCode = MY_TYPE_CODE,
+                                Identity = new Guid(reader.GetString(0)),
+                                Parent = new Entity(MY_TYPE_CODE, new Guid(reader.GetString(1))),
+                                Name = reader.GetString(2),
+                                IsFolder = (reader.GetInt64(3) == 1L)
+                            };
+
+                            int code = (int)reader.GetInt64(4);
+                            Guid uuid = new(reader.GetString(5));
+                            record.Value = new Entity(code, uuid);
 
                             record.MarkAsOriginal();
-
-                            //long code = reader.GetInt64(4);
-                            //Guid uuid = new(reader.GetString(5));
-                            //record.Value = _domain.Create((int)code, uuid);
                         }
                         reader.Close();
                     }
                 }
             }
+
+            return record;
+        }
+        public List<TreeNodeRecord> Select(string propertyName, Entity value)
+        {
+            List<TreeNodeRecord> list = new();
+
+            using (SqliteConnection connection = new(_connectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = SELECT_BY_PARENT;
+
+                    command.Parameters.AddWithValue("value", value.Identity.ToString().ToLower());
+
+                    using (SqliteDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            TreeNodeRecord record = new()
+                            {
+                                TypeCode = MY_TYPE_CODE,
+                                Identity = new Guid(reader.GetString(0)),
+                                Parent = new Entity(MY_TYPE_CODE, new Guid(reader.GetString(1))),
+                                Name = reader.GetString(2),
+                                IsFolder = (reader.GetInt64(3) == 1L)
+                            };
+
+                            int code = (int)reader.GetInt64(4);
+                            Guid uuid = new(reader.GetString(5));
+                            record.Value = new Entity(code, uuid);
+
+                            record.MarkAsOriginal();
+
+                            list.Add(record);
+                        }
+                        reader.Close();
+                    }
+                }
+            }
+
+            return list;
         }
     }
 }

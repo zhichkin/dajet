@@ -1,6 +1,4 @@
 ﻿using DaJet.Data;
-using System;
-using System.Collections.Generic;
 
 namespace DaJet.Model
 {
@@ -10,12 +8,10 @@ namespace DaJet.Model
         private bool _is_folder;
         private Entity _value;
         private Entity _parent;
-        public TreeNodeRecord() { TypeCode = 10; }
         public string Name { get { return _name; } set { Set(value, ref _name); } }
         public bool IsFolder { get { return _is_folder; } set { Set(value, ref _is_folder); } }
         public Entity Value { get { return _value; } set { Set(value, ref _value); } }
         public Entity Parent { get { return _parent; } set { Set(value, ref _parent); } }
         public override string ToString() { return string.IsNullOrEmpty(Name) ? base.ToString() : Name; }
-        public IEnumerable<TreeNodeRecord> GetChildren() { throw new NotImplementedException();  }
     }
 }

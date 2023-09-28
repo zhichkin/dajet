@@ -44,6 +44,14 @@ namespace DaJet.Http.Server
             builder.Host.UseWindowsService();
 
             builder.Services.AddSingleton<IDomainModel, DomainModel>();
+            builder.Services.AddSingleton<IDataSource, DaJetDataSource>();
+            builder.Services.AddSingleton(serviceProvider =>
+            {
+                return new DataSourceOptions()
+                {
+                    ConnectionString = OptionsFileConnectionString
+                };
+            });
 
             builder.Services.AddControllers();
             builder.Services.AddCors(ConfigureCors);

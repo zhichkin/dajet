@@ -1,4 +1,5 @@
-﻿using DaJet.Model;
+﻿using DaJet.Http.Client;
+using DaJet.Model;
 using DaJet.Studio.Controllers;
 using DaJet.Studio.Model;
 using DaJet.Studio.Pages;
@@ -30,14 +31,28 @@ namespace DaJet.Studio.Components
         #endregion
         protected string FilterValue { get; set; } = string.Empty;
         protected List<TreeNodeModel> Nodes { get; set; } = new();
+        [Inject] private DaJetHttpClient DataSource { get; set; }
         [Inject] private FlowTreeViewController FlowController { get; set; }
         [Inject] private DbViewController DbViewController { get; set; }
         [Inject] private ApiTreeViewController ApiTreeViewController { get; set; }
         [Inject] private ExchangeTreeViewController ExchangeTreeViewController { get; set; }
-        protected override void OnInitialized()
+        protected override async Task OnInitializedAsync()
         {
-            Nodes.Add(FlowController.CreateRootNode());
+            var list = await DataSource.SelectAsync();
 
+            foreach (var item in list)
+            {
+                if (item is not TreeNodeRecord node)
+                {
+                    continue;
+                }
+
+                if (node.Name == "flow")
+                {
+                    Nodes.Add(FlowController.CreateRootNode(node));
+                }
+            }
+            
             Nodes.Add(CreateDbmsRootNode());
 
             AppState.RefreshInfoBaseCommand += Refresh;

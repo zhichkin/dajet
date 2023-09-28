@@ -1,4 +1,4 @@
-﻿using DaJet.Json;
+﻿using DaJet.Data;
 using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
 using System.Text;
@@ -18,44 +18,41 @@ namespace DaJet.Http.Controllers
             WriteIndented = true,
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
-
-        private static List<TreeNodeRecord> _nodes = new()
-        {
-            new()
-            {
-                Parent = new Entity(10, Guid.NewGuid()),
-                Name = "Node 1",
-                Value = new Entity(10, Guid.NewGuid())
-            },
-            new()
-            {
-                Parent = new Entity(10, Guid.NewGuid()),
-                Name = "Node 2",
-                Value = new Entity(10, Guid.NewGuid())
-            },
-            new()
-            {
-                Parent = new Entity(10, Guid.NewGuid()),
-                Name = "Привет, мир!",
-                Value = new Entity(10, Guid.NewGuid())
-            }
-        };
+        private readonly IDataSource _source;
         private readonly IDomainModel _domain;
-        public HomeController(IDomainModel domain)
+        public HomeController(IDomainModel domain, IDataSource source)
         {
             _domain = domain;
+            _source = source;
         }
-        [HttpGet("")] public ActionResult SelectTreeNodes()
+        [HttpGet("")] public ActionResult Select()
         {
-            return NotFound();
+            int typeCode = _domain.GetTypeCode(typeof(TreeNodeRecord));
+
+            if (typeCode == 0)
+            {
+                return NotFound(nameof(TreeNodeRecord));
+            }
+
+            var list = _source.Select(typeCode, "parent", Entity.Undefined);
+
+            Type listType = typeof(List<>).MakeGenericType(typeof(TreeNodeRecord));
+
+            string json = JsonSerializer.Serialize(list, listType, JsonOptions);
+
+            return Content(json, "application/json", Encoding.UTF8);
         }
         
-        [HttpGet("{typeCode:int}/{uuid:guid}")]
-        public ActionResult Select([FromRoute] int typeCode, [FromRoute] Guid uuid)
+        [HttpGet("{typeCode:int}/{identity:guid}")]
+        public ActionResult Select([FromRoute] int typeCode, [FromRoute] Guid identity)
         {
-            TreeNodeRecord node = _nodes.Where(e => e.Value.Identity == uuid).FirstOrDefault();
+            Type type = _domain.GetEntityType(typeCode);
 
-            string json = JsonSerializer.Serialize(node, JsonOptions);
+            Entity entity = new(typeCode, identity);
+
+            EntityObject record = _source.Select(entity);
+
+            string json = JsonSerializer.Serialize(record, type, JsonOptions);
 
             return Content(json, "application/json", Encoding.UTF8);
         }
@@ -63,14 +60,70 @@ namespace DaJet.Http.Controllers
         [HttpGet("{typeCode:int}/{propertyName}/{value}")]
         public ActionResult Select([FromRoute] int typeCode, [FromRoute] string propertyName, [FromRoute] string value)
         {
+            Type type = _domain.GetEntityType(typeCode);
+
             if (!Entity.TryParse(value, out Entity entity))
             {
                 return BadRequest();
             }
-            
-            string json = JsonSerializer.Serialize(_nodes, JsonOptions);
+
+            var list = _source.Select(typeCode, propertyName, entity);
+
+            Type listType = typeof(List<>).MakeGenericType(type);
+
+            string json = JsonSerializer.Serialize(list, listType, JsonOptions);
 
             return Content(json, "application/json", Encoding.UTF8);
+        }
+
+        [HttpPost("{typeCode:int}")] public async Task<ActionResult> Insert([FromRoute] int typeCode)
+        {
+            HttpRequest request = HttpContext.Request;
+
+            if (request.ContentLength == 0)
+            {
+                return BadRequest();
+            }
+
+            Type type = _domain.GetEntityType(typeCode);
+
+            EntityObject entity = await JsonSerializer.DeserializeAsync(request.Body, type, JsonOptions) as EntityObject;
+
+            _source.Create(entity);
+
+            return Created(type.FullName, entity.Identity); // return Conflict();
+        }
+        [HttpPut("{typeCode:int}")] public async Task<ActionResult> Update([FromRoute] int typeCode)
+        {
+            HttpRequest request = HttpContext.Request;
+
+            if (request.ContentLength == 0)
+            {
+                return BadRequest();
+            }
+
+            Type type = _domain.GetEntityType(typeCode);
+
+            EntityObject entity = await JsonSerializer.DeserializeAsync(request.Body, type, JsonOptions) as EntityObject;
+
+            _source.Update(entity);
+
+            return Ok(); // return Conflict();
+        }
+        [HttpDelete("{typeCode:int}/{identity:guid}")] public ActionResult Delete([FromRoute] int typeCode, [FromRoute] Guid identity)
+        {
+            Type type = _domain.GetEntityType(typeCode);
+
+            if (type is null)
+            {
+                return BadRequest();
+            }
+
+            Entity entity = new(typeCode, identity);
+
+            _source.Delete(entity);
+            
+            return Ok(); // return NotFound(); // return Conflict();
         }
     }
 }
