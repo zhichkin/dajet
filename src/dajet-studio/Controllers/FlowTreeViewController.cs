@@ -45,31 +45,28 @@ namespace DaJet.Studio.Controllers
                 return;
             }
 
-            var list = await DataSource.SelectAsync(node.TypeCode, "parent", node.GetEntity());
+            var list = await DataSource.SelectAsync<TreeNodeRecord>("parent", node.GetEntity());
 
             foreach (var item in list)
             {
                 CreateTreeNode(in parent, in item);
             }
         }
-        private void CreateTreeNode(in TreeNodeModel parent, in object model)
+        private void CreateTreeNode(in TreeNodeModel parent, in TreeNodeRecord node)
         {
-            if (model is TreeNodeRecord node)
+            TreeNodeModel child = new()
             {
-                TreeNodeModel child = new()
-                {
-                    Tag = model,
-                    Parent = parent,
-                    Title = node.Name,
-                    UseToggle = node.IsFolder,
-                    CanBeEdited = true,
-                    OpenNodeHandler = node.IsFolder ? OpenNodeHandler : null,
-                    ContextMenuHandler = ContextMenuHandler,
-                    UpdateTitleCommand = UpdateTitleHandler
-                };
+                Tag = node,
+                Parent = parent,
+                Title = node.Name,
+                UseToggle = node.IsFolder,
+                CanBeEdited = true,
+                OpenNodeHandler = node.IsFolder ? OpenNodeHandler : null,
+                ContextMenuHandler = ContextMenuHandler,
+                UpdateTitleCommand = UpdateTitleHandler
+            };
 
-                parent.Nodes.Add(child);
-            }
+            parent.Nodes.Add(child);
         }
         private async Task UpdateTitleHandler(TreeNodeModel node, CancelEventArgs args)
         {
@@ -84,16 +81,10 @@ namespace DaJet.Studio.Controllers
             {
                 record.Name = node.Title;
 
-                if (record.IsNew())
-                {
-                    await DataSource.CreateAsync(record);
-                }
-                else if (record.IsChanged())
+                if (record.IsChanged())
                 {
                     await DataSource.UpdateAsync(record);
                 }
-
-                record.MarkAsOriginal();
             }
             catch
             {
@@ -162,8 +153,6 @@ namespace DaJet.Studio.Controllers
             try
             {
                 await DataSource.CreateAsync(record);
-
-                record.MarkAsOriginal();
 
                 CreateTreeNode(in node, record);
             }

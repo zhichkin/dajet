@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace DaJet.Data
@@ -19,6 +20,6 @@ namespace DaJet.Data
         Task DeleteAsync(Entity entity);
         Task<IEnumerable> SelectAsync();
         Task<EntityObject> SelectAsync(Entity entity);
-        Task<IEnumerable> SelectAsync(int typeCode, string propertyName, Entity value);
+        Task<IEnumerable<T>> SelectAsync<T>(string property, Entity value) where T : EntityObject;
     }
 }

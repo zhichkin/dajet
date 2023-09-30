@@ -36,7 +36,11 @@ namespace DaJet.Http.Client
 
                 HttpResponseMessage response = await _client.PostAsync(url, content);
 
-                if (response.StatusCode != HttpStatusCode.Created)
+                if (response.StatusCode == HttpStatusCode.Created)
+                {
+                    entity.MarkAsOriginal();
+                }
+                else
                 {
                     throw new InvalidOperationException();
                 }
@@ -58,7 +62,11 @@ namespace DaJet.Http.Client
 
                 HttpResponseMessage response = await _client.PutAsync(url, content);
 
-                if (response.StatusCode != HttpStatusCode.OK)
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    entity.MarkAsOriginal();
+                }
+                else
                 {
                     throw new InvalidOperationException();
                 }
@@ -88,14 +96,7 @@ namespace DaJet.Http.Client
         }
         public async Task<IEnumerable> SelectAsync()
         {
-            int typeCode = _domain.GetTypeCode(typeof(TreeNodeRecord));
-
-            if (typeCode == 0)
-            {
-                throw new InvalidOperationException($"Type [{nameof(TreeNodeRecord)}] not found");
-            }
-
-            return await SelectAsync(typeCode, "parent", Entity.Undefined);
+            return await SelectAsync<TreeNodeRecord>("parent", Entity.Undefined);
         }
         public async Task<EntityObject> SelectAsync(Entity primaryKey)
         {
@@ -126,16 +127,38 @@ namespace DaJet.Http.Client
 
             return entity;
         }
-        public async Task<IEnumerable> SelectAsync(int typeCode, string propertyName, Entity value)
+        public async Task<IEnumerable<T>> SelectAsync<T>(string property, Entity value) where T : EntityObject
         {
-            Type type = _domain.GetEntityType(typeCode);
+            int code = _domain.GetTypeCode(typeof(T));
+
+            if (code == 0)
+            {
+                throw new InvalidOperationException($"[{typeof(T)}] type code not found");
+            }
+
+            string url = $"/home/{code}/{property}/{value}";
+
+            HttpResponseMessage response = await _client.GetAsync(url);
+
+            IEnumerable<T> list = await response.Content.ReadFromJsonAsync<IEnumerable<T>>();
+
+            foreach (T item in list)
+            {
+                item.MarkAsOriginal();
+            }
+
+            return list;
+        }
+        private async Task<IEnumerable> SelectAsync(int code, string property, Entity value)
+        {
+            Type type = _domain.GetEntityType(code);
 
             if (type is null)
             {
-                throw new InvalidOperationException($"Entity [{typeCode}] not found");
+                throw new InvalidOperationException($"Entity [{code}] not found");
             }
 
-            string url = $"/home/{typeCode}/{propertyName}/{value}";
+            string url = $"/home/{code}/{property}/{value}";
 
             HttpResponseMessage response = await _client.GetAsync(url);
 
