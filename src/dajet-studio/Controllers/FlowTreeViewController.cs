@@ -30,7 +30,9 @@ namespace DaJet.Studio.Controllers
                 Tag = root,
                 Title = "flow",
                 OpenNodeHandler = OpenNodeHandler,
-                ContextMenuHandler = ContextMenuHandler
+                ContextMenuHandler = ContextMenuHandler,
+                DropDataHandler = DropDataHandler,
+                CanAcceptDropData = CanAcceptDropData
             };
         }
         private async Task OpenNodeHandler(TreeNodeModel parent)
@@ -61,9 +63,12 @@ namespace DaJet.Studio.Controllers
                 Title = node.Name,
                 UseToggle = node.IsFolder,
                 CanBeEdited = true,
+                IsDraggable = true,
                 OpenNodeHandler = node.IsFolder ? OpenNodeHandler : null,
                 ContextMenuHandler = ContextMenuHandler,
-                UpdateTitleCommand = UpdateTitleHandler
+                UpdateTitleCommand = UpdateTitleHandler,
+                DropDataHandler = DropDataHandler,
+                CanAcceptDropData = CanAcceptDropData
             };
 
             parent.Nodes.Add(child);
@@ -179,6 +184,43 @@ namespace DaJet.Studio.Controllers
             catch
             {
                 throw;
+            }
+        }
+
+
+        private bool CanAcceptDropData(TreeNodeModel source, TreeNodeModel target)
+        {
+            if (source is null || target is null) { return false; }
+
+            if (target.HasAncestor(source)) { return false; }
+
+            if (target.Nodes.Contains(source)) { return false; }
+
+            return true;
+        }
+        private async Task DropDataHandler(TreeNodeModel source, TreeNodeModel target)
+        {
+            if (!CanAcceptDropData(source, target)) { return; }
+
+            TreeNodeModel parent = source.Parent;
+
+            if (source.Tag is TreeNodeRecord record && target.Tag is TreeNodeRecord owner)
+            {
+                record.Parent = owner.GetEntity();
+
+                if (record.IsChanged())
+                {
+                    await DataSource.UpdateAsync(record);
+
+                    source.Parent = target;
+                    target.Nodes.Add(source);
+
+                    if (parent is not null)
+                    {
+                        parent.Nodes.Remove(source);
+                        parent.NotifyStateChanged();
+                    }
+                }
             }
         }
     }

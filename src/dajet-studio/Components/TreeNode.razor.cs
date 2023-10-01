@@ -10,6 +10,20 @@ namespace DaJet.Studio.Components
         private ElementReference TitleInput;
         private string _title = string.Empty;
         [Parameter] public TreeNodeModel Model { get; set; }
+        protected override void OnParametersSet()
+        {
+            if (Model is not null)
+            {
+                Model.StateHasChanged += StateHasChanged;
+            }
+        }
+        public void Dispose()
+        {
+            if (Model is not null)
+            {
+                Model.StateHasChanged -= StateHasChanged;
+            }
+        }
         protected override async Task OnAfterRenderAsync(bool firstRender)
         {
             if (Model.CanBeEdited && Model.IsInEditMode)
@@ -101,6 +115,62 @@ namespace DaJet.Studio.Components
             Model.Title = _title;
             _title = string.Empty;
             Model.IsInEditMode = false;
+        }
+
+
+        private static TreeNode _draggingNode;
+        private string DropStyle { get; set; } = string.Empty;
+        private void DragStartHandler()
+        {
+            if (Model is not null && Model.IsDraggable)
+            {
+                _draggingNode = this;
+            }
+        }
+        private void DragEnterHandler()
+        {
+            if (_draggingNode is null || _draggingNode == this) { return; }
+
+            if (Model is null || Model.CanAcceptDropData is null)
+            {
+                DropStyle = "border: 2px dashed red;";
+            }
+            else if (Model.CanAcceptDropData(_draggingNode.Model, Model))
+            {
+                DropStyle = "border: 2px dashed green;";
+            }
+            else
+            {
+                DropStyle = "border: 2px dashed red;";
+            }
+        }
+        private void DragLeaveHandler()
+        {
+            if (_draggingNode == this) { return; }
+
+            DropStyle = string.Empty;
+        }
+        private async Task DropHandler()
+        {
+            if (_draggingNode is null || _draggingNode == this) { return; }
+
+            DropStyle = string.Empty;
+
+            if (Model is null || Model.CanAcceptDropData is null || Model.DropDataHandler is null)
+            {
+                return;
+            }
+
+            TreeNodeModel source = _draggingNode.Model;
+
+            try
+            {
+                await Model.DropDataHandler(source, Model);
+            }
+            finally
+            {
+                _draggingNode = null;
+            }
         }
     }
 }

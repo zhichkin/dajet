@@ -5,6 +5,17 @@ namespace DaJet.Studio.Components
 {
     public sealed class TreeNodeModel
     {
+        public static TreeNodeModel GetRootNode(in TreeNodeModel node)
+        {
+            TreeNodeModel root = node;
+
+            while (root.Parent is not null)
+            {
+                root = root.Parent;
+            }
+
+            return root;
+        }
         public static TreeNodeModel GetAncestor<T>(in TreeNodeModel node)
         {
             TreeNodeModel parent = node;
@@ -21,11 +32,29 @@ namespace DaJet.Studio.Components
 
             return null;
         }
+        public bool HasAncestor(in TreeNodeModel node)
+        {
+            TreeNodeModel parent = Parent;
+
+            while (parent is not null)
+            {
+                if (parent == node)
+                {
+                    return true;
+                }
+
+                parent = parent.Parent;
+            }
+
+            return false;
+        }
         public TreeNodeModel()
         {
             ToggleCommand = new(ToggleCommandHandler);
             ContextMenuCommand = new(ContextMenuCommandHandler);
         }
+        public event Action StateHasChanged;
+        public void NotifyStateChanged() { StateHasChanged?.Invoke(); }
         public object Tag { get; set; } = null;
         public string Url { get; set; } = string.Empty;
         public string Icon { get; set; } = string.Empty;
@@ -33,11 +62,14 @@ namespace DaJet.Studio.Components
         public bool IsVisible { get; set; } = true;
         public bool UseToggle { get; set; } = true;
         public bool IsExpanded { get; set; } = false;
+        public bool IsDraggable { get; set; } = false;
         public bool CanBeEdited { get; set; } = false;
         public bool IsInEditMode { get; set; } = false;
         public TreeNodeModel Parent { get; set; }
         public List<TreeNodeModel> Nodes { get; set; } = new();
         public Func<Task> ToggleCommand { get; private set; }
+        public Func<TreeNodeModel, TreeNodeModel, Task> DropDataHandler { get; set; }
+        public Func<TreeNodeModel, TreeNodeModel, bool> CanAcceptDropData { get; set; }
         public Func<IDialogService, Task> ContextMenuCommand { get; private set; }
         public Func<TreeNodeModel, Task> OpenNodeHandler { get; set; }
         public Func<TreeNodeModel, IDialogService, Task> ContextMenuHandler { get; set; }
