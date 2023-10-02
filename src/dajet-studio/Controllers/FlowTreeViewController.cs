@@ -124,6 +124,10 @@ namespace DaJet.Studio.Controllers
             {
                 await CreateFolder(node);
             }
+            else if (dialogResult.CommandType == TreeNodeDialogCommand.UpdateFolder)
+            {
+                NavigateToPipelineTable(node);
+            }
             else if (dialogResult.CommandType == TreeNodeDialogCommand.DeleteFolder)
             {
                 await DeleteFolder(node);
@@ -139,6 +143,19 @@ namespace DaJet.Studio.Controllers
             else if (dialogResult.CommandType == TreeNodeDialogCommand.DeleteEntity)
             {
                 //await DeleteFolderScript(node);
+            }
+        }
+        private void NavigateToPipelineTable(TreeNodeModel node)
+        {
+            if (node is null) { return; }
+
+            if (node.Parent is null)
+            {
+                Navigator.NavigateTo($"/dajet-flow");
+            }
+            else if (node.Tag is TreeNodeRecord record)
+            {
+                Navigator.NavigateTo($"/flow/table/{record.Identity.ToString().ToLower()}");
             }
         }
         private async Task CreateFolder(TreeNodeModel node)
@@ -186,8 +203,7 @@ namespace DaJet.Studio.Controllers
                 throw;
             }
         }
-
-
+                
         private bool CanAcceptDropData(TreeNodeModel source, TreeNodeModel target)
         {
             if (source is null || target is null) { return false; }

@@ -21,6 +21,15 @@ namespace DaJet.Studio.Pages.Flow
 
             MudDialog.Close(result);
         }
+        private void OpenPipelineTable()
+        {
+            TreeNodeDialogResult result = new(Model, typeof(TreeNodeModel), false)
+            {
+                CommandType = TreeNodeDialogCommand.UpdateFolder
+            };
+
+            MudDialog.Close(result);
+        }
         private void CreatePipeline()
         {
             TreeNodeDialogResult result = new(Model, typeof(TreeNodeModel), false)

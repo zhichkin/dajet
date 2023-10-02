@@ -1,0 +1,39 @@
+﻿@typeparam TDataRow
+
+<CascadingValue IsFixed="true" Value="this">@ChildContent</CascadingValue>
+
+<table @attributes="@TableAttributes">
+    
+    <thead>
+        <tr>
+            @foreach (var column in DataColumns)
+            {
+                @column.HeaderTemplate
+            }
+        </tr>
+    </thead>
+    
+    <tbody>
+        @{
+            if (DataRows is not null)
+            {
+                int index = 0;
+
+                foreach (TDataRow row in DataRows)
+                {
+                    @* Use @key to help the diff algorithm when updating the collection *@
+
+                    <tr @key="index.GetHashCode()" class="@(RowClass?.Invoke(row, index++))">
+
+                        @foreach (var column in DataColumns)
+                        {
+                            @column.CellTemplate(row)
+                        }
+
+                    </tr>
+                }
+            }
+        }
+    </tbody>
+
+</table>
