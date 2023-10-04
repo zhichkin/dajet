@@ -1,6 +1,8 @@
 ﻿using DaJet.Data;
+using DaJet.Flow.Model;
 using DaJet.Model;
 using System.Collections;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
@@ -181,5 +183,55 @@ namespace DaJet.Http.Client
 
             return list;
         }
+
+        public async Task<List<PipelineInfo>> GetPipelineInfo()
+        {
+            List<PipelineInfo> list;
+
+            try
+            {
+                HttpResponseMessage response = await _client.GetAsync("/flow");
+
+                list = await response.Content.ReadFromJsonAsync<List<PipelineInfo>>();
+            }
+            catch
+            {
+                throw;
+            }
+
+            return list;
+        }
+        public async Task ExecutePipeline(Guid uuid)
+        {
+            try
+            {
+                HttpResponseMessage response = await _client.PutAsync($"/flow/execute/{uuid.ToString().ToLower()}", null);
+            }
+            catch
+            {
+                throw;
+            }
+        }
+        public async Task DisposePipeline(Guid uuid)
+        {
+            try
+            {
+                HttpResponseMessage response = await _client.PutAsync($"/flow/dispose/{uuid.ToString().ToLower()}", null);
+            }
+            catch
+            {
+                throw;
+            }
+        }
     }
 }
+
+//if (!response.IsSuccessStatusCode)
+//{
+//    string result = await response.Content.ReadAsStringAsync();
+
+//    ErrorText = response.ReasonPhrase
+//        + (string.IsNullOrEmpty(result)
+//        ? string.Empty
+//        : Environment.NewLine + result);
+//}

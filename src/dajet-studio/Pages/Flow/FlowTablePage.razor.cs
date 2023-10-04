@@ -1,4 +1,5 @@
-﻿using DaJet.Model;
+﻿using DaJet.Flow.Model;
+using DaJet.Model;
 using Microsoft.AspNetCore.Components;
 
 namespace DaJet.Studio.Pages.Flow
@@ -7,8 +8,9 @@ namespace DaJet.Studio.Pages.Flow
     {
         private TreeNodeRecord _folder;
         [Parameter] public Guid Uuid { get; set; }
-        private List<PipelineRecord> Pipelines { get; set; } = new();
-
+        private string TreeNodeName { get; set; }
+        private List<PipelineInfo> Pipelines { get; set; } = new();
+        protected void NavigateToHomePage() { Navigator.NavigateTo("/"); }
         protected override async Task OnInitializedAsync()
         {
             int typeCode = DomainModel.GetTypeCode(typeof(TreeNodeRecord));
@@ -25,30 +27,39 @@ namespace DaJet.Studio.Pages.Flow
                 {
                     //TODO: handle error if Model is not found by uuid
                 }
+
+                TreeNodeName = await GetTreeNodeFullName(_folder);
             }
 
             await RefreshPipelineList();
         }
-        private async Task RefreshPipelineList()
+        private async Task<string> GetTreeNodeFullName(TreeNodeRecord node)
         {
-            //IsLoading = true;
+            string name = node.Name;
 
-            Pipelines.Clear();
+            Entity parent = node.Parent;
 
-            var list = await DataSource.SelectAsync<TreeNodeRecord>("parent", _folder.GetEntity());
-
-            foreach (var item in list)
+            while (!parent.IsEmpty)
             {
-                if (item is TreeNodeRecord record)
+                TreeNodeRecord record = await DataSource.SelectAsync(parent) as TreeNodeRecord;
+
+                if (record is not null)
                 {
-                    Pipelines.Add(new PipelineRecord()
-                    {
-                        Name = record.Name
-                    });
+                    name = record.Name + "/" + name;
                 }
+                else
+                {
+                    break;
+                }
+
+                parent = record.Parent;
             }
 
-            //IsLoading = false;
+            return name;
+        }
+        private async Task RefreshPipelineList()
+        {
+            Pipelines = await DataSource.GetPipelineInfo();
         }
     }
 }

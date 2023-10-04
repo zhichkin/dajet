@@ -1,16 +1,62 @@
-﻿@using DaJet.Studio.Components.DataTable;
-
-@page "/flow/table/{uuid:guid?}"
+﻿@page "/flow/table/{uuid:guid?}"
 
 @inject IDomainModel DomainModel;
 @inject DaJetHttpClient DataSource;
 @inject NavigationManager Navigator;
 
-<div style="margin:5px;overflow:scroll;">
+<style>
+    th {
+        resize: horizontal;
+        overflow: auto;
+        border: solid black 1px;
+        padding: 5px;
+        position: sticky;
+        top: 0px;
+        background-color: lightgray;
+    }
+    td {
+        border: solid black 1px;
+        padding: 5px;
+    }
+</style>
 
-    <DataTable DataRows="Pipelines" class="table table-bordered" RowClass='(row, index) => row.IsNew() ? "table-success" : ""'>
-        <DataColumn TDataRow="PipelineRecord">@context.Name</DataColumn>
-        <DataColumn TDataRow="PipelineRecord"><a href="/edit/@context.Identity">edit</a></DataColumn>
-    </DataTable>
+<div style="margin:5px;">
+    <span style="font-weight:bold;margin-right:5px;">@TreeNodeName</span>
+    <input type="button" value="✕" style="cursor:pointer;border:none;background:none;" @onclick="NavigateToHomePage">
+    <span style="font-weight:bold;display:block;">@TreeNodeName</span>
+</div>
+
+<div style="margin:5px;overflow:scroll;border:solid black 1px;">
+
+    <table style="border-collapse:collapse;width:100%;">
+
+        <thead>
+            <tr>
+                <th>Конвейер</th>
+                <th>Активация</th>
+                <th>Состояние</th>
+                <th>Начало</th>
+                <th>Завершение</th>
+                <th>Комментарий</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            @foreach (PipelineInfo info in Pipelines)
+            {
+                <tr>
+                    <td>@info.Name</td>
+                    <td>@info.Activation.ToString()</td>
+                    <td>@info.State.ToString()</td>
+                    <td>@info.Start.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td>@info.Finish.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td>@info.Status</td>
+                </tr>
+            }
+
+        </tbody>
+
+    </table>
 
 </div>
