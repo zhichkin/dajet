@@ -18,12 +18,23 @@
         border: solid black 1px;
         padding: 5px;
     }
+    .dajet-button {
+        cursor: pointer;
+        margin-left: 5px;
+        min-width: 75px;
+        padding: 0px 5px 0px 5px;
+        border: 1px solid black;
+        border-radius: 5px;
+        -moz-border-radius: 5px;
+        -webkit-border-radius: 5px;
+    }
 </style>
 
 <div style="margin:5px;">
     <span style="font-weight:bold;margin-right:5px;">@TreeNodeName</span>
     <input type="button" value="✕" style="cursor:pointer;border:none;background:none;" @onclick="NavigateToHomePage">
     <span style="font-weight:bold;display:block;">@TreeNodeName</span>
+    <input type="button" class="dajet-button" value="test" @onclick="ExecuteLinqExpression">
 </div>
 
 <div style="margin:5px;overflow:scroll;border:solid black 1px;">

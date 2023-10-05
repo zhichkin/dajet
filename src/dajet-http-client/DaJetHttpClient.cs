@@ -2,9 +2,10 @@
 using DaJet.Flow.Model;
 using DaJet.Model;
 using System.Collections;
-using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Net;
 using System.Net.Http.Json;
+using System.Reflection;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -223,13 +224,66 @@ namespace DaJet.Http.Client
                 throw;
             }
         }
+
+
+
+        public async Task<IEnumerable<T>> SelectAsync<T>(Expression<Func<T, bool>> where) where T : EntityObject
+        {
+            Dictionary<string, object> parameters = new ExpressionWhereVisitor().GetParameters(where);
+
+            foreach (var item in parameters)
+            {
+                
+            }
+
+            return new List<T>();
+        }
+    }
+
+    internal class ExpressionWhereVisitor : ExpressionVisitor
+    {
+        private string _propertyName = string.Empty;
+        private Dictionary<string, object> _parameters = new();
+
+        public Dictionary<string, object> GetParameters(Expression expression)
+        {
+            Visit(expression); return _parameters;
+        }
+        protected override Expression VisitBinary(BinaryExpression expression)
+        {
+            if (expression.NodeType == ExpressionType.Equal)
+            {
+                if (expression.Left is MemberExpression property)
+                {
+                    _propertyName = property.Member.Name;
+
+                    if (expression.Right is MemberExpression parameter)
+                    {
+                        string name = parameter.Member.Name;
+
+                        if (parameter.Expression is ConstantExpression constant)
+                        {
+                            object value = constant.Value.GetType().GetField(name).GetValue(constant.Value);
+
+                            _parameters.Add(_propertyName, value);
+                        }
+                    }
+                    else
+                    {
+                        // Unexpected expression ?
+                    }
+                }
+            }
+
+            return base.VisitBinary(expression);
+        }
     }
 }
 
 //if (!response.IsSuccessStatusCode)
 //{
 //    string result = await response.Content.ReadAsStringAsync();
-
+ 
 //    ErrorText = response.ReasonPhrase
 //        + (string.IsNullOrEmpty(result)
 //        ? string.Empty

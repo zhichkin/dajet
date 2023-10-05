@@ -61,5 +61,12 @@ namespace DaJet.Studio.Pages.Flow
         {
             Pipelines = await DataSource.GetPipelineInfo();
         }
+        private async Task ExecuteLinqExpression()
+        {
+            Guid uuid = Guid.NewGuid();
+
+            IEnumerable<PipelineRecord> list = await DataSource
+                .SelectAsync<PipelineRecord>(r => r.Identity == uuid);
+        }
     }
 }
