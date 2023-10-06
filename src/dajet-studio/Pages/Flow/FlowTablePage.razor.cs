@@ -1,5 +1,4 @@
-﻿using DaJet.Flow.Model;
-using DaJet.Model;
+﻿using DaJet.Model;
 using Microsoft.AspNetCore.Components;
 
 namespace DaJet.Studio.Pages.Flow
@@ -9,7 +8,7 @@ namespace DaJet.Studio.Pages.Flow
         private TreeNodeRecord _folder;
         [Parameter] public Guid Uuid { get; set; }
         private string TreeNodeName { get; set; }
-        private List<PipelineInfo> Pipelines { get; set; } = new();
+        private IEnumerable<PipelineState> Pipelines { get; set; } = new List<PipelineState>();
         protected void NavigateToHomePage() { Navigator.NavigateTo("/"); }
         protected override async Task OnInitializedAsync()
         {
@@ -59,14 +58,12 @@ namespace DaJet.Studio.Pages.Flow
         }
         private async Task RefreshPipelineList()
         {
-            Pipelines = await DataSource.GetPipelineInfo();
-        }
-        private async Task ExecuteLinqExpression()
-        {
-            Guid uuid = Guid.NewGuid();
-
-            IEnumerable<PipelineRecord> list = await DataSource
-                .SelectAsync<PipelineRecord>(r => r.Identity == uuid);
+            Dictionary<string, object> parameters = new()
+            {
+                { "TreeNode", _folder.GetEntity() }
+            };
+            
+            Pipelines = await DataSource.SelectAsync<PipelineState>(parameters);
         }
     }
 }

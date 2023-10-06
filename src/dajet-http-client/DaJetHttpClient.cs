@@ -1,11 +1,11 @@
 ﻿using DaJet.Data;
 using DaJet.Flow.Model;
+using DaJet.Json;
 using DaJet.Model;
 using System.Collections;
 using System.Linq.Expressions;
 using System.Net;
 using System.Net.Http.Json;
-using System.Reflection;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -20,6 +20,10 @@ namespace DaJet.Http.Client
             WriteIndented = true,
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
+        static DaJetHttpClient()
+        {
+            JsonOptions.Converters.Add(new DictionaryJsonConverter());
+        }
         private readonly HttpClient _client;
         private readonly IDomainModel _domain;
         public DaJetHttpClient(IDomainModel domain, HttpClient client)
@@ -152,33 +156,24 @@ namespace DaJet.Http.Client
 
             return list;
         }
-        private async Task<IEnumerable> SelectAsync(int code, string property, Entity value)
+        public async Task<IEnumerable<T>> SelectAsync<T>(Dictionary<string, object> parameters) where T : class
         {
-            Type type = _domain.GetEntityType(code);
+            int code = _domain.GetTypeCode(typeof(T));
 
-            if (type is null)
+            string url = $"/home/query/{code}";
+
+            HttpResponseMessage response = await _client.PostAsJsonAsync(url, parameters, JsonOptions);
+
+            IEnumerable<T> list = await response.Content.ReadFromJsonAsync<IEnumerable<T>>();
+
+            if (typeof(T).IsSubclassOf(typeof(EntityObject)))
             {
-                throw new InvalidOperationException($"Entity [{code}] not found");
-            }
-
-            string url = $"/home/{code}/{property}/{value}";
-
-            HttpResponseMessage response = await _client.GetAsync(url);
-
-            Type listType = typeof(List<>).MakeGenericType(type);
-
-            object result = await response.Content.ReadFromJsonAsync(listType);
-
-            if (result is not IEnumerable list)
-            {
-                return null;
-            }
-
-            foreach (object item in list)
-            {
-                if (item is EntityObject entity)
+                foreach (T item in list)
                 {
-                    entity.MarkAsOriginal();
+                    if (item is EntityObject entity)
+                    {
+                        entity.MarkAsOriginal();
+                    }
                 }
             }
 
@@ -224,8 +219,6 @@ namespace DaJet.Http.Client
                 throw;
             }
         }
-
-
 
         public async Task<IEnumerable<T>> SelectAsync<T>(Expression<Func<T, bool>> where) where T : EntityObject
         {

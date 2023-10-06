@@ -9,9 +9,10 @@ namespace DaJet.Data
         void Create(EntityObject entity);
         void Update(EntityObject entity);
         void Delete(Entity entity);
-        IEnumerable Select();
         EntityObject Select(Entity entity);
         IEnumerable Select(int typeCode, string propertyName, Entity value);
+        IEnumerable Select(int typeCode, Dictionary<string, object> parameters);
+        IEnumerable Select<T>(Dictionary<string, object> parameters) where T : EntityObject;
     }
     public interface IAsyncDataSource
     {
@@ -21,5 +22,6 @@ namespace DaJet.Data
         Task<IEnumerable> SelectAsync();
         Task<EntityObject> SelectAsync(Entity entity);
         Task<IEnumerable<T>> SelectAsync<T>(string property, Entity value) where T : EntityObject;
+        Task<IEnumerable<T>> SelectAsync<T>(Dictionary<string, object> parameters) where T : class;
     }
 }

@@ -217,5 +217,61 @@ namespace DaJet.Data
 
             return list;
         }
+        public List<TreeNodeRecord> Select(Dictionary<string, object> parameters)
+        {
+            List<TreeNodeRecord> list = new();
+
+            using (SqliteConnection connection = new(_connectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = SELECT_BY_PARENT;
+
+                    foreach (var parameter in parameters)
+                    {
+                        if (parameter.Value is Entity entity)
+                        {
+                            command.Parameters.AddWithValue(parameter.Key, entity.Identity.ToString().ToLower());
+                        }
+                        else if (parameter.Value is Guid uuid)
+                        {
+                            command.Parameters.AddWithValue(parameter.Key, uuid.ToString().ToLower());
+                        }
+                        else
+                        {
+                            command.Parameters.AddWithValue(parameter.Key, parameter.Value);
+                        }
+                    }
+
+                    using (SqliteDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            TreeNodeRecord record = new()
+                            {
+                                TypeCode = MY_TYPE_CODE,
+                                Identity = new Guid(reader.GetString(0)),
+                                Parent = new Entity(MY_TYPE_CODE, new Guid(reader.GetString(1))),
+                                Name = reader.GetString(2),
+                                IsFolder = (reader.GetInt64(3) == 1L)
+                            };
+
+                            int code = (int)reader.GetInt64(4);
+                            Guid uuid = new(reader.GetString(5));
+                            record.Value = new Entity(code, uuid);
+
+                            record.MarkAsOriginal();
+
+                            list.Add(record);
+                        }
+                        reader.Close();
+                    }
+                }
+            }
+
+            return list;
+        }
     }
 }

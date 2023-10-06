@@ -1,4 +1,5 @@
 ﻿using DaJet.Model;
+using System;
 using System.Collections;
 
 namespace DaJet.Data
@@ -35,17 +36,6 @@ namespace DaJet.Data
                 new TreeNodeDataMapper(_domain, _options.ConnectionString).Delete(entity);
             }
         }
-        public IEnumerable Select()
-        {
-            int typeCode = _domain.GetTypeCode(typeof(TreeNodeRecord));
-
-            if (typeCode == 0)
-            {
-                throw new InvalidOperationException($"Type [{nameof(TreeNodeRecord)}] not found");
-            }
-
-            return Select(typeCode, "parent", Entity.Undefined);
-        }
         public EntityObject Select(Entity entity)
         {
             if (entity.IsUndefined || entity.IsEmpty)
@@ -72,6 +62,23 @@ namespace DaJet.Data
             }
 
             return null;
+        }
+        public IEnumerable Select(int typeCode, Dictionary<string, object> parameters)
+        {
+            Type type = _domain.GetEntityType(typeCode);
+
+            if (type == typeof(TreeNodeRecord))
+            {
+                return new TreeNodeDataMapper(_domain, _options.ConnectionString).Select(parameters);
+            }
+
+            return null;
+        }
+        public IEnumerable Select<T>(Dictionary<string, object> parameters) where T : EntityObject
+        {
+            int code = _domain.GetTypeCode(typeof(T));
+
+            return Select(code, parameters);
         }
     }
 }

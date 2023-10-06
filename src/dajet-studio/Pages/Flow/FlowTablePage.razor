@@ -34,7 +34,7 @@
     <span style="font-weight:bold;margin-right:5px;">@TreeNodeName</span>
     <input type="button" value="✕" style="cursor:pointer;border:none;background:none;" @onclick="NavigateToHomePage">
     <span style="font-weight:bold;display:block;">@TreeNodeName</span>
-    <input type="button" class="dajet-button" value="test" @onclick="ExecuteLinqExpression">
+    @* <input type="button" class="dajet-button" value="test" @onclick="ExecuteQuery"> *@
 </div>
 
 <div style="margin:5px;overflow:scroll;border:solid black 1px;">
@@ -54,15 +54,15 @@
 
         <tbody>
 
-            @foreach (PipelineInfo info in Pipelines)
+            @foreach (DaJet.Model.PipelineState state in Pipelines)
             {
                 <tr>
-                    <td>@info.Name</td>
-                    <td>@info.Activation.ToString()</td>
-                    <td>@info.State.ToString()</td>
-                    <td>@info.Start.ToString("yyyy-MM-dd HH:mm:ss")</td>
-                    <td>@info.Finish.ToString("yyyy-MM-dd HH:mm:ss")</td>
-                    <td>@info.Status</td>
+                    <td>@state.Name</td>
+                    <td>@state.Activation</td>
+                    <td>@state.State</td>
+                    <td>@state.Start.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td>@state.Finish.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td>@state.Status</td>
                 </tr>
             }
 

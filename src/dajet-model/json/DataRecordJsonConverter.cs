@@ -1,9 +1,11 @@
 ﻿using DaJet.Data;
+using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace DaJet.Flow.Json
+namespace DaJet.Json
 {
     public sealed class DataRecordJsonConverter : JsonConverter<IDataRecord>
     {
@@ -132,19 +134,19 @@ namespace DaJet.Flow.Json
 
             return record;
         }
-        public override void Write(Utf8JsonWriter writer, IDataRecord input, JsonSerializerOptions options)
+        public override void Write(Utf8JsonWriter writer, IDataRecord record, JsonSerializerOptions options)
         {
             writer.WriteStartObject();
 
             string name;
             object value;
 
-            for (int i = 0; i < input.FieldCount; i++)
+            for (int i = 0; i < record.FieldCount; i++)
             {
-                name = input.GetName(i);
-                value = input.GetValue(i);
+                name = record.GetName(i);
+                value = record.GetValue(i);
 
-                if (input.IsDBNull(i) || value is null)
+                if (record.IsDBNull(i) || value is null)
                 {
                     writer.WriteNull(name);
                 }
@@ -183,9 +185,9 @@ namespace DaJet.Flow.Json
                 {
                     writer.WritePropertyName(name);
                     writer.WriteStartArray();
-                    foreach (IDataRecord record in list)
+                    foreach (IDataRecord item in list)
                     {
-                        Write(writer, record, options);
+                        Write(writer, item, options);
                     }
                     writer.WriteEndArray();
                 }

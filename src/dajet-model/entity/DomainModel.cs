@@ -30,6 +30,7 @@ namespace DaJet.Model
         private void ConfigureDomainModel()
         {
             Entity<TreeNodeRecord>(10);
+            Entity<PipelineState>(15);
             Entity<PipelineRecord>(20);
             Entity<PipelineBlockRecord>(30);
         }
