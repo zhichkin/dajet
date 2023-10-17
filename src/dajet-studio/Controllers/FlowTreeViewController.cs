@@ -134,11 +134,11 @@ namespace DaJet.Studio.Controllers
             }
             else if (dialogResult.CommandType == TreeNodeDialogCommand.CreateEntity)
             {
-                //await CreateScript(node);
+                await CreatePipeline(node);
             }
             else if (dialogResult.CommandType == TreeNodeDialogCommand.UpdateEntity)
             {
-                //UpdateScript(node);
+                await UpdatePipeline(node);
             }
             else if (dialogResult.CommandType == TreeNodeDialogCommand.DeleteEntity)
             {
@@ -203,7 +203,46 @@ namespace DaJet.Studio.Controllers
                 throw;
             }
         }
-                
+
+        private async Task CreatePipeline(TreeNodeModel node)
+        {
+            if (node.Tag is not TreeNodeRecord parent)
+            {
+                return;
+            }
+
+            TreeNodeRecord record = DomainModel.New<TreeNodeRecord>();
+
+            //PipelineRecord pipeline = DomainModel.New<PipelineRecord>();
+
+            record.Parent = parent.GetEntity();
+            record.Name = "New pipeline";
+            record.IsFolder = false;
+            record.Value = Entity.Undefined; // pipeline.GetEntity();
+
+            try
+            {
+                await DataSource.CreateAsync(record);
+
+                CreateTreeNode(in node, record);
+            }
+            catch
+            {
+                throw;
+            }
+
+            Navigator.NavigateTo($"/flow/pipeline/{record.Identity}");
+        }
+        private async Task UpdatePipeline(TreeNodeModel node)
+        {
+            if (node.Tag is not TreeNodeRecord record)
+            {
+                return;
+            }
+
+            Navigator.NavigateTo($"/flow/pipeline/{record.Parent.Identity}/{record.Identity}");
+        }
+
         private bool CanAcceptDropData(TreeNodeModel source, TreeNodeModel target)
         {
             if (source is null || target is null) { return false; }
@@ -211,6 +250,8 @@ namespace DaJet.Studio.Controllers
             if (target.HasAncestor(source)) { return false; }
 
             if (target.Nodes.Contains(source)) { return false; }
+
+            if (target.Tag is TreeNodeRecord record && !record.IsFolder) { return false; }
 
             return true;
         }

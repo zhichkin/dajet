@@ -19,9 +19,9 @@
                     <MudIconButton Icon="@Icons.Material.Outlined.ViewList" Color="Color.Info" Size="Size.Large" OnClick="OpenPipelineTable" />
                 </MudTooltip>
 
-                @* <MudTooltip Text="Создать новый конвейер">
+                <MudTooltip Text="Создать новый конвейер">
                     <MudIconButton Icon="@Icons.Material.Outlined.SyncAlt" Color="Color.Info" Size="Size.Large" OnClick="CreatePipeline" />
-                </MudTooltip> *@
+                </MudTooltip>
 
                 @if (!(record.Parent.IsEmpty || record.Parent.IsUndefined))
                 {

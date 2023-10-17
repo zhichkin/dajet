@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="Pages\Flow\PipelinePage.razor" />
     <None Include="wwwroot\css\tree-view.css" />
     <None Include="wwwroot\css\script-editor.css" />
     <None Include="wwwroot\css\app.css" />
@@ -40,6 +41,14 @@
     <ProjectReference Include="..\dajet-flow-model\dajet-flow-model.csproj" />
     <ProjectReference Include="..\dajet-http-client\dajet-http-client.csproj" />
     <ProjectReference Include="..\dajet-model\dajet-model.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <UpToDateCheckInput Remove="Pages\Flow\PipelinePage.razor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="Pages\Flow\PipelinePage.razor" />
   </ItemGroup>
 
 </Project>

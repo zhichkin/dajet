@@ -1,0 +1,30 @@
+﻿@page "/flow/pipeline/{node:guid}/{uuid:guid?}"
+
+@inject IDomainModel DomainModel;
+@inject DaJetHttpClient DataSource;
+@inject NavigationManager Navigator;
+
+<div style="margin:5px;">
+
+    <p><span style="font-weight:bold;margin-right:5px;">@Node</span></p>
+    <p><span style="font-weight:bold;margin-right:5px;">@Uuid</span></p>
+
+    <p><span style="font-weight:bold;margin-right:5px;">@PipelineName</span></p>
+
+    <p>
+    <span style="font-weight:bold;margin-right:5px;">@TreeNodeName</span>
+    <input type="button" value="✕" style="cursor:pointer;border:none;background:none;" @onclick="NavigateToHomePage">
+    </p>
+    
+    @if (IsNewPipeline)
+    {
+        <span style="font-weight:bold;display:block;">New</span>
+    }
+    else
+    {
+        <span style="font-weight:bold;display:block;">Old</span>
+    }
+    
+    @* <input type="button" class="dajet-button" value="test" @onclick="ExecuteQuery"> *@
+
+</div>
