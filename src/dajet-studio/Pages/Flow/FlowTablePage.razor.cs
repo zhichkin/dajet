@@ -22,39 +22,13 @@ namespace DaJet.Studio.Pages.Flow
             {
                 _folder = await DataSource.SelectAsync(new Entity(typeCode, Uuid)) as TreeNodeRecord;
 
-                if (_folder is null)
+                if (_folder is not null)
                 {
-                    //TODO: handle error if Model is not found by uuid
+                    TreeNodeName = await DataSource.GetTreeNodeFullName(_folder);
                 }
-
-                TreeNodeName = await GetTreeNodeFullName(_folder);
             }
 
             await RefreshPipelineList();
-        }
-        private async Task<string> GetTreeNodeFullName(TreeNodeRecord node)
-        {
-            string name = node.Name;
-
-            Entity parent = node.Parent;
-
-            while (!parent.IsEmpty)
-            {
-                TreeNodeRecord record = await DataSource.SelectAsync(parent) as TreeNodeRecord;
-
-                if (record is not null)
-                {
-                    name = record.Name + "/" + name;
-                }
-                else
-                {
-                    break;
-                }
-
-                parent = record.Parent;
-            }
-
-            return name;
         }
         private async Task RefreshPipelineList()
         {

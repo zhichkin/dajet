@@ -181,5 +181,47 @@ namespace DaJet.Http.Controllers
             
             return Ok(); // return NotFound(); // return Conflict();
         }
+
+        [HttpGet("get-tree-node-full-name/{identity:guid}")]
+        public ActionResult GetTreeNodeFullName([FromRoute] Guid identity)
+        {
+            int typeCode = _domain.GetTypeCode(typeof(TreeNodeRecord));
+
+            if (typeCode == 0)
+            {
+                return NotFound(nameof(TreeNodeRecord));
+            }
+
+            Entity entity = new(typeCode, identity);
+
+            EntityObject record = _source.Select(entity);
+
+            if (record is not TreeNodeRecord node)
+            {
+                return NotFound(entity.ToString());
+            }
+            
+            string name = "/" + node.Name;
+
+            Entity parent = node.Parent;
+
+            while (!parent.IsEmpty)
+            {
+                TreeNodeRecord ancestor = _source.Select(parent) as TreeNodeRecord;
+
+                if (ancestor is not null)
+                {
+                    name = "/" + ancestor.Name + name;
+                }
+                else
+                {
+                    break;
+                }
+
+                parent = ancestor.Parent;
+            }
+
+            return Content(name, "text/plain", Encoding.UTF8);
+        }
     }
 }

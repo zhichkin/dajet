@@ -21,15 +21,13 @@ namespace DaJet.Studio.Pages.Flow
 
             if (_folder is not null)
             {
-                //TODO: handle error if Model is not found by uuid
-                TreeNodeName = _folder.Name;
+                TreeNodeName = await DataSource.GetTreeNodeFullName(_folder);
             }
 
-            _record= await DataSource.SelectAsync(new Entity(typeCode, Uuid)) as TreeNodeRecord;
+            _record = await DataSource.SelectAsync(new Entity(typeCode, Uuid)) as TreeNodeRecord;
 
             if (_record is not null)
             {
-                //TODO: handle error if Model is not found by uuid
                 PipelineName = _record.Name;
             }
             

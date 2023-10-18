@@ -138,13 +138,51 @@ namespace DaJet.Studio.Controllers
             }
             else if (dialogResult.CommandType == TreeNodeDialogCommand.UpdateEntity)
             {
-                await UpdatePipeline(node);
+                NavigateToPipelinePage(node);
             }
             else if (dialogResult.CommandType == TreeNodeDialogCommand.DeleteEntity)
             {
                 //await DeleteFolderScript(node);
             }
         }
+        private bool CanAcceptDropData(TreeNodeModel source, TreeNodeModel target)
+        {
+            if (source is null || target is null) { return false; }
+
+            if (target.HasAncestor(source)) { return false; }
+
+            if (target.Nodes.Contains(source)) { return false; }
+
+            if (target.Tag is TreeNodeRecord record && !record.IsFolder) { return false; }
+
+            return true;
+        }
+        private async Task DropDataHandler(TreeNodeModel source, TreeNodeModel target)
+        {
+            if (!CanAcceptDropData(source, target)) { return; }
+
+            TreeNodeModel parent = source.Parent;
+
+            if (source.Tag is TreeNodeRecord record && target.Tag is TreeNodeRecord owner)
+            {
+                record.Parent = owner.GetEntity();
+
+                if (record.IsChanged())
+                {
+                    await DataSource.UpdateAsync(record);
+
+                    source.Parent = target;
+                    target.Nodes.Add(source);
+
+                    if (parent is not null)
+                    {
+                        parent.Nodes.Remove(source);
+                        parent.NotifyStateChanged();
+                    }
+                }
+            }
+        }
+        
         private void NavigateToPipelineTable(TreeNodeModel node)
         {
             if (node is null) { return; }
@@ -158,6 +196,16 @@ namespace DaJet.Studio.Controllers
                 Navigator.NavigateTo($"/flow/table/{record.Identity.ToString().ToLower()}");
             }
         }
+        private void NavigateToPipelinePage(TreeNodeModel node)
+        {
+            if (node is null || node.Tag is not TreeNodeRecord record)
+            {
+                return;
+            }
+
+            Navigator.NavigateTo($"/flow/pipeline/{record.Parent.Identity}/{record.Identity}");
+        }
+
         private async Task CreateFolder(TreeNodeModel node)
         {
             if (node.Tag is not TreeNodeRecord parent)
@@ -232,53 +280,6 @@ namespace DaJet.Studio.Controllers
             }
 
             Navigator.NavigateTo($"/flow/pipeline/{record.Identity}");
-        }
-        private async Task UpdatePipeline(TreeNodeModel node)
-        {
-            if (node.Tag is not TreeNodeRecord record)
-            {
-                return;
-            }
-
-            Navigator.NavigateTo($"/flow/pipeline/{record.Parent.Identity}/{record.Identity}");
-        }
-
-        private bool CanAcceptDropData(TreeNodeModel source, TreeNodeModel target)
-        {
-            if (source is null || target is null) { return false; }
-
-            if (target.HasAncestor(source)) { return false; }
-
-            if (target.Nodes.Contains(source)) { return false; }
-
-            if (target.Tag is TreeNodeRecord record && !record.IsFolder) { return false; }
-
-            return true;
-        }
-        private async Task DropDataHandler(TreeNodeModel source, TreeNodeModel target)
-        {
-            if (!CanAcceptDropData(source, target)) { return; }
-
-            TreeNodeModel parent = source.Parent;
-
-            if (source.Tag is TreeNodeRecord record && target.Tag is TreeNodeRecord owner)
-            {
-                record.Parent = owner.GetEntity();
-
-                if (record.IsChanged())
-                {
-                    await DataSource.UpdateAsync(record);
-
-                    source.Parent = target;
-                    target.Nodes.Add(source);
-
-                    if (parent is not null)
-                    {
-                        parent.Nodes.Remove(source);
-                        parent.NotifyStateChanged();
-                    }
-                }
-            }
         }
     }
 }

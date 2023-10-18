@@ -3,7 +3,6 @@ using DaJet.Flow.Model;
 using DaJet.Json;
 using DaJet.Model;
 using System.Collections;
-using System.Linq.Expressions;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
@@ -179,6 +178,21 @@ namespace DaJet.Http.Client
 
             return list;
         }
+        private async Task<T> ExecuteScalar<T>(string command, Dictionary<string, object> parameters)
+        {
+            string url = $"/home/execute/{command}";
+
+            HttpResponseMessage response = await _client.PostAsJsonAsync(url, parameters, JsonOptions);
+
+            T result = await response.Content.ReadFromJsonAsync<T>();
+
+            if (result is EntityObject entity)
+            {
+                entity.MarkAsOriginal();
+            }
+
+            return result;
+        }
 
         public async Task<List<PipelineInfo>> GetPipelineInfo()
         {
@@ -220,55 +234,15 @@ namespace DaJet.Http.Client
             }
         }
 
-        public async Task<IEnumerable<T>> SelectAsync<T>(Expression<Func<T, bool>> where) where T : EntityObject
+        public async Task<string> GetTreeNodeFullName(TreeNodeRecord node)
         {
-            Dictionary<string, object> parameters = new ExpressionWhereVisitor().GetParameters(where);
+            string url = $"/home/get-tree-node-full-name/{node.Identity.ToString().ToLower()}";
 
-            foreach (var item in parameters)
-            {
-                
-            }
+            HttpResponseMessage response = await _client.GetAsync(url);
 
-            return new List<T>();
-        }
-    }
+            string name = await response.Content.ReadAsStringAsync();
 
-    internal class ExpressionWhereVisitor : ExpressionVisitor
-    {
-        private string _propertyName = string.Empty;
-        private Dictionary<string, object> _parameters = new();
-
-        public Dictionary<string, object> GetParameters(Expression expression)
-        {
-            Visit(expression); return _parameters;
-        }
-        protected override Expression VisitBinary(BinaryExpression expression)
-        {
-            if (expression.NodeType == ExpressionType.Equal)
-            {
-                if (expression.Left is MemberExpression property)
-                {
-                    _propertyName = property.Member.Name;
-
-                    if (expression.Right is MemberExpression parameter)
-                    {
-                        string name = parameter.Member.Name;
-
-                        if (parameter.Expression is ConstantExpression constant)
-                        {
-                            object value = constant.Value.GetType().GetField(name).GetValue(constant.Value);
-
-                            _parameters.Add(_propertyName, value);
-                        }
-                    }
-                    else
-                    {
-                        // Unexpected expression ?
-                    }
-                }
-            }
-
-            return base.VisitBinary(expression);
+            return name;
         }
     }
 }
