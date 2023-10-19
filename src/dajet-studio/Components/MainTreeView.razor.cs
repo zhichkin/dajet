@@ -38,15 +38,10 @@ namespace DaJet.Studio.Components
         [Inject] private ExchangeTreeViewController ExchangeTreeViewController { get; set; }
         protected override async Task OnInitializedAsync()
         {
-            var list = await DataSource.SelectAsync();
+            var nodes = await DataSource.SelectAsync<TreeNodeRecord>();
 
-            foreach (var item in list)
+            foreach (TreeNodeRecord node in nodes)
             {
-                if (item is not TreeNodeRecord node)
-                {
-                    continue;
-                }
-
                 if (node.Name == "flow")
                 {
                     Nodes.Add(FlowController.CreateRootNode(node));

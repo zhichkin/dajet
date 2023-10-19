@@ -47,7 +47,7 @@ namespace DaJet.Studio.Controllers
                 return;
             }
 
-            var list = await DataSource.SelectAsync<TreeNodeRecord>("parent", node.GetEntity());
+            var list = await DataSource.SelectAsync<TreeNodeRecord>(node.GetEntity());
 
             foreach (var item in list)
             {
@@ -182,7 +182,7 @@ namespace DaJet.Studio.Controllers
                 }
             }
         }
-        
+
         private void NavigateToPipelineTable(TreeNodeModel node)
         {
             if (node is null) { return; }
@@ -198,12 +198,12 @@ namespace DaJet.Studio.Controllers
         }
         private void NavigateToPipelinePage(TreeNodeModel node)
         {
-            if (node is null || node.Tag is not TreeNodeRecord record)
+            if (node is null || node.Tag is not TreeNodeRecord record || record.IsFolder)
             {
                 return;
             }
 
-            Navigator.NavigateTo($"/flow/pipeline/{record.Parent.Identity}/{record.Identity}");
+            Navigator.NavigateTo($"/flow/pipeline/{record.Identity.ToString().ToLower()}");
         }
 
         private async Task CreateFolder(TreeNodeModel node)
@@ -254,32 +254,34 @@ namespace DaJet.Studio.Controllers
 
         private async Task CreatePipeline(TreeNodeModel node)
         {
-            if (node.Tag is not TreeNodeRecord parent)
+            if (node.Tag is not TreeNodeRecord parent || !parent.IsFolder)
             {
                 return;
             }
 
-            TreeNodeRecord record = DomainModel.New<TreeNodeRecord>();
+            string name = "New pipeline";
+            TreeNodeRecord treeNode = DomainModel.New<TreeNodeRecord>();
+            PipelineRecord pipeline = DomainModel.New<PipelineRecord>();
 
-            //PipelineRecord pipeline = DomainModel.New<PipelineRecord>();
+            pipeline.Name = name;
+            pipeline.Activation = PipelineMode.Manual;
 
-            record.Parent = parent.GetEntity();
-            record.Name = "New pipeline";
-            record.IsFolder = false;
-            record.Value = Entity.Undefined; // pipeline.GetEntity();
+            treeNode.Name = name;
+            treeNode.Value = pipeline.GetEntity();
+            treeNode.Parent = parent.GetEntity();
+            treeNode.IsFolder = false;
 
             try
             {
-                await DataSource.CreateAsync(record);
+                await DataSource.CreateAsync(pipeline);
+                await DataSource.CreateAsync(treeNode);
 
-                CreateTreeNode(in node, record);
+                CreateTreeNode(in node, treeNode);
             }
             catch
             {
                 throw;
             }
-
-            Navigator.NavigateTo($"/flow/pipeline/{record.Identity}");
         }
     }
 }

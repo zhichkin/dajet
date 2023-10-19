@@ -4,31 +4,29 @@ using System.Collections;
 
 namespace DaJet.Data
 {
-    public sealed class TreeNodeDataMapper : IDataMapper
+    public sealed class ProcessorDataMapper : IDataMapper
     {
         #region "SQL SCRIPTS"
         private const string CREATE_TABLE_COMMAND = "CREATE TABLE IF NOT EXISTS " +
-            "maintree (uuid TEXT NOT NULL, parent TEXT NOT NULL, name TEXT NOT NULL, is_folder INTEGER NOT NULL, " +
-            "entity_type INTEGER NOT NULL, entity_uuid TEXT NOT NULL, PRIMARY KEY (uuid)) WITHOUT ROWID;";
+            "blocks (uuid TEXT NOT NULL, pipeline TEXT NOT NULL, ordinal INTEGER NOT NULL, " +
+            "handler TEXT NOT NULL, message TEXT NOT NULL, PRIMARY KEY (uuid)) WITHOUT ROWID;";
+        private const string SELECT_BY_OWNER =
+            "SELECT uuid, pipeline, ordinal, handler, message FROM blocks WHERE pipeline = @pipeline ORDER BY ordinal ASC;";
         private const string SELECT_BY_UUID =
-            "SELECT uuid, parent, name, is_folder, entity_type, entity_uuid FROM maintree WHERE uuid = @uuid;";
-        private const string SELECT_BY_PARENT =
-            "SELECT uuid, parent, name, is_folder, entity_type, entity_uuid FROM maintree WHERE parent = @parent;";
+            "SELECT uuid, pipeline, ordinal, handler, message FROM blocks WHERE uuid = @uuid;";
         private const string INSERT_COMMAND =
-            "INSERT INTO maintree (uuid, parent, name, is_folder, entity_type, entity_uuid) " +
-            "VALUES (@uuid, @parent, @name, @is_folder, @entity_type, @entity_uuid);";
+            "INSERT INTO blocks (uuid, pipeline, ordinal, handler, message) " +
+            "VALUES (@uuid, @pipeline, @ordinal, @handler, @message);";
         private const string UPDATE_COMMAND =
-            "UPDATE maintree SET " +
-            "parent = @parent, name = @name, is_folder = @is_folder, " +
-            "entity_type = @entity_type, entity_uuid = @entity_uuid " +
-            "WHERE uuid = @uuid;";
-        private const string DELETE_COMMAND = "DELETE FROM maintree WHERE uuid = @uuid;";
+            "UPDATE blocks SET pipeline = @pipeline, ordinal = @ordinal, handler = @handler, message = @message WHERE uuid = @uuid;";
+        private const string DELETE_COMMAND =
+            "DELETE FROM blocks WHERE uuid = @uuid;";
         #endregion
 
         private readonly int MY_TYPE_CODE;
         private readonly string _connectionString;
         private readonly IDomainModel _domain;
-        public TreeNodeDataMapper(IDomainModel domain, string connectionString)
+        public ProcessorDataMapper(IDomainModel domain, string connectionString)
         {
             _connectionString = connectionString;
 
@@ -36,7 +34,7 @@ namespace DaJet.Data
 
             _domain = domain;
 
-            MY_TYPE_CODE = _domain.GetTypeCode(typeof(TreeNodeRecord));
+            MY_TYPE_CODE = _domain.GetTypeCode(typeof(ProcessorRecord));
         }
         private void ConfigureDatabase()
         {
@@ -54,7 +52,7 @@ namespace DaJet.Data
         }
         public void Insert(EntityObject entity)
         {
-            if (entity is not TreeNodeRecord record)
+            if (entity is not ProcessorRecord record)
             {
                 return;
             }
@@ -68,11 +66,10 @@ namespace DaJet.Data
                     command.CommandText = INSERT_COMMAND;
 
                     command.Parameters.AddWithValue("uuid", record.Identity.ToString().ToLower());
-                    command.Parameters.AddWithValue("parent", record.Parent.Identity.ToString().ToLower());
-                    command.Parameters.AddWithValue("name", record.Name);
-                    command.Parameters.AddWithValue("is_folder", record.IsFolder ? 1L : 0L);
-                    command.Parameters.AddWithValue("entity_type", record.Value.TypeCode);
-                    command.Parameters.AddWithValue("entity_uuid", record.Value.Identity.ToString().ToLower());
+                    command.Parameters.AddWithValue("pipeline", record.Pipeline.Identity.ToString().ToLower());
+                    command.Parameters.AddWithValue("ordinal", record.Ordinal);
+                    command.Parameters.AddWithValue("handler", record.Handler);
+                    command.Parameters.AddWithValue("message", record.Message);
 
                     int result = command.ExecuteNonQuery();
                 }
@@ -80,7 +77,7 @@ namespace DaJet.Data
         }
         public void Update(EntityObject entity)
         {
-            if (entity is not TreeNodeRecord record)
+            if (entity is not ProcessorRecord record)
             {
                 return;
             }
@@ -94,21 +91,16 @@ namespace DaJet.Data
                     command.CommandText = UPDATE_COMMAND;
 
                     command.Parameters.AddWithValue("uuid", record.Identity.ToString().ToLower());
-                    command.Parameters.AddWithValue("parent", record.Parent.Identity.ToString().ToLower());
-                    command.Parameters.AddWithValue("name", record.Name);
-                    command.Parameters.AddWithValue("is_folder", record.IsFolder ? 1L : 0L);
-                    command.Parameters.AddWithValue("entity_type", record.Value.TypeCode);
-                    command.Parameters.AddWithValue("entity_uuid", record.Value.Identity.ToString().ToLower());
+                    command.Parameters.AddWithValue("pipeline", record.Pipeline.Identity.ToString().ToLower());
+                    command.Parameters.AddWithValue("ordinal", record.Ordinal);
+                    command.Parameters.AddWithValue("handler", record.Handler);
+                    command.Parameters.AddWithValue("message", record.Message);
 
                     int result = command.ExecuteNonQuery();
                 }
             }
         }
         public void Delete(Entity entity)
-        {
-            DeleteRecursively(entity);
-        }
-        private void DeleteTreeNode(Entity entity)
         {
             using (SqliteConnection connection = new(_connectionString))
             {
@@ -124,31 +116,11 @@ namespace DaJet.Data
                 }
             }
         }
-        private void DeleteRecursively(Entity entity)
-        {
-            List<TreeNodeRecord> children = Select(entity) as List<TreeNodeRecord>;
-
-            foreach (TreeNodeRecord child in children)
-            {
-                if (child.IsFolder)
-                {
-                    DeleteRecursively(child.GetEntity());
-                }
-                else
-                {
-                    DeleteTreeNode(child.GetEntity());
-                }
-            }
-
-            DeleteTreeNode(entity);
-        }
-        public IEnumerable Select()
-        {
-            return Select(Entity.Undefined);
-        }
         public EntityObject Select(Guid identity)
         {
-            TreeNodeRecord record = null;
+            ProcessorRecord record = null;
+
+            int ownerCode = _domain.GetTypeCode(typeof(PipelineRecord));
 
             using (SqliteConnection connection = new(_connectionString))
             {
@@ -164,18 +136,15 @@ namespace DaJet.Data
                     {
                         if (reader.Read())
                         {
-                            record = new TreeNodeRecord()
+                            record = new ProcessorRecord()
                             {
                                 TypeCode = MY_TYPE_CODE,
                                 Identity = new Guid(reader.GetString(0)),
-                                Parent = new Entity(MY_TYPE_CODE, new Guid(reader.GetString(1))),
-                                Name = reader.GetString(2),
-                                IsFolder = (reader.GetInt64(3) == 1L)
+                                Pipeline = new Entity(ownerCode, new Guid(reader.GetString(1))),
+                                Ordinal = (int)reader.GetInt64(2),
+                                Handler = reader.GetString(3),
+                                Message = reader.GetString(4)
                             };
-
-                            int code = (int)reader.GetInt64(4);
-                            Guid uuid = new(reader.GetString(5));
-                            record.Value = new Entity(code, uuid);
 
                             record.MarkAsOriginal();
                         }
@@ -188,7 +157,9 @@ namespace DaJet.Data
         }
         public IEnumerable Select(Entity owner)
         {
-            List<TreeNodeRecord> list = new();
+            List<ProcessorRecord> list = new();
+
+            int ownerCode = _domain.GetTypeCode(typeof(PipelineRecord));
 
             using (SqliteConnection connection = new(_connectionString))
             {
@@ -196,26 +167,23 @@ namespace DaJet.Data
 
                 using (SqliteCommand command = connection.CreateCommand())
                 {
-                    command.CommandText = SELECT_BY_PARENT;
+                    command.CommandText = SELECT_BY_OWNER;
 
-                    command.Parameters.AddWithValue("parent", owner.Identity.ToString().ToLower());
+                    command.Parameters.AddWithValue("pipeline", owner.Identity.ToString().ToLower());
 
                     using (SqliteDataReader reader = command.ExecuteReader())
                     {
                         while (reader.Read())
                         {
-                            TreeNodeRecord record = new()
+                            ProcessorRecord record = new()
                             {
                                 TypeCode = MY_TYPE_CODE,
                                 Identity = new Guid(reader.GetString(0)),
-                                Parent = new Entity(MY_TYPE_CODE, new Guid(reader.GetString(1))),
-                                Name = reader.GetString(2),
-                                IsFolder = (reader.GetInt64(3) == 1L)
+                                Pipeline = new Entity(ownerCode, new Guid(reader.GetString(1))),
+                                Ordinal = (int)reader.GetInt64(2),
+                                Handler = reader.GetString(3),
+                                Message = reader.GetString(4)
                             };
-
-                            int code = (int)reader.GetInt64(4);
-                            Guid uuid = new(reader.GetString(5));
-                            record.Value = new Entity(code, uuid);
 
                             record.MarkAsOriginal();
 
@@ -227,6 +195,10 @@ namespace DaJet.Data
             }
 
             return list;
+        }
+        public IEnumerable Select()
+        {
+            throw new NotImplementedException();
         }
     }
 }

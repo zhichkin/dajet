@@ -35,18 +35,17 @@ namespace DaJet.Http.Controllers
             _source = source;
             _manager = manager;
         }
-        [HttpGet("")] public ActionResult Select()
+
+        [HttpGet("{typeCode:int}")]
+        public ActionResult Select([FromRoute] int typeCode)
         {
-            int typeCode = _domain.GetTypeCode(typeof(TreeNodeRecord));
+            Type type = _domain.GetEntityType(typeCode);
 
-            if (typeCode == 0)
-            {
-                return NotFound(nameof(TreeNodeRecord));
-            }
+            if (type is null) { return NotFound(); }
 
-            var list = _source.Select(typeCode, "parent", Entity.Undefined);
+            var list = _source.Select(typeCode);
 
-            Type listType = typeof(List<>).MakeGenericType(typeof(TreeNodeRecord));
+            Type listType = typeof(List<>).MakeGenericType(type);
 
             string json = JsonSerializer.Serialize(list, listType, JsonOptions);
 
@@ -58,6 +57,8 @@ namespace DaJet.Http.Controllers
         {
             Type type = _domain.GetEntityType(typeCode);
 
+            if (type is null) { return NotFound(); }
+
             Entity entity = new(typeCode, identity);
 
             EntityObject record = _source.Select(entity);
@@ -67,63 +68,12 @@ namespace DaJet.Http.Controllers
             return Content(json, "application/json", Encoding.UTF8);
         }
 
-        [HttpGet("{typeCode:int}/{propertyName}/{value}")]
-        public ActionResult Select([FromRoute] int typeCode, [FromRoute] string propertyName, [FromRoute] string value)
+        [HttpGet("{typeCode:int}/{ownerType:int}/{identity:guid}")]
+        public ActionResult Select([FromRoute] int typeCode, [FromRoute] int ownerType, [FromRoute] Guid identity)
         {
             Type type = _domain.GetEntityType(typeCode);
 
-            if (!Entity.TryParse(value, out Entity entity))
-            {
-                return BadRequest();
-            }
-
-            var list = _source.Select(typeCode, propertyName, entity);
-
-            Type listType = typeof(List<>).MakeGenericType(type);
-
-            string json = JsonSerializer.Serialize(list, listType, JsonOptions);
-
-            return Content(json, "application/json", Encoding.UTF8);
-        }
-
-        [HttpPost("query/{typeCode:int}")]
-        public async Task<ActionResult> Query([FromRoute] int typeCode)
-        {
-            HttpRequest request = HttpContext.Request;
-
-            if (request.ContentLength == 0)
-            {
-                return BadRequest();
-            }
-
-            Type type = _domain.GetEntityType(typeCode);
-
-            var parameters = await JsonSerializer.DeserializeAsync<Dictionary<string, object>>(request.Body, JsonOptions);
-
-            if (type == typeof(PipelineState))
-            {
-                List<PipelineInfo> monitor = _manager.GetMonitorInfo();
-
-                List<PipelineState> result = new();
-
-                foreach (PipelineInfo info in monitor)
-                {
-                    result.Add(new PipelineState()
-                    {
-                        Uuid = info.Uuid,
-                        Name = info.Name,
-                        State = info.State.ToString(),
-                        Status = string.IsNullOrEmpty(info.Status) ? "нет данных" : info.Status,
-                        Start = info.Start,
-                        Finish = info.Finish,
-                        Activation = info.Activation.ToString()
-                    });
-                }
-
-                return Content(JsonSerializer.Serialize(result, JsonOptions), "application/json", Encoding.UTF8);
-            }
-
-            var list = _source.Select(typeCode, parameters);
+            var list = _source.Select(typeCode, new Entity(ownerType, identity));
 
             Type listType = typeof(List<>).MakeGenericType(type);
 
@@ -178,9 +128,64 @@ namespace DaJet.Http.Controllers
             Entity entity = new(typeCode, identity);
 
             _source.Delete(entity);
-            
+
             return Ok(); // return NotFound(); // return Conflict();
         }
+
+
+
+        [HttpPost("query/{typeCode:int}")]
+        public async Task<ActionResult> Query([FromRoute] int typeCode)
+        {
+            HttpRequest request = HttpContext.Request;
+
+            if (request.ContentLength == 0)
+            {
+                return BadRequest();
+            }
+
+            Type type = _domain.GetEntityType(typeCode);
+
+            var parameters = await JsonSerializer.DeserializeAsync<Dictionary<string, object>>(request.Body, JsonOptions);
+
+            if (type == typeof(PipelineState))
+            {
+                List<PipelineInfo> monitor = _manager.GetMonitorInfo();
+
+                List<PipelineState> result = new();
+
+                foreach (PipelineInfo info in monitor)
+                {
+                    result.Add(new PipelineState()
+                    {
+                        Uuid = info.Uuid,
+                        Name = info.Name,
+                        State = info.State.ToString(),
+                        Status = string.IsNullOrEmpty(info.Status) ? "нет данных" : info.Status,
+                        Start = info.Start,
+                        Finish = info.Finish,
+                        Activation = info.Activation.ToString()
+                    });
+                }
+
+                return Content(JsonSerializer.Serialize(result, JsonOptions), "application/json", Encoding.UTF8);
+            }
+
+            if (!parameters.TryGetValue("TreeNode", out object treeNode) || treeNode is not TreeNodeRecord folder)
+            {
+                return BadRequest();
+            }
+
+            var list = _source.Select(folder.GetEntity());
+
+            Type listType = typeof(List<>).MakeGenericType(type);
+
+            string json = JsonSerializer.Serialize(list, listType, JsonOptions);
+
+            return Content(json, "application/json", Encoding.UTF8);
+        }
+
+        
 
         [HttpGet("get-tree-node-full-name/{identity:guid}")]
         public ActionResult GetTreeNodeFullName([FromRoute] Guid identity)

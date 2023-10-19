@@ -2,7 +2,6 @@
 using DaJet.Flow.Model;
 using DaJet.Json;
 using DaJet.Model;
-using System.Collections;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
@@ -100,49 +99,16 @@ namespace DaJet.Http.Client
                 throw;
             }
         }
-        public async Task<IEnumerable> SelectAsync()
+        public async Task<IEnumerable<T>> SelectAsync<T>() where T : EntityObject
         {
-            return await SelectAsync<TreeNodeRecord>("parent", Entity.Undefined);
-        }
-        public async Task<EntityObject> SelectAsync(Entity primaryKey)
-        {
-            if (primaryKey.IsUndefined || primaryKey.IsEmpty)
-            {
-                return null;
-            }
+            int typeCode = _domain.GetTypeCode(typeof(T));
 
-            Type type = _domain.GetEntityType(primaryKey.TypeCode);
-
-            if (type is null)
-            {
-                throw new InvalidOperationException($"Entity {primaryKey} not found");
-            }
-
-            string url = $"/home/{primaryKey.TypeCode}/{primaryKey.Identity}";
-
-            HttpResponseMessage response = await _client.GetAsync(url);
-
-            object record = await response.Content.ReadFromJsonAsync(type);
-
-            if (record is not EntityObject entity)
-            {
-                return null;
-            }
-
-            entity.MarkAsOriginal();
-
-            return entity;
-        }
-        public async Task<IEnumerable<T>> SelectAsync<T>(string property, Entity value) where T : EntityObject
-        {
-            int code = _domain.GetTypeCode(typeof(T));
-
-            if (code == 0)
+            if (typeCode == 0)
             {
                 throw new InvalidOperationException($"[{typeof(T)}] type code not found");
             }
 
-            string url = $"/home/{code}/{property}/{value}";
+            string url = $"/home/{typeCode}";
 
             HttpResponseMessage response = await _client.GetAsync(url);
 
@@ -155,29 +121,58 @@ namespace DaJet.Http.Client
 
             return list;
         }
-        public async Task<IEnumerable<T>> SelectAsync<T>(Dictionary<string, object> parameters) where T : class
+        public async Task<EntityObject> SelectAsync(Entity entity)
         {
-            int code = _domain.GetTypeCode(typeof(T));
+            if (entity.IsUndefined || entity.IsEmpty)
+            {
+                return null;
+            }
 
-            string url = $"/home/query/{code}";
+            Type type = _domain.GetEntityType(entity.TypeCode);
 
-            HttpResponseMessage response = await _client.PostAsJsonAsync(url, parameters, JsonOptions);
+            if (type is null)
+            {
+                throw new InvalidOperationException($"Entity {entity} not found");
+            }
+
+            string url = $"/home/{entity.TypeCode}/{entity.Identity}";
+
+            HttpResponseMessage response = await _client.GetAsync(url);
+
+            object record = await response.Content.ReadFromJsonAsync(type);
+
+            if (record is not EntityObject result)
+            {
+                return null;
+            }
+
+            result.MarkAsOriginal();
+
+            return result;
+        }
+        public async Task<IEnumerable<T>> SelectAsync<T>(Entity owner) where T : EntityObject
+        {
+            int typeCode = _domain.GetTypeCode(typeof(T));
+
+            if (typeCode == 0)
+            {
+                throw new InvalidOperationException($"[{typeof(T)}] type code not found");
+            }
+
+            string url = $"/home/{typeCode}/{owner.TypeCode}/{owner.Identity}";
+
+            HttpResponseMessage response = await _client.GetAsync(url);
 
             IEnumerable<T> list = await response.Content.ReadFromJsonAsync<IEnumerable<T>>();
 
-            if (typeof(T).IsSubclassOf(typeof(EntityObject)))
+            foreach (T item in list)
             {
-                foreach (T item in list)
-                {
-                    if (item is EntityObject entity)
-                    {
-                        entity.MarkAsOriginal();
-                    }
-                }
+                item.MarkAsOriginal();
             }
 
             return list;
         }
+        
         private async Task<T> ExecuteScalar<T>(string command, Dictionary<string, object> parameters)
         {
             string url = $"/home/execute/{command}";

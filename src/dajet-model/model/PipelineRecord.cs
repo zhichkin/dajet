@@ -5,7 +5,9 @@ namespace DaJet.Model
     public sealed class PipelineRecord : EntityObject
     {
         private string _name;
+        private PipelineMode _mode;
         public string Name { get { return _name; } set { Set(value, ref _name); } }
+        public PipelineMode Activation { get { return _mode; } set { Set(value, ref _mode); } }
         public override string ToString() { return string.IsNullOrEmpty(Name) ? base.ToString() : Name; }
     }
 }

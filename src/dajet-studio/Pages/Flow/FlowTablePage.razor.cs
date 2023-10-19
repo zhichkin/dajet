@@ -32,12 +32,12 @@ namespace DaJet.Studio.Pages.Flow
         }
         private async Task RefreshPipelineList()
         {
-            Dictionary<string, object> parameters = new()
-            {
-                { "TreeNode", _folder.GetEntity() }
-            };
+            //Dictionary<string, object> parameters = new()
+            //{
+            //    { "TreeNode", _folder.GetEntity() }
+            //};
             
-            Pipelines = await DataSource.SelectAsync<PipelineState>(parameters);
+            //Pipelines = await DataSource.SelectAsync<PipelineState>(parameters);
         }
     }
 }

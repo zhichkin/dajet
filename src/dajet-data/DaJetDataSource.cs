@@ -1,5 +1,4 @@
 ﻿using DaJet.Model;
-using System;
 using System.Collections;
 
 namespace DaJet.Data
@@ -8,32 +7,40 @@ namespace DaJet.Data
     {
         private readonly IDomainModel _domain;
         private readonly DataSourceOptions _options;
+        private readonly Dictionary<Type, IDataMapper> _mappers = new();
         public DaJetDataSource(DataSourceOptions options, IDomainModel domain)
         {
             _domain = domain;
             _options = options;
+
+            string connectionString = _options.ConnectionString;
+
+            _mappers.Add(typeof(TreeNodeRecord), new TreeNodeDataMapper(_domain, connectionString));
+            _mappers.Add(typeof(PipelineRecord), new PipelineDataMapper(_domain, connectionString));
+            _mappers.Add(typeof(ProcessorRecord), new ProcessorDataMapper(_domain, connectionString));
+            _mappers.Add(typeof(OptionRecord), new OptionDataMapper(_domain, connectionString));
         }
         public void Create(EntityObject entity)
         {
-            if (entity is TreeNodeRecord record)
+            if (_mappers.TryGetValue(entity.GetType(), out IDataMapper mapper))
             {
-                new TreeNodeDataMapper(_domain, _options.ConnectionString).Insert(record);
+                mapper.Insert(entity);
             }
         }
         public void Update(EntityObject entity)
         {
-            if (entity is TreeNodeRecord record)
+            if (_mappers.TryGetValue(entity.GetType(), out IDataMapper mapper))
             {
-                new TreeNodeDataMapper(_domain, _options.ConnectionString).Update(record);
+                mapper.Update(entity);
             }
         }
         public void Delete(Entity entity)
         {
             Type type = _domain.GetEntityType(entity.TypeCode);
 
-            if (type == typeof(TreeNodeRecord))
+            if (_mappers.TryGetValue(type, out IDataMapper mapper))
             {
-                new TreeNodeDataMapper(_domain, _options.ConnectionString).Delete(entity);
+                mapper.Delete(entity);
             }
         }
         public EntityObject Select(Entity entity)
@@ -45,40 +52,34 @@ namespace DaJet.Data
 
             Type type = _domain.GetEntityType(entity.TypeCode);
 
-            if (type == typeof(TreeNodeRecord))
+            if (_mappers.TryGetValue(type, out IDataMapper mapper))
             {
-                return new TreeNodeDataMapper(_domain, _options.ConnectionString).Select(entity);
+                return mapper.Select(entity.Identity);
             }
 
             return null;
         }
-        public IEnumerable Select(int typeCode, string propertyName, Entity value)
+        public IEnumerable Select(int typeCode)
         {
             Type type = _domain.GetEntityType(typeCode);
 
-            if (type == typeof(TreeNodeRecord))
+            if (_mappers.TryGetValue(type, out IDataMapper mapper))
             {
-                return new TreeNodeDataMapper(_domain, _options.ConnectionString).Select(propertyName, value);
+                return mapper.Select();
             }
 
             return null;
         }
-        public IEnumerable Select(int typeCode, Dictionary<string, object> parameters)
+        public IEnumerable Select(int typeCode, Entity owner)
         {
             Type type = _domain.GetEntityType(typeCode);
 
-            if (type == typeof(TreeNodeRecord))
+            if (_mappers.TryGetValue(type, out IDataMapper mapper))
             {
-                return new TreeNodeDataMapper(_domain, _options.ConnectionString).Select(parameters);
+                return mapper.Select(owner);
             }
 
             return null;
-        }
-        public IEnumerable Select<T>(Dictionary<string, object> parameters) where T : EntityObject
-        {
-            int code = _domain.GetTypeCode(typeof(T));
-
-            return Select(code, parameters);
         }
     }
 }
