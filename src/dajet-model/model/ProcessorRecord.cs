@@ -5,7 +5,6 @@ namespace DaJet.Model
     public sealed class ProcessorRecord : EntityObject
     {
         private int _ordinal;
-        private string _name;
         private string _handler;
         private string _message;
         private Entity _pipeline;

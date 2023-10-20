@@ -38,7 +38,7 @@ namespace DaJet.Studio.Components
         [Inject] private ExchangeTreeViewController ExchangeTreeViewController { get; set; }
         protected override async Task OnInitializedAsync()
         {
-            var nodes = await DataSource.SelectAsync<TreeNodeRecord>();
+            var nodes = await DataSource.QueryAsync<TreeNodeRecord>();
 
             foreach (TreeNodeRecord node in nodes)
             {

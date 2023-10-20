@@ -20,8 +20,10 @@ namespace DaJet.Data
         Task UpdateAsync(EntityObject entity);
         Task DeleteAsync(Entity entity);
         Task<EntityObject> SelectAsync(Entity entity);
-        Task<IEnumerable<T>> SelectAsync<T>() where T : EntityObject;
-        Task<IEnumerable<T>> SelectAsync<T>(Entity owner) where T : EntityObject;
+        Task<T> SelectAsync<T>(Guid identity) where T : EntityObject;
+        Task<T> SelectAsync<T>(Entity entity) where T : EntityObject;
+        Task<IEnumerable<T>> QueryAsync<T>() where T : EntityObject;
+        Task<IEnumerable<T>> QueryAsync<T>(Entity owner) where T : EntityObject;
     }
     public interface IDataMapper
     {

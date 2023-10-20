@@ -99,27 +99,15 @@ namespace DaJet.Http.Client
                 throw;
             }
         }
-        public async Task<IEnumerable<T>> SelectAsync<T>() where T : EntityObject
+        public async Task<T> SelectAsync<T>(Guid identity) where T : EntityObject
         {
-            int typeCode = _domain.GetTypeCode(typeof(T));
+            Entity entity = _domain.GetEntity<T>(identity);
 
-            if (typeCode == 0)
-            {
-                throw new InvalidOperationException($"[{typeof(T)}] type code not found");
-            }
-
-            string url = $"/home/{typeCode}";
-
-            HttpResponseMessage response = await _client.GetAsync(url);
-
-            IEnumerable<T> list = await response.Content.ReadFromJsonAsync<IEnumerable<T>>();
-
-            foreach (T item in list)
-            {
-                item.MarkAsOriginal();
-            }
-
-            return list;
+            return await SelectAsync(entity) as T;
+        }
+        public async Task<T> SelectAsync<T>(Entity entity) where T : EntityObject
+        {
+            return await SelectAsync(entity) as T;
         }
         public async Task<EntityObject> SelectAsync(Entity entity)
         {
@@ -150,7 +138,29 @@ namespace DaJet.Http.Client
 
             return result;
         }
-        public async Task<IEnumerable<T>> SelectAsync<T>(Entity owner) where T : EntityObject
+        public async Task<IEnumerable<T>> QueryAsync<T>() where T : EntityObject
+        {
+            int typeCode = _domain.GetTypeCode(typeof(T));
+
+            if (typeCode == 0)
+            {
+                throw new InvalidOperationException($"[{typeof(T)}] type code not found");
+            }
+
+            string url = $"/home/{typeCode}";
+
+            HttpResponseMessage response = await _client.GetAsync(url);
+
+            IEnumerable<T> list = await response.Content.ReadFromJsonAsync<IEnumerable<T>>();
+
+            foreach (T item in list)
+            {
+                item.MarkAsOriginal();
+            }
+
+            return list;
+        }
+        public async Task<IEnumerable<T>> QueryAsync<T>(Entity owner) where T : EntityObject
         {
             int typeCode = _domain.GetTypeCode(typeof(T));
 

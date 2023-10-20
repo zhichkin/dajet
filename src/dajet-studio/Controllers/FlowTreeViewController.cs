@@ -47,7 +47,7 @@ namespace DaJet.Studio.Controllers
                 return;
             }
 
-            var list = await DataSource.SelectAsync<TreeNodeRecord>(node.GetEntity());
+            var list = await DataSource.QueryAsync<TreeNodeRecord>(node.GetEntity());
 
             foreach (var item in list)
             {

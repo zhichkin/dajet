@@ -16,6 +16,7 @@ namespace DaJet.Model
         void Entity<T>(int typeCode);
         int GetTypeCode(Type entityType);
         Type GetEntityType(int typeCode);
+        Entity GetEntity<T>(Guid identity);
     }
     public sealed class DomainModel : IDomainModel
     {
@@ -55,6 +56,17 @@ namespace DaJet.Model
                 return type;
             }
             return null;
+        }
+        public Entity GetEntity<T>(Guid identity)
+        {
+            int typeCode = GetTypeCode(typeof(T));
+
+            if (typeCode == 0)
+            {
+                throw new InvalidOperationException();
+            }
+
+            return new Entity(typeCode, identity);
         }
         public T New<T>() where T : EntityObject
         {

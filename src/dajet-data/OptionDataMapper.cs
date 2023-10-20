@@ -7,23 +7,23 @@ namespace DaJet.Data
     public sealed class OptionDataMapper : IDataMapper
     {
         #region "SQL SCRIPTS"
-        private const string CREATE_TABLE_COMMAND = "CREATE TABLE IF NOT EXISTS settings " +
+        private const string CREATE_TABLE_COMMAND = "CREATE TABLE IF NOT EXISTS options " +
             "(uuid TEXT NOT NULL, owner_type INTEGER NOT NULL, owner_uuid TEXT NOT NULL, " +
             "name TEXT NOT NULL, type TEXT NOT NULL, value TEXT NOT NULL, " +
             "PRIMARY KEY (uuid), UNIQUE (owner_type, owner_uuid, name)) WITHOUT ROWID;";
         private const string SELECT_BY_OWNER =
-            "SELECT uuid, owner_type, owner_uuid, name, type, value FROM settings " +
+            "SELECT uuid, owner_type, owner_uuid, name, type, value FROM options " +
             "WHERE owner_type = @owner_type AND owner_uuid = @owner_uuid ORDER BY name ASC;";
         private const string SELECT_BY_UUID =
-            "SELECT uuid, owner_type, owner_uuid, name, type, value FROM settings WHERE uuid = @uuid;";
+            "SELECT uuid, owner_type, owner_uuid, name, type, value FROM options WHERE uuid = @uuid;";
         private const string INSERT_COMMAND =
-            "INSERT INTO settings (uuid, owner_type, owner_uuid, name, type, value) " +
+            "INSERT INTO options (uuid, owner_type, owner_uuid, name, type, value) " +
             "VALUES (@uuid, @owner_type, @owner_uuid, @name, @type, @value);";
         private const string UPDATE_COMMAND =
-            "UPDATE settings SET owner_type = @owner_type, owner_uuid = @owner_uuid, " +
+            "UPDATE options SET owner_type = @owner_type, owner_uuid = @owner_uuid, " +
             "name = @name, type = @type, value = @value WHERE uuid = @uuid;";
         private const string DELETE_COMMAND =
-            "DELETE FROM settings WHERE uuid = @uuid;";
+            "DELETE FROM options WHERE uuid = @uuid;";
         #endregion
 
         private readonly int MY_TYPE_CODE;

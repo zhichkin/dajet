@@ -1,4 +1,5 @@
 ﻿using DaJet.Flow.Model;
+using DaJet.Model;
 using Microsoft.Data.Sqlite;
 
 namespace DaJet.Flow
@@ -14,6 +15,7 @@ namespace DaJet.Flow
     public sealed class PipelineOptionsProvider : IPipelineOptionsProvider
     {
         private readonly string _connectionString;
+        private readonly IDomainModel _domain = new DomainModel(null);
         public PipelineOptionsProvider(string connectionString)
         {
             _connectionString = connectionString;
@@ -54,10 +56,10 @@ namespace DaJet.Flow
             "handler TEXT NOT NULL, message TEXT NOT NULL, " +
             "PRIMARY KEY (uuid)) WITHOUT ROWID;";
 
-        private const string CREATE_OPTIONS_TABLE_SCRIPT =
-            "CREATE TABLE IF NOT EXISTS " +
-            "options (owner TEXT NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, value TEXT NOT NULL, " +
-            "PRIMARY KEY (owner, name)) WITHOUT ROWID;";
+        private const string CREATE_OPTIONS_TABLE_SCRIPT = "CREATE TABLE IF NOT EXISTS options " +
+            "(uuid TEXT NOT NULL, owner_type INTEGER NOT NULL, owner_uuid TEXT NOT NULL, " +
+            "name TEXT NOT NULL, type TEXT NOT NULL, value TEXT NOT NULL, " +
+            "PRIMARY KEY (uuid), UNIQUE (owner_type, owner_uuid, name)) WITHOUT ROWID;";
 
         #endregion
 
@@ -70,11 +72,12 @@ namespace DaJet.Flow
         private const string DELETE_SCRIPT = "DELETE FROM pipelines WHERE uuid = @uuid;";
 
         private const string SELECT_OPTIONS_SCRIPT =
-            "SELECT name, type, value FROM options WHERE owner = @owner ORDER BY name ASC;";
+            "SELECT name, type, value FROM options WHERE owner_uuid = @owner ORDER BY name ASC;";
         private const string INSERT_OPTION_SCRIPT =
-            "INSERT INTO options (owner, name, type, value) VALUES (@owner, @name, @type, @value);";
+            "INSERT INTO options (uuid, owner_type, owner_uuid, name, type, value) " +
+            "VALUES (@uuid, @owner_type, @owner_uuid, @name, @type, @value);";
         private const string DELETE_OPTIONS_SCRIPT =
-            "DELETE FROM options WHERE owner = @owner;";
+            "DELETE FROM options WHERE owner_uuid = @owner;";
 
         private const string SELECT_PIPELINE_BLOCKS_SCRIPT =
             "SELECT uuid, ordinal, handler, message FROM blocks " +
@@ -257,6 +260,8 @@ namespace DaJet.Flow
         }
         private void InsertOptions(PipelineOptions entity)
         {
+            int ownerCode = _domain.GetTypeCode(typeof(PipelineRecord));
+
             using (SqliteConnection connection = new(_connectionString))
             {
                 connection.Open();
@@ -268,7 +273,9 @@ namespace DaJet.Flow
                     foreach (var option in entity.Options)
                     {
                         command.Parameters.Clear();
-                        command.Parameters.AddWithValue("owner", entity.Uuid.ToString().ToLower());
+                        command.Parameters.AddWithValue("uuid", Guid.NewGuid().ToString().ToLower());
+                        command.Parameters.AddWithValue("owner_type", ownerCode);
+                        command.Parameters.AddWithValue("owner_uuid", entity.Uuid.ToString().ToLower());
                         command.Parameters.AddWithValue("name", option.Name);
                         command.Parameters.AddWithValue("type", option.Type);
                         command.Parameters.AddWithValue("value", option.Value);
@@ -279,6 +286,8 @@ namespace DaJet.Flow
         }
         private void InsertOptions(PipelineBlock entity)
         {
+            int ownerCode = _domain.GetTypeCode(typeof(ProcessorRecord));
+
             using (SqliteConnection connection = new(_connectionString))
             {
                 connection.Open();
@@ -290,7 +299,9 @@ namespace DaJet.Flow
                     foreach (var option in entity.Options)
                     {
                         command.Parameters.Clear();
-                        command.Parameters.AddWithValue("owner", entity.Uuid.ToString().ToLower());
+                        command.Parameters.AddWithValue("uuid", Guid.NewGuid().ToString().ToLower());
+                        command.Parameters.AddWithValue("owner_type", ownerCode);
+                        command.Parameters.AddWithValue("owner_uuid", entity.Uuid.ToString().ToLower());
                         command.Parameters.AddWithValue("name", option.Name);
                         command.Parameters.AddWithValue("type", option.Type);
                         command.Parameters.AddWithValue("value", option.Value);
