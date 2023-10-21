@@ -1,5 +1,6 @@
 ﻿using DaJet.Model;
 using Microsoft.AspNetCore.Components;
+using System.Diagnostics;
 
 namespace DaJet.Studio.Pages.Flow
 {
@@ -10,19 +11,23 @@ namespace DaJet.Studio.Pages.Flow
         [Parameter] public Guid Uuid { get; set; }
         private string TreeNodeName { get; set; }
         private string PipelineName { get; set; }
-        private IEnumerable<PipelineRecord> Pipelines { get; set; } = new List<PipelineRecord>();
+        private IEnumerable<ProcessorRecord> Processors { get; set; } = new List<ProcessorRecord>();
         protected void NavigateToHomePage() { Navigator.NavigateTo("/"); }
         protected override async Task OnParametersSetAsync()
         {
             _record = await DataSource.SelectAsync<TreeNodeRecord>(Uuid);
 
+            PipelineRecord pipeline = null;
+
             if (_record is not null)
             {
-                PipelineRecord pipeline = await DataSource.SelectAsync<PipelineRecord>(_record.Value);
+                pipeline = await DataSource.SelectAsync<PipelineRecord>(_record.Value);
 
                 if (pipeline is not null)
                 {
                     PipelineName = pipeline.Name;
+
+                    _settings = await DataSource.QueryAsync<OptionRecord>(pipeline.GetEntity());
                 }
                 else
                 {
@@ -42,26 +47,33 @@ namespace DaJet.Studio.Pages.Flow
                 }
             }
 
-            //Pipelines = await DataSource.QueryAsync<PipelineRecord>();
+            Processors = await DataSource.QueryAsync<ProcessorRecord>(pipeline.GetEntity());
 
-            //foreach (PipelineRecord record in Pipelines)
-            //{
-            //    Console.WriteLine(record.Name);
+            foreach (ProcessorRecord processor in Processors)
+            {
+                var options = await DataSource.QueryAsync<OptionRecord>(processor.GetEntity());
 
-            //    var list = await DataSource.QueryAsync<ProcessorRecord>(record.GetEntity());
+                if (options is not null)
+                {
+                    _options.Add(processor, options);
+                }
+            }
+        }
 
-            //    foreach (var item in list)
-            //    {
-            //        Console.WriteLine("- " + item.Handler);
-
-            //        var options = await DataSource.QueryAsync<OptionRecord>(item.GetEntity());
-
-            //        foreach (var option in options)
-            //        {
-            //            Console.WriteLine("  - " + option.Name + " = " + option.Value);
-            //        }
-            //    }
-            //}
+        private IEnumerable<OptionRecord> _settings = new List<OptionRecord>();
+        private IEnumerable<OptionRecord> GetPipelineOptions()
+        {
+            return _settings;
+        }
+        
+        private readonly Dictionary<ProcessorRecord, IEnumerable<OptionRecord>> _options = new();
+        private IEnumerable<OptionRecord> GetProcessorOptions(ProcessorRecord processor)
+        {
+            if (_options.TryGetValue(processor, out IEnumerable<OptionRecord> options))
+            {
+                return options;
+            }
+            return null;
         }
     }
 }

@@ -4,6 +4,34 @@
 @inject DaJetHttpClient DataSource;
 @inject NavigationManager Navigator;
 
+<style>
+    th {
+        resize: horizontal;
+        overflow: auto;
+        border: solid black 1px;
+        padding: 5px;
+        position: sticky;
+        top: 0px;
+        background-color: lightgray;
+    }
+
+    td {
+        border: solid black 1px;
+        padding: 5px;
+    }
+
+    .dajet-button {
+        cursor: pointer;
+        margin-left: 5px;
+        min-width: 75px;
+        padding: 0px 5px 0px 5px;
+        border: 1px solid black;
+        border-radius: 5px;
+        -moz-border-radius: 5px;
+        -webkit-border-radius: 5px;
+    }
+</style>
+
 <div style="margin:5px;">
 
     <p><span style="font-weight:bold;margin-right:5px;">@Uuid</span></p>
@@ -15,22 +43,37 @@
 
     <p><span style="font-weight:bold;margin-right:5px;">@PipelineName</span></p>
     
+    <ul>
+        @foreach (OptionRecord option in GetPipelineOptions())
+        {
+            <li> - <span>@option.Name</span> : <span>@option.Value</span></li>
+        }
+    </ul>
+
     <table style="border-collapse:collapse;width:100%;">
 
         <thead>
             <tr>
-                <th>Конвейер</th>
-                <th>Активация</th>
+                <th>Обработчик</th>
+                <th>Сообщение</th>
             </tr>
         </thead>
 
         <tbody>
 
-            @foreach (PipelineRecord pipeline in Pipelines)
+            @foreach (ProcessorRecord block in Processors)
             {
                 <tr>
-                    <td>@pipeline.Name</td>
-                    <td>@pipeline.Activation</td>
+                    <td>
+                        <b>@block.Handler</b>
+                        <ul>
+                            @foreach (OptionRecord option in GetProcessorOptions(block))
+                            {
+                                <li> - <span>@option.Name</span> : <span>@option.Value</span></li>
+                            }
+                        </ul>
+                    </td>
+                    <td><b>@block.Message</b>></td>
                 </tr>
             }
 
