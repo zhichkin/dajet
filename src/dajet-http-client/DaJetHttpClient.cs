@@ -249,6 +249,15 @@ namespace DaJet.Http.Client
 
             return name;
         }
+
+        public async Task<List<ProcessorInfo>> GetAvailableProcessors()
+        {
+            HttpResponseMessage response = await _client.GetAsync($"/home/get-available-processors");
+
+            var list = await response.Content.ReadFromJsonAsync<List<ProcessorInfo>>();
+
+            return list;
+        }
     }
 }
 

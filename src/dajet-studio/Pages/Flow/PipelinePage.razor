@@ -2,7 +2,10 @@
 
 @inject IDomainModel DomainModel;
 @inject DaJetHttpClient DataSource;
+@inject IJSRuntime JSRuntime;
 @inject NavigationManager Navigator;
+
+<NavigationLock ConfirmExternalNavigation="true" OnBeforeInternalNavigation="OnBeforeInternalNavigation" />
 
 <style>
     th {
@@ -68,13 +71,7 @@
             <input type="button" value="✕" style="cursor:pointer;border:none;background:none;" @onclick="NavigateToHomePage">
         </p>
 
-        <p>
-            <span style="font-weight:bold;">@PipelineName</span>
-            @if (HasChanges)
-            {
-                <input type="button" class="dajet-button" value="Сохранить изменения" @onclick="SaveChanges">
-            }
-        </p>
+        <p><span style="font-weight:bold;">@PipelineName</span></p>
 
         <ul>
             @foreach (OptionRecord option in GetPipelineOptions())
@@ -82,6 +79,14 @@
                 <li> - <span>@option.Name</span> : <span>@option.Value</span></li>
             }
         </ul>
+
+        <p>
+            <input type="button" class="dajet-button" value="Добавить обработчик" @onclick="SelectProcessor">
+            @if (HasChanges)
+            {
+                <input type="button" class="dajet-button" value="Сохранить изменения" @onclick="SaveChanges">
+            }
+        </p>
 
     </div>
 

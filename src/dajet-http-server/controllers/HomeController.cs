@@ -4,7 +4,6 @@ using DaJet.Flow.Model;
 using DaJet.Json;
 using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
-using System;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -30,11 +29,13 @@ namespace DaJet.Http.Controllers
         private readonly IDataSource _source;
         private readonly IDomainModel _domain;
         private readonly IPipelineManager _manager;
-        public HomeController(IDomainModel domain, IDataSource source, IPipelineManager manager)
+        private readonly IPipelineBuilder _builder;
+        public HomeController(IDomainModel domain, IDataSource source, IPipelineManager manager, IPipelineBuilder builder)
         {
             _domain = domain;
             _source = source;
             _manager = manager;
+            _builder = builder;
         }
 
         [HttpGet("{typeCode:int}")]
@@ -228,6 +229,26 @@ namespace DaJet.Http.Controllers
             }
 
             return Content(name, "text/plain", Encoding.UTF8);
+        }
+
+        [HttpGet("get-available-processors")]
+        public ActionResult GetAvailableProcessors()
+        {
+            List<ProcessorInfo> result = new();
+            List<PipelineBlock> blocks = _builder.GetPipelineBlocks();
+
+            foreach (var block in blocks)
+            {
+                result.Add(new ProcessorInfo()
+                {
+                    Handler = block.Handler,
+                    Message = block.Message
+                });
+            }
+
+            string json = JsonSerializer.Serialize(result, JsonOptions);
+
+            return Content(json, "application/json", Encoding.UTF8);
         }
     }
 }

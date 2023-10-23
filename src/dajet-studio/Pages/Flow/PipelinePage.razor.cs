@@ -1,5 +1,7 @@
 ﻿using DaJet.Model;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.JSInterop;
 
 namespace DaJet.Studio.Pages.Flow
 {
@@ -86,7 +88,25 @@ namespace DaJet.Studio.Pages.Flow
         }
         private async Task SaveChanges()
         {
+            HasChanges = false;
+        }
+        private void SelectProcessor()
+        {
+            Navigator.NavigateTo($"/flow/processor/select/{_record.Identity}");
+        }
+        private async Task OnBeforeInternalNavigation(LocationChangingContext context)
+        {
+            if (HasChanges)
+            {
+                string message = "Есть не сохранённые данные. Продолжить ?";
 
+                bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", message);
+
+                if (!confirmed)
+                {
+                    context.PreventNavigation();
+                }
+            }
         }
     }
     internal sealed class ProcessorViewModel

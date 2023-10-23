@@ -1,0 +1,85 @@
+﻿@page "/flow/processor/select/{uuid:guid}"
+
+@inject IDomainModel DomainModel;
+@inject DaJetHttpClient DataSource;
+@inject NavigationManager Navigator;
+
+<style>
+    
+    th {
+        resize: horizontal;
+        overflow: auto;
+        border: solid black 1px;
+        padding: 5px;
+        position: sticky;
+        top: 0px;
+        background-color: lightgray;
+    }
+
+    td {
+        border: solid black 1px;
+        padding: 5px;
+    }
+
+    .processor-layout {
+        display: grid;
+        gap: 1px;
+        padding: 1px;
+        margin: 5px;
+        align-content: start;
+        height: calc(100vh - 60px);
+        grid-template:
+            "pipeline-header" min-content
+            "pipeline-content" / 1fr;
+    }
+
+    .processor-header {
+        display: grid;
+        grid-area: pipeline-header;
+    }
+
+    .processor-content {
+        display: grid;
+        grid-area: pipeline-content;
+        overflow: scroll;
+        white-space: nowrap;
+    }
+
+</style>
+
+<div class="processor-layout">
+
+    <div class="processor-header">
+        <span style="font-weight:bold;margin-right:5px;">@TreeNodeName</span>
+        <span style="font-weight:bold;margin-right:5px;">@PipelineName</span>
+        <input type="button" value="✕" style="cursor:pointer;border:none;background:none;" @onclick="NavigateToPipelinePage">
+    </div>
+
+    <div class="processor-content">
+
+        <table style="border-collapse:collapse;width:100%;">
+
+            <thead>
+                <tr>
+                    <th>Обработка</th>
+                    <th>Сообщение</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                @foreach (ProcessorInfo info in Processors)
+                {
+                    <tr @onclick="@(async () => { await SelectProcessorForPipeline(info); })">
+                        <td>@info.Handler</td>
+                        <td>@info.Message</td>
+                    </tr>
+                }
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
