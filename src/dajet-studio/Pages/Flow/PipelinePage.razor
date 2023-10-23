@@ -30,55 +30,88 @@
         -moz-border-radius: 5px;
         -webkit-border-radius: 5px;
     }
+
+    .pipeline-layout {
+        display: grid;
+        gap: 1px;
+        padding: 1px;
+        margin: 5px;
+        align-content: start;
+        height: calc(100vh - 60px);
+        grid-template:
+            "pipeline-header" min-content
+            "pipeline-content" / 1fr;
+    }
+
+    .pipeline-header {
+        display: grid;
+        grid-area: pipeline-header;
+    }
+
+    .pipeline-content {
+        display: grid;
+        grid-area: pipeline-content;
+        overflow: scroll;
+        white-space: nowrap;
+    }
+
 </style>
 
-<div style="margin:5px;">
+<div class="pipeline-layout">
 
-    <p><span style="font-weight:bold;margin-right:5px;">@Uuid</span></p>
+    <div class="pipeline-header">
 
-    <p>
-        <span style="font-weight:bold;margin-right:5px;">@TreeNodeName</span>
-        <input type="button" value="✕" style="cursor:pointer;border:none;background:none;" @onclick="NavigateToHomePage">
-    </p>
+        <p><span style="font-weight:bold;">@Uuid</span></p>
 
-    <p><span style="font-weight:bold;margin-right:5px;">@PipelineName</span></p>
-    
-    <ul>
-        @foreach (OptionRecord option in GetPipelineOptions())
-        {
-            <li> - <span>@option.Name</span> : <span>@option.Value</span></li>
-        }
-    </ul>
+        <p>
+            <span style="font-weight:bold;margin-right:5px;">@TreeNodeName</span>
+            <input type="button" value="✕" style="cursor:pointer;border:none;background:none;" @onclick="NavigateToHomePage">
+        </p>
 
-    <table style="border-collapse:collapse;width:100%;">
-
-        <thead>
-            <tr>
-                <th>Обработчик</th>
-                <th>Сообщение</th>
-            </tr>
-        </thead>
-
-        <tbody>
-
-            @foreach (ProcessorRecord block in Processors)
+        <p>
+            <span style="font-weight:bold;">@PipelineName</span>
+            @if (HasChanges)
             {
-                <tr>
-                    <td>
-                        <b>@block.Handler</b>
-                        <ul>
-                            @foreach (OptionRecord option in GetProcessorOptions(block))
-                            {
-                                <li> - <span>@option.Name</span> : <span>@option.Value</span></li>
-                            }
-                        </ul>
-                    </td>
-                    <td><b>@block.Message</b>></td>
-                </tr>
+                <input type="button" class="dajet-button" value="Сохранить изменения" @onclick="SaveChanges">
             }
+        </p>
 
-        </tbody>
+        <ul>
+            @foreach (OptionRecord option in GetPipelineOptions())
+            {
+                <li> - <span>@option.Name</span> : <span>@option.Value</span></li>
+            }
+        </ul>
 
-    </table>
+    </div>
+
+    <div class="pipeline-content">
+
+        @foreach (ProcessorViewModel processor in Processors)
+        {
+            <table style="margin-top:5px;border-collapse:collapse;">
+
+                <tr>
+                    <td colspan="2">
+                        <input type="button" value="+" style="cursor:pointer;border:none;background:none;" @onclick="@processor.ToggleOptions">
+                        <span style="font-weight:bold;">@processor.Handler</span>
+                    </td>
+                </tr>
+
+                @if (processor.ShowOptions)
+                {
+                    @foreach (OptionViewModel option in processor.Options)
+                    {
+                        <tr>
+                            <td style="resize:horizontal;overflow:auto;">@option.Name</td>
+                            <td><input type="text" size="40" @bind-value="@option.Value" /></td>
+                        </tr>
+                    }
+                }
+
+            </table>
+        }
+
+    </div>
 
 </div>
