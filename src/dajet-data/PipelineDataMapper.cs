@@ -18,8 +18,16 @@ namespace DaJet.Data
             "INSERT INTO pipelines (uuid, name, activation) VALUES (@uuid, @name, @activation);";
         private const string UPDATE_COMMAND =
             "UPDATE pipelines SET name = @name, activation = @activation WHERE uuid = @uuid;";
+        
         private const string DELETE_COMMAND =
             "DELETE FROM pipelines WHERE uuid = @uuid;";
+        private const string DELETE_BLOCK_OPTIONS =
+            "DELETE FROM options WHERE owner_type = @type AND owner_uuid IN (SELECT uuid FROM blocks WHERE pipeline = @uuid);";
+        private const string DELETE_PIPELINE_OPTIONS =
+            "DELETE FROM options WHERE owner_type = @type AND owner_uuid = @uuid;";
+        private const string DELETE_PIPELINE_BLOCKS =
+            "DELETE FROM blocks WHERE pipeline = @uuid;";
+
         #endregion
 
         private readonly int MY_TYPE_CODE;
@@ -97,17 +105,42 @@ namespace DaJet.Data
         }
         public void Delete(Entity entity)
         {
+            int result = 0;
+            int pipeline = _domain.GetTypeCode(typeof(PipelineRecord));
+            int processor = _domain.GetTypeCode(typeof(ProcessorRecord));
+
             using (SqliteConnection connection = new(_connectionString))
             {
                 connection.Open();
 
-                using (SqliteCommand command = connection.CreateCommand())
+                using (SqliteTransaction transaction = connection.BeginTransaction())
                 {
-                    command.CommandText = DELETE_COMMAND;
+                    using (SqliteCommand command = connection.CreateCommand())
+                    {
+                        command.Connection = connection;
+                        command.Transaction = transaction;
 
-                    command.Parameters.AddWithValue("uuid", entity.Identity.ToString().ToLower());
+                        command.Parameters.Clear();
+                        command.Parameters.AddWithValue("type", processor);
+                        command.Parameters.AddWithValue("uuid", entity.Identity.ToString().ToLower());
+                        command.CommandText = DELETE_BLOCK_OPTIONS;
+                        result += command.ExecuteNonQuery();
 
-                    int result = command.ExecuteNonQuery();
+                        command.Parameters.Clear();
+                        command.Parameters.AddWithValue("type", pipeline);
+                        command.Parameters.AddWithValue("uuid", entity.Identity.ToString().ToLower());
+
+                        command.CommandText = DELETE_PIPELINE_OPTIONS;
+                        result += command.ExecuteNonQuery();
+
+                        command.CommandText = DELETE_PIPELINE_BLOCKS;
+                        result += command.ExecuteNonQuery();
+
+                        command.CommandText = DELETE_COMMAND;
+                        result += command.ExecuteNonQuery();
+                    }
+
+                    transaction.Commit();
                 }
             }
         }

@@ -1,5 +1,7 @@
-﻿using DaJet.Flow;
+﻿using DaJet.Data;
+using DaJet.Flow;
 using DaJet.Flow.Model;
+using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -17,11 +19,17 @@ namespace DaJet.Http.Controllers
             WriteIndented = true,
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
+        private readonly IDataSource _source;
+        private readonly IDomainModel _domain;
         private readonly IPipelineManager _manager;
         private readonly IPipelineBuilder _builder;
         private readonly IPipelineOptionsProvider _options;
-        public FlowController(IPipelineOptionsProvider options, IPipelineManager manager, IPipelineBuilder builder)
+        public FlowController(
+            IDomainModel domain, IDataSource source,
+            IPipelineOptionsProvider options, IPipelineManager manager, IPipelineBuilder builder)
         {
+            _domain = domain ?? throw new ArgumentNullException(nameof(domain));
+            _source = source ?? throw new ArgumentNullException(nameof(source));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
             _builder = builder ?? throw new ArgumentNullException(nameof(builder));
@@ -110,6 +118,37 @@ namespace DaJet.Http.Controllers
 
             _ = _options.Insert(in options);
 
+            int typeCode = _domain.GetTypeCode(typeof(TreeNodeRecord));
+
+            if (typeCode > 0)
+            {
+                var list = _source.Select(typeCode, Entity.Undefined);
+
+                if (list is List<TreeNodeRecord> nodes)
+                {
+                    TreeNodeRecord flowNode = nodes.Where(n => n.Name == "flow").FirstOrDefault();
+
+                    if (flowNode is not null)
+                    {
+                        typeCode = _domain.GetTypeCode(typeof(PipelineRecord));
+
+                        var entity = _source.Select(new Entity(typeCode, options.Uuid));
+
+                        if (entity is PipelineRecord pipeline)
+                        {
+                            TreeNodeRecord treeNode = _domain.New<TreeNodeRecord>();
+
+                            treeNode.Name = pipeline.Name;
+                            treeNode.Value = pipeline.GetEntity();
+                            treeNode.Parent = flowNode.GetEntity();
+                            treeNode.IsFolder = false;
+
+                            _source.Create(treeNode);
+                        }
+                    }
+                }
+            }
+            
             return Created($"{options.Name}", $"{options.Uuid}");
         }
         [HttpPut("")] public async Task<ActionResult> Update([FromBody] PipelineOptions options)

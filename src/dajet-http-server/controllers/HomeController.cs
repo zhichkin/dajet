@@ -239,11 +239,23 @@ namespace DaJet.Http.Controllers
 
             foreach (var block in blocks)
             {
-                result.Add(new ProcessorInfo()
+                ProcessorInfo processor = new()
                 {
                     Handler = block.Handler,
                     Message = block.Message
-                });
+                };
+
+                foreach (var option in block.Options)
+                {
+                    processor.Options.Add(new OptionInfo()
+                    {
+                        Name = option.Name,
+                        Type = option.Type,
+                        Value = option.Value
+                    });
+                }
+
+                result.Add(processor);
             }
 
             string json = JsonSerializer.Serialize(result, JsonOptions);

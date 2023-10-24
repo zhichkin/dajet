@@ -4,7 +4,6 @@ using DaJet.Studio.Components;
 using DaJet.Studio.Pages;
 using DaJet.Studio.Pages.Flow;
 using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
 using MudBlazor;
 using System.ComponentModel;
 
@@ -14,13 +13,11 @@ namespace DaJet.Studio.Controllers
     {
         private IDomainModel DomainModel { get; set; }
         private DaJetHttpClient DataSource { get; set; }
-        private IJSRuntime JSRuntime { get; set; }
         private NavigationManager Navigator { get; set; }
-        public FlowTreeViewController(IDomainModel domain, DaJetHttpClient client, IJSRuntime js, NavigationManager navigator)
+        public FlowTreeViewController(IDomainModel domain, DaJetHttpClient client, NavigationManager navigator)
         {
             DomainModel = domain;
             DataSource = client;
-            JSRuntime = js;
             Navigator = navigator;
         }
         public TreeNodeModel CreateRootNode(TreeNodeRecord root)
@@ -142,7 +139,7 @@ namespace DaJet.Studio.Controllers
             }
             else if (dialogResult.CommandType == TreeNodeDialogCommand.DeleteEntity)
             {
-                //await DeleteFolderScript(node);
+                await DeletePipeline(node);
             }
         }
         private bool CanAcceptDropData(TreeNodeModel source, TreeNodeModel target)
@@ -251,7 +248,7 @@ namespace DaJet.Studio.Controllers
                 throw;
             }
         }
-
+        
         private async Task CreatePipeline(TreeNodeModel node)
         {
             if (node.Tag is not TreeNodeRecord parent || !parent.IsFolder)
@@ -259,7 +256,7 @@ namespace DaJet.Studio.Controllers
                 return;
             }
 
-            string name = "New pipeline";
+            string name = "new-pipeline";
             TreeNodeRecord treeNode = DomainModel.New<TreeNodeRecord>();
             PipelineRecord pipeline = DomainModel.New<PipelineRecord>();
 
@@ -274,9 +271,53 @@ namespace DaJet.Studio.Controllers
             try
             {
                 await DataSource.CreateAsync(pipeline);
+                await CreatePipelineOptions(pipeline.GetEntity());
                 await DataSource.CreateAsync(treeNode);
 
                 CreateTreeNode(in node, treeNode);
+            }
+            catch
+            {
+                throw;
+            }
+        }
+        private async Task CreatePipelineOptions(Entity pipeline)
+        {
+            OptionRecord option = DomainModel.New<OptionRecord>();
+            option.Owner = pipeline;
+            option.Name = "SleepTimeout";
+            option.Type = "System.Int32";
+            option.Value = "0";
+
+            await DataSource.CreateAsync(option);
+
+            option = DomainModel.New<OptionRecord>();
+            option.Owner = pipeline;
+            option.Name = "ShowStackTrace";
+            option.Type = "System.Boolean";
+            option.Value = "false";
+
+            await DataSource.CreateAsync(option);
+        }
+        private async Task DeletePipeline(TreeNodeModel node)
+        {
+            if (node.Tag is not TreeNodeRecord treeNode)
+            {
+                return;
+            }
+
+            try
+            {
+                if (treeNode.Value.Identity != Guid.Empty)
+                {
+                    await DataSource.DeleteAsync(treeNode.Value);
+                }
+
+                await DataSource.DeleteAsync(treeNode.GetEntity());
+
+                node.Parent.Nodes.Remove(node);
+
+                node.IsVisible = false;
             }
             catch
             {

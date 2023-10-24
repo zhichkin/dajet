@@ -57,5 +57,14 @@ namespace DaJet.Studio.Pages.Flow
 
             MudDialog.Close(result);
         }
+        private void DeletePipeline()
+        {
+            TreeNodeDialogResult result = new(Model, typeof(TreeNodeModel), false)
+            {
+                CommandType = TreeNodeDialogCommand.DeleteEntity
+            };
+
+            MudDialog.Close(result);
+        }
     }
 }

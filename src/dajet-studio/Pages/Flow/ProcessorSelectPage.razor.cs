@@ -1,8 +1,5 @@
 ﻿using DaJet.Model;
-using DaJet.Studio.Components;
 using Microsoft.AspNetCore.Components;
-using System.Runtime;
-using System.Xml.Linq;
 
 namespace DaJet.Studio.Pages.Flow
 {
@@ -62,7 +59,21 @@ namespace DaJet.Studio.Pages.Flow
                 try
                 {
                     await DataSource.CreateAsync(processor);
-                    
+
+                    Entity owner = processor.GetEntity();
+
+                    foreach (OptionInfo option in info.Options)
+                    {
+                        OptionRecord record = DomainModel.New<OptionRecord>();
+
+                        record.Owner = owner;
+                        record.Name = option.Name;
+                        record.Type = option.Type;
+                        record.Value = option.Value;
+
+                        await DataSource.CreateAsync(record);
+                    }
+
                     NavigateToPipelinePage();
                 }
                 catch
