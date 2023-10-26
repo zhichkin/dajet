@@ -10,85 +10,71 @@ namespace DaJet.Studio.Pages.Flow
         private TreeNodeRecord _folder;
         private TreeNodeRecord _record;
         [Parameter] public Guid Uuid { get; set; }
-        public PipelinePage()
-        {
-            _notifyOptionChanged = NotifyOptionChanged;
-        }
         private string TreeNodeName { get; set; }
-        private string PipelineName { get; set; }
-        private List<ProcessorViewModel> Processors { get; set; } = new();
-        private bool HasChanges { get; set; }
-        protected void NavigateToHomePage() { Navigator.NavigateTo("/"); }
+        private PipelineViewModel Pipeline { get; set; } = new();
+        private void NavigateToHomePage() { Navigator.NavigateTo("/"); }
         protected override async Task OnParametersSetAsync()
         {
             _record = await DataSource.SelectAsync<TreeNodeRecord>(Uuid);
 
-            PipelineRecord pipeline = null;
+            if (_record is null) { return; }
 
-            if (_record is not null)
+            _folder = await DataSource.SelectAsync<TreeNodeRecord>(_record.Parent);
+
+            if (_folder is null)
             {
-                pipeline = await DataSource.SelectAsync<PipelineRecord>(_record.Value);
+                TreeNodeName = "нет";
+            }
+            else
+            {
+                TreeNodeName = await DataSource.GetTreeNodeFullName(_folder);
+            }
 
-                if (pipeline is not null)
-                {
-                    PipelineName = pipeline.Name;
+            PipelineRecord pipeline = await DataSource.SelectAsync<PipelineRecord>(_record.Value);
 
-                    _settings = await DataSource.QueryAsync<OptionRecord>(pipeline.GetEntity());
-                }
-                else
-                {
-                    PipelineName = "Pipeline is not found";
-                }
+            if (pipeline is null) { return; }
 
-                _folder = await DataSource.SelectAsync<TreeNodeRecord>(_record.Parent);
+            Pipeline.SetDataContext(pipeline);
 
-                if (_folder is not null)
+            var settings = await DataSource.QueryAsync<OptionRecord>(pipeline.GetEntity());
+
+            if (settings is not null)
+            {
+                Pipeline.Options.Clear();
+
+                foreach (OptionRecord setting in settings)
                 {
-                    TreeNodeName = await DataSource.GetTreeNodeFullName(_folder);
-                    TreeNodeName += "/" + _record.Name;
-                }
-                else
-                {
-                    TreeNodeName = "Tree node is not found";
+                    Pipeline.Options.Add(new OptionViewModel(setting));
                 }
             }
 
             var processors = await DataSource.QueryAsync<ProcessorRecord>(pipeline.GetEntity());
 
-            Processors.Clear();
-
-            foreach (ProcessorRecord processor in processors)
+            if (processors is not null)
             {
-                ProcessorViewModel viewModel = new(processor);
+                Pipeline.Processors.Clear();
 
-                Processors.Add(viewModel);
-
-                var options = await DataSource.QueryAsync<OptionRecord>(processor.GetEntity());
-
-                if (options is not null)
+                foreach (ProcessorRecord processor in processors)
                 {
-                    foreach (var option in options)
+                    ProcessorViewModel viewModel = new(processor);
+
+                    Pipeline.Processors.Add(viewModel);
+
+                    var options = await DataSource.QueryAsync<OptionRecord>(processor.GetEntity());
+
+                    if (options is not null)
                     {
-                        viewModel.Options.Add(new OptionViewModel(option, _notifyOptionChanged));
+                        foreach (OptionRecord option in options)
+                        {
+                            viewModel.Options.Add(new OptionViewModel(option));
+                        }
                     }
                 }
             }
         }
-
-        private IEnumerable<OptionRecord> _settings = new List<OptionRecord>();
-        private IEnumerable<OptionRecord> GetPipelineOptions()
-        {
-            return _settings;
-        }
-
-        private readonly Action _notifyOptionChanged;
-        private void NotifyOptionChanged()
-        {
-            HasChanges = true;
-        }
         private async Task SaveChanges()
         {
-            HasChanges = false;
+            Pipeline.HasChanges = false;
         }
         private void SelectProcessor()
         {
@@ -96,7 +82,7 @@ namespace DaJet.Studio.Pages.Flow
         }
         private async Task OnBeforeInternalNavigation(LocationChangingContext context)
         {
-            if (HasChanges)
+            if (Pipeline is not null && Pipeline.HasChanges)
             {
                 string message = "Есть не сохранённые данные. Продолжить ?";
 
@@ -107,6 +93,48 @@ namespace DaJet.Studio.Pages.Flow
                     context.PreventNavigation();
                 }
             }
+        }
+    }
+    internal sealed class PipelineViewModel
+    {
+        private PipelineRecord _model;
+        internal void SetDataContext(PipelineRecord pipeline)
+        {
+            _model = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
+        }
+        internal string Name
+        {
+            get { return _model?.Name; }
+            set
+            {
+                _model.Name = value;
+
+                if (!_model.IsOriginal())
+                {
+                    HasChanges = true;
+                }
+            }
+        }
+        internal string Activation
+        {
+            get { return _model?.Activation.ToString(); }
+            set
+            {
+                _model.Activation = Enum.Parse<PipelineMode>(value);
+
+                if (!_model.IsOriginal())
+                {
+                    HasChanges = true;
+                }
+            }
+        }
+        internal List<OptionViewModel> Options { get; } = new();
+        internal List<ProcessorViewModel> Processors { get; } = new();
+        internal bool HasChanges { get; set; }
+        internal bool ShowOptions { get; set; }
+        internal void ToggleOptions()
+        {
+            ShowOptions = !ShowOptions;
         }
     }
     internal sealed class ProcessorViewModel
@@ -127,11 +155,9 @@ namespace DaJet.Studio.Pages.Flow
     internal sealed class OptionViewModel
     {
         private readonly OptionRecord _model;
-        private readonly Action _notifyChanged;
-        internal OptionViewModel(OptionRecord model, Action notifyChanged)
+        internal OptionViewModel(OptionRecord model)
         {
             _model = model;
-            _notifyChanged = notifyChanged;
         }
         internal string Name { get { return _model.Name; } }
         internal string Value
@@ -143,7 +169,7 @@ namespace DaJet.Studio.Pages.Flow
 
                 if (!_model.IsOriginal())
                 {
-                    _notifyChanged();
+                    
                 }
             }
         }

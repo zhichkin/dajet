@@ -25,10 +25,9 @@
 
     .dajet-button {
         cursor: pointer;
-        margin-left: 5px;
         min-width: 75px;
-        padding: 0px 5px 0px 5px;
         border: 1px solid black;
+        padding: 0px 5px 0px 5px;
         border-radius: 5px;
         -moz-border-radius: 5px;
         -webkit-border-radius: 5px;
@@ -64,42 +63,71 @@
 
     <div class="pipeline-header">
 
-        <p><span style="font-weight:bold;">@Uuid</span></p>
-
         <p>
-            <span style="font-weight:bold;margin-right:5px;">@TreeNodeName</span>
-            <input type="button" value="✕" style="cursor:pointer;border:none;background:none;" @onclick="NavigateToHomePage">
+            <span>@TreeNodeName</span>
+            <input type="button" value="✕" style="margin-left:5px;cursor:pointer;border:none;background:none;" @onclick="NavigateToHomePage">
         </p>
 
-        <p><span style="font-weight:bold;">@PipelineName</span></p>
-
-        <ul>
-            @foreach (OptionRecord option in GetPipelineOptions())
+        <p>
+            @if (Pipeline is null)
             {
-                <li> - <span>@option.Name</span> : <span>@option.Value</span></li>
+                <span style="font-weight:bold;">ERROR: pipeline is not found !!!</span>
             }
-        </ul>
+            else
+            {
+            <p>
+                <label for="_model_name" style="font-weight:bold;">Конвейер:</label>
+                <input id="_model_name" type="text" size="20" @bind-value="@Pipeline.Name" />
+            </p>
+            <p>
+                <label for="_model_activation" style="font-weight:bold;">Активация:</label>
+                <input id="_model_activation" type="text" size="20" @bind-value="@Pipeline.Activation" />
+            </p>
+            }
+        </p>
 
         <p>
             <input type="button" class="dajet-button" value="Добавить обработчик" @onclick="SelectProcessor">
 
-            @if (HasChanges)
+            @if (Pipeline.HasChanges)
             {
-                <input type="button" class="dajet-button" value="Сохранить изменения" @onclick="SaveChanges">
+                <input type="button" class="dajet-button" value="Сохранить изменения" style="margin-left:5px" @onclick="SaveChanges">
             }
         </p>
+
+        <table style="margin-top:5px;border-collapse:collapse;">
+
+            <tr>
+                <td colspan="2">
+                    <input type="button" value="@(Pipeline.ShowOptions ? "-" : "+")" style="cursor:pointer;border:none;background:none;" @onclick="@Pipeline.ToggleOptions">
+                    <span style="font-weight:bold;">Настройки конвейера</span>
+                </td>
+            </tr>
+
+            @if (Pipeline.ShowOptions)
+            {
+                @foreach (OptionViewModel option in Pipeline.Options)
+                {
+                    <tr>
+                        <td style="resize:horizontal;overflow:auto;">@option.Name</td>
+                        <td><input type="text" size="40" @bind-value="@option.Value" /></td>
+                    </tr>
+                }
+            }
+
+        </table>
 
     </div>
 
     <div class="pipeline-content">
 
-        @foreach (ProcessorViewModel processor in Processors)
+        @foreach (ProcessorViewModel processor in Pipeline.Processors)
         {
             <table style="margin-top:5px;border-collapse:collapse;">
 
                 <tr>
                     <td colspan="2">
-                        <input type="button" value="+" style="cursor:pointer;border:none;background:none;" @onclick="@processor.ToggleOptions">
+                        <input type="button" value="@(processor.ShowOptions ? "-" : "+")" style="cursor:pointer;border:none;background:none;" @onclick="@processor.ToggleOptions">
                         <span style="font-weight:bold;">@processor.Handler</span>
                     </td>
                 </tr>
