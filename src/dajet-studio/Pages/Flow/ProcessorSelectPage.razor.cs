@@ -43,43 +43,59 @@ namespace DaJet.Studio.Pages.Flow
         }
         private async Task SelectProcessorForPipeline(ProcessorInfo info)
         {
+            int ordinal = 0;
             Entity pipeline = _record.GetEntity();
-
+            
             var list = await DataSource.QueryAsync<ProcessorRecord>(pipeline);
 
             if (list is List<ProcessorRecord> processors)
             {
-                ProcessorRecord processor = DomainModel.New<ProcessorRecord>();
-
-                processor.Pipeline = pipeline;
-                processor.Ordinal = processors.Count;
-                processor.Handler = info.Handler;
-                processor.Message = info.Message;
-
-                try
+                foreach (var item in processors)
                 {
-                    await DataSource.CreateAsync(processor);
-
-                    Entity owner = processor.GetEntity();
-
-                    foreach (OptionInfo option in info.Options)
+                    if (item.Handler == info.Handler)
                     {
-                        OptionRecord record = DomainModel.New<OptionRecord>();
+                        return; //TODO: duplicate handler error ?
+                    }
+                }
 
-                        record.Owner = owner;
-                        record.Name = option.Name;
-                        record.Type = option.Type;
-                        record.Value = option.Value;
+                ordinal = processors.Count;
+            }
 
-                        await DataSource.CreateAsync(record);
+            ProcessorRecord processor = DomainModel.New<ProcessorRecord>();
+
+            processor.Pipeline = pipeline;
+            processor.Ordinal = ordinal;
+            processor.Handler = info.Handler;
+            processor.Message = info.Message;
+
+            try
+            {
+                await DataSource.CreateAsync(processor);
+
+                Entity owner = processor.GetEntity();
+
+                foreach (OptionInfo option in info.Options)
+                {
+                    OptionRecord record = DomainModel.New<OptionRecord>();
+
+                    record.Owner = owner;
+                    record.Name = option.Name;
+                    record.Type = option.Type;
+                    record.Value = option.Value;
+
+                    if (record.Name == "Pipeline" && record.Type == "System.Guid" && string.IsNullOrWhiteSpace(record.Value))
+                    {
+                        record.Value = pipeline.Identity.ToString().ToLowerInvariant();
                     }
 
-                    NavigateToPipelinePage();
+                    await DataSource.CreateAsync(record);
                 }
-                catch
-                {
-                    throw;
-                }
+
+                NavigateToPipelinePage();
+            }
+            catch
+            {
+                throw;
             }
         }
     }

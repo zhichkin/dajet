@@ -6,7 +6,8 @@ namespace DaJet.Studio.Pages
     {
         CreateFolder, CreateEntity,
         UpdateFolder, UpdateEntity,
-        DeleteFolder, DeleteEntity
+        DeleteFolder, DeleteEntity,
+        SelectFolder, SelectEntity
     }
     public sealed class TreeNodeDialogResult : DialogResult
     {

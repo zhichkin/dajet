@@ -117,7 +117,11 @@ namespace DaJet.Studio.Controllers
                 return;
             }
 
-            if (dialogResult.CommandType == TreeNodeDialogCommand.CreateFolder)
+            if (dialogResult.CommandType == TreeNodeDialogCommand.SelectFolder)
+            {
+                await RefreshFolder(node);
+            }
+            else if (dialogResult.CommandType == TreeNodeDialogCommand.CreateFolder)
             {
                 await CreateFolder(node);
             }
@@ -201,6 +205,23 @@ namespace DaJet.Studio.Controllers
             }
 
             Navigator.NavigateTo($"/flow/pipeline/{record.Identity.ToString().ToLower()}");
+        }
+
+        private async Task RefreshFolder(TreeNodeModel node)
+        {
+            if (node.Tag is not TreeNodeRecord parent)
+            {
+                return;
+            }
+
+            var list = await DataSource.QueryAsync<TreeNodeRecord>(parent.GetEntity());
+
+            node.Nodes.Clear();
+
+            foreach (var item in list)
+            {
+                CreateTreeNode(in node, in item);
+            }
         }
 
         private async Task CreateFolder(TreeNodeModel node)

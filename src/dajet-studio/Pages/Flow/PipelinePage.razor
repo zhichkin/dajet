@@ -76,12 +76,17 @@
             else
             {
             <p>
-                <label for="_model_name" style="font-weight:bold;">Конвейер:</label>
-                <input id="_model_name" type="text" size="20" @bind-value="@Pipeline.Name" />
+                <span style="font-weight:bold;">Конвейер:</span>
+                <input type="text" size="20" @bind-value="@Pipeline.Name" />
             </p>
             <p>
-                <label for="_model_activation" style="font-weight:bold;">Активация:</label>
-                <input id="_model_activation" type="text" size="20" @bind-value="@Pipeline.Activation" />
+                <span style="font-weight:bold;">Активация:</span>
+                <select @bind="@Pipeline.Activation">
+                        @foreach (PipelineMode mode in Enum.GetValues<PipelineMode>())
+                        {
+                        <option value="@mode">@mode.ToString()</option>
+                        }
+                </select>
             </p>
             }
         </p>
@@ -89,7 +94,7 @@
         <p>
             <input type="button" class="dajet-button" value="Добавить обработчик" @onclick="SelectProcessor">
 
-            @if (Pipeline.HasChanges)
+            @if (Pipeline.IsChanged)
             {
                 <input type="button" class="dajet-button" value="Сохранить изменения" style="margin-left:5px" @onclick="SaveChanges">
             }

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
+using System.Diagnostics;
 
 namespace DaJet.Studio.Pages.Flow
 {
@@ -44,7 +45,7 @@ namespace DaJet.Studio.Pages.Flow
 
                 foreach (OptionRecord setting in settings)
                 {
-                    Pipeline.Options.Add(new OptionViewModel(setting));
+                    Pipeline.Add(setting);
                 }
             }
 
@@ -56,17 +57,15 @@ namespace DaJet.Studio.Pages.Flow
 
                 foreach (ProcessorRecord processor in processors)
                 {
-                    ProcessorViewModel viewModel = new(processor);
-
-                    Pipeline.Processors.Add(viewModel);
-
+                    ProcessorViewModel viewModel = Pipeline.Add(processor);
+                    
                     var options = await DataSource.QueryAsync<OptionRecord>(processor.GetEntity());
 
                     if (options is not null)
                     {
                         foreach (OptionRecord option in options)
                         {
-                            viewModel.Options.Add(new OptionViewModel(option));
+                            viewModel.Add(option);
                         }
                     }
                 }
@@ -74,7 +73,36 @@ namespace DaJet.Studio.Pages.Flow
         }
         private async Task SaveChanges()
         {
-            Pipeline.HasChanges = false;
+            foreach (ProcessorViewModel processor in Pipeline.Processors)
+            {
+                foreach (OptionViewModel option in processor.Options)
+                {
+                    if (option.Model.IsChanged())
+                    {
+                        await DataSource.UpdateAsync(option.Model);
+                    }
+                }
+
+                if (processor.Model.IsChanged())
+                {
+                    await DataSource.UpdateAsync(processor.Model);
+                }
+            }
+
+            foreach (OptionViewModel option in Pipeline.Options)
+            {
+                if (option.Model.IsChanged())
+                {
+                    await DataSource.UpdateAsync(option.Model);
+                }
+            }
+
+            if (Pipeline.Model.IsChanged())
+            {
+                await DataSource.UpdateAsync(Pipeline.Model);
+            }
+
+            Pipeline.IsChanged = false;
         }
         private void SelectProcessor()
         {
@@ -82,7 +110,7 @@ namespace DaJet.Studio.Pages.Flow
         }
         private async Task OnBeforeInternalNavigation(LocationChangingContext context)
         {
-            if (Pipeline is not null && Pipeline.HasChanges)
+            if (Pipeline is not null && Pipeline.IsChanged)
             {
                 string message = "Есть не сохранённые данные. Продолжить ?";
 
@@ -95,13 +123,20 @@ namespace DaJet.Studio.Pages.Flow
             }
         }
     }
-    internal sealed class PipelineViewModel
+    internal interface IChangeNotifier
+    {
+        void NotifyChange();
+    }
+    internal sealed class PipelineViewModel : IChangeNotifier
     {
         private PipelineRecord _model;
         internal void SetDataContext(PipelineRecord pipeline)
         {
             _model = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
         }
+        internal PipelineRecord Model { get { return _model; } }
+        internal bool IsChanged { get; set; }
+        public void NotifyChange() { IsChanged = true; }
         internal string Name
         {
             get { return _model?.Name; }
@@ -111,7 +146,7 @@ namespace DaJet.Studio.Pages.Flow
 
                 if (!_model.IsOriginal())
                 {
-                    HasChanges = true;
+                    IsChanged= true;
                 }
             }
         }
@@ -124,26 +159,55 @@ namespace DaJet.Studio.Pages.Flow
 
                 if (!_model.IsOriginal())
                 {
-                    HasChanges = true;
+                    IsChanged = true;
                 }
             }
         }
+        internal void Add(OptionRecord record)
+        {
+            OptionViewModel option = new(record);
+            option.SetChangeNotifier(this);
+            Options.Add(option);
+        }
+        internal ProcessorViewModel Add(ProcessorRecord record)
+        {
+            ProcessorViewModel processor = new(record);
+            processor.SetChangeNotifier(this);
+            Processors.Add(processor);
+            return processor;
+        }
         internal List<OptionViewModel> Options { get; } = new();
         internal List<ProcessorViewModel> Processors { get; } = new();
-        internal bool HasChanges { get; set; }
         internal bool ShowOptions { get; set; }
         internal void ToggleOptions()
         {
             ShowOptions = !ShowOptions;
         }
     }
-    internal sealed class ProcessorViewModel
+    internal sealed class ProcessorViewModel : IChangeNotifier
     {
+        private IChangeNotifier _notifier;
         private readonly ProcessorRecord _model;
         internal ProcessorViewModel(ProcessorRecord model)
         {
             _model = model;
         }
+        internal ProcessorRecord Model { get { return _model; } }
+        internal void SetChangeNotifier(IChangeNotifier notifier)
+        {
+            _notifier = notifier;
+        }
+        public void NotifyChange()
+        {
+            _notifier?.NotifyChange();
+        }
+        internal void Add(OptionRecord record)
+        {
+            OptionViewModel option = new(record);
+            option.SetChangeNotifier(this);
+            Options.Add(option);
+        }
+
         internal string Handler { get { return _model.Handler; } }
         internal List<OptionViewModel> Options { get; } = new();
         internal bool ShowOptions { get; set; }
@@ -154,10 +218,16 @@ namespace DaJet.Studio.Pages.Flow
     }
     internal sealed class OptionViewModel
     {
+        private IChangeNotifier _notifier;
         private readonly OptionRecord _model;
         internal OptionViewModel(OptionRecord model)
         {
             _model = model;
+        }
+        internal OptionRecord Model { get { return _model; } }
+        internal void SetChangeNotifier(IChangeNotifier notifier)
+        {
+            _notifier = notifier;
         }
         internal string Name { get { return _model.Name; } }
         internal string Value
@@ -169,7 +239,7 @@ namespace DaJet.Studio.Pages.Flow
 
                 if (!_model.IsOriginal())
                 {
-                    
+                    _notifier?.NotifyChange();
                 }
             }
         }

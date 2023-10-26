@@ -12,6 +12,15 @@ namespace DaJet.Studio.Pages.Flow
         {
             MudDialog.Cancel();
         }
+        private void SelectFolder()
+        {
+            TreeNodeDialogResult result = new(Model, typeof(TreeNodeModel), false)
+            {
+                CommandType = TreeNodeDialogCommand.SelectFolder
+            };
+
+            MudDialog.Close(result);
+        }
         private void CreateFolder()
         {
             TreeNodeDialogResult result = new(Model, typeof(TreeNodeModel), false)

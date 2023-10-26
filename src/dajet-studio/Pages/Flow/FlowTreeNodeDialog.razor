@@ -11,6 +11,10 @@
 
             @if (Model.Tag is TreeNodeRecord record && record.IsFolder)
             {
+                <MudTooltip Text="Обновить">
+                    <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Info" Size="Size.Large" OnClick="SelectFolder" />
+                </MudTooltip>
+
                 <MudTooltip Text="Создать новый каталог">
                     <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder" Color="Color.Success" Size="Size.Large" OnClick="CreateFolder" />
                 </MudTooltip>
@@ -20,7 +24,7 @@
                 </MudTooltip>
 
                 <MudTooltip Text="Создать новый конвейер">
-                    <MudIconButton Icon="@Icons.Material.Outlined.SyncAlt" Color="Color.Info" Size="Size.Large" OnClick="CreatePipeline" />
+                    <MudIconButton Icon="@Icons.Material.Outlined.SyncAlt" Color="Color.Warning" Size="Size.Large" OnClick="CreatePipeline" />
                 </MudTooltip>
 
                 @if (!(record.Parent.IsEmpty || record.Parent.IsUndefined))
