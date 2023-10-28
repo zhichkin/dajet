@@ -53,15 +53,15 @@
 
         <tbody>
 
-            @foreach (DaJet.Model.PipelineState state in Pipelines)
+            @foreach (PipelineInfo info in Pipelines)
             {
                 <tr>
-                    <td>@state.Name</td>
-                    <td>@state.Activation</td>
-                    <td>@state.State</td>
-                    <td>@state.Start.ToString("yyyy-MM-dd HH:mm:ss")</td>
-                    <td>@state.Finish.ToString("yyyy-MM-dd HH:mm:ss")</td>
-                    <td>@state.Status</td>
+                    <td>@info.Name</td>
+                    <td>@info.Activation</td>
+                    <td>@info.State</td>
+                    <td>@info.Start.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td>@info.Finish.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td>@info.Status</td>
                 </tr>
             }
 

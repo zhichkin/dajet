@@ -10,6 +10,7 @@ namespace DaJet.Flow
         void ExecutePipeline(Guid uuid);
         void DisposePipeline(Guid uuid);
         Task ReStartPipeline(Guid uuid);
+        PipelineInfo GetPipelineInfo(Guid uuid);
         List<PipelineInfo> GetMonitorInfo();
         void UpdatePipelineStatus(Guid uuid, in string status);
         void UpdatePipelineStartTime(Guid uuid, DateTime value);
@@ -170,6 +171,14 @@ namespace DaJet.Flow
         public List<PipelineInfo> GetMonitorInfo()
         {
             return _monitor.Values.ToList();
+        }
+        public PipelineInfo GetPipelineInfo(Guid uuid)
+        {
+            if (_monitor.TryGetValue(uuid, out PipelineInfo info))
+            {
+                return info;
+            }
+            return null;
         }
         public void UpdatePipelineStatus(Guid uuid, in string status)
         {

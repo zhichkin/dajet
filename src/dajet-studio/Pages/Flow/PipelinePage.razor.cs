@@ -1,19 +1,52 @@
-﻿using DaJet.Model;
+﻿using DaJet.Flow.Model;
+using DaJet.Model;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
-using System.Diagnostics;
 
 namespace DaJet.Studio.Pages.Flow
 {
-    public partial class PipelinePage : ComponentBase
+    public partial class PipelinePage : ComponentBase, IDisposable
     {
         private TreeNodeRecord _folder;
         private TreeNodeRecord _record;
+        private System.Timers.Timer _timer;
         [Parameter] public Guid Uuid { get; set; }
         private string TreeNodeName { get; set; }
+        private PipelineInfo PipeInfo { get; set; }
         private PipelineViewModel Pipeline { get; set; } = new();
         private void NavigateToHomePage() { Navigator.NavigateTo("/"); }
+        protected override void OnInitialized()
+        {
+            _timer = new(TimeSpan.FromSeconds(5));
+            _timer.Elapsed += TimerHandler;
+            _timer.AutoReset = true;
+            _timer.Start();
+        }
+        public void Dispose()
+        {
+            _timer?.Dispose();
+        }
+        private void StartMonitor()
+        {
+            _timer?.Start();
+        }
+        private void StopMonitor()
+        {
+            _timer?.Stop();
+        }
+        private async void TimerHandler(object sender, System.Timers.ElapsedEventArgs args)
+        {
+            try
+            {
+                PipeInfo = await DataSource.GetPipelineInfo(Pipeline.Model.Identity);
+            }
+            catch
+            {
+                // show error to user
+            }
+            StateHasChanged();
+        }
         protected override async Task OnParametersSetAsync()
         {
             _record = await DataSource.SelectAsync<TreeNodeRecord>(Uuid);

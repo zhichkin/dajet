@@ -199,6 +199,25 @@ namespace DaJet.Http.Client
             return result;
         }
 
+        public async Task<PipelineInfo> GetPipelineInfo(Guid uuid)
+        {
+            PipelineInfo info;
+
+            string url = $"/home/get-pipeline-info/{uuid.ToString().ToLower()}";
+
+            try
+            {
+                HttpResponseMessage response = await _client.GetAsync(url);
+
+                info = await response.Content.ReadFromJsonAsync<PipelineInfo>();
+            }
+            catch
+            {
+                throw;
+            }
+
+            return info;
+        }
         public async Task<List<PipelineInfo>> GetPipelineInfo()
         {
             List<PipelineInfo> list;
@@ -249,7 +268,6 @@ namespace DaJet.Http.Client
 
             return name;
         }
-
         public async Task<List<ProcessorInfo>> GetAvailableProcessors()
         {
             HttpResponseMessage response = await _client.GetAsync($"/home/get-available-processors");

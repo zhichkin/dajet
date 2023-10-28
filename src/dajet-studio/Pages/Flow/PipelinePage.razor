@@ -72,7 +72,7 @@
 
         <p>
             <span>@TreeNodeName</span>
-            <input type="button" value="✕" style="margin-left:5px;cursor:pointer;border:none;background:none;" @onclick="NavigateToHomePage">
+            <input type="button" value="✕" style="margin-left:5px;cursor:pointer;border:none;background:none;" @onclick="NavigateToHomePage" />
         </p>
 
         <p>
@@ -99,11 +99,17 @@
         </p>
 
         <p>
-            <input type="button" class="dajet-button" value="Добавить обработчик" @onclick="SelectProcessor">
+            <span style="font-weight:bold;">Состояние:</span><span>@PipeInfo?.Status</span>
+            <input type="button" class="dajet-button" value="Выполнить" @onclick="StartMonitor" />
+            <input type="button" class="dajet-button" value="Остановить" @onclick="StopMonitor" />
+        </p>
+
+        <p>
+            <input type="button" class="dajet-button" value="Добавить обработчик" @onclick="SelectProcessor" />
 
             @if (Pipeline.IsChanged)
             {
-                <input type="button" class="dajet-button" value="Сохранить изменения" style="margin-left:5px" @onclick="SaveChanges">
+                <input type="button" class="dajet-button" value="Сохранить изменения" style="margin-left:5px" @onclick="SaveChanges" />
             }
         </p>
 
@@ -111,7 +117,7 @@
 
             <tr>
                 <td colspan="2">
-                    <input type="button" value="@(Pipeline.ShowOptions ? "-" : "+")" style="cursor:pointer;border:none;background:none;" @onclick="@Pipeline.ToggleOptions">
+                    <input type="button" value="@(Pipeline.ShowOptions ? "-" : "+")" style="cursor:pointer;border:none;background:none;" @onclick="@Pipeline.ToggleOptions" />
                     <span style="font-weight:bold;">Настройки конвейера</span>
                 </td>
             </tr>
@@ -139,7 +145,7 @@
 
                 <tr>
                     <td colspan="2">
-                        <input type="button" value="@(processor.ShowOptions ? "-" : "+")" style="cursor:pointer;border:none;background:none;margin-right:10px;" @onclick="@processor.ToggleOptions">
+                        <input type="button" value="@(processor.ShowOptions ? "-" : "+")" style="cursor:pointer;border:none;background:none;margin-right:10px;" @onclick="@processor.ToggleOptions" />
 
                         <img src="/img/move_up.png" class="dajet-image-button" @onclick="@(async () => { await MoveUp(processor); })" />
                         <img src="/img/move_down.png" class="dajet-image-button" @onclick="@(async () => { await MoveDown(processor); })" />

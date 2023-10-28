@@ -8,7 +8,6 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
-using PipelineState = DaJet.Model.PipelineState;
 
 namespace DaJet.Http.Controllers
 {
@@ -136,59 +135,6 @@ namespace DaJet.Http.Controllers
 
 
 
-        [HttpPost("query/{typeCode:int}")]
-        public async Task<ActionResult> Query([FromRoute] int typeCode)
-        {
-            HttpRequest request = HttpContext.Request;
-
-            if (request.ContentLength == 0)
-            {
-                return BadRequest();
-            }
-
-            Type type = _domain.GetEntityType(typeCode);
-
-            var parameters = await JsonSerializer.DeserializeAsync<Dictionary<string, object>>(request.Body, JsonOptions);
-
-            if (type == typeof(PipelineState))
-            {
-                List<PipelineInfo> monitor = _manager.GetMonitorInfo();
-
-                List<PipelineState> result = new();
-
-                foreach (PipelineInfo info in monitor)
-                {
-                    result.Add(new PipelineState()
-                    {
-                        Uuid = info.Uuid,
-                        Name = info.Name,
-                        State = info.State.ToString(),
-                        Status = string.IsNullOrEmpty(info.Status) ? "нет данных" : info.Status,
-                        Start = info.Start,
-                        Finish = info.Finish,
-                        Activation = info.Activation.ToString()
-                    });
-                }
-
-                return Content(JsonSerializer.Serialize(result, JsonOptions), "application/json", Encoding.UTF8);
-            }
-
-            if (!parameters.TryGetValue("TreeNode", out object treeNode) || treeNode is not TreeNodeRecord folder)
-            {
-                return BadRequest();
-            }
-
-            var list = _source.Select(folder.GetEntity());
-
-            Type listType = typeof(List<>).MakeGenericType(type);
-
-            string json = JsonSerializer.Serialize(list, listType, JsonOptions);
-
-            return Content(json, "application/json", Encoding.UTF8);
-        }
-
-        
-
         [HttpGet("get-tree-node-full-name/{identity:guid}")]
         public ActionResult GetTreeNodeFullName([FromRoute] Guid identity)
         {
@@ -259,6 +205,25 @@ namespace DaJet.Http.Controllers
             }
 
             string json = JsonSerializer.Serialize(result, JsonOptions);
+
+            return Content(json, "application/json", Encoding.UTF8);
+        }
+        
+        [HttpGet("get-pipeline-info/{pipeline:guid}")]
+        public ActionResult GetPipelineInfo([FromRoute] Guid pipeline)
+        {
+            HttpRequest request = HttpContext.Request;
+
+            if (request.ContentLength == 0)
+            {
+                return BadRequest();
+            }
+
+            PipelineInfo info = _manager.GetPipelineInfo(pipeline);
+
+            info ??= new PipelineInfo() { Uuid = pipeline };
+
+            string json = JsonSerializer.Serialize(info, JsonOptions);
 
             return Content(json, "application/json", Encoding.UTF8);
         }
