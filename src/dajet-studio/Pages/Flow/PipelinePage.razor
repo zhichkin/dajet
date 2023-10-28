@@ -33,6 +33,13 @@
         -webkit-border-radius: 5px;
     }
 
+    .dajet-image-button {
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        vertical-align: middle;
+    }
+
     .pipeline-layout {
         display: grid;
         gap: 1px;
@@ -132,8 +139,14 @@
 
                 <tr>
                     <td colspan="2">
-                        <input type="button" value="@(processor.ShowOptions ? "-" : "+")" style="cursor:pointer;border:none;background:none;" @onclick="@processor.ToggleOptions">
+                        <input type="button" value="@(processor.ShowOptions ? "-" : "+")" style="cursor:pointer;border:none;background:none;margin-right:10px;" @onclick="@processor.ToggleOptions">
+
+                        <img src="/img/move_up.png" class="dajet-image-button" @onclick="@(async () => { await MoveUp(processor); })" />
+                        <img src="/img/move_down.png" class="dajet-image-button" @onclick="@(async () => { await MoveDown(processor); })" />
+                        
                         <span style="font-weight:bold;">@processor.Handler</span>
+
+                        <img src="/img/delete.png" class="dajet-image-button" @onclick="@(async () => { await Remove(processor); })" />
                     </td>
                 </tr>
 

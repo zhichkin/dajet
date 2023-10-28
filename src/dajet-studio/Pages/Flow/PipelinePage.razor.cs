@@ -71,6 +71,123 @@ namespace DaJet.Studio.Pages.Flow
                 }
             }
         }
+        private async Task MoveUp(ProcessorViewModel processor)
+        {
+            int count = Pipeline.Processors.Count;
+
+            if (count == 0) { return; }
+
+            int ordinal = processor.Model.Ordinal;
+
+            if (ordinal == 0) { return; }
+
+            int preceding = ordinal - 1;
+
+            ProcessorViewModel moveup = null;
+            ProcessorViewModel movedown = null;
+
+            for (int i = 0; i < count; i++)
+            {
+                ProcessorViewModel current = Pipeline.Processors[i];
+
+                if (current.Model.Ordinal == ordinal)
+                {
+                    ordinal = i;
+                    moveup = current;
+                    break;
+                }
+                else if (current.Model.Ordinal == preceding)
+                {
+                    preceding = i;
+                    movedown = current;
+                }
+            }
+
+            if (moveup is not null && movedown is not null)
+            {
+                Pipeline.Processors[ordinal] = movedown;
+                Pipeline.Processors[preceding] = moveup;
+
+                moveup.Model.Ordinal -= 1;
+                movedown.Model.Ordinal += 1;
+
+                await DataSource.UpdateAsync(moveup.Model);
+                await DataSource.UpdateAsync(movedown.Model);
+            }
+        }
+        private async Task MoveDown(ProcessorViewModel processor)
+        {
+            int count = Pipeline.Processors.Count;
+
+            if (count == 0) { return; }
+
+            int ordinal = processor.Model.Ordinal;
+
+            if (ordinal >= count - 1) { return; }
+
+            int following = ordinal + 1;
+
+            ProcessorViewModel moveup = null;
+            ProcessorViewModel movedown = null;
+
+            for (int i = 0; i < count; i++)
+            {
+                ProcessorViewModel current = Pipeline.Processors[i];
+
+                if (current.Model.Ordinal == ordinal)
+                {
+                    ordinal = i;
+                    movedown = current;
+                }
+                else if (current.Model.Ordinal == following)
+                {
+                    following = i;
+                    moveup = current;
+                    break;
+                }
+            }
+
+            if (moveup is not null && movedown is not null)
+            {
+                Pipeline.Processors[ordinal] = moveup;
+                Pipeline.Processors[following] = movedown;
+
+                moveup.Model.Ordinal -= 1;
+                movedown.Model.Ordinal += 1;
+
+                await DataSource.UpdateAsync(moveup.Model);
+                await DataSource.UpdateAsync(movedown.Model);
+            }
+        }
+        private async Task Remove(ProcessorViewModel processor)
+        {
+            int count = Pipeline.Processors.Count;
+
+            if (count == 0) { return; }
+
+            int ordinal = processor.Model.Ordinal;
+
+            List<ProcessorViewModel> moveup = new();
+
+            for (int i = 0; i < count; i++)
+            {
+                ProcessorViewModel current = Pipeline.Processors[i];
+
+                if (current.Model.Ordinal > ordinal)
+                {
+                    moveup.Add(current);
+                }
+            }
+
+            Pipeline.Processors.Remove(processor);
+            await DataSource.DeleteAsync(processor.Model.GetEntity());
+
+            foreach (ProcessorViewModel item in moveup)
+            {
+                item.Model.Ordinal -= 1;
+                await DataSource.UpdateAsync(item.Model);
+            }
+        }
         private async Task SaveChanges()
         {
             foreach (ProcessorViewModel processor in Pipeline.Processors)

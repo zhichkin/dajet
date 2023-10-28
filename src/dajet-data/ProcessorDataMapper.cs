@@ -21,6 +21,8 @@ namespace DaJet.Data
             "UPDATE blocks SET pipeline = @pipeline, ordinal = @ordinal, handler = @handler, message = @message WHERE uuid = @uuid;";
         private const string DELETE_COMMAND =
             "DELETE FROM blocks WHERE uuid = @uuid;";
+        private const string DELETE_OPTIONS =
+            "DELETE FROM options WHERE owner_type = @type AND owner_uuid = @uuid;";
         #endregion
 
         private readonly int MY_TYPE_CODE;
@@ -102,17 +104,32 @@ namespace DaJet.Data
         }
         public void Delete(Entity entity)
         {
+            int result = 0;
+
             using (SqliteConnection connection = new(_connectionString))
             {
                 connection.Open();
 
-                using (SqliteCommand command = connection.CreateCommand())
+                using (SqliteTransaction transaction = connection.BeginTransaction())
                 {
-                    command.CommandText = DELETE_COMMAND;
+                    using (SqliteCommand command = connection.CreateCommand())
+                    {
+                        command.Connection = connection;
+                        command.Transaction = transaction;
 
-                    command.Parameters.AddWithValue("uuid", entity.Identity.ToString().ToLower());
+                        command.Parameters.Clear();
+                        command.Parameters.AddWithValue("type", entity.TypeCode);
+                        command.Parameters.AddWithValue("uuid", entity.Identity.ToString().ToLower());
+                        command.CommandText = DELETE_OPTIONS;
+                        result += command.ExecuteNonQuery();
 
-                    int result = command.ExecuteNonQuery();
+                        command.Parameters.Clear();
+                        command.CommandText = DELETE_COMMAND;
+                        command.Parameters.AddWithValue("uuid", entity.Identity.ToString().ToLower());
+                        result += command.ExecuteNonQuery();
+                    }
+
+                    transaction.Commit();
                 }
             }
         }
