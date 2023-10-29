@@ -82,31 +82,66 @@
             }
             else
             {
-            <p>
-                <span style="font-weight:bold;">Конвейер:</span>
-                <input type="text" size="20" @bind-value="@Pipeline.Name" />
-            </p>
-            <p>
-                <span style="font-weight:bold;">Активация:</span>
-                <select @bind="@Pipeline.Activation">
+                <div>
+                    <span style="font-weight:bold;">Конвейер:</span>
+                    <input type="text" size="20" @bind-value="@Pipeline.Name" />
+                    <br />
+                    <span style="font-weight:bold;">Активация:</span>
+                    <select @bind="@Pipeline.Activation">
                         @foreach (PipelineMode mode in Enum.GetValues<PipelineMode>())
                         {
-                        <option value="@mode">@mode.ToString()</option>
+                            <option value="@mode">@mode.ToString()</option>
                         }
-                </select>
-            </p>
+                    </select>
+                    <br />
+                    <span style="font-weight:bold;">Начало:</span><span>@PipeInfo?.Start.ToString("yyyy-MM-dd HH:mm:ss")</span>
+                    <br />
+                    <span style="font-weight:bold;">Завершение:</span><span>@PipeInfo?.Finish.ToString("yyyy-MM-dd HH:mm:ss")</span>
+                    <br />
+                    <span style="font-weight:bold;">Cостояние:</span><span>@PipeInfo?.State</span>
+                    <br />
+                    <span style="font-weight:bold;">Обновлять состояние</span>
+                    <input type="checkbox" @onchange="RefreshPipelineServerInfo" />
+                    <br />
+                    <input type="button" value="@(Pipeline.ShowPipelineStatus ? "-" : "+")" style="cursor:pointer;border:none;background:none;" @onclick="@Pipeline.TogglePipelineStatus" />
+                    <span style="font-weight:bold;">Описание состояния</span>
+                    @if (Pipeline.ShowPipelineStatus)
+                    {
+                        <div>@Pipeline.Status</div>
+                    }
+                </div>
             }
         </p>
 
         <p>
-            <span style="font-weight:bold;">Состояние:</span><span>@PipeInfo?.Status</span>
-            <input type="button" class="dajet-button" value="Выполнить" @onclick="StartMonitor" />
-            <input type="button" class="dajet-button" value="Остановить" @onclick="StopMonitor" />
-        </p>
+            @if (Pipeline.IsValid.HasValue)
+            {
+                @if (Pipeline.IsValid.Value)
+                {
+                    <img src="/img/success.png" style="width:16px;height:16px;vertical-align:middle;" />
+                }
+                else
+                {
+                    <img src="/img/error.png" style="width:16px;height:16px;vertical-align:middle;" />
+                }
+            }
+            
+            <input type="button" class="dajet-button" value="Валидировать" @onclick="ValidatePipeline" />
+            
+            @if (PipeInfo is not null)
+            {
+                @if (PipeInfo.State == PipelineState.Idle)
+                {
+                    <input type="button" class="dajet-button" value="Выполнить" @onclick="ExecutePipeline" />
+                }
+                else if (PipeInfo.State != PipelineState.None)
+                {
+                    <input type="button" class="dajet-button" value="Остановить" @onclick="DisposePipeline" />
+                }
+            }
 
-        <p>
             <input type="button" class="dajet-button" value="Добавить обработчик" @onclick="SelectProcessor" />
-
+            
             @if (Pipeline.IsChanged)
             {
                 <input type="button" class="dajet-button" value="Сохранить изменения" style="margin-left:5px" @onclick="SaveChanges" />

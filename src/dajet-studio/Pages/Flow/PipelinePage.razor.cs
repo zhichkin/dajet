@@ -21,7 +21,6 @@ namespace DaJet.Studio.Pages.Flow
             _timer = new(TimeSpan.FromSeconds(5));
             _timer.Elapsed += TimerHandler;
             _timer.AutoReset = true;
-            _timer.Start();
         }
         public void Dispose()
         {
@@ -40,12 +39,28 @@ namespace DaJet.Studio.Pages.Flow
             try
             {
                 PipeInfo = await DataSource.GetPipelineInfo(Pipeline.Model.Identity);
+                
+                if (Pipeline is not null)
+                {
+                    Pipeline.Status = PipeInfo?.Status;
+                }
             }
             catch
             {
                 // show error to user
             }
             StateHasChanged();
+        }
+        private void RefreshPipelineServerInfo()
+        {
+            if (_timer.Enabled)
+            {
+                StopMonitor();
+            }
+            else
+            {
+                StartMonitor();
+            }
         }
         protected override async Task OnParametersSetAsync()
         {
@@ -272,6 +287,26 @@ namespace DaJet.Studio.Pages.Flow
                 }
             }
         }
+        private async Task ValidatePipeline()
+        {
+            try
+            {
+                Pipeline.IsValid = await DataSource.ValidatePipeline(Pipeline.Model.Identity);
+            }
+            catch (Exception error)
+            {
+                Pipeline.IsValid = false;
+                Pipeline.Status = ExceptionHelper.GetErrorMessageAndStackTrace(error);
+            }
+        }
+        private async Task ExecutePipeline()
+        {
+            await DataSource.ExecutePipeline(Pipeline.Model.Identity);
+        }
+        private async Task DisposePipeline()
+        {
+            await DataSource.DisposePipeline(Pipeline.Model.Identity);
+        }
     }
     internal interface IChangeNotifier
     {
@@ -285,6 +320,7 @@ namespace DaJet.Studio.Pages.Flow
             _model = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
         }
         internal PipelineRecord Model { get { return _model; } }
+        internal bool? IsValid { get; set; }
         internal bool IsChanged { get; set; }
         public void NotifyChange() { IsChanged = true; }
         internal string Name
@@ -332,6 +368,12 @@ namespace DaJet.Studio.Pages.Flow
         internal void ToggleOptions()
         {
             ShowOptions = !ShowOptions;
+        }
+        internal string Status { get; set; }
+        internal bool ShowPipelineStatus { get; set; }
+        internal void TogglePipelineStatus()
+        {
+            ShowPipelineStatus = !ShowPipelineStatus;
         }
     }
     internal sealed class ProcessorViewModel : IChangeNotifier

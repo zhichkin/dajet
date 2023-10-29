@@ -108,6 +108,23 @@ namespace DaJet.Http.Controllers
 
             return Ok();
         }
+        [HttpGet("validate/{pipeline:guid}")] public ActionResult ValidatePipeline([FromRoute] Guid pipeline)
+        {
+            PipelineOptions options = _options.Select(pipeline);
+
+            if (options is null) { return NotFound(); }
+
+            try
+            {
+                _ = _builder.Build(options);
+            }
+            catch (Exception error)
+            {
+                return Problem(ExceptionHelper.GetErrorMessageAndStackTrace(error));
+            }
+
+            return Ok();
+        }
 
         [HttpPost("")] public ActionResult Insert([FromBody] PipelineOptions options)
         {

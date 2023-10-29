@@ -257,6 +257,26 @@ namespace DaJet.Http.Client
                 throw;
             }
         }
+        public async Task<bool> ValidatePipeline(Guid uuid)
+        {
+            try
+            {
+                HttpResponseMessage response = await _client.GetAsync($"/flow/validate/{uuid.ToString().ToLower()}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return true;
+                }
+
+                string result = await response.Content.ReadAsStringAsync();
+
+                throw new Exception(result);
+            }
+            catch
+            {
+                throw;
+            }
+        }
 
         public async Task<string> GetTreeNodeFullName(TreeNodeRecord node)
         {
@@ -278,13 +298,3 @@ namespace DaJet.Http.Client
         }
     }
 }
-
-//if (!response.IsSuccessStatusCode)
-//{
-//    string result = await response.Content.ReadAsStringAsync();
- 
-//    ErrorText = response.ReasonPhrase
-//        + (string.IsNullOrEmpty(result)
-//        ? string.Empty
-//        : Environment.NewLine + result);
-//}
