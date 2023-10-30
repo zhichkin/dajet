@@ -55,9 +55,12 @@
 <div class="processor-layout">
 
     <div class="processor-header">
-        <span style="font-weight:bold;margin-right:5px;">@TreeNodeName</span>
-        <span style="font-weight:bold;margin-right:5px;">@PipelineName</span>
-        <input type="button" value="✕" style="cursor:pointer;border:none;background:none;" @onclick="NavigateToPipelinePage">
+        <p>
+            <span style="font-weight:bold;margin-right:5px;">@TreeNodeName</span>
+            <input type="button" value="✕" @onclick="NavigateToPipelinePage"
+                   style="cursor:pointer;border:none;background:none;color:red;font-weight:bold;" />
+        </p>
+        <p><span style="font-weight:bold;margin-right:5px;">@PipelineName</span></p>
     </div>
 
     <div class="processor-content">

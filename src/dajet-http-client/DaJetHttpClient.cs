@@ -257,6 +257,24 @@ namespace DaJet.Http.Client
                 throw;
             }
         }
+        public async Task ReStartPipeline(Guid uuid)
+        {
+            try
+            {
+                HttpResponseMessage response = await _client.PutAsync($"/flow/restart/{uuid.ToString().ToLower()}", null);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    string result = await response.Content.ReadAsStringAsync();
+
+                    throw new Exception(result);
+                }
+            }
+            catch
+            {
+                throw;
+            }
+        }
         public async Task<bool> ValidatePipeline(Guid uuid)
         {
             try

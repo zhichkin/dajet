@@ -8,19 +8,15 @@
 <NavigationLock ConfirmExternalNavigation="true" OnBeforeInternalNavigation="OnBeforeInternalNavigation" />
 
 <style>
-    th {
-        resize: horizontal;
-        overflow: auto;
-        border: solid black 1px;
-        padding: 5px;
-        position: sticky;
-        top: 0px;
-        background-color: lightgray;
-    }
-
+    
     td {
         border: solid black 1px;
         padding: 5px;
+    }
+
+    .dajet-cell {
+        border: none;
+        padding: 3px;
     }
 
     .dajet-button {
@@ -31,6 +27,13 @@
         border-radius: 5px;
         -moz-border-radius: 5px;
         -webkit-border-radius: 5px;
+    }
+
+    .dajet-icon-button {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        vertical-align: middle;
     }
 
     .dajet-image-button {
@@ -71,89 +74,100 @@
     <div class="pipeline-header">
 
         <p>
-            <span>@TreeNodeName</span>
-            <input type="button" value="✕" style="margin-left:5px;cursor:pointer;border:none;background:none;" @onclick="NavigateToHomePage" />
+            <span style="font-weight:bold;">@TreeNodeName</span>
+            <input type="button" value="✕" @onclick="NavigateToHomePage"
+                   style="margin-left:5px;cursor:pointer;border:none;background:none;color:red;font-weight:bold;" />
         </p>
 
-        <p>
-            @if (Pipeline is null)
-            {
-                <span style="font-weight:bold;">ERROR: pipeline is not found !!!</span>
-            }
-            else
-            {
-                <div>
-                    <span style="font-weight:bold;">Конвейер:</span>
-                    <input type="text" size="20" @bind-value="@Pipeline.Name" />
-                    <br />
-                    <span style="font-weight:bold;">Активация:</span>
-                    <select @bind="@Pipeline.Activation">
-                        @foreach (PipelineMode mode in Enum.GetValues<PipelineMode>())
+        @if (Pipeline is null)
+        {
+            <p><span style="font-weight:bold;">ERROR: pipeline is not found !!!</span></p>
+        }
+        else
+        {
+            <table style="width:max-content;">
+                <tr>
+                    <td class="dajet-cell"><span style="font-weight:bold;">Конвейер:</span></td>
+                    <td class="dajet-cell"><input type="text" size="20" @bind-value="@Pipeline.Name" /></td>
+                    <td class="dajet-cell"><span style="font-weight:bold;">Начало:</span></td>
+                    <td class="dajet-cell"><span>@PipeInfo?.Start.ToString("yyyy-MM-dd HH:mm:ss")</span></td>
+                </tr>
+                <tr>
+                    <td class="dajet-cell"><span style="font-weight:bold;">Активация:</span></td>
+                    <td class="dajet-cell">
+                        <select @bind="@Pipeline.Activation">
+                            @foreach (PipelineMode mode in Enum.GetValues<PipelineMode>())
+                            {
+                                <option value="@mode">@mode.ToString()</option>
+                            }
+                        </select>
+                    </td>
+                    <td class="dajet-cell"><span style="font-weight:bold;">Завершение:</span></td>
+                    <td class="dajet-cell"><span>@PipeInfo?.Finish.ToString("yyyy-MM-dd HH:mm:ss")</span></td>
+                </tr>
+                <tr>
+                    <td class="dajet-cell" colspan="2">
+                        <span style="font-weight:bold;">Обновлять состояние</span>
+                        <input style="vertical-align:middle;" type="checkbox" @onchange="RefreshPipelineServerInfo" />
+                    </td>
+                    <td class="dajet-cell"><span style="font-weight:bold;margin-right:5px;">Cостояние:</span></td>
+                    <td class="dajet-cell">
+                        <span style="margin-right:5px;">@PipeInfo?.State</span>
+                        @if (PipeInfo is not null)
                         {
-                            <option value="@mode">@mode.ToString()</option>
+                            @if (PipeInfo.State == PipelineState.Idle)
+                            {
+                                <img src="/img/start.png" class="dajet-icon-button" @onclick="ExecutePipeline" />
+                            }
+                            else if (PipeInfo.State != PipelineState.None)
+                            {
+                                <img src="/img/stop.png" class="dajet-icon-button" @onclick="DisposePipeline" />
+                            }
                         }
-                    </select>
-                    <br />
-                    <span style="font-weight:bold;">Начало:</span><span>@PipeInfo?.Start.ToString("yyyy-MM-dd HH:mm:ss")</span>
-                    <br />
-                    <span style="font-weight:bold;">Завершение:</span><span>@PipeInfo?.Finish.ToString("yyyy-MM-dd HH:mm:ss")</span>
-                    <br />
-                    <span style="font-weight:bold;">Cостояние:</span><span>@PipeInfo?.State</span>
-                    <br />
-                    <span style="font-weight:bold;">Обновлять состояние</span>
-                    <input type="checkbox" @onchange="RefreshPipelineServerInfo" />
-                    <br />
-                    <input type="button" value="@(Pipeline.ShowPipelineStatus ? "-" : "+")" style="cursor:pointer;border:none;background:none;" @onclick="@Pipeline.TogglePipelineStatus" />
-                    <span style="font-weight:bold;">Описание состояния</span>
-                    @if (Pipeline.ShowPipelineStatus)
-                    {
-                        <div>@Pipeline.Status</div>
-                    }
-                </div>
-            }
-        </p>
-
-        <p>
-            @if (Pipeline.IsValid.HasValue)
-            {
-                @if (Pipeline.IsValid.Value)
-                {
-                    <img src="/img/success.png" style="width:16px;height:16px;vertical-align:middle;" />
-                }
-                else
-                {
-                    <img src="/img/error.png" style="width:16px;height:16px;vertical-align:middle;" />
-                }
-            }
+                    </td>
+                </tr>
+                <tr>
+                    <td class="dajet-cell" colspan="2">
+                        <span style="font-weight:bold;">Описание состояния</span>
+                        <input type="button" value="@(Pipeline.ShowPipelineStatus ? "-" : "+")" style="cursor:pointer;border:none;background:none;" @onclick="@Pipeline.TogglePipelineStatus" />
+                    </td>
+                    <td class="dajet-cell">
+                        <input type="button" class="dajet-button" value="Валидировать" @onclick="ValidatePipeline" />
+                    </td>
+                    <td class="dajet-cell">
+                        @if (Pipeline.IsValid.HasValue)
+                        {
+                            @if (Pipeline.IsValid.Value)
+                            {
+                                <img src="/img/success.png" style="width:16px;height:16px;vertical-align:middle;" />
+                            }
+                            else
+                            {
+                                <img src="/img/error.png" style="width:16px;height:16px;vertical-align:middle;" />
+                            }
+                        }
+                    </td>
+                </tr>
+            </table>
             
-            <input type="button" class="dajet-button" value="Валидировать" @onclick="ValidatePipeline" />
-            
-            @if (PipeInfo is not null)
+            @if (Pipeline.ShowPipelineStatus)
             {
-                @if (PipeInfo.State == PipelineState.Idle)
-                {
-                    <input type="button" class="dajet-button" value="Выполнить" @onclick="ExecutePipeline" />
-                }
-                else if (PipeInfo.State != PipelineState.None)
-                {
-                    <input type="button" class="dajet-button" value="Остановить" @onclick="DisposePipeline" />
-                }
-            }
+                <p style="margin-bottom:5px;">@Pipeline.Status</p>
+            }   
+        }
 
-            <input type="button" class="dajet-button" value="Добавить обработчик" @onclick="SelectProcessor" />
-            
-            @if (Pipeline.IsChanged)
-            {
-                <input type="button" class="dajet-button" value="Сохранить изменения" style="margin-left:5px" @onclick="SaveChanges" />
-            }
-        </p>
-
-        <table style="margin-top:5px;border-collapse:collapse;">
+        <table style="margin-top:5px;margin-bottom:5px;border-collapse:collapse;">
 
             <tr>
                 <td colspan="2">
                     <input type="button" value="@(Pipeline.ShowOptions ? "-" : "+")" style="cursor:pointer;border:none;background:none;" @onclick="@Pipeline.ToggleOptions" />
-                    <span style="font-weight:bold;">Настройки конвейера</span>
+                    <span style="font-weight:bold;margin-right:5px;">Настройки конвейера</span>
+                    <img src="/img/refresh.png" class="dajet-icon-button" style="margin-right:5px;" @onclick="ReStartPipeline" />
+                    <img src="/img/processor-add.png" class="dajet-icon-button" style="margin-right:5px;" @onclick="SelectProcessor" />
+                    @if (Pipeline.IsChanged)
+                    {
+                        <img src="/img/save.png" class="dajet-icon-button" @onclick="SaveChanges" />
+                    }
                 </td>
             </tr>
 
@@ -180,14 +194,14 @@
 
                 <tr>
                     <td colspan="2">
-                        <input type="button" value="@(processor.ShowOptions ? "-" : "+")" style="cursor:pointer;border:none;background:none;margin-right:10px;" @onclick="@processor.ToggleOptions" />
+                        <input type="button" value="@(processor.ShowOptions ? "-" : "+")" style="cursor:pointer;border:none;background:none;margin-right:5px;" @onclick="@processor.ToggleOptions" />
 
-                        <img src="/img/move_up.png" class="dajet-image-button" @onclick="@(async () => { await MoveUp(processor); })" />
-                        <img src="/img/move_down.png" class="dajet-image-button" @onclick="@(async () => { await MoveDown(processor); })" />
+                        <img src="/img/move_up.png" class="dajet-icon-button" @onclick="@(async () => { await MoveUp(processor); })" />
+                        <img src="/img/move_down.png" class="dajet-icon-button" @onclick="@(async () => { await MoveDown(processor); })" />
                         
                         <span style="font-weight:bold;">@processor.Handler</span>
 
-                        <img src="/img/delete.png" class="dajet-image-button" @onclick="@(async () => { await Remove(processor); })" />
+                        <img src="/img/delete.png" class="dajet-icon-button" @onclick="@(async () => { await Remove(processor); })" />
                     </td>
                 </tr>
 

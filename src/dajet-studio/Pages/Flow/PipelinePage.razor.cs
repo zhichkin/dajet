@@ -77,6 +77,7 @@ namespace DaJet.Studio.Pages.Flow
             else
             {
                 TreeNodeName = await DataSource.GetTreeNodeFullName(_folder);
+                TreeNodeName += "/" + _record.Name;
             }
 
             PipelineRecord pipeline = await DataSource.SelectAsync<PipelineRecord>(_record.Value);
@@ -292,10 +293,26 @@ namespace DaJet.Studio.Pages.Flow
             try
             {
                 Pipeline.IsValid = await DataSource.ValidatePipeline(Pipeline.Model.Identity);
+
+                if (Pipeline.IsValid.HasValue && Pipeline.IsValid.Value)
+                {
+                    Pipeline.Status = string.Empty;
+                }
             }
             catch (Exception error)
             {
                 Pipeline.IsValid = false;
+                Pipeline.Status = ExceptionHelper.GetErrorMessageAndStackTrace(error);
+            }
+        }
+        private async Task ReStartPipeline()
+        {
+            try
+            {
+                await DataSource.ReStartPipeline(Pipeline.Model.Identity);
+            }
+            catch (Exception error)
+            {
                 Pipeline.Status = ExceptionHelper.GetErrorMessageAndStackTrace(error);
             }
         }

@@ -17,56 +17,100 @@
     td {
         border: solid black 1px;
         padding: 5px;
+        word-wrap: break-word;
+        white-space: pre-wrap;
     }
-    .dajet-button {
-        cursor: pointer;
-        margin-left: 5px;
-        min-width: 75px;
-        padding: 0px 5px 0px 5px;
-        border: 1px solid black;
-        border-radius: 5px;
-        -moz-border-radius: 5px;
-        -webkit-border-radius: 5px;
+
+    .flow-layout {
+        display: grid;
+        gap: 1px;
+        padding: 1px;
+        margin: 5px;
+        align-content: start;
+        height: calc(100vh - 60px);
+        grid-template:
+            "pipeline-header" min-content
+            "pipeline-content" / 1fr;
+    }
+
+    .flow-header {
+        display: grid;
+        grid-area: pipeline-header;
+    }
+
+    .flow-content {
+        display: grid;
+        grid-area: pipeline-content;
+        overflow: scroll;
+        white-space: nowrap;
     }
 </style>
 
-<div style="margin:5px;">
-    <span style="font-weight:bold;margin-right:5px;">@TreeNodeName</span>
-    <input type="button" value="✕" style="cursor:pointer;border:none;background:none;" @onclick="NavigateToHomePage">
-    <span style="font-weight:bold;display:block;">@TreeNodeName</span>
-</div>
+<div class="flow-layout">
 
-<div style="margin:5px;overflow:scroll;border:solid black 1px;">
+    <div class="flow-header">
+        <p>
+            <span style="font-weight:bold;margin-right:5px;">@TreeNodeName</span>
+            <img src="/img/refresh.png" class="dajet-icon-button" @onclick="RefreshPipelineList" />
+            <input type="button" value="✕" @onclick="NavigateToHomePage"
+                   style="margin-left:5px;cursor:pointer;border:none;background:none;color:red;font-weight:bold;" />
+        </p>
+    </div>
 
-    <table style="border-collapse:collapse;width:100%;">
+    <div class="flow-content">
+        
+        <table style="border-collapse:collapse;width:100%;">
 
-        <thead>
-            <tr>
-                <th>Конвейер</th>
-                <th>Активация</th>
-                <th>Состояние</th>
-                <th>Начало</th>
-                <th>Завершение</th>
-                <th>Комментарий</th>
-            </tr>
-        </thead>
-
-        <tbody>
-
-            @foreach (PipelineInfo info in Pipelines)
-            {
+            <thead>
                 <tr>
-                    <td>@info.Name</td>
-                    <td>@info.Activation</td>
-                    <td>@info.State</td>
-                    <td>@info.Start.ToString("yyyy-MM-dd HH:mm:ss")</td>
-                    <td>@info.Finish.ToString("yyyy-MM-dd HH:mm:ss")</td>
-                    <td>@info.Status</td>
+                    <th></th>
+                    <th>Конвейер</th>
+                    <th>Активация</th>
+                    <th>Состояние</th>
+                    <th>Начало</th>
+                    <th>Завершение</th>
+                    <th style="min-width:30px;max-width:200px;">Комментарий</th>
                 </tr>
-            }
+            </thead>
 
-        </tbody>
+            <tbody>
 
-    </table>
+                @foreach (PipelineInfo info in Pipelines)
+                {
+                    <tr>
+                        <td>
+                            @if (info.State == PipelineState.Idle)
+                            {
+                                <img src="/img/start.png" class="dajet-icon-button" @onclick="async ()=> await ExecutePipeline(info)" />
+                            }
+                            else if (info.State != PipelineState.None)
+                            {
+                                <img src="/img/stop.png" class="dajet-icon-button" @onclick="async ()=> await DisposePipeline(info)" />
+                            }
+                        </td>
+                        <td>
+                            @if (Uuid == Guid.Empty)
+                            {
+                                @info.Name
+                            }
+                            else
+                            {
+                                <span @onclick="async ()=> await NavigateToPipelinePage(info)"
+                                      style="color:blue;text-decoration:underline;cursor:pointer;">@info.Name</span>
+                            }
+                        </td>
+                        <td>@info.Activation</td>
+                        <td>@info.State</td>
+                        <td>@info.Start.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>@info.Finish.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>@info.Status</td>
+                    </tr>
+                }
+
+            </tbody>
+
+        </table>
+
+    </div>
 
 </div>

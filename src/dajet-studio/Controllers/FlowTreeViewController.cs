@@ -190,7 +190,7 @@ namespace DaJet.Studio.Controllers
 
             if (node.Parent is null)
             {
-                Navigator.NavigateTo($"/dajet-flow");
+                Navigator.NavigateTo($"/flow/table");
             }
             else if (node.Tag is TreeNodeRecord record)
             {
