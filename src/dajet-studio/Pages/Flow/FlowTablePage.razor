@@ -21,6 +21,13 @@
         white-space: pre-wrap;
     }
 
+    .dajet-icon-button {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        vertical-align: middle;
+    }
+
     .flow-layout {
         display: grid;
         gap: 1px;
@@ -53,7 +60,13 @@
             <span style="font-weight:bold;margin-right:5px;">@TreeNodeName</span>
             <img src="/img/refresh.png" class="dajet-icon-button" @onclick="RefreshPipelineList" />
             <input type="button" value="✕" @onclick="NavigateToHomePage"
-                   style="margin-left:5px;cursor:pointer;border:none;background:none;color:red;font-weight:bold;" />
+                   style="margin-left:5px;cursor:pointer;background:none;color:red;font-weight:bold;" />
+        </p>
+        <p style="margin-top:5px;margin-bottom:5px;">
+            <span style="font-weight:bold;margin-right:3px;">Фильтр:</span>
+            <input type="text" size="12" @bind-value="FilterValue" style="border:1px solid black;" />
+            <input type="button" value="✕" @onclick="ClearPipelineTableFilter"
+                   style="margin-left:3px;cursor:pointer;border:none;background:none;" />
         </p>
     </div>
 
@@ -75,35 +88,30 @@
 
             <tbody>
 
-                @foreach (PipelineInfo info in Pipelines)
+                @foreach (PipelineInfoViewModel info in Pipelines)
                 {
+                    @if (!info.IsVisible) { continue; }
+
                     <tr>
                         <td>
-                            @if (info.State == PipelineState.Idle)
+                            @if (info.Model.State == PipelineState.Idle)
                             {
-                                <img src="/img/start.png" class="dajet-icon-button" @onclick="async ()=> await ExecutePipeline(info)" />
+                                <img src="/img/start.png" class="dajet-icon-button" @onclick="async ()=> await ExecutePipeline(info.Model)" />
                             }
-                            else if (info.State != PipelineState.None)
+                            else if (info.Model.State != PipelineState.None)
                             {
-                                <img src="/img/stop.png" class="dajet-icon-button" @onclick="async ()=> await DisposePipeline(info)" />
+                                <img src="/img/stop.png" class="dajet-icon-button" @onclick="async ()=> await DisposePipeline(info.Model)" />
                             }
                         </td>
                         <td>
-                            @if (Uuid == Guid.Empty)
-                            {
-                                @info.Name
-                            }
-                            else
-                            {
-                                <span @onclick="async ()=> await NavigateToPipelinePage(info)"
-                                      style="color:blue;text-decoration:underline;cursor:pointer;">@info.Name</span>
-                            }
+                            <span @onclick="async ()=> await NavigateToPipelinePage(info.Model)"
+                                  style="color:blue;text-decoration:underline;cursor:pointer;">@info.Model.Name</span>
                         </td>
-                        <td>@info.Activation</td>
-                        <td>@info.State</td>
-                        <td>@info.Start.ToString("yyyy-MM-dd HH:mm:ss")</td>
-                        <td>@info.Finish.ToString("yyyy-MM-dd HH:mm:ss")</td>
-                        <td>@info.Status</td>
+                        <td>@info.Model.Activation</td>
+                        <td>@info.Model.State</td>
+                        <td>@info.Model.Start.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>@info.Model.Finish.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>@info.Model.Status</td>
                     </tr>
                 }
 

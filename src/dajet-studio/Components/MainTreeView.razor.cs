@@ -38,6 +38,8 @@ namespace DaJet.Studio.Components
         [Inject] private ExchangeTreeViewController ExchangeTreeViewController { get; set; }
         protected override async Task OnInitializedAsync()
         {
+            Nodes.Add(CreateDbmsRootNode());
+
             var nodes = await DataSource.QueryAsync<TreeNodeRecord>();
 
             foreach (TreeNodeRecord node in nodes)
@@ -47,8 +49,6 @@ namespace DaJet.Studio.Components
                     Nodes.Add(FlowController.CreateRootNode(node));
                 }
             }
-            
-            Nodes.Add(CreateDbmsRootNode());
 
             AppState.RefreshInfoBaseCommand += Refresh;
         }
@@ -63,7 +63,7 @@ namespace DaJet.Studio.Components
         {
             try
             {
-                TreeNodeModel dbms = Nodes.Where(node => node.Title == "dbms").FirstOrDefault();
+                TreeNodeModel dbms = Nodes.Where(node => node.Title == "data").FirstOrDefault();
 
                 if (dbms is not null)
                 {
@@ -83,7 +83,7 @@ namespace DaJet.Studio.Components
             return new TreeNodeModel()
             {
                 Url = $"/md",
-                Title = "dbms",
+                Title = "data",
                 OpenNodeHandler = OpenDbmsNodeHandler
             };
         }
@@ -493,7 +493,7 @@ namespace DaJet.Studio.Components
         #region "FILTER TREE VIEW"
         protected async Task FilterTreeView(string filter)
         {
-            TreeNodeModel dbms = Nodes.Where(node => node.Title == "dbms").FirstOrDefault();
+            TreeNodeModel dbms = Nodes.Where(node => node.Title == "data").FirstOrDefault();
 
             if (dbms is null) { return; }
 

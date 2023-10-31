@@ -1,16 +1,23 @@
 ﻿using DaJet.Flow.Model;
 using DaJet.Model;
 using Microsoft.AspNetCore.Components;
-using System.Xml.Linq;
+using System.Data;
+using System.Globalization;
 
 namespace DaJet.Studio.Pages.Flow
 {
     public partial class FlowTablePage : ComponentBase
     {
+        private string _filter;
         private TreeNodeRecord _folder;
         [Parameter] public Guid Uuid { get; set; }
         private string TreeNodeName { get; set; }
-        private List<PipelineInfo> Pipelines { get; set; } = new();
+        private string FilterValue
+        {
+            get { return _filter; }
+            set { _filter = value; FilterPipelineTable(); }
+        }
+        private List<PipelineInfoViewModel> Pipelines { get; set; } = new();
         protected void NavigateToHomePage() { Navigator.NavigateTo("/"); }
         protected override async Task OnParametersSetAsync()
         {
@@ -23,7 +30,11 @@ namespace DaJet.Studio.Pages.Flow
             if (Uuid == Guid.Empty)
             {
                 TreeNodeName = "/flow";
-                Pipelines = await DataSource.GetPipelineInfo();
+                List<PipelineInfo> list = await DataSource.GetPipelineInfo();
+                foreach(PipelineInfo info in list)
+                {
+                    Pipelines.Add(new PipelineInfoViewModel(info));
+                }
                 return;
             }
 
@@ -44,7 +55,7 @@ namespace DaJet.Studio.Pages.Flow
 
                 PipelineInfo info = await DataSource.GetPipelineInfo(node.Value.Identity);
 
-                Pipelines.Add(info);
+                Pipelines.Add(new PipelineInfoViewModel(info));
             }
         }
         private async Task ExecutePipeline(PipelineInfo pipeline)
@@ -68,22 +79,75 @@ namespace DaJet.Studio.Pages.Flow
         }
         private async Task NavigateToPipelinePage(PipelineInfo pipeline)
         {
-            var nodes = await DataSource.QueryAsync<TreeNodeRecord>(_folder.GetEntity());
+            int typeCode = DomainModel.GetTypeCode(typeof(PipelineRecord));
 
-            TreeNodeRecord record = null;
+            string query = "SELECT uuid FROM maintree WHERE entity_type = @code AND entity_uuid = @uuid;";
 
-            foreach (var node in nodes)
+            Dictionary<string, object> parameters = new()
             {
-                if (node.Value.Identity == pipeline.Uuid)
-                {
-                    record = node; break;
-                }
-            }
+                { "code", typeCode },
+                { "uuid", pipeline.Uuid }
+            };
+
+            List<IDataRecord> list = await DataSource.QueryAsync(query, parameters);
+
+            if (list is null || list.Count == 0) { return; }
+
+            Guid identity = list[0].GetGuid(0);
+
+            TreeNodeRecord record = await DataSource.SelectAsync<TreeNodeRecord>(identity);
 
             if (record is not null)
             {
                 Navigator.NavigateTo($"/flow/pipeline/{record.Identity.ToString().ToLower()}");
             }
         }
+        private void FilterPipelineTable()
+        {
+            CultureInfo culture;
+            try
+            {
+                culture = CultureInfo.GetCultureInfo("en-US");
+            }
+            catch (CultureNotFoundException)
+            {
+                culture = CultureInfo.CurrentUICulture;
+            }
+
+            if (string.IsNullOrWhiteSpace(_filter))
+            {
+                ClearPipelineTableFilter();
+            }
+            else
+            {
+                ApplyPipelineTableFilter(in culture, in _filter);
+            }
+        }
+        private void ClearPipelineTableFilter()
+        {
+            _filter = string.Empty;
+
+            foreach (PipelineInfoViewModel model in Pipelines)
+            {
+                model.IsVisible = true;
+            }
+        }
+        private void ApplyPipelineTableFilter(in CultureInfo culture, in string filter)
+        {
+            foreach (PipelineInfoViewModel info in Pipelines)
+            {
+                info.IsVisible = culture.CompareInfo.IndexOf(info.Model.Name, filter, CompareOptions.IgnoreCase) > -1;
+            }
+        }
+    }
+    internal class PipelineInfoViewModel
+    {
+        private readonly PipelineInfo _model;
+        internal PipelineInfoViewModel(PipelineInfo pipeline)
+        {
+            _model = pipeline;
+        }
+        internal PipelineInfo Model { get { return _model; } }
+        internal bool IsVisible { get; set; } = true;
     }
 }

@@ -2,6 +2,7 @@
 using DaJet.Flow.Model;
 using DaJet.Json;
 using DaJet.Model;
+using System.Data;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
@@ -20,6 +21,7 @@ namespace DaJet.Http.Client
         };
         static DaJetHttpClient()
         {
+            JsonOptions.Converters.Add(new DataRecordJsonConverter());
             JsonOptions.Converters.Add(new DictionaryJsonConverter());
         }
         private readonly HttpClient _client;
@@ -182,19 +184,16 @@ namespace DaJet.Http.Client
 
             return list;
         }
-        
-        private async Task<T> ExecuteScalar<T>(string command, Dictionary<string, object> parameters)
+
+        public async Task<List<IDataRecord>> QueryAsync(string query, Dictionary<string, object> parameters)
         {
-            string url = $"/home/execute/{command}";
+            string url = $"/home/query";
+
+            parameters.Add("Query", query);
 
             HttpResponseMessage response = await _client.PostAsJsonAsync(url, parameters, JsonOptions);
 
-            T result = await response.Content.ReadFromJsonAsync<T>();
-
-            if (result is EntityObject entity)
-            {
-                entity.MarkAsOriginal();
-            }
+            List<IDataRecord> result = await response.Content.ReadFromJsonAsync<List<IDataRecord>>(JsonOptions);
 
             return result;
         }
@@ -234,6 +233,17 @@ namespace DaJet.Http.Client
             }
 
             return list;
+        }
+        public async Task DeletePipeline(Guid uuid)
+        {
+            try
+            {
+                HttpResponseMessage response = await _client.DeleteAsync($"/flow/{uuid.ToString().ToLower()}");
+            }
+            catch
+            {
+                throw;
+            }
         }
         public async Task ExecutePipeline(Guid uuid)
         {

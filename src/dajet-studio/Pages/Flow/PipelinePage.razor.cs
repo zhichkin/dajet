@@ -210,6 +210,12 @@ namespace DaJet.Studio.Pages.Flow
         }
         private async Task Remove(ProcessorViewModel processor)
         {
+            string message = $"Удалить блок \"{processor.Handler}\" ?";
+
+            bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", message);
+
+            if (!confirmed) { return; }
+
             int count = Pipeline.Processors.Count;
 
             if (count == 0) { return; }

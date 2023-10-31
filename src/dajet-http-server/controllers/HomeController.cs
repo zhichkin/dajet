@@ -4,6 +4,9 @@ using DaJet.Flow.Model;
 using DaJet.Json;
 using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Data;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -23,6 +26,7 @@ namespace DaJet.Http.Controllers
         };
         static HomeController()
         {
+            JsonOptions.Converters.Add(new DataRecordJsonConverter());
             JsonOptions.Converters.Add(new DictionaryJsonConverter());
         }
         private readonly IDataSource _source;
@@ -79,6 +83,31 @@ namespace DaJet.Http.Controllers
             Type listType = typeof(List<>).MakeGenericType(type);
 
             string json = JsonSerializer.Serialize(list, listType, JsonOptions);
+
+            return Content(json, "application/json", Encoding.UTF8);
+        }
+
+        [HttpPost("query")] public async Task<ActionResult> Query()
+        {
+            HttpRequest request = HttpContext.Request;
+
+            if (request.ContentLength == 0)
+            {
+                return BadRequest();
+            }
+            
+            var parameters = await JsonSerializer.DeserializeAsync<Dictionary<string, object>>(request.Body, JsonOptions);
+
+            if (!parameters.TryGetValue("Query", out object parameter) || parameter is not string query)
+            {
+                return BadRequest();
+            }
+
+            _ = parameters.Remove("Query");
+
+            List<IDataRecord> list = _source.Query(query, parameters);
+
+            string json = JsonSerializer.Serialize(list, JsonOptions);
 
             return Content(json, "application/json", Encoding.UTF8);
         }

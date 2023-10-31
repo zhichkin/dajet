@@ -4,6 +4,7 @@ using DaJet.Studio.Components;
 using DaJet.Studio.Pages;
 using DaJet.Studio.Pages.Flow;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using MudBlazor;
 using System.ComponentModel;
 
@@ -11,11 +12,13 @@ namespace DaJet.Studio.Controllers
 {
     public sealed class FlowTreeViewController
     {
+        private IJSRuntime JS;
         private IDomainModel DomainModel { get; set; }
         private DaJetHttpClient DataSource { get; set; }
         private NavigationManager Navigator { get; set; }
-        public FlowTreeViewController(IDomainModel domain, DaJetHttpClient client, NavigationManager navigator)
+        public FlowTreeViewController(IDomainModel domain, DaJetHttpClient client, NavigationManager navigator, IJSRuntime js)
         {
+            JS = js;
             DomainModel = domain;
             DataSource = client;
             Navigator = navigator;
@@ -251,25 +254,48 @@ namespace DaJet.Studio.Controllers
         }
         private async Task DeleteFolder(TreeNodeModel node)
         {
-            if (node.Tag is not TreeNodeRecord record)
+            string message = $"Удалить каталог \"{node.Title}\" ?";
+
+            bool confirmed = await JS.InvokeAsync<bool>("confirm", message);
+
+            if (!confirmed) { return; }
+
+            await DeleteRecursively(node);
+
+            node.Parent.Nodes.Remove(node);
+
+            node.IsVisible = false;
+        }
+        private async Task DeleteTreeNode(TreeNodeModel node)
+        {
+            if (node.Tag is not TreeNodeRecord treeNode)
             {
                 return;
             }
 
-            try
+            if (treeNode.Value.Identity != Guid.Empty)
             {
-                await DataSource.DeleteAsync(record.GetEntity());
+                int typeCode = DomainModel.GetTypeCode(typeof(PipelineRecord));
 
-                node.Parent.Nodes.Remove(node);
+                await DataSource.DeleteAsync(treeNode.Value);
 
-                node.IsVisible = false;
+                if (treeNode.Value.TypeCode == typeCode)
+                {
+                    await DataSource.DeletePipeline(treeNode.Value.Identity);
+                }
             }
-            catch
-            {
-                throw;
-            }
+
+            await DataSource.DeleteAsync(treeNode.GetEntity());
         }
-        
+        private async Task DeleteRecursively(TreeNodeModel parent)
+        {
+            foreach (TreeNodeModel child in parent.Nodes)
+            {
+                await DeleteRecursively(child);
+            }
+            await DeleteTreeNode(parent);
+        }
+
         private async Task CreatePipeline(TreeNodeModel node)
         {
             if (node.Tag is not TreeNodeRecord parent || !parent.IsFolder)
@@ -322,16 +348,29 @@ namespace DaJet.Studio.Controllers
         }
         private async Task DeletePipeline(TreeNodeModel node)
         {
+            string message = $"Удалить узел \"{node.Title}\" ?";
+
+            bool confirmed = await JS.InvokeAsync<bool>("confirm", message);
+
+            if (!confirmed) { return; }
+
             if (node.Tag is not TreeNodeRecord treeNode)
             {
                 return;
             }
+
+            int typeCode = DomainModel.GetTypeCode(typeof(PipelineRecord));
 
             try
             {
                 if (treeNode.Value.Identity != Guid.Empty)
                 {
                     await DataSource.DeleteAsync(treeNode.Value);
+
+                    if (treeNode.Value.TypeCode == typeCode)
+                    {
+                        await DataSource.DeletePipeline(treeNode.Value.Identity);
+                    }
                 }
 
                 await DataSource.DeleteAsync(treeNode.GetEntity());

@@ -1,5 +1,7 @@
 ﻿using DaJet.Model;
+using Microsoft.Data.Sqlite;
 using System.Collections;
+using System.Data;
 
 namespace DaJet.Data
 {
@@ -80,6 +82,50 @@ namespace DaJet.Data
             }
 
             return null;
+        }
+        public List<IDataRecord> Query(string query, Dictionary<string, object> parameters)
+        {
+            List<IDataRecord> list = new();
+
+            using (SqliteConnection connection = new(_options.ConnectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = query;
+
+                    foreach(var parameter in parameters)
+                    {
+                        if (parameter.Value is Guid uuid)
+                        {
+                            command.Parameters.AddWithValue(parameter.Key, uuid.ToString().ToLower());
+                        }
+                        else
+                        {
+                            command.Parameters.AddWithValue(parameter.Key, parameter.Value);
+                        }
+                    }
+
+                    using (SqliteDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            DataRecord record = new();
+                            
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                record.SetValue(reader.GetName(i), reader.GetValue(i));
+                            }
+
+                            list.Add(record);
+                        }
+                        reader.Close();
+                    }
+                }
+            }
+
+            return list;
         }
     }
 }
