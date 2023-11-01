@@ -97,16 +97,16 @@ namespace DaJet.Flow
 
             if (pipeline is not null)
             {
+                _pipelines.Add(pipeline.Uuid, pipeline);
+
                 PipelineInfo info = new()
                 {
                     Uuid = options.Uuid,
                     Name = options.Name,
                     Activation = options.Activation
                 };
-
-                _monitor.Add(pipeline.Uuid, info);
-                _pipelines.Add(pipeline.Uuid, pipeline);
-
+                _ = _monitor.TryAdd(pipeline.Uuid, info);
+                
                 _logger?.LogInformation("Pipeline [{name}] created successfully.", options.Name);
 
                 if (options.Activation == ActivationMode.Auto)
@@ -147,14 +147,14 @@ namespace DaJet.Flow
         }
         private async Task RemovePipeline(Guid uuid)
         {
+            // synchronize in-memory cache and monitor
+            _ = _monitor.Remove(uuid);
+            _ = _pipelines.Remove(uuid);
+
             if (_pipelines.TryGetValue(uuid, out IPipeline pipeline))
             {
                 await pipeline.DisposeAsync();
             }
-
-            // synchronize in-memory cache and monitor
-            _ = _monitor.Remove(uuid);
-            _ = _pipelines.Remove(uuid);
         }
 
         public void Dispose()
