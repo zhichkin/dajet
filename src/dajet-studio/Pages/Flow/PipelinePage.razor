@@ -96,7 +96,7 @@
                     <td class="dajet-cell"><span style="font-weight:bold;">Активация:</span></td>
                     <td class="dajet-cell">
                         <select @bind="@Pipeline.Activation">
-                            @foreach (PipelineMode mode in Enum.GetValues<PipelineMode>())
+                            @foreach (ActivationMode mode in Enum.GetValues<ActivationMode>())
                             {
                                 <option value="@mode">@mode.ToString()</option>
                             }

@@ -1,4 +1,4 @@
-﻿using DaJet.Flow.Model;
+﻿using DaJet.Model;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using System.Net.Http.Json;

@@ -10,7 +10,7 @@ namespace DaJet.Studio.Pages.Flow
         [Parameter] public Guid Uuid { get; set; }
         private string TreeNodeName { get; set; }
         private string PipelineName { get; set; }
-        private List<ProcessorInfo> Processors { get; set; } = new();
+        private List<PipelineBlock> PipelineBlocks { get; set; } = new();
         private void NavigateToPipelinePage()
         {
             Navigator.NavigateTo($"/flow/pipeline/{_folder.Identity}");
@@ -39,9 +39,9 @@ namespace DaJet.Studio.Pages.Flow
                 }
             }
 
-            Processors = await DataSource.GetAvailableProcessors();
+            PipelineBlocks = await DataSource.GetAvailableProcessors();
         }
-        private async Task SelectProcessorForPipeline(ProcessorInfo info)
+        private async Task SelectProcessorForPipeline(PipelineBlock info)
         {
             int ordinal = 0;
             Entity pipeline = _record.GetEntity();
@@ -74,7 +74,7 @@ namespace DaJet.Studio.Pages.Flow
 
                 Entity owner = processor.GetEntity();
 
-                foreach (OptionInfo option in info.Options)
+                foreach (OptionItem option in info.Options)
                 {
                     OptionRecord record = DomainModel.New<OptionRecord>();
 

@@ -1,15 +1,15 @@
 ﻿using Confluent.Kafka;
 using DaJet.Data;
+using DaJet.Model;
 using Google.Protobuf;
 using System.Data;
 using System.Reflection;
-using System.Runtime.Loader;
 using System.Text;
 
 namespace DaJet.Flow.Kafka
 {
     // https://protobuf.dev/getting-started/csharptutorial/
-    [PipelineBlock] public sealed class MessageToRecordTransformer : TransformerBlock<ConsumeResult<byte[], byte[]>, IDataRecord>
+    public sealed class MessageToRecordTransformer : TransformerBlock<ConsumeResult<byte[], byte[]>, IDataRecord>
     {
         private const string CONTENT_TYPE_PROTOBUF = "protobuf";
 
@@ -17,21 +17,27 @@ namespace DaJet.Flow.Kafka
         private MethodInfo _parseFrom = null;
         private readonly object[] _parameters = new object[1];
         private readonly DataRecord _output = new();
-        [Option] public string PackageName { get; set; } = string.Empty;
-        [Option] public string MessageType { get; set; } = string.Empty;
-        [Option] public string ContentType { get; set; } = string.Empty;
-        protected override void _Configure()
+        private readonly IAssemblyManager _manager;
+        private readonly MessageToRecordTransformerOptions _options;
+        public MessageToRecordTransformer(MessageToRecordTransformerOptions options, IAssemblyManager manager)
         {
-            if (string.IsNullOrWhiteSpace(ContentType) || ContentType != CONTENT_TYPE_PROTOBUF)
+            _options = options ?? throw new ArgumentNullException(nameof(options));
+            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
+
+            Configure(in _options);
+        }
+        private void Configure(in MessageToRecordTransformerOptions options)
+        {
+            if (string.IsNullOrWhiteSpace(options.ContentType) || options.ContentType != CONTENT_TYPE_PROTOBUF)
             {
                 return;
             }
 
             Assembly package = null;
 
-            foreach (Assembly assembly in AssemblyLoadContext.Default.Assemblies)
+            foreach (Assembly assembly in _manager.Assemblies)
             {
-                if (assembly.GetName().Name == PackageName)
+                if (assembly.GetName().Name == options.PackageName)
                 {
                     package = assembly; break;
                 }
@@ -39,14 +45,14 @@ namespace DaJet.Flow.Kafka
 
             if (package is null)
             {
-                throw new InvalidOperationException($"Package not found [{PackageName}]");
+                throw new InvalidOperationException($"Package not found [{options.PackageName}]");
             }
 
-            Type messageType = package.GetType(MessageType);
+            Type messageType = package.GetType(options.MessageType);
 
             if (messageType is null)
             {
-                throw new InvalidOperationException($"Message type not found [{MessageType}]");
+                throw new InvalidOperationException($"Message type not found [{options.MessageType}]");
             }
 
             BindingFlags flags = BindingFlags.Public | BindingFlags.Static | BindingFlags.GetProperty;
@@ -54,7 +60,7 @@ namespace DaJet.Flow.Kafka
 
             if (_parser is null)
             {
-                throw new InvalidOperationException($"Message parser not found [{MessageType}]");
+                throw new InvalidOperationException($"Message parser not found [{options.MessageType}]");
             }
 
             flags = BindingFlags.Public | BindingFlags.Instance;
@@ -62,12 +68,12 @@ namespace DaJet.Flow.Kafka
 
             if (_parseFrom is null)
             {
-                throw new InvalidOperationException($"Method \"ParseFrom\" not found [{MessageType}]");
+                throw new InvalidOperationException($"Method \"ParseFrom\" not found [{options.MessageType}]");
             }
         }
         protected override void _Transform(in ConsumeResult<byte[], byte[]> input, out IDataRecord output)
         {
-            if (ContentType != CONTENT_TYPE_PROTOBUF)
+            if (_options.ContentType != CONTENT_TYPE_PROTOBUF)
             {
                 _output.SetValue("type", input.Topic);
                 _output.SetValue("uuid", DeserializeKey(input.Message.Key));

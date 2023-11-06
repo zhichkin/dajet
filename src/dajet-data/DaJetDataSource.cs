@@ -12,8 +12,8 @@ namespace DaJet.Data
         private readonly Dictionary<Type, IDataMapper> _mappers = new();
         public DaJetDataSource(DataSourceOptions options, IDomainModel domain)
         {
-            _domain = domain;
-            _options = options;
+            _domain = domain ?? throw new ArgumentNullException(nameof(domain));
+            _options = options ?? throw new ArgumentNullException(nameof(options));
 
             string connectionString = _options.ConnectionString;
 

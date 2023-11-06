@@ -1,15 +1,38 @@
-﻿using System.Reflection;
+﻿using DaJet.Model;
+using System.Reflection;
 using System.Text;
 
 namespace DaJet.Flow.Kafka
 {
     internal static class ConfigHelper
     {
-        internal static Dictionary<string, string> CreateConfigFromOptions(in object block)
+        internal static string GetOptionKey(string propertyName)
         {
-            if (block is null) { throw new ArgumentNullException(nameof(block)); }
+            StringBuilder key = new();
 
-            Type type = block.GetType();
+            for (int i = 0; i < propertyName.Length; i++)
+            {
+                char chr = propertyName[i];
+
+                if (char.IsUpper(chr))
+                {
+                    if (i > 0) { key.Append('.'); }
+
+                    key.Append(char.ToLowerInvariant(chr));
+                }
+                else
+                {
+                    key.Append(chr);
+                }
+            }
+
+            return key.ToString();
+        }
+        internal static Dictionary<string, string> CreateConfigFromOptions(in OptionsBase options)
+        {
+            if (options is null) { throw new ArgumentNullException(nameof(options)); }
+
+            Type type = options.GetType();
 
             string value;
             StringBuilder option = new();
@@ -17,9 +40,9 @@ namespace DaJet.Flow.Kafka
 
             foreach (PropertyInfo property in type.GetProperties())
             {
-                if (property.GetCustomAttribute<OptionAttribute>() is not null)
+                if (property.CanRead)
                 {
-                    value = property.GetValue(block)?.ToString();
+                    value = property.GetValue(options)?.ToString();
 
                     if (string.IsNullOrWhiteSpace(value)) { continue; }
 

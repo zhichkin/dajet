@@ -38,7 +38,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\dajet-flow-model\dajet-flow-model.csproj" />
     <ProjectReference Include="..\dajet-http-client\dajet-http-client.csproj" />
     <ProjectReference Include="..\dajet-model\dajet-model.csproj" />
   </ItemGroup>

@@ -1,4 +1,4 @@
-﻿using DaJet.Flow.Model;
+﻿using DaJet.Model;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DaJet.Flow
@@ -16,26 +16,24 @@ namespace DaJet.Flow
         private CancellationToken _token;
         private CancellationTokenSource _cts;
         private CancellationTokenRegistration _ctr;
+        private readonly PipelineOptions _options;
         private readonly ISourceBlock _source;
         private readonly IPipelineManager _manager;
-        [Option] public int SleepTimeout { get; set; } = 60; // seconds
-        [Option] public bool ShowStackTrace { get; set; }
         [ActivatorUtilitiesConstructor] public Pipeline(PipelineOptions options, ISourceBlock source, IPipelineManager manager)
         {
-            Uuid = options.Uuid;
-            Name = options.Name;
             _source = source ?? throw new ArgumentNullException(nameof(source));
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
+            _options = options ?? throw new ArgumentNullException(nameof(options));
+
+            Uuid = options.Owner.Identity;
+            Name = options.Name;
         }
         public Guid Uuid { get; private set; }
         public string Name { get; private set; }
-        protected override void _Configure()
-        {
-            if (SleepTimeout < 0) { SleepTimeout = 0; } // run once
-        }
         private bool CanExecute { get { return Interlocked.CompareExchange(ref _state, 1, 0) == 0; } }
         private bool CanDispose { get { return Interlocked.CompareExchange(ref _state, 3, 2) == 2; } }
-        private void SetPipelineState(PipelineState state) { _ = Interlocked.Exchange(ref _state, (int)state); }
+        private void SetIdleState() { _ = Interlocked.Exchange(ref _state, 0); }
+        private void SetWorkingState() { _ = Interlocked.Exchange(ref _state, 2); }
         public Task ExecuteAsync(CancellationToken token)
         {
             if (CanExecute)
@@ -46,7 +44,7 @@ namespace DaJet.Flow
 
                 _task = Task.Factory.StartNew(ExecutePipeline, TaskCreationOptions.LongRunning);
 
-                SetPipelineState(PipelineState.Working);
+                SetWorkingState();
             }
 
             return _task;
@@ -65,7 +63,7 @@ namespace DaJet.Flow
                 }
                 catch (Exception error)
                 {
-                    string errorMessage = ShowStackTrace
+                    string errorMessage = _options.ShowStackTrace
                         ? ExceptionHelper.GetErrorMessageAndStackTrace(error)
                         : ExceptionHelper.GetErrorMessage(error);
                     _manager.UpdatePipelineStatus(Uuid, errorMessage);
@@ -74,14 +72,14 @@ namespace DaJet.Flow
 
                 _manager.UpdatePipelineFinishTime(Uuid, DateTime.Now);
 
-                if (SleepTimeout == 0) { break; } // run once
+                if (_options.SleepTimeout == 0) { break; } // run once
 
                 if (_token.IsCancellationRequested) { break; }
                 
                 try
                 {
                     _manager.UpdatePipelineState(Uuid, PipelineState.Sleeping);
-                    Task.Delay(TimeSpan.FromSeconds(SleepTimeout)).Wait(_token);
+                    Task.Delay(TimeSpan.FromSeconds(_options.SleepTimeout)).Wait(_token);
                 }
                 catch // OperationCanceledException
                 {
@@ -114,7 +112,7 @@ namespace DaJet.Flow
             
             DisposePipeline(); // dispose pipeline source block
 
-            SetPipelineState(PipelineState.Idle);
+            SetIdleState();
         }
         public void Dispose()
         {

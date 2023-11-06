@@ -1,5 +1,4 @@
 ﻿using DaJet.Data;
-using DaJet.Flow.Model;
 using DaJet.Json;
 using DaJet.Model;
 using System.Data;
@@ -316,11 +315,11 @@ namespace DaJet.Http.Client
 
             return name;
         }
-        public async Task<List<ProcessorInfo>> GetAvailableProcessors()
+        public async Task<List<PipelineBlock>> GetAvailableProcessors()
         {
             HttpResponseMessage response = await _client.GetAsync($"/home/get-available-processors");
 
-            var list = await response.Content.ReadFromJsonAsync<List<ProcessorInfo>>();
+            var list = await response.Content.ReadFromJsonAsync<List<PipelineBlock>>();
 
             return list;
         }

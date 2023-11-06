@@ -1,5 +1,4 @@
-﻿using DaJet.Flow.Model;
-using DaJet.Model;
+﻿using DaJet.Model;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
@@ -364,7 +363,7 @@ namespace DaJet.Studio.Pages.Flow
             get { return _model?.Activation.ToString(); }
             set
             {
-                _model.Activation = Enum.Parse<PipelineMode>(value);
+                _model.Activation = Enum.Parse<ActivationMode>(value);
 
                 if (!_model.IsOriginal())
                 {

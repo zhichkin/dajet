@@ -76,11 +76,11 @@
 
             <tbody>
 
-                @foreach (ProcessorInfo info in Processors)
+                @foreach (PipelineBlock block in PipelineBlocks)
                 {
-                    <tr @onclick="@(async () => { await SelectProcessorForPipeline(info); })">
-                        <td>@info.Handler</td>
-                        <td>@info.Message</td>
+                    <tr @onclick="@(async () => { await SelectProcessorForPipeline(block); })">
+                        <td>@block.Handler</td>
+                        <td>@block.Message</td>
                     </tr>
                 }
 

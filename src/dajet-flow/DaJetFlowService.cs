@@ -54,7 +54,9 @@ namespace DaJet.Flow
         }
         public override void Dispose()
         {
-            _manager.Dispose(); base.Dispose();
+            _manager.Dispose();
+            
+            base.Dispose();
 
             _logger?.LogInformation("[DaJetFlowService] disposed");
         }

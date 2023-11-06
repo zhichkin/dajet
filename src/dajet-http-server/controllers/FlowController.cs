@@ -1,8 +1,8 @@
 ﻿using DaJet.Data;
 using DaJet.Flow;
-using DaJet.Flow.Model;
 using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
@@ -22,17 +22,13 @@ namespace DaJet.Http.Controllers
         private readonly IDataSource _source;
         private readonly IDomainModel _domain;
         private readonly IPipelineManager _manager;
-        private readonly IPipelineBuilder _builder;
-        private readonly IPipelineOptionsProvider _options;
-        public FlowController(
-            IDomainModel domain, IDataSource source,
-            IPipelineOptionsProvider options, IPipelineManager manager, IPipelineBuilder builder)
+        private readonly IAssemblyManager _resolver;
+        public FlowController(IDomainModel domain, IDataSource source, IPipelineManager manager, IAssemblyManager resolver)
         {
             _domain = domain ?? throw new ArgumentNullException(nameof(domain));
             _source = source ?? throw new ArgumentNullException(nameof(source));
-            _options = options ?? throw new ArgumentNullException(nameof(options));
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
-            _builder = builder ?? throw new ArgumentNullException(nameof(builder));
+            _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
         }
         [HttpGet("")] public ActionResult SelectPipelines()
         {
@@ -42,9 +38,9 @@ namespace DaJet.Http.Controllers
 
             return Content(json);
         }
-        [HttpGet("blocks")] public ActionResult SelectPipelineBlocks()
+        [HttpGet("blocks")] public ActionResult GetAvailableHandlers()
         {
-            List<PipelineBlock> list = _builder.GetPipelineBlocks();
+            List<PipelineBlock> list = _manager.GetAvailableHandlers();
 
             string json = JsonSerializer.Serialize(list, _settings);
 
@@ -52,36 +48,19 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("{pipeline:guid}")] public ActionResult SelectPipeline([FromRoute] Guid pipeline)
         {
-            PipelineOptions entity = _options.Select(pipeline);
+            Entity entity = _domain.GetEntity<PipelineRecord>(pipeline);
 
-            if (entity is null) { return NotFound(); }
+            EntityObject record = _source.Select(entity);
 
-            foreach (OptionItem option in _builder.GetOptions(typeof(Pipeline)))
-            {
-                if (entity.Options.Where(item => item.Name == option.Name).FirstOrDefault() is null)
-                {
-                    entity.Options.Add(option);
-                }
-            }
+            string json = JsonSerializer.Serialize(record, typeof(PipelineRecord), _settings);
 
-            foreach (PipelineBlock block in entity.Blocks)
-            {
-                foreach (OptionItem option in _builder.GetOptions(block.Handler))
-                {
-                    if (block.Options.Where(item => item.Name == option.Name).FirstOrDefault() is null)
-                    {
-                        block.Options.Add(option);
-                    }
-                }
-            }
-
-            string json = JsonSerializer.Serialize(entity, _settings);
-
-            return Content(json);
+            return Content(json, "application/json", Encoding.UTF8);
         }
         [HttpGet("options/{owner}")] public ActionResult SelectOwnerOptions([FromRoute] string owner)
         {
-            List<OptionItem> list = _builder.GetOptions(owner);
+            Type type = _resolver.Resolve(owner);
+
+            List<OptionItem> list = _manager.GetAvailableOptions(type);
 
             string json = JsonSerializer.Serialize(list, _settings);
 
@@ -90,29 +69,35 @@ namespace DaJet.Http.Controllers
 
         [HttpPut("execute/{pipeline:guid}")] public ActionResult ExecutePipeline([FromRoute] Guid pipeline)
         {
-            PipelineOptions entity = _options.Select(pipeline);
+            Entity entity = _domain.GetEntity<PipelineRecord>(pipeline);
 
-            if (entity is null) { return NotFound(); }
+            EntityObject record = _source.Select(entity);
 
-            _manager.ExecutePipeline(entity.Uuid);
+            if (record is null) { return NotFound(); }
+
+            _manager.ExecutePipeline(pipeline);
 
             return Ok();
         }
         [HttpPut("dispose/{pipeline:guid}")] public ActionResult DisposePipeline([FromRoute] Guid pipeline)
         {
-            PipelineOptions entity = _options.Select(pipeline);
+            Entity entity = _domain.GetEntity<PipelineRecord>(pipeline);
 
-            if (entity is null) { return NotFound(); }
+            EntityObject record = _source.Select(entity);
 
-            _manager.DisposePipeline(entity.Uuid);
+            if (record is null) { return NotFound(); }
+
+            _manager.DisposePipeline(pipeline);
 
             return Ok();
         }
         [HttpPut("restart/{pipeline:guid}")] public ActionResult ReStartPipeline([FromRoute] Guid pipeline)
         {
-            PipelineOptions options = _options.Select(pipeline);
+            Entity entity = _domain.GetEntity<PipelineRecord>(pipeline);
 
-            if (options is null) { return NotFound(); }
+            EntityObject record = _source.Select(entity);
+
+            if (record is null) { return NotFound(); }
 
             try
             {
@@ -127,13 +112,15 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("validate/{pipeline:guid}")] public ActionResult ValidatePipeline([FromRoute] Guid pipeline)
         {
-            PipelineOptions options = _options.Select(pipeline);
+            Entity entity = _domain.GetEntity<PipelineRecord>(pipeline);
 
-            if (options is null) { return NotFound(); }
+            EntityObject record = _source.Select(entity);
+
+            if (record is null) { return NotFound(); }
 
             try
             {
-                _ = _builder.Build(options);
+                _manager.ValidatePipeline(pipeline);
             }
             catch (Exception error)
             {
@@ -145,61 +132,67 @@ namespace DaJet.Http.Controllers
 
         [HttpPost("")] public ActionResult Insert([FromBody] PipelineOptions options)
         {
-            if (string.IsNullOrWhiteSpace(options.Name))
-            {
-                return BadRequest("Неверно указаны параметры!");
-            }
+            return NotFound();
 
-            _ = _options.Insert(in options);
+            //if (string.IsNullOrWhiteSpace(options.Name))
+            //{
+            //    return BadRequest("Неверно указаны параметры!");
+            //}
 
-            int typeCode = _domain.GetTypeCode(typeof(TreeNodeRecord));
+            //_ = _options.Insert(in options);
 
-            if (typeCode > 0)
-            {
-                var list = _source.Select(typeCode, Entity.Undefined);
+            //int typeCode = _domain.GetTypeCode(typeof(TreeNodeRecord));
 
-                if (list is List<TreeNodeRecord> nodes)
-                {
-                    TreeNodeRecord flowNode = nodes.Where(n => n.Name == "flow").FirstOrDefault();
+            //if (typeCode > 0)
+            //{
+            //    var list = _source.Select(typeCode, Entity.Undefined);
 
-                    if (flowNode is not null)
-                    {
-                        typeCode = _domain.GetTypeCode(typeof(PipelineRecord));
+            //    if (list is List<TreeNodeRecord> nodes)
+            //    {
+            //        TreeNodeRecord flowNode = nodes.Where(n => n.Name == "flow").FirstOrDefault();
 
-                        var entity = _source.Select(new Entity(typeCode, options.Uuid));
+            //        if (flowNode is not null)
+            //        {
+            //            typeCode = _domain.GetTypeCode(typeof(PipelineRecord));
 
-                        if (entity is PipelineRecord pipeline)
-                        {
-                            TreeNodeRecord treeNode = _domain.New<TreeNodeRecord>();
+            //            var entity = _source.Select(new Entity(typeCode, options.Uuid));
 
-                            treeNode.Name = pipeline.Name;
-                            treeNode.Value = pipeline.GetEntity();
-                            treeNode.Parent = flowNode.GetEntity();
-                            treeNode.IsFolder = false;
+            //            if (entity is PipelineRecord pipeline)
+            //            {
+            //                TreeNodeRecord treeNode = _domain.New<TreeNodeRecord>();
 
-                            _source.Create(treeNode);
-                        }
-                    }
-                }
-            }
+            //                treeNode.Name = pipeline.Name;
+            //                treeNode.Value = pipeline.GetEntity();
+            //                treeNode.Parent = flowNode.GetEntity();
+            //                treeNode.IsFolder = false;
+
+            //                _source.Create(treeNode);
+            //            }
+            //        }
+            //    }
+            //}
             
-            return Created($"{options.Name}", $"{options.Uuid}");
+            //return Created($"{options.Name}", $"{options.Uuid}");
         }
-        [HttpPut("")] public async Task<ActionResult> Update([FromBody] PipelineOptions options)
+        [HttpPut("")] public ActionResult Update([FromBody] PipelineOptions options)
         {
-            PipelineOptions current = _options.Select(options.Uuid);
+            return NotFound();
 
-            if (current is null) { return NotFound(); }
+            //PipelineOptions current = _options.Select(options.Uuid);
 
-            _ = _options.Update(in options);
+            //if (current is null) { return NotFound(); }
 
-            await _manager.ReStartPipeline(options.Uuid);
+            //_ = _options.Update(in options);
 
-            return Ok();
+            //await _manager.ReStartPipeline(options.Uuid);
+
+            //return Ok();
         }
-        [HttpDelete("{pipeline:guid}")] public async Task<ActionResult> Delete([FromRoute] Guid pipeline)
+        [HttpDelete("{pipeline:guid}")] public ActionResult Delete([FromRoute] Guid pipeline)
         {
-            await _manager.DeletePipeline(pipeline); return Ok();
+            return NotFound();
+
+            //await _manager.DeletePipeline(pipeline); return Ok();
         }
     }
 }

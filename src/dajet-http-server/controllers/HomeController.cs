@@ -1,11 +1,8 @@
 ﻿using DaJet.Data;
 using DaJet.Flow;
-using DaJet.Flow.Model;
 using DaJet.Json;
 using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -32,13 +29,11 @@ namespace DaJet.Http.Controllers
         private readonly IDataSource _source;
         private readonly IDomainModel _domain;
         private readonly IPipelineManager _manager;
-        private readonly IPipelineBuilder _builder;
-        public HomeController(IDomainModel domain, IDataSource source, IPipelineManager manager, IPipelineBuilder builder)
+        public HomeController(IDomainModel domain, IDataSource source, IPipelineManager manager)
         {
             _domain = domain;
             _source = source;
             _manager = manager;
-            _builder = builder;
         }
 
         [HttpGet("{typeCode:int}")]
@@ -207,33 +202,11 @@ namespace DaJet.Http.Controllers
         }
 
         [HttpGet("get-available-processors")]
-        public ActionResult GetAvailableProcessors()
+        public ActionResult GetAvailableHandlers()
         {
-            List<ProcessorInfo> result = new();
-            List<PipelineBlock> blocks = _builder.GetPipelineBlocks();
+            List<PipelineBlock> blocks = _manager.GetAvailableHandlers();
 
-            foreach (var block in blocks)
-            {
-                ProcessorInfo processor = new()
-                {
-                    Handler = block.Handler,
-                    Message = block.Message
-                };
-
-                foreach (var option in block.Options)
-                {
-                    processor.Options.Add(new OptionInfo()
-                    {
-                        Name = option.Name,
-                        Type = option.Type,
-                        Value = option.Value
-                    });
-                }
-
-                result.Add(processor);
-            }
-
-            string json = JsonSerializer.Serialize(result, JsonOptions);
+            string json = JsonSerializer.Serialize(blocks, JsonOptions);
 
             return Content(json, "application/json", Encoding.UTF8);
         }

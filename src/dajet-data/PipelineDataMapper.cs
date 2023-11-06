@@ -74,7 +74,7 @@ namespace DaJet.Data
 
                     command.Parameters.AddWithValue("uuid", record.Identity.ToString().ToLower());
                     command.Parameters.AddWithValue("name", record.Name);
-                    command.Parameters.AddWithValue("activation", record.Activation == PipelineMode.Auto ? 0L : 1L);
+                    command.Parameters.AddWithValue("activation", record.Activation == ActivationMode.Auto ? 0L : 1L);
 
                     int result = command.ExecuteNonQuery();
                 }
@@ -97,7 +97,7 @@ namespace DaJet.Data
 
                     command.Parameters.AddWithValue("uuid", record.Identity.ToString().ToLower());
                     command.Parameters.AddWithValue("name", record.Name);
-                    command.Parameters.AddWithValue("activation", record.Activation == PipelineMode.Auto ? 0L : 1L);
+                    command.Parameters.AddWithValue("activation", record.Activation == ActivationMode.Auto ? 0L : 1L);
 
                     int result = command.ExecuteNonQuery();
                 }
@@ -165,7 +165,7 @@ namespace DaJet.Data
                                 TypeCode = MY_TYPE_CODE,
                                 Identity = new Guid(reader.GetString(0)),
                                 Name = reader.GetString(1),
-                                Activation = (PipelineMode)reader.GetInt64(2)
+                                Activation = (ActivationMode)reader.GetInt64(2)
                             };
 
                             record.MarkAsOriginal();
@@ -202,7 +202,7 @@ namespace DaJet.Data
                                 TypeCode = MY_TYPE_CODE,
                                 Identity = new Guid(reader.GetString(0)),
                                 Name = reader.GetString(1),
-                                Activation = (PipelineMode)reader.GetInt64(2)
+                                Activation = (ActivationMode)reader.GetInt64(2)
                             };
 
                             record.MarkAsOriginal();

@@ -54,8 +54,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-model", "dajet-model\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-flow", "dajet-flow\dajet-flow.csproj", "{0DFE7098-33C6-4572-B974-A7B99B9BB72D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-flow-model", "dajet-flow-model\dajet-flow-model.csproj", "{9CE5529A-1730-4EAC-9EF9-C0D39BD6C8D7}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-flow-rabbitmq", "dajet-flow-rabbitmq\dajet-flow-rabbitmq.csproj", "{84A564CA-1D07-4909-A3EC-F1C99A73C5A7}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-flow-sqlserver", "dajet-flow-sqlserver\dajet-flow-sqlserver.csproj", "{14E0D99A-1C07-4052-8A50-083511C73B27}"
@@ -126,10 +124,6 @@ Global
 		{0DFE7098-33C6-4572-B974-A7B99B9BB72D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0DFE7098-33C6-4572-B974-A7B99B9BB72D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0DFE7098-33C6-4572-B974-A7B99B9BB72D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9CE5529A-1730-4EAC-9EF9-C0D39BD6C8D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9CE5529A-1730-4EAC-9EF9-C0D39BD6C8D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9CE5529A-1730-4EAC-9EF9-C0D39BD6C8D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9CE5529A-1730-4EAC-9EF9-C0D39BD6C8D7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{84A564CA-1D07-4909-A3EC-F1C99A73C5A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{84A564CA-1D07-4909-A3EC-F1C99A73C5A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{84A564CA-1D07-4909-A3EC-F1C99A73C5A7}.Release|Any CPU.ActiveCfg = Release|Any CPU

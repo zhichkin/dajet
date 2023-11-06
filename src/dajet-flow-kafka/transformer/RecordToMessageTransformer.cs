@@ -1,35 +1,42 @@
 ﻿using Confluent.Kafka;
+using DaJet.Model;
 using Google.Protobuf;
 using Google.Protobuf.Reflection;
 using System.Data;
 using System.Reflection;
-using System.Runtime.Loader;
 using System.Text;
 
 namespace DaJet.Flow.Kafka
 {
     // https://protobuf.dev/getting-started/csharptutorial/
-    [PipelineBlock] public sealed class RecordToMessageTransformer : TransformerBlock<IDataRecord, Message<byte[], byte[]>>
+    public sealed class RecordToMessageTransformer : TransformerBlock<IDataRecord, Message<byte[], byte[]>>
     {
         private const string HEADER_TOPIC = "topic";
         private const string CONTENT_TYPE_PROTOBUF = "protobuf";
 
         private readonly Message<byte[], byte[]> _output = new();
         private readonly Dictionary<string, MessageDescriptor> _descriptors = new();
-        [Option] public string PackageName { get; set; } = string.Empty;
-        [Option] public string ContentType { get; set; } = string.Empty;
-        protected override void _Configure()
+        private readonly IAssemblyManager _manager;
+        private readonly RecordToMessageTransformerOptions _options;
+        public RecordToMessageTransformer(RecordToMessageTransformerOptions options, IAssemblyManager manager)
         {
-            if (string.IsNullOrWhiteSpace(ContentType) || ContentType != CONTENT_TYPE_PROTOBUF)
+            _options = options ?? throw new ArgumentNullException(nameof(options));
+            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
+
+            Configure(in _options);
+        }
+        private void Configure(in RecordToMessageTransformerOptions options)
+        {
+            if (string.IsNullOrWhiteSpace(options.ContentType) || options.ContentType != CONTENT_TYPE_PROTOBUF)
             {
                 return;
             }
 
             Assembly package = null;
 
-            foreach (Assembly assembly in AssemblyLoadContext.Default.Assemblies)
+            foreach (Assembly assembly in _manager.Assemblies)
             {
-                if (assembly.GetName().Name == PackageName)
+                if (assembly.GetName().Name == options.PackageName)
                 {
                     package = assembly; break;
                 }
@@ -37,7 +44,7 @@ namespace DaJet.Flow.Kafka
 
             if (package is null)
             {
-                throw new InvalidOperationException($"Package not found [{PackageName}]");
+                throw new InvalidOperationException($"Package not found [{options.PackageName}]");
             }
 
             BindingFlags flags = BindingFlags.Public | BindingFlags.Static;
@@ -136,7 +143,7 @@ namespace DaJet.Flow.Kafka
         {
             if (value is not string json) { return null; }
 
-            if (ContentType != CONTENT_TYPE_PROTOBUF)
+            if (_options.ContentType != CONTENT_TYPE_PROTOBUF)
             {
                 return Encoding.UTF8.GetBytes(json);
             }

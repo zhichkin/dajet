@@ -14,7 +14,7 @@ namespace DaJet.Flow
             SingleReader = false,
             AllowSynchronousContinuations = true
         });
-        [Option] public int MaxDop { get; set; } = 1;
+        public int MaxDop { get; set; } = 1;
         public void Process(in TInput input)
         {
             if (!_channel.Writer.TryWrite(input))

@@ -1,4 +1,4 @@
-﻿using DaJet.Flow.Model;
+﻿using DaJet.Model;
 using System.Reflection;
 
 namespace DaJet.Flow

@@ -42,17 +42,6 @@ namespace DaJet.Http.Server
             WebApplicationBuilder builder = WebApplication.CreateBuilder(options);
             builder.Host.UseSystemd();
             builder.Host.UseWindowsService();
-
-            builder.Services.AddSingleton<IDomainModel, DomainModel>();
-            builder.Services.AddSingleton<IDataSource, DaJetDataSource>();
-            builder.Services.AddSingleton(serviceProvider =>
-            {
-                return new DataSourceOptions()
-                {
-                    ConnectionString = OptionsFileConnectionString
-                };
-            });
-
             builder.Services.AddControllers();
             builder.Services.AddCors(ConfigureCors);
             ConfigureFileProvider(builder.Services);

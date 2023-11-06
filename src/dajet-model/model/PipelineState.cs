@@ -1,4 +1,4 @@
-﻿namespace DaJet.Flow.Model
+﻿namespace DaJet.Model
 {
     public enum PipelineState
     {

@@ -1,6 +1,6 @@
 ﻿namespace DaJet.Model
 {
-    public enum PipelineMode
+    public enum ActivationMode
     {
         Auto,
         Manual

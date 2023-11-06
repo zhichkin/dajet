@@ -308,7 +308,7 @@ namespace DaJet.Studio.Controllers
             PipelineRecord pipeline = DomainModel.New<PipelineRecord>();
 
             pipeline.Name = name;
-            pipeline.Activation = PipelineMode.Manual;
+            pipeline.Activation = ActivationMode.Manual;
 
             treeNode.Name = name;
             treeNode.Value = pipeline.GetEntity();
