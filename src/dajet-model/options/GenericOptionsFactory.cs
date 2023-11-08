@@ -7,10 +7,8 @@ namespace DaJet.Model
     public sealed class GenericOptionsFactory : IOptionsFactory
     {
         private readonly IDataSource _source;
-        private readonly IDomainModel _domain;
-        public GenericOptionsFactory(IDomainModel domain, IDataSource source)
+        public GenericOptionsFactory(IDataSource source)
         {
-            _domain = domain ?? throw new ArgumentNullException(nameof(domain));
             _source = source ?? throw new ArgumentNullException(nameof(source));
         }
         public OptionsBase Create(Type type, Entity owner)
@@ -34,9 +32,7 @@ namespace DaJet.Model
 
             options.Owner = owner;
 
-            int typeCode = _domain.GetTypeCode(typeof(OptionRecord));
-
-            if (_source.Select(typeCode, owner) is not List<OptionRecord> values)
+            if (_source.Query<OptionRecord>(owner) is not IEnumerable<OptionRecord> values)
             {
                 return options; //NOTE: default option values
             }

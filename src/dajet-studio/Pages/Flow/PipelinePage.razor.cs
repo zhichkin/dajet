@@ -97,13 +97,13 @@ namespace DaJet.Studio.Pages.Flow
                 }
             }
 
-            var processors = await DataSource.QueryAsync<ProcessorRecord>(pipeline.GetEntity());
+            var processors = await DataSource.QueryAsync<HandlerRecord>(pipeline.GetEntity());
 
             if (processors is not null)
             {
                 Pipeline.Processors.Clear();
 
-                foreach (ProcessorRecord processor in processors)
+                foreach (HandlerRecord processor in processors)
                 {
                     ProcessorViewModel viewModel = Pipeline.Add(processor);
                     
@@ -377,7 +377,7 @@ namespace DaJet.Studio.Pages.Flow
             option.SetChangeNotifier(this);
             Options.Add(option);
         }
-        internal ProcessorViewModel Add(ProcessorRecord record)
+        internal ProcessorViewModel Add(HandlerRecord record)
         {
             ProcessorViewModel processor = new(record);
             processor.SetChangeNotifier(this);
@@ -401,12 +401,12 @@ namespace DaJet.Studio.Pages.Flow
     internal sealed class ProcessorViewModel : IChangeNotifier
     {
         private IChangeNotifier _notifier;
-        private readonly ProcessorRecord _model;
-        internal ProcessorViewModel(ProcessorRecord model)
+        private readonly HandlerRecord _model;
+        internal ProcessorViewModel(HandlerRecord model)
         {
             _model = model;
         }
-        internal ProcessorRecord Model { get { return _model; } }
+        internal HandlerRecord Model { get { return _model; } }
         internal void SetChangeNotifier(IChangeNotifier notifier)
         {
             _notifier = notifier;

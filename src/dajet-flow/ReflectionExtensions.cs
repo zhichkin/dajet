@@ -7,7 +7,7 @@ namespace DaJet.Flow
     //NOTE: if (type.IsPublic && type.IsAbstract && type.IsSealed) /* that means static class */
     public static class ReflectionExtensions
     {
-        public static bool IsPipelineBlock(this Type type, out Type input, out Type output)
+        public static bool IsHandler(this Type type, out Type input, out Type output)
         {
             input = null;
             output = null;
@@ -45,7 +45,7 @@ namespace DaJet.Flow
 
             return false;
         }
-        public static Type[] GetPipelineBlockOptions(this Type type)
+        public static Type[] GetHandlerOptions(this Type type)
         {
             if (type is null)
             {

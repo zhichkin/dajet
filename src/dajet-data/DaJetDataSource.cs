@@ -19,7 +19,7 @@ namespace DaJet.Data
 
             _mappers.Add(typeof(TreeNodeRecord), new TreeNodeDataMapper(_domain, connectionString));
             _mappers.Add(typeof(PipelineRecord), new PipelineDataMapper(_domain, connectionString));
-            _mappers.Add(typeof(ProcessorRecord), new ProcessorDataMapper(_domain, connectionString));
+            _mappers.Add(typeof(HandlerRecord), new HandlerDataMapper(_domain, connectionString));
             _mappers.Add(typeof(OptionRecord), new OptionDataMapper(_domain, connectionString));
         }
         public void Create(EntityObject entity)
@@ -45,6 +45,7 @@ namespace DaJet.Data
                 mapper.Delete(entity);
             }
         }
+
         public EntityObject Select(Entity entity)
         {
             if (entity.IsUndefined || entity.IsEmpty)
@@ -126,6 +127,39 @@ namespace DaJet.Data
             }
 
             return list;
+        }
+
+        public T Select<T>(Guid identity) where T : EntityObject
+        {
+            if (_mappers.TryGetValue(typeof(T), out IDataMapper mapper))
+            {
+                return mapper.Select(identity) as T;
+            }
+            return null;
+        }
+        public T Select<T>(Entity entity) where T : EntityObject
+        {
+            if (entity.IsUndefined || entity.IsEmpty)
+            {
+                return null;
+            }
+            return Select<T>(entity.Identity);
+        }
+        public IEnumerable<T> Query<T>() where T : EntityObject
+        {
+            if (_mappers.TryGetValue(typeof(T), out IDataMapper mapper))
+            {
+                return mapper.Select() as IEnumerable<T>;
+            }
+            return null;
+        }
+        public IEnumerable<T> Query<T>(Entity owner) where T : EntityObject
+        {
+            if (_mappers.TryGetValue(typeof(T), out IDataMapper mapper))
+            {
+                return mapper.Select(owner) as IEnumerable<T>;
+            }
+            return null;
         }
     }
 }

@@ -7,23 +7,22 @@ namespace DaJet.Flow
 {
     public interface IPipelineFactory
     {
-        IEnumerable<Type> GetRegisteredHandlers();
+        Type[] GetRegisteredHandlers();
+        Type[] GetHandlerOptions(Type handler);
         IPipeline Create(in PipelineRecord record);
     }
     public sealed class PipelineFactory : IPipelineFactory
     {
         private readonly IDataSource _dataSource;
-        private readonly IDomainModel _domainModel;
         private readonly IAssemblyManager _assemblyManager;
         private readonly IServiceProvider _serviceProvider;
         private readonly OptionsFactoryProvider _optionsFactory;
         private readonly Dictionary<Type, ServiceCreationInfo> _registry = new();
         public PipelineFactory(
-            IDataSource dataSource, IDomainModel domainModel, IServiceProvider serviceProvider,
+            IDataSource dataSource, IServiceProvider serviceProvider,
             IAssemblyManager assemblyManager, OptionsFactoryProvider optionsFactory)
         {
             _dataSource = dataSource ?? throw new ArgumentNullException(nameof(dataSource));
-            _domainModel = domainModel ?? throw new ArgumentNullException(nameof(domainModel));
             _assemblyManager = assemblyManager ?? throw new ArgumentNullException(nameof(assemblyManager));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _optionsFactory = optionsFactory ?? throw new ArgumentNullException(nameof(optionsFactory));
@@ -46,22 +45,22 @@ namespace DaJet.Flow
 
             foreach (Type type in assembly.GetTypes())
             {
-                RegisterPipelineBlock(type);
+                RegisterHandler(type);
             }
         }
-        private void RegisterPipelineBlock(Type type)
+        private void RegisterHandler(Type type)
         {
             if (type is null)
             {
                 throw new ArgumentNullException(nameof(type));
             }
 
-            if (!type.IsPipelineBlock(out Type inputType, out Type outputType))
+            if (!type.IsHandler(out Type inputType, out Type outputType))
             {
                 return;
             }
 
-            Type[] options = type.GetPipelineBlockOptions();
+            Type[] options = type.GetHandlerOptions();
 
             ObjectFactory factory = ActivatorUtilities.CreateFactory(type, options);
 
@@ -76,22 +75,34 @@ namespace DaJet.Flow
 
             _ = _registry.TryAdd(type, info);
         }
-        
+        public Type[] GetRegisteredHandlers()
+        {
+            return _registry.Keys.ToArray();
+        }
+        public Type[] GetHandlerOptions(Type handler)
+        {
+            if (_registry.TryGetValue(handler, out ServiceCreationInfo info))
+            {
+                return info.Options;
+            }
+            return Array.Empty<Type>();
+        }
+
         public IPipeline Create(in PipelineRecord record)
         {
-            List<object> blocks = CreatePipelineBlocks(in record);
+            List<object> handlers = CreateHandlers(in record);
 
-            if (blocks.Count == 0)
+            if (handlers.Count == 0)
             {
-                throw new InvalidOperationException($"Pipeline does not have any blocks.");
+                throw new InvalidOperationException($"Pipeline does not have any handlers.");
             }
 
-            if (blocks[0] is not ISourceBlock source)
+            if (handlers[0] is not ISourceBlock source)
             {
                 throw new InvalidOperationException($"Pipeline source type does not implement DaJet.Flow.ISourceBlock interface.");
             }
 
-            AssemblePipeline(blocks);
+            AssemblePipeline(handlers);
 
             IOptionsFactory<PipelineOptions> factory = _optionsFactory.GetRequiredFactory<PipelineOptions>();
 
@@ -101,20 +112,20 @@ namespace DaJet.Flow
             
             object instance = ActivatorUtilities.CreateInstance(_serviceProvider, typeof(Pipeline), parameters);
 
-            if (instance is IPipeline pipeline)
+            if (instance is not IPipeline pipeline)
             {
-                return pipeline;
+                return null;
             }
 
-            return null;
+            return pipeline;
         }
-        private void AssemblePipeline(in List<object> blocks)
+        private void AssemblePipeline(in List<object> handlers)
         {
-            object current = blocks[0]; // source block
+            object current = handlers[0]; // source block
 
-            for (int i = 1; i < blocks.Count; i++)
+            for (int i = 1; i < handlers.Count; i++)
             {
-                object next = blocks[i];
+                object next = handlers[i];
 
                 Type currentType = current.GetType();
 
@@ -137,58 +148,48 @@ namespace DaJet.Flow
                 current = next;
             }
         }
-        private List<object> CreatePipelineBlocks(in PipelineRecord pipeline)
+        private List<object> CreateHandlers(in PipelineRecord pipeline)
         {
-            int typeCode = _domainModel.GetTypeCode(typeof(ProcessorRecord));
-
-            var processors = _dataSource.Select(typeCode, pipeline.GetEntity());
+            var handlers = _dataSource.Query<HandlerRecord>(pipeline.GetEntity());
 
             List<object> instances = new();
 
-            foreach (var item in processors)
+            foreach (HandlerRecord handler in handlers)
             {
-                if (item is ProcessorRecord processor)
+                Type handlerType = _assemblyManager.Resolve(handler.Handler);
+
+                if (_registry.TryGetValue(handlerType, out ServiceCreationInfo info))
                 {
-                    Type handler = _assemblyManager.Resolve(processor.Handler);
+                    object instance = null;
 
-                    if (_registry.TryGetValue(handler, out ServiceCreationInfo info))
+                    if (info.Options is not null && info.Options.Length > 0)
                     {
-                        object instance = null;
+                        object[] options = new object[info.Options.Length];
 
-                        if (info.Options is not null && info.Options.Length > 0)
+                        for (int i = 0; i < info.Options.Length; i++)
                         {
-                            object[] options = new object[info.Options.Length];
+                            Type optionsType = info.Options[i];
 
-                            for (int i = 0; i < info.Options.Length; i++)
-                            {
-                                Type optionsType = info.Options[i];
+                            IOptionsFactory factory = _optionsFactory.GetRequiredFactory(optionsType);
 
-                                IOptionsFactory factory = _optionsFactory.GetRequiredFactory(optionsType);
-
-                                options[i] = factory.Create(optionsType, processor.GetEntity());
-                            }
-
-                            instance = info.Factory(_serviceProvider, options);
-                        }
-                        else
-                        {
-                            instance = ActivatorUtilities.CreateInstance(_serviceProvider, handler);
+                            options[i] = factory.Create(optionsType, handler.GetEntity());
                         }
 
-                        if (instance is not null)
-                        {
-                            instances.Add(instance);
-                        }
+                        instance = info.Factory(_serviceProvider, options);
+                    }
+                    else
+                    {
+                        instance = ActivatorUtilities.CreateInstance(_serviceProvider, handlerType);
+                    }
+
+                    if (instance is not null)
+                    {
+                        instances.Add(instance);
                     }
                 }
             }
 
             return instances;
-        }
-
-        public IEnumerable<Type> GetRegisteredHandlers()
-        {
-            return _registry.Keys;
         }
     }
 }

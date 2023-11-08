@@ -12,27 +12,32 @@ namespace DaJet.Flow.PostgreSql
 {
     [PipelineBlock] public sealed class OneDbProducer : TargetBlock<IDataRecord>
     {
+        private readonly ProducerOptions _options;
         private readonly ScriptDataMapper _scripts;
         private readonly InfoBaseDataMapper _databases;
         private readonly IMetadataService _metadata;
-        [Option] public string Target { get; set; } = string.Empty;
-        [Option] public string Script { get; set; } = string.Empty;
-        [Option] public int Timeout { get; set; } = 10; // seconds (value of 0 indicates no limit)
-        [ActivatorUtilitiesConstructor] public OneDbProducer(InfoBaseDataMapper databases, ScriptDataMapper scripts, IMetadataService metadata)
+        [ActivatorUtilitiesConstructor] public OneDbProducer(ProducerOptions options,
+            InfoBaseDataMapper databases, ScriptDataMapper scripts, IMetadataService metadata)
         {
+            _options = options ?? throw new ArgumentNullException(nameof(options));
             _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
             _databases = databases ?? throw new ArgumentNullException(nameof(databases));
             _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
+
+            Configure();
         }
         private string CommandText { get; set; }
         private string ConnectionString { get; set; }
         private Dictionary<string, object> ScriptParameters { get; set; }
-        protected override void _Configure()
+        private void Configure()
         {
-            if (Timeout < 0) { Timeout = 10; }
+            if (_options.Timeout < 0) { _options.Timeout = 10; }
 
-            InfoBaseRecord database = _databases.Select(Target) ?? throw new ArgumentException($"Target not found: {Target}");
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, Script) ?? throw new ArgumentException($"Script not found: {Script}");
+            InfoBaseRecord database = _databases.Select(_options.Target)
+                ?? throw new ArgumentException($"Target not found: {_options.Target}");
+            
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, _options.Script)
+                ?? throw new ArgumentException($"Script not found: {_options.Script}");
 
             if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
             {
@@ -88,7 +93,7 @@ namespace DaJet.Flow.PostgreSql
                 command.Transaction = transaction;
                 command.CommandText = CommandText;
                 command.CommandType = CommandType.Text;
-                command.CommandTimeout = Timeout;
+                command.CommandTimeout = _options.Timeout;
 
                 try
                 {

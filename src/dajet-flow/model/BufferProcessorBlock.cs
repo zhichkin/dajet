@@ -2,7 +2,7 @@
 
 namespace DaJet.Flow
 {
-    public abstract class BufferProcessorBlock<TInput> : Configurable, IInputBlock<TInput>, IOutputBlock<TInput>
+    public abstract class BufferProcessorBlock<TInput> : IInputBlock<TInput>, IOutputBlock<TInput>
     {
         protected IInputBlock<TInput> _next;
         public void LinkTo(in IInputBlock<TInput> next) { _next = next; }

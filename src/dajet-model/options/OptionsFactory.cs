@@ -1,7 +1,7 @@
 ﻿using DaJet.Data;
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace DaJet.Model
 {
@@ -37,11 +37,9 @@ namespace DaJet.Model
                 Owner = owner
             };
 
-            int typeCode = _domain.GetTypeCode(typeof(OptionRecord));
+            IEnumerable<OptionRecord> values = _source.Query<OptionRecord>(owner);
 
-            IEnumerable list = _source.Select(typeCode, owner);
-
-            if (list is not IEnumerable<OptionRecord> values)
+            if (values is null || !values.Any())
             {
                 Configure(in options);
             }

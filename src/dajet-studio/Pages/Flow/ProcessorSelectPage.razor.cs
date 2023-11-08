@@ -46,9 +46,9 @@ namespace DaJet.Studio.Pages.Flow
             int ordinal = 0;
             Entity pipeline = _record.GetEntity();
             
-            var list = await DataSource.QueryAsync<ProcessorRecord>(pipeline);
+            var list = await DataSource.QueryAsync<HandlerRecord>(pipeline);
 
-            if (list is List<ProcessorRecord> processors)
+            if (list is List<HandlerRecord> processors)
             {
                 foreach (var item in processors)
                 {
@@ -61,7 +61,7 @@ namespace DaJet.Studio.Pages.Flow
                 ordinal = processors.Count;
             }
 
-            ProcessorRecord processor = DomainModel.New<ProcessorRecord>();
+            HandlerRecord processor = DomainModel.New<HandlerRecord>();
 
             processor.Pipeline = pipeline;
             processor.Ordinal = ordinal;

@@ -20,7 +20,7 @@ namespace DaJet.Model
                 for (int i = 0; i < faces.Length; i++)
                 {
                     Type face = faces[i];
-                    
+
                     if (face.IsGenericType)
                     {
                         Type generic = face.GetGenericTypeDefinition();
@@ -40,6 +40,15 @@ namespace DaJet.Model
         public static object CreateNewInstance(this Type type)
         {
             return Activator.CreateInstance(type);
+        }
+        public static bool IsSimpleType(this Type type)
+        {
+            return type.IsPrimitive
+                || type.IsValueType
+                || type == typeof(string)
+                || type == typeof(Guid)
+                || type == typeof(DateTime)
+                || type == typeof(decimal);
         }
     }
 }

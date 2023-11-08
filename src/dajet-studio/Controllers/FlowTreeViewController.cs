@@ -12,7 +12,7 @@ namespace DaJet.Studio.Controllers
 {
     public sealed class FlowTreeViewController
     {
-        private IJSRuntime JS;
+        private IJSRuntime JS { get; set; }
         private IDomainModel DomainModel { get; set; }
         private DaJetHttpClient DataSource { get; set; }
         private NavigationManager Navigator { get; set; }

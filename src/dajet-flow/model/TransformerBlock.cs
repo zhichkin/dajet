@@ -1,6 +1,6 @@
 ﻿namespace DaJet.Flow
 {
-    public abstract class TransformerBlock<TInput, TOutput> : Configurable, IInputBlock<TInput>, IOutputBlock<TOutput>
+    public abstract class TransformerBlock<TInput, TOutput> : IInputBlock<TInput>, IOutputBlock<TOutput>
     {
         private IInputBlock<TOutput> _next;
         public void LinkTo(in IInputBlock<TOutput> next) { _next = next; }

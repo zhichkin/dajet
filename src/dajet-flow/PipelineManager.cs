@@ -1,7 +1,9 @@
 ﻿using DaJet.Data;
 using DaJet.Model;
 using Microsoft.Extensions.Logging;
-using System.Collections;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Text.Json.Serialization;
 
 namespace DaJet.Flow
 {
@@ -46,14 +48,9 @@ namespace DaJet.Flow
         {
             _token = token;
 
-            int typeCode = _domain.GetTypeCode(typeof(PipelineRecord));
+            IEnumerable<PipelineRecord> pipelines = _source.Query<PipelineRecord>();
 
-            IEnumerable list = _source.Select(typeCode);
-
-            if (list is not List<PipelineRecord> pipelines)
-            {
-                return;
-            }
+            if (pipelines is null) { return; }
 
             foreach (PipelineRecord pipeline in pipelines)
             {
@@ -245,9 +242,9 @@ namespace DaJet.Flow
 
         public void ValidatePipeline(Guid uuid)
         {
-            Entity entity = _domain.GetEntity<PipelineRecord>(uuid);
+            PipelineRecord pipeline = _source.Select<PipelineRecord>(uuid);
 
-            if (_source.Select(entity) is PipelineRecord pipeline)
+            if (pipeline is not null)
             {
                 _ = _factory.Create(in pipeline);
             }
@@ -268,23 +265,40 @@ namespace DaJet.Flow
         }
         public List<OptionItem> GetAvailableOptions(Type owner)
         {
-            //        List<OptionItem> options = new();
+            List<OptionItem> options = new();
 
-            //        foreach (PropertyInfo property in ownerType.GetProperties())
-            //        {
-            //            if (property.GetCustomAttribute<OptionAttribute>() is not null)
-            //            {
-            //                options.Add(new OptionItem()
-            //                {
-            //                    Name = property.Name,
-            //                    Type = property.PropertyType.ToString()
-            //                });
-            //            }
-            //        }
+            if (owner.IsHandler(out Type _, out Type _) || owner == typeof(Pipeline))
+            {
+                Type[] types = owner.GetHandlerOptions();
 
-            //        return options;
-
-            return new List<OptionItem>();
+                if (types.Length > 0)
+                {
+                    GetAvailableOptions(types[0], options);
+                }
+            }
+            
+            return options;
+        }
+        private void GetAvailableOptions(Type optionsType, List<OptionItem> options)
+        {
+            foreach (PropertyInfo property in optionsType.GetProperties())
+            {
+                if (property.GetCustomAttribute<JsonIgnoreAttribute>() is null)
+                {
+                    if (property.CanWrite && property.PropertyType.IsSimpleType())
+                    {
+                        options.Add(new OptionItem()
+                        {
+                            Name = property.Name,
+                            Type = property.PropertyType.ToString()
+                        });
+                    }
+                    else if (property.PropertyType.IsClass)
+                    {
+                        GetAvailableOptions(property.PropertyType, options);
+                    }
+                }
+            }
         }
     }
 }

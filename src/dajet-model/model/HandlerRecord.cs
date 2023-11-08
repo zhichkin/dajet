@@ -2,7 +2,7 @@
 
 namespace DaJet.Model
 {
-    public sealed class ProcessorRecord : EntityObject
+    public sealed class HandlerRecord : EntityObject
     {
         private int _ordinal;
         private string _handler;

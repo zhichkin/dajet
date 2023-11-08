@@ -32,7 +32,7 @@ namespace DaJet.Http.Client
         }
         public async Task CreateAsync(EntityObject entity)
         {
-            string url = $"/home/{entity.TypeCode}";
+            string url = $"/data/{entity.TypeCode}";
 
             try
             {
@@ -58,7 +58,7 @@ namespace DaJet.Http.Client
         }
         public async Task UpdateAsync(EntityObject entity)
         {
-            string url = $"/home/{entity.TypeCode}";
+            string url = $"/data/{entity.TypeCode}";
 
             try
             {
@@ -86,7 +86,7 @@ namespace DaJet.Http.Client
         {
             try
             {
-                string url = $"/home/{entity.TypeCode}/{entity.Identity.ToString().ToLower()}";
+                string url = $"/data/{entity.TypeCode}/{entity.Identity.ToString().ToLower()}";
 
                 HttpResponseMessage response = await _client.DeleteAsync(url);
 
@@ -124,7 +124,7 @@ namespace DaJet.Http.Client
                 throw new InvalidOperationException($"Entity {entity} not found");
             }
 
-            string url = $"/home/{entity.TypeCode}/{entity.Identity}";
+            string url = $"/data/{entity.TypeCode}/{entity.Identity}";
 
             HttpResponseMessage response = await _client.GetAsync(url);
 
@@ -148,7 +148,7 @@ namespace DaJet.Http.Client
                 throw new InvalidOperationException($"[{typeof(T)}] type code not found");
             }
 
-            string url = $"/home/{typeCode}";
+            string url = $"/data/{typeCode}";
 
             HttpResponseMessage response = await _client.GetAsync(url);
 
@@ -170,7 +170,7 @@ namespace DaJet.Http.Client
                 throw new InvalidOperationException($"[{typeof(T)}] type code not found");
             }
 
-            string url = $"/home/{typeCode}/{owner.TypeCode}/{owner.Identity}";
+            string url = $"/data/{typeCode}/{owner.TypeCode}/{owner.Identity}";
 
             HttpResponseMessage response = await _client.GetAsync(url);
 
@@ -186,7 +186,7 @@ namespace DaJet.Http.Client
 
         public async Task<List<IDataRecord>> QueryAsync(string query, Dictionary<string, object> parameters)
         {
-            string url = $"/home/query";
+            string url = $"/data/query";
 
             parameters.Add("Query", query);
 
@@ -201,7 +201,7 @@ namespace DaJet.Http.Client
         {
             PipelineInfo info;
 
-            string url = $"/home/get-pipeline-info/{uuid.ToString().ToLower()}";
+            string url = $"/data/get-pipeline-info/{uuid.ToString().ToLower()}";
 
             try
             {
@@ -307,7 +307,7 @@ namespace DaJet.Http.Client
 
         public async Task<string> GetTreeNodeFullName(TreeNodeRecord node)
         {
-            string url = $"/home/get-tree-node-full-name/{node.Identity.ToString().ToLower()}";
+            string url = $"/data/get-tree-node-full-name/{node.Identity.ToString().ToLower()}";
 
             HttpResponseMessage response = await _client.GetAsync(url);
 
@@ -317,7 +317,7 @@ namespace DaJet.Http.Client
         }
         public async Task<List<PipelineBlock>> GetAvailableProcessors()
         {
-            HttpResponseMessage response = await _client.GetAsync($"/home/get-available-processors");
+            HttpResponseMessage response = await _client.GetAsync($"/data/get-available-handlers");
 
             var list = await response.Content.ReadFromJsonAsync<List<PipelineBlock>>();
 

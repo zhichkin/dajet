@@ -32,7 +32,7 @@ namespace DaJet.Model
         {
             Entity<TreeNodeRecord>(10);
             Entity<PipelineRecord>(20);
-            Entity<ProcessorRecord>(30);
+            Entity<HandlerRecord>(30);
             Entity<OptionRecord>(40);
         }
         public void Entity<T>(int typeCode)

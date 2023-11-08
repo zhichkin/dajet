@@ -1,6 +1,6 @@
 ﻿namespace DaJet.Flow
 {
-    public abstract class ProcessorBlock<TInput> : Configurable, IInputBlock<TInput>, IOutputBlock<TInput>
+    public abstract class ProcessorBlock<TInput> : IInputBlock<TInput>, IOutputBlock<TInput>
     {
         private IInputBlock<TInput> _next;
         public void LinkTo(in IInputBlock<TInput> next) { _next = next; }

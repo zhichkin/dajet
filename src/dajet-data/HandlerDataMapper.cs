@@ -4,23 +4,23 @@ using System.Collections;
 
 namespace DaJet.Data
 {
-    public sealed class ProcessorDataMapper : IDataMapper
+    public sealed class HandlerDataMapper : IDataMapper
     {
         #region "SQL SCRIPTS"
         private const string CREATE_TABLE_COMMAND = "CREATE TABLE IF NOT EXISTS " +
-            "blocks (uuid TEXT NOT NULL, pipeline TEXT NOT NULL, ordinal INTEGER NOT NULL, " +
+            "handlers (uuid TEXT NOT NULL, pipeline TEXT NOT NULL, ordinal INTEGER NOT NULL, " +
             "handler TEXT NOT NULL, message TEXT NOT NULL, PRIMARY KEY (uuid)) WITHOUT ROWID;";
         private const string SELECT_BY_OWNER =
-            "SELECT uuid, pipeline, ordinal, handler, message FROM blocks WHERE pipeline = @pipeline ORDER BY ordinal ASC;";
+            "SELECT uuid, pipeline, ordinal, handler, message FROM handlers WHERE pipeline = @pipeline ORDER BY ordinal ASC;";
         private const string SELECT_BY_UUID =
-            "SELECT uuid, pipeline, ordinal, handler, message FROM blocks WHERE uuid = @uuid;";
+            "SELECT uuid, pipeline, ordinal, handler, message FROM handlers WHERE uuid = @uuid;";
         private const string INSERT_COMMAND =
-            "INSERT INTO blocks (uuid, pipeline, ordinal, handler, message) " +
+            "INSERT INTO handlers (uuid, pipeline, ordinal, handler, message) " +
             "VALUES (@uuid, @pipeline, @ordinal, @handler, @message);";
         private const string UPDATE_COMMAND =
-            "UPDATE blocks SET pipeline = @pipeline, ordinal = @ordinal, handler = @handler, message = @message WHERE uuid = @uuid;";
+            "UPDATE handlers SET pipeline = @pipeline, ordinal = @ordinal, handler = @handler, message = @message WHERE uuid = @uuid;";
         private const string DELETE_COMMAND =
-            "DELETE FROM blocks WHERE uuid = @uuid;";
+            "DELETE FROM handlers WHERE uuid = @uuid;";
         private const string DELETE_OPTIONS =
             "DELETE FROM options WHERE owner_type = @type AND owner_uuid = @uuid;";
         #endregion
@@ -28,7 +28,7 @@ namespace DaJet.Data
         private readonly int MY_TYPE_CODE;
         private readonly string _connectionString;
         private readonly IDomainModel _domain;
-        public ProcessorDataMapper(IDomainModel domain, string connectionString)
+        public HandlerDataMapper(IDomainModel domain, string connectionString)
         {
             _connectionString = connectionString;
 
@@ -36,7 +36,7 @@ namespace DaJet.Data
 
             _domain = domain;
 
-            MY_TYPE_CODE = _domain.GetTypeCode(typeof(ProcessorRecord));
+            MY_TYPE_CODE = _domain.GetTypeCode(typeof(HandlerRecord));
         }
         private void ConfigureDatabase()
         {
@@ -54,7 +54,7 @@ namespace DaJet.Data
         }
         public void Insert(EntityObject entity)
         {
-            if (entity is not ProcessorRecord record)
+            if (entity is not HandlerRecord record)
             {
                 return;
             }
@@ -79,7 +79,7 @@ namespace DaJet.Data
         }
         public void Update(EntityObject entity)
         {
-            if (entity is not ProcessorRecord record)
+            if (entity is not HandlerRecord record)
             {
                 return;
             }
@@ -135,7 +135,7 @@ namespace DaJet.Data
         }
         public EntityObject Select(Guid identity)
         {
-            ProcessorRecord record = null;
+            HandlerRecord record = null;
 
             int ownerCode = _domain.GetTypeCode(typeof(PipelineRecord));
 
@@ -153,7 +153,7 @@ namespace DaJet.Data
                     {
                         if (reader.Read())
                         {
-                            record = new ProcessorRecord()
+                            record = new HandlerRecord()
                             {
                                 TypeCode = MY_TYPE_CODE,
                                 Identity = new Guid(reader.GetString(0)),
@@ -174,7 +174,7 @@ namespace DaJet.Data
         }
         public IEnumerable Select(Entity owner)
         {
-            List<ProcessorRecord> list = new();
+            List<HandlerRecord> list = new();
 
             int ownerCode = _domain.GetTypeCode(typeof(PipelineRecord));
 
@@ -192,7 +192,7 @@ namespace DaJet.Data
                     {
                         while (reader.Read())
                         {
-                            ProcessorRecord record = new()
+                            HandlerRecord record = new()
                             {
                                 TypeCode = MY_TYPE_CODE,
                                 Identity = new Guid(reader.GetString(0)),

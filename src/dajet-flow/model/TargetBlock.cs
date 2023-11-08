@@ -1,6 +1,6 @@
 ﻿namespace DaJet.Flow
 {
-    public abstract class TargetBlock<TInput> : Configurable, IInputBlock<TInput>
+    public abstract class TargetBlock<TInput> : IInputBlock<TInput>
     {
         public abstract void Process(in TInput input);
         public void Synchronize() { _Synchronize(); }

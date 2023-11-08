@@ -9,7 +9,7 @@ namespace DaJet.Flow
         string Name { get; }
         Task ExecuteAsync(CancellationToken token);
     }
-    public sealed class Pipeline : Configurable, IPipeline
+    public sealed class Pipeline : IPipeline
     {
         private Task _task;
         private int _state; // 0 == idle, 1 == starting, 2 == working, 3 == disposing

@@ -12,8 +12,12 @@ namespace DaJet.Data
         void Update(EntityObject entity);
         void Delete(Entity entity);
         EntityObject Select(Entity entity);
+        T Select<T>(Guid identity) where T : EntityObject;
+        T Select<T>(Entity entity) where T : EntityObject;
         IEnumerable Select(int typeCode);
         IEnumerable Select(int typeCode, Entity owner);
+        IEnumerable<T> Query<T>() where T : EntityObject;
+        IEnumerable<T> Query<T>(Entity owner) where T : EntityObject;
         List<IDataRecord> Query(string query, Dictionary<string, object> parameters);
     }
     public interface IAsyncDataSource

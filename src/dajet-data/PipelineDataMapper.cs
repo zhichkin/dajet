@@ -22,11 +22,11 @@ namespace DaJet.Data
         private const string DELETE_COMMAND =
             "DELETE FROM pipelines WHERE uuid = @uuid;";
         private const string DELETE_BLOCK_OPTIONS =
-            "DELETE FROM options WHERE owner_type = @type AND owner_uuid IN (SELECT uuid FROM blocks WHERE pipeline = @uuid);";
+            "DELETE FROM options WHERE owner_type = @type AND owner_uuid IN (SELECT uuid FROM handlers WHERE pipeline = @uuid);";
         private const string DELETE_PIPELINE_OPTIONS =
             "DELETE FROM options WHERE owner_type = @type AND owner_uuid = @uuid;";
         private const string DELETE_PIPELINE_BLOCKS =
-            "DELETE FROM blocks WHERE pipeline = @uuid;";
+            "DELETE FROM handlers WHERE pipeline = @uuid;";
 
         #endregion
 
@@ -107,7 +107,7 @@ namespace DaJet.Data
         {
             int result = 0;
             int pipeline = _domain.GetTypeCode(typeof(PipelineRecord));
-            int processor = _domain.GetTypeCode(typeof(ProcessorRecord));
+            int processor = _domain.GetTypeCode(typeof(HandlerRecord));
 
             using (SqliteConnection connection = new(_connectionString))
             {

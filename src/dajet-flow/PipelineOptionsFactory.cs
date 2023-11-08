@@ -8,10 +8,8 @@ namespace DaJet.Flow
         public PipelineOptionsFactory(IDomainModel domain, IDataSource source) : base(domain, source) { }
         protected override void Configure(in PipelineOptions options, in IEnumerable<OptionRecord> values, in IEnumerable<OptionRecord> notset)
         {
-            if (_source.Select(options.Owner) is not PipelineRecord record)
-            {
-                throw new InvalidOperationException($"Pipeline not found: {options.Owner}");
-            }
+            PipelineRecord record = _source.Select<PipelineRecord>(options.Owner)
+                ?? throw new InvalidOperationException($"Pipeline not found: {options.Owner}");
 
             options.Name = record.Name;
             options.Activation = record.Activation;

@@ -11,17 +11,17 @@ using System.Text.Unicode;
 
 namespace DaJet.Http.Controllers
 {
-    [ApiController][Route("home")]
+    [ApiController][Route("data")]
     [Consumes("application/json")]
     [Produces("application/json")]
-    public class HomeController : ControllerBase
+    public class DataController : ControllerBase
     {
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             WriteIndented = true,
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
-        static HomeController()
+        static DataController()
         {
             JsonOptions.Converters.Add(new DataRecordJsonConverter());
             JsonOptions.Converters.Add(new DictionaryJsonConverter());
@@ -29,7 +29,7 @@ namespace DaJet.Http.Controllers
         private readonly IDataSource _source;
         private readonly IDomainModel _domain;
         private readonly IPipelineManager _manager;
-        public HomeController(IDomainModel domain, IDataSource source, IPipelineManager manager)
+        public DataController(IDomainModel domain, IDataSource source, IPipelineManager manager)
         {
             _domain = domain;
             _source = source;
@@ -162,20 +162,11 @@ namespace DaJet.Http.Controllers
         [HttpGet("get-tree-node-full-name/{identity:guid}")]
         public ActionResult GetTreeNodeFullName([FromRoute] Guid identity)
         {
-            int typeCode = _domain.GetTypeCode(typeof(TreeNodeRecord));
+            TreeNodeRecord node = _source.Select<TreeNodeRecord>(identity);
 
-            if (typeCode == 0)
+            if (node is null)
             {
-                return NotFound(nameof(TreeNodeRecord));
-            }
-
-            Entity entity = new(typeCode, identity);
-
-            EntityObject record = _source.Select(entity);
-
-            if (record is not TreeNodeRecord node)
-            {
-                return NotFound(entity.ToString());
+                return NotFound(identity.ToString());
             }
             
             string name = "/" + node.Name;
@@ -184,7 +175,7 @@ namespace DaJet.Http.Controllers
 
             while (!parent.IsEmpty)
             {
-                TreeNodeRecord ancestor = _source.Select(parent) as TreeNodeRecord;
+                TreeNodeRecord ancestor = _source.Select<TreeNodeRecord>(parent);
 
                 if (ancestor is not null)
                 {
@@ -201,7 +192,7 @@ namespace DaJet.Http.Controllers
             return Content(name, "text/plain", Encoding.UTF8);
         }
 
-        [HttpGet("get-available-processors")]
+        [HttpGet("get-available-handlers")]
         public ActionResult GetAvailableHandlers()
         {
             List<PipelineBlock> blocks = _manager.GetAvailableHandlers();

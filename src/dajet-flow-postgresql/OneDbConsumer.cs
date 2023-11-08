@@ -19,6 +19,7 @@ namespace DaJet.Flow.PostgreSql
         private bool CanDispose { get { return Interlocked.CompareExchange(ref _state, STATE_DISPOSING, STATE_IS_ACTIVE) == STATE_IS_ACTIVE; } }
 
         #region "PRIVATE VARIABLES"
+        private readonly ConsumerOptions _options;
         private readonly IPipelineManager _manager;
         private readonly IMetadataService _metadata;
         private readonly ScriptDataMapper _scripts;
@@ -28,13 +29,11 @@ namespace DaJet.Flow.PostgreSql
         private GeneratorResult ScriptGenerator { get; set; }
         private Dictionary<string, object> ScriptParameters { get; set; }
         #endregion
-        [Option] public Guid Pipeline { get; set; } = Guid.Empty;
-        [Option] public string Source { get; set; } = string.Empty;
-        [Option] public string Script { get; set; } = string.Empty;
-        [Option] public int Timeout { get; set; } = 10; // seconds (value of 0 indicates no limit)
-        [ActivatorUtilitiesConstructor] public OneDbConsumer(
+        
+        [ActivatorUtilitiesConstructor] public OneDbConsumer(ConsumerOptions options,
             InfoBaseDataMapper databases, ScriptDataMapper scripts, IPipelineManager manager, IMetadataService metadata)
         {
+            _options = options ?? throw new ArgumentNullException(nameof(options));
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
             _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
             _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
@@ -63,11 +62,11 @@ namespace DaJet.Flow.PostgreSql
         protected override void _Dispose() { if (CanDispose) { _ = Interlocked.Exchange(ref _state, STATE_IS_IDLE); } }
         private void ConfigureConsumer()
         {
-            InfoBaseRecord database = _databases.Select(Source);
-            if (database is null) { throw new Exception($"Source not found: {Source}"); }
+            InfoBaseRecord database = _databases.Select(_options.Source);
+            if (database is null) { throw new Exception($"Source not found: {_options.Source}"); }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, Script);
-            if (script is null) { throw new Exception($"Script not found: {Script}"); }
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, _options.Script);
+            if (script is null) { throw new Exception($"Script not found: {_options.Script}"); }
 
             if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
             {
@@ -86,11 +85,11 @@ namespace DaJet.Flow.PostgreSql
             CommandText = ScriptGenerator.Script;
             ConnectionString = database.ConnectionString;
 
-            if (Timeout < 0) { Timeout = 10; }
+            if (_options.Timeout < 0) { _options.Timeout = 10; }
         }
         private void ExecuteConsumer()
         {
-            _manager.UpdatePipelineStartTime(Pipeline, DateTime.Now);
+            _manager.UpdatePipelineStartTime(_options.Pipeline, DateTime.Now);
 
             int consumed;
             int processed = 0;
@@ -110,7 +109,7 @@ namespace DaJet.Flow.PostgreSql
                     command.Transaction = transaction;
                     command.CommandText = CommandText;
                     command.CommandType = CommandType.Text;
-                    command.CommandTimeout = Timeout;
+                    command.CommandTimeout = _options.Timeout;
 
                     foreach (var parameter in ScriptParameters)
                     {
@@ -148,8 +147,8 @@ namespace DaJet.Flow.PostgreSql
                     }
                 }
 
-                _manager.UpdatePipelineStatus(Pipeline, $"Processed {processed} records");
-                _manager.UpdatePipelineFinishTime(Pipeline, DateTime.Now);
+                _manager.UpdatePipelineStatus(_options.Pipeline, $"Processed {processed} records");
+                _manager.UpdatePipelineFinishTime(_options.Pipeline, DateTime.Now);
             }
             while (consumed > 0 && IsActive);
         }
