@@ -22,6 +22,7 @@ namespace DaJet.Data
             _mappers.Add(typeof(HandlerRecord), new HandlerDataMapper(_domain, connectionString));
             _mappers.Add(typeof(OptionRecord), new OptionDataMapper(_domain, connectionString));
         }
+        
         public void Create(EntityObject entity)
         {
             if (_mappers.TryGetValue(entity.GetType(), out IDataMapper mapper))
@@ -41,6 +42,15 @@ namespace DaJet.Data
             Type type = _domain.GetEntityType(entity.TypeCode);
 
             if (_mappers.TryGetValue(type, out IDataMapper mapper))
+            {
+                mapper.Delete(entity);
+            }
+        }
+        public void Delete<T>(Guid identity) where T : EntityObject
+        {
+            Entity entity = _domain.GetEntity<T>(identity);
+
+            if (_mappers.TryGetValue(typeof(T), out IDataMapper mapper))
             {
                 mapper.Delete(entity);
             }

@@ -36,14 +36,6 @@ namespace DaJet.Http.Controllers
 
             return Content(json);
         }
-        [HttpGet("blocks")] public ActionResult GetAvailableHandlers()
-        {
-            List<PipelineBlock> list = _manager.GetAvailableHandlers();
-
-            string json = JsonSerializer.Serialize(list, _settings);
-
-            return Content(json);
-        }
         [HttpGet("{pipeline:guid}")] public ActionResult SelectPipeline([FromRoute] Guid pipeline)
         {
             PipelineRecord record = _source.Select<PipelineRecord>(pipeline);
@@ -52,7 +44,15 @@ namespace DaJet.Http.Controllers
 
             return Content(json, "application/json", Encoding.UTF8);
         }
-        [HttpGet("options/{owner}")] public ActionResult SelectOwnerOptions([FromRoute] string owner)
+        [HttpGet("handlers")] public ActionResult GetAvailableHandlers()
+        {
+            List<PipelineBlock> list = _manager.GetAvailableHandlers();
+
+            string json = JsonSerializer.Serialize(list, _settings);
+
+            return Content(json);
+        }
+        [HttpGet("options/{owner}")] public ActionResult GetOwnerOptions([FromRoute] string owner)
         {
             Type type = _resolver.Resolve(owner);
 

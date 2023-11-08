@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Reflection;
+using System.Text.Json.Serialization;
 
 namespace DaJet.Model
 {
     public abstract class OptionsBase
     {
-        public Entity Owner { get; set; } = Entity.Undefined;
+        [JsonIgnore] public Entity Owner { get; set; } = Entity.Undefined;
         public bool Set(string name, string value)
         {
             Type type = GetType();

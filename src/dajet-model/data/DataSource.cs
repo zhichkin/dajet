@@ -11,6 +11,7 @@ namespace DaJet.Data
         void Create(EntityObject entity);
         void Update(EntityObject entity);
         void Delete(Entity entity);
+        void Delete<T>(Guid identity) where T : EntityObject;
         EntityObject Select(Entity entity);
         T Select<T>(Guid identity) where T : EntityObject;
         T Select<T>(Entity entity) where T : EntityObject;

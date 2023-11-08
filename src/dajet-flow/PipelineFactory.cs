@@ -8,7 +8,6 @@ namespace DaJet.Flow
     public interface IPipelineFactory
     {
         Type[] GetRegisteredHandlers();
-        Type[] GetHandlerOptions(Type handler);
         IPipeline Create(in PipelineRecord record);
     }
     public sealed class PipelineFactory : IPipelineFactory
@@ -60,7 +59,7 @@ namespace DaJet.Flow
                 return;
             }
 
-            Type[] options = type.GetHandlerOptions();
+            Type[] options = type.GetConstructorOptions();
 
             ObjectFactory factory = ActivatorUtilities.CreateFactory(type, options);
 
@@ -79,15 +78,7 @@ namespace DaJet.Flow
         {
             return _registry.Keys.ToArray();
         }
-        public Type[] GetHandlerOptions(Type handler)
-        {
-            if (_registry.TryGetValue(handler, out ServiceCreationInfo info))
-            {
-                return info.Options;
-            }
-            return Array.Empty<Type>();
-        }
-
+        
         public IPipeline Create(in PipelineRecord record)
         {
             List<object> handlers = CreateHandlers(in record);
@@ -172,7 +163,14 @@ namespace DaJet.Flow
 
                             IOptionsFactory factory = _optionsFactory.GetRequiredFactory(optionsType);
 
-                            options[i] = factory.Create(optionsType, handler.GetEntity());
+                            OptionsBase optionsInstance = factory.Create(optionsType, handler.GetEntity());
+
+                            if (optionsInstance is HandlerOptions handlerOptions)
+                            {
+                                handlerOptions.Pipeline = pipeline.Identity;
+                            }
+
+                            options[i] = optionsInstance;
                         }
 
                         instance = info.Factory(_serviceProvider, options);

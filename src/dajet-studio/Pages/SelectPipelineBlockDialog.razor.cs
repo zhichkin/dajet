@@ -20,7 +20,7 @@ namespace DaJet.Studio.Pages
 
             try
             {
-                HttpResponseMessage response = await Http.GetAsync($"/flow/blocks");
+                HttpResponseMessage response = await Http.GetAsync($"/flow/handlers");
 
                 if (!response.IsSuccessStatusCode)
                 {

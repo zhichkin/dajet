@@ -1,8 +1,4 @@
-﻿using DaJet.Model;
-using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
-
-namespace DaJet.Flow
+﻿namespace DaJet.Flow
 {
     //NOTE: if (type.IsPublic && type.IsAbstract && type.IsSealed) /* that means static class */
     public static class ReflectionExtensions
@@ -44,58 +40,6 @@ namespace DaJet.Flow
             }
 
             return false;
-        }
-        public static Type[] GetHandlerOptions(this Type type)
-        {
-            if (type is null)
-            {
-                throw new ArgumentNullException(nameof(type));
-            }
-
-            List<Type> options = new();
-
-            ConstructorInfo[] constructors = type.GetConstructors();
-
-            if (constructors is null || constructors.Length == 0)
-            {
-                return Array.Empty<Type>();
-            }
-
-            ConstructorInfo ctor = null;
-
-            if (constructors.Length == 1)
-            {
-                ctor = constructors[0];
-            }
-            else
-            {
-                foreach (ConstructorInfo constructor in constructors)
-                {
-                    if (constructor.GetCustomAttribute<ActivatorUtilitiesConstructorAttribute>() is not null)
-                    {
-                        ctor = constructor; break;
-                    }
-                }
-            }
-
-            if (ctor is not null)
-            {
-                ParameterInfo[] parameters = ctor.GetParameters();
-
-                int count = parameters.Length;
-
-                for (int i = 0; i < count; i++)
-                {
-                    Type parameterType = parameters[i].ParameterType;
-
-                    if (parameterType.IsSubclassOf(typeof(OptionsBase)))
-                    {
-                        options.Add(parameterType);
-                    }
-                }
-            }
-
-            return options.ToArray();
         }
     }
 }

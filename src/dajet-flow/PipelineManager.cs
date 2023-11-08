@@ -1,9 +1,7 @@
 ﻿using DaJet.Data;
 using DaJet.Model;
 using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
 using System.Reflection;
-using System.Text.Json.Serialization;
 
 namespace DaJet.Flow
 {
@@ -17,8 +15,8 @@ namespace DaJet.Flow
         void ValidatePipeline(Guid uuid);
         PipelineInfo GetPipelineInfo(Guid uuid);
         List<PipelineInfo> GetMonitorInfo();
-        List<OptionItem> GetAvailableOptions(Type owner);
         List<PipelineBlock> GetAvailableHandlers();
+        List<OptionItem> GetAvailableOptions(Type owner);
         void UpdatePipelineStatus(Guid uuid, in string status);
         void UpdatePipelineStartTime(Guid uuid, DateTime value);
         void UpdatePipelineFinishTime(Guid uuid, DateTime value);
@@ -32,18 +30,27 @@ namespace DaJet.Flow
         private CancellationToken _token;
         private readonly ILogger _logger;
         private readonly IDataSource _source;
-        private readonly IDomainModel _domain;
         private readonly IPipelineFactory _factory;
         private readonly Dictionary<Guid, IPipeline> _pipelines = new();
         private readonly Dictionary<Guid, PipelineInfo> _monitor = new();
         private readonly Dictionary<Guid, IProgress<bool>> _progress = new();
-        public PipelineManager(IDomainModel domain, IDataSource source, IPipelineFactory factory, ILogger<PipelineManager> logger)
+        public PipelineManager(IDataSource source, IPipelineFactory factory, ILogger<PipelineManager> logger)
         {
             _logger = logger;
-            _domain = domain ?? throw new ArgumentNullException(nameof(domain));
             _source = source ?? throw new ArgumentNullException(nameof(source));
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         }
+        public void Dispose() // called by host when disposing BackgroundService
+        {
+            foreach (IPipeline pipeline in _pipelines.Values)
+            {
+                pipeline.Dispose();
+            }
+            _monitor.Clear();
+            _pipelines.Clear();
+        }
+
+        #region "PIPELINES ACTIVATION"
         public void ActivatePipelines(CancellationToken token)
         {
             _token = token;
@@ -132,7 +139,9 @@ namespace DaJet.Flow
                 }
             }
         }
+        #endregion
 
+        #region "PIPELINE MANAGEMENT"
         public void ExecutePipeline(Guid uuid)
         {
             if (_pipelines.TryGetValue(uuid, out IPipeline pipeline))
@@ -147,11 +156,18 @@ namespace DaJet.Flow
                 pipeline.Dispose();
             }
         }
+        public void ValidatePipeline(Guid uuid)
+        {
+            PipelineRecord pipeline = _source.Select<PipelineRecord>(uuid);
+
+            if (pipeline is not null)
+            {
+                _ = _factory.Create(in pipeline);
+            }
+        }
         public async Task DeletePipeline(Guid uuid)
         {
-            Entity pipeline = _domain.GetEntity<PipelineRecord>(uuid);
-
-            _source.Delete(pipeline); // delete from database
+            _source.Delete<PipelineRecord>(uuid); // delete from database
 
             await RemovePipeline(uuid);
         }
@@ -170,16 +186,7 @@ namespace DaJet.Flow
                 await pipeline.DisposeAsync();
             }
         }
-
-        public void Dispose()
-        {
-            foreach (IPipeline pipeline in _pipelines.Values)
-            {
-                pipeline.Dispose();
-            }
-            _monitor.Clear();
-            _pipelines.Clear();
-        }
+        #endregion
 
         #region "PIPELINE MONITOR"
         public List<PipelineInfo> GetMonitorInfo()
@@ -224,6 +231,7 @@ namespace DaJet.Flow
         }
         #endregion
 
+        #region "PROGRESS REPORTER"
         public void RegisterProgressReporter(Guid uuid, in IProgress<bool> progress)
         {
             if (!_progress.TryAdd(uuid, progress))
@@ -239,16 +247,8 @@ namespace DaJet.Flow
         {
             _ = _progress.Remove(uuid);
         }
+        #endregion
 
-        public void ValidatePipeline(Guid uuid)
-        {
-            PipelineRecord pipeline = _source.Select<PipelineRecord>(uuid);
-
-            if (pipeline is not null)
-            {
-                _ = _factory.Create(in pipeline);
-            }
-        }
         public List<PipelineBlock> GetAvailableHandlers()
         {
             List<PipelineBlock> blocks = new();
@@ -267,38 +267,16 @@ namespace DaJet.Flow
         {
             List<OptionItem> options = new();
 
-            if (owner.IsHandler(out Type _, out Type _) || owner == typeof(Pipeline))
+            foreach (PropertyInfo property in owner.GetWritableOptions())
             {
-                Type[] types = owner.GetHandlerOptions();
-
-                if (types.Length > 0)
+                options.Add(new OptionItem()
                 {
-                    GetAvailableOptions(types[0], options);
-                }
+                    Name = property.Name,
+                    Type = property.PropertyType.ToString()
+                });
             }
             
             return options;
-        }
-        private void GetAvailableOptions(Type optionsType, List<OptionItem> options)
-        {
-            foreach (PropertyInfo property in optionsType.GetProperties())
-            {
-                if (property.GetCustomAttribute<JsonIgnoreAttribute>() is null)
-                {
-                    if (property.CanWrite && property.PropertyType.IsSimpleType())
-                    {
-                        options.Add(new OptionItem()
-                        {
-                            Name = property.Name,
-                            Type = property.PropertyType.ToString()
-                        });
-                    }
-                    else if (property.PropertyType.IsClass)
-                    {
-                        GetAvailableOptions(property.PropertyType, options);
-                    }
-                }
-            }
         }
     }
 }

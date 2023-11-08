@@ -147,7 +147,7 @@ namespace DaJet.Http.Controllers
 
             if (type is null)
             {
-                return BadRequest();
+                return NotFound();
             }
 
             Entity entity = new(typeCode, identity);
@@ -156,7 +156,6 @@ namespace DaJet.Http.Controllers
 
             return Ok(); // return NotFound(); // return Conflict();
         }
-
 
 
         [HttpGet("get-tree-node-full-name/{identity:guid}")]
@@ -195,9 +194,9 @@ namespace DaJet.Http.Controllers
         [HttpGet("get-available-handlers")]
         public ActionResult GetAvailableHandlers()
         {
-            List<PipelineBlock> blocks = _manager.GetAvailableHandlers();
+            List<PipelineBlock> handlers = _manager.GetAvailableHandlers();
 
-            string json = JsonSerializer.Serialize(blocks, JsonOptions);
+            string json = JsonSerializer.Serialize(handlers, JsonOptions);
 
             return Content(json, "application/json", Encoding.UTF8);
         }

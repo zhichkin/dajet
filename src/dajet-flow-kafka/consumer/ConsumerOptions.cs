@@ -3,9 +3,8 @@ using DaJet.Model;
 
 namespace DaJet.Flow.Kafka
 {
-    public sealed class ConsumerOptions : OptionsBase
+    public sealed class ConsumerOptions : HandlerOptions
     {
-        public Guid Pipeline { get; set; } = Guid.Empty;
         public string Topic { get; set; } = string.Empty;
         public ConsumerConfig Config { get; set; }
     }
