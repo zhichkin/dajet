@@ -32,29 +32,26 @@ namespace DaJet.Model
         }
         public TOptions Create(Entity owner)
         {
-            TOptions options = new()
-            {
-                Owner = owner
-            };
+            TOptions options = new();
 
             IEnumerable<OptionRecord> values = _source.Query<OptionRecord>(owner);
 
             if (values is null || !values.Any())
             {
-                Configure(in options);
+                Configure(owner, in options);
             }
             else
             {
-                Configure(in options, in values);
+                Configure(owner, in options, in values);
             }
             
             return options;
         }
-        protected virtual void Configure(in TOptions options)
+        protected virtual void Configure(Entity owner, in TOptions options)
         {
             // do nothing by default
         }
-        protected virtual void Configure(in TOptions options, in IEnumerable<OptionRecord> values)
+        protected virtual void Configure(Entity owner, in TOptions options, in IEnumerable<OptionRecord> values)
         {
             if (values is not null)
             {
@@ -70,10 +67,10 @@ namespace DaJet.Model
                     }
                 }
 
-                Configure(in options, in values, notset);
+                Configure(owner, in options, in values, notset);
             }
         }
-        protected virtual void Configure(in TOptions options, in IEnumerable<OptionRecord> values, in IEnumerable<OptionRecord> notset)
+        protected virtual void Configure(Entity owner, in TOptions options, in IEnumerable<OptionRecord> values, in IEnumerable<OptionRecord> notset)
         {
             // do nothing by default
         }

@@ -2,7 +2,7 @@
 
 namespace DaJet.Flow.SqlServer
 {
-    public sealed class ConsumerOptions : HandlerOptions
+    public sealed class ConsumerOptions : OptionsBase
     {
         public string Source { get; set; } = string.Empty;
         public string Script { get; set; } = string.Empty;

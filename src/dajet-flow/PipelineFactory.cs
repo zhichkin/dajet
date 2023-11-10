@@ -16,7 +16,7 @@ namespace DaJet.Flow
         private readonly IAssemblyManager _assemblyManager;
         private readonly IServiceProvider _serviceProvider;
         private readonly OptionsFactoryProvider _optionsFactory;
-        private readonly Dictionary<Type, ServiceCreationInfo> _registry = new();
+        private readonly Dictionary<Type, HandlerDescriptor> _handlers = new();
         public PipelineFactory(
             IDataSource dataSource, IServiceProvider serviceProvider,
             IAssemblyManager assemblyManager, OptionsFactoryProvider optionsFactory)
@@ -59,11 +59,11 @@ namespace DaJet.Flow
                 return;
             }
 
-            Type[] options = type.GetConstructorOptions();
+            Type[] options = type.GetHandlerConstructorOptions();
 
             ObjectFactory factory = ActivatorUtilities.CreateFactory(type, options);
 
-            ServiceCreationInfo info = new()
+            HandlerDescriptor descriptor = new()
             {
                 Service = type,
                 Options = options,
@@ -72,43 +72,44 @@ namespace DaJet.Flow
                 Output = outputType
             };
 
-            _ = _registry.TryAdd(type, info);
+            _ = _handlers.TryAdd(type, descriptor);
         }
         public Type[] GetRegisteredHandlers()
         {
-            return _registry.Keys.ToArray();
+            return _handlers.Keys.ToArray();
         }
         
         public IPipeline Create(in PipelineRecord record)
         {
-            List<object> handlers = CreateHandlers(in record);
+            IPipeline pipeline = CreatePipeline(in record);
+
+            List<object> handlers = CreateHandlers(in pipeline, in record);
 
             if (handlers.Count == 0)
             {
                 throw new InvalidOperationException($"Pipeline does not have any handlers.");
             }
 
-            if (handlers[0] is not ISourceBlock source)
+            if (handlers[0] is not ISourceBlock handler)
             {
                 throw new InvalidOperationException($"Pipeline source type does not implement DaJet.Flow.ISourceBlock interface.");
             }
 
             AssemblePipeline(handlers);
 
+            pipeline.Initialize(handler);
+
+            return pipeline;
+        }
+        private IPipeline CreatePipeline(in PipelineRecord record)
+        {
             IOptionsFactory<PipelineOptions> factory = _optionsFactory.GetRequiredFactory<PipelineOptions>();
 
             PipelineOptions options = factory.Create(record.GetEntity());
 
-            object[] parameters = new object[] { options, source };
-            
-            object instance = ActivatorUtilities.CreateInstance(_serviceProvider, typeof(Pipeline), parameters);
+            object instance = ActivatorUtilities.CreateInstance(_serviceProvider, typeof(Pipeline), options);
 
-            if (instance is not IPipeline pipeline)
-            {
-                return null;
-            }
-
-            return pipeline;
+            return instance as IPipeline;
         }
         private void AssemblePipeline(in List<object> handlers)
         {
@@ -139,9 +140,9 @@ namespace DaJet.Flow
                 current = next;
             }
         }
-        private List<object> CreateHandlers(in PipelineRecord pipeline)
+        private List<object> CreateHandlers(in IPipeline pipeline, in PipelineRecord record)
         {
-            var handlers = _dataSource.Query<HandlerRecord>(pipeline.GetEntity());
+            var handlers = _dataSource.Query<HandlerRecord>(record.GetEntity());
 
             List<object> instances = new();
 
@@ -149,31 +150,17 @@ namespace DaJet.Flow
             {
                 Type handlerType = _assemblyManager.Resolve(handler.Handler);
 
-                if (_registry.TryGetValue(handlerType, out ServiceCreationInfo info))
+                if (_handlers.TryGetValue(handlerType, out HandlerDescriptor descriptor))
                 {
                     object instance = null;
 
-                    if (info.Options is not null && info.Options.Length > 0)
+                    Type[] options = descriptor.Options;
+
+                    if (options is not null && options.Length > 0)
                     {
-                        object[] options = new object[info.Options.Length];
+                        object[] parameters = CreateHandlerOptions(in pipeline, handler.GetEntity(), in options);
 
-                        for (int i = 0; i < info.Options.Length; i++)
-                        {
-                            Type optionsType = info.Options[i];
-
-                            IOptionsFactory factory = _optionsFactory.GetRequiredFactory(optionsType);
-
-                            OptionsBase optionsInstance = factory.Create(optionsType, handler.GetEntity());
-
-                            if (optionsInstance is HandlerOptions handlerOptions)
-                            {
-                                handlerOptions.Pipeline = pipeline.Identity;
-                            }
-
-                            options[i] = optionsInstance;
-                        }
-
-                        instance = info.Factory(_serviceProvider, options);
+                        instance = descriptor.Factory(_serviceProvider, parameters);
                     }
                     else
                     {
@@ -184,6 +171,30 @@ namespace DaJet.Flow
                     {
                         instances.Add(instance);
                     }
+                }
+            }
+
+            return instances;
+        }
+        private object[] CreateHandlerOptions(in IPipeline pipeline, Entity handler, in Type[] options)
+        {
+            int count = options.Length;
+
+            object[] instances = new object[count];
+            
+            for (int i = 0; i < count; i++)
+            {
+                Type optionsType = options[i];
+
+                if (optionsType == typeof(IPipeline))
+                {
+                    instances[i] = pipeline;
+                }
+                else
+                {
+                    IOptionsFactory factory = _optionsFactory.GetRequiredFactory(optionsType);
+
+                    instances[i] = factory.Create(optionsType, handler);
                 }
             }
 

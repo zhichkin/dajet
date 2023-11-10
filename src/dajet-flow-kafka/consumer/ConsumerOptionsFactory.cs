@@ -7,7 +7,7 @@ namespace DaJet.Flow.Kafka
     public sealed class ConsumerOptionsFactory : OptionsFactory<ConsumerOptions>
     {
         public ConsumerOptionsFactory(IDomainModel domain, IDataSource source) : base(domain, source) { }
-        protected override void Configure(in ConsumerOptions options, in IEnumerable<OptionRecord> values, in IEnumerable<OptionRecord> notset)
+        protected override void Configure(Entity owner, in ConsumerOptions options, in IEnumerable<OptionRecord> values, in IEnumerable<OptionRecord> notset)
         {
             options.Config = new ConsumerConfig();
 

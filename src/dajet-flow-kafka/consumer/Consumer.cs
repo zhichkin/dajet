@@ -13,11 +13,11 @@ namespace DaJet.Flow.Kafka
         private ConsumeResult<byte[], byte[]> _result;
         private readonly Action<IConsumer<byte[], byte[]>, Error> _errorHandler;
         private readonly Action<IConsumer<byte[], byte[]>, LogMessage> _logHandler;
-        private readonly IPipelineManager _manager;
-        public Consumer(ConsumerOptions options, IPipelineManager manager)
+        private readonly IPipeline _pipeline;
+        public Consumer(ConsumerOptions options, IPipeline pipeline)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
-            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
+            _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
 
             _config = options.Config;
             _logHandler = LogHandler;
@@ -60,7 +60,7 @@ namespace DaJet.Flow.Kafka
 
                 if (_cts.IsCancellationRequested)
                 {
-                    _manager?.UpdatePipelineStatus(_options.Pipeline, $"Consumed {_consumed} messages");
+                    _pipeline?.UpdateMonitorStatus($"Consumed {_consumed} messages");
 
                     DisposeConsumer(); return;
                 }
@@ -76,7 +76,7 @@ namespace DaJet.Flow.Kafka
                         DisposeConsumer(); throw;
                     }
 
-                    _manager?.UpdatePipelineStatus(_options.Pipeline, $"Consumed {_consumed} messages");
+                    _pipeline?.UpdateMonitorStatus($"Consumed {_consumed} messages");
                 }
             }
             while (_result is not null && _result.Message is not null);
@@ -93,14 +93,14 @@ namespace DaJet.Flow.Kafka
         }
         private void LogHandler(IConsumer<byte[], byte[]> _, LogMessage log)
         {
-            _manager?.UpdatePipelineStatus(_options.Pipeline, log.Message);
-            _manager?.UpdatePipelineFinishTime(_options.Pipeline, DateTime.Now);
+            _pipeline?.UpdateMonitorStatus(log.Message);
+            _pipeline?.UpdateMonitorFinishTime(DateTime.Now);
             FileLogger.Default.Write($"[{_options.Topic}] [{log.Name}]: {log.Message}");
         }
         private void ErrorHandler(IConsumer<byte[], byte[]> consumer, Error error)
         {
-            _manager?.UpdatePipelineStatus(_options.Pipeline, error.Reason);
-            _manager?.UpdatePipelineFinishTime(_options.Pipeline, DateTime.Now);
+            _pipeline?.UpdateMonitorStatus(error.Reason);
+            _pipeline?.UpdateMonitorFinishTime(DateTime.Now);
             FileLogger.Default.Write($"[{_options.Topic}] [{consumer.Name}] [{string.Concat(consumer.Subscription)}]: {error.Reason}");
         }
         protected override void _Dispose()

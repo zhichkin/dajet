@@ -12,7 +12,7 @@ namespace DaJet.Studio.Pages
         protected PipelineOptions Model { get; set; } = new();
         private bool IsNewPipeline { get; set; } = true;
         protected void NavigateToPipelineList() { Navigator.NavigateTo("/dajet-flow"); }
-        protected async Task CopyUuidToClipboard() { await JSRuntime.InvokeVoidAsync("BlazorCopyToClipboard", Model.Owner.Identity.ToString().ToLower()); }
+        protected async Task CopyUuidToClipboard() { await JSRuntime.InvokeVoidAsync("BlazorCopyToClipboard", Uuid.ToString().ToLower()); }
         protected override async Task OnParametersSetAsync()
         {
             if (Uuid == Guid.Empty)

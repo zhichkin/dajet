@@ -18,11 +18,11 @@ namespace DaJet.Flow.Kafka
         private readonly Action<IProducer<byte[], byte[]>, Error> _errorHandler;
         private readonly Action<IProducer<byte[], byte[]>, LogMessage> _logHandler;
         private readonly Action<DeliveryReport<byte[], byte[]>> _deliveryReportHandler;
-        private readonly IPipelineManager _manager;
-        public Producer(ProducerOptions options, IPipelineManager manager)
+        private readonly IPipeline _pipeline;
+        public Producer(ProducerOptions options, IPipeline pipeline)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
-            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
+            _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
 
             _config = options.Config;
             _logHandler = LogHandler;
@@ -79,7 +79,7 @@ namespace DaJet.Flow.Kafka
         }
         private void LogHandler(IProducer<byte[], byte[]> _, LogMessage message)
         {
-            _manager?.UpdatePipelineStatus(_options.Pipeline, message.Message);
+            _pipeline?.UpdateMonitorStatus(message.Message);
             FileLogger.Default.Write($"[{_options.Topic}] [{message.Name}]: {message.Message}");
         }
         private void ErrorHandler(IProducer<byte[], byte[]> _, Error error)
@@ -88,7 +88,7 @@ namespace DaJet.Flow.Kafka
             {
                 _error = error.Reason;
             }
-            _manager?.UpdatePipelineStatus(_options.Pipeline, error?.Reason);
+            _pipeline?.UpdateMonitorStatus(error?.Reason);
             FileLogger.Default.Write($"[{_options.Topic}] [{_config.ClientId}]: {error?.Reason}");
         }
         private void HandleDeliveryReport(DeliveryReport<byte[], byte[]> report)
@@ -100,7 +100,7 @@ namespace DaJet.Flow.Kafka
             else if (report.Error is not null && report.Error.Code != ErrorCode.NoError)
             {
                 _error = report.Error.Reason; //FIXME: stop producing the batch !?
-                _manager?.UpdatePipelineStatus(_options.Pipeline, report.Error.Reason); // show last error
+                _pipeline?.UpdateMonitorStatus(report.Error.Reason); // show last error
                 FileLogger.Default.Write($"[{report.Topic}] [{_config.ClientId}]: {report.Error.Reason}");
             }
         }
@@ -130,7 +130,7 @@ namespace DaJet.Flow.Kafka
             }
             else
             {
-                _manager?.UpdatePipelineStatus(_options.Pipeline, $"[{_config.ClientId}] Produced {produced} messages");
+                _pipeline?.UpdateMonitorStatus($"[{_config.ClientId}] Produced {produced} messages");
             }
         }
         private void DisposeProducer()

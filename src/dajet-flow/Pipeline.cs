@@ -7,35 +7,59 @@ namespace DaJet.Flow
     {
         Guid Uuid { get; }
         string Name { get; }
+        void Initialize(ISourceBlock handler);
         Task ExecuteAsync(CancellationToken token);
+
+        void UpdateMonitorStatus(in string status);
+        void UpdateMonitorStartTime(DateTime value);
+        void UpdateMonitorFinishTime(DateTime value);
     }
     public sealed class Pipeline : IPipeline
     {
+        private const string PIPELINE_CAN_BE_INITIALIZED_ONLY_ONCE =
+            "Pipeline {0} is initialized already. Pipeline can be initialized only once.";
+
         private Task _task;
         private int _state; // 0 == idle, 1 == starting, 2 == working, 3 == disposing
         private CancellationToken _token;
         private CancellationTokenSource _cts;
         private CancellationTokenRegistration _ctr;
+        private ISourceBlock _handler;
         private readonly PipelineOptions _options;
-        private readonly ISourceBlock _source;
         private readonly IPipelineManager _manager;
-        [ActivatorUtilitiesConstructor] public Pipeline(PipelineOptions options, ISourceBlock source, IPipelineManager manager)
+        [ActivatorUtilitiesConstructor] public Pipeline(PipelineOptions options, IPipelineManager manager)
         {
-            _source = source ?? throw new ArgumentNullException(nameof(source));
-            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
+            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
 
-            Uuid = options.Owner.Identity;
+            Uuid = options.Uuid;
             Name = options.Name;
         }
         public Guid Uuid { get; private set; }
         public string Name { get; private set; }
+        public void Initialize(ISourceBlock handler)
+        {
+            if (handler is null)
+            {
+                throw new ArgumentNullException(nameof(handler));
+            }
+
+            if (Interlocked.CompareExchange(ref _handler, handler, null) is not null)
+            {
+                throw new InvalidOperationException(string.Format(PIPELINE_CAN_BE_INITIALIZED_ONLY_ONCE, Uuid));
+            }
+        }
         private bool CanExecute { get { return Interlocked.CompareExchange(ref _state, 1, 0) == 0; } }
         private bool CanDispose { get { return Interlocked.CompareExchange(ref _state, 3, 2) == 2; } }
         private void SetIdleState() { _ = Interlocked.Exchange(ref _state, 0); }
         private void SetWorkingState() { _ = Interlocked.Exchange(ref _state, 2); }
         public Task ExecuteAsync(CancellationToken token)
         {
+            if (_handler is null)
+            {
+                throw new InvalidOperationException($"Pipeline [{Name}] is not initialized {{{Uuid}}}");
+            }
+
             if (CanExecute)
             {
                 _cts = CancellationTokenSource.CreateLinkedTokenSource(token);
@@ -59,7 +83,7 @@ namespace DaJet.Flow
 
                 try
                 {
-                    _source.Execute();
+                    _handler.Execute();
                 }
                 catch (Exception error)
                 {
@@ -95,7 +119,7 @@ namespace DaJet.Flow
 
             try
             {
-                _source.Dispose();
+                _handler.Dispose();
             }
             catch
             {
@@ -143,6 +167,19 @@ namespace DaJet.Flow
         public async ValueTask DisposeAsync()
         {
             await DisposeAsyncCore();
+        }
+
+        public void UpdateMonitorStatus(in string status)
+        {
+            _manager.UpdatePipelineStatus(Uuid, in status);
+        }
+        public void UpdateMonitorStartTime(DateTime value)
+        {
+            _manager.UpdatePipelineStartTime(Uuid, value);
+        }
+        public void UpdateMonitorFinishTime(DateTime value)
+        {
+            _manager.UpdatePipelineFinishTime(Uuid, value);
         }
     }
 }

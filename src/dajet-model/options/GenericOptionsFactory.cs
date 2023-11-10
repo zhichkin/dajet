@@ -30,8 +30,6 @@ namespace DaJet.Model
                 throw new InvalidOperationException();
             }
 
-            options.Owner = owner;
-
             if (_source.Query<OptionRecord>(owner) is not IEnumerable<OptionRecord> values)
             {
                 return options; //NOTE: default option values

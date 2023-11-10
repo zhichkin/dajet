@@ -2,7 +2,7 @@
 
 namespace DaJet.Flow
 {
-    internal class ServiceCreationInfo
+    internal class HandlerDescriptor
     {
         internal Type Service { get; init; }
         internal Type[] Options { get; init; }

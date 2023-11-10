@@ -1,4 +1,7 @@
-﻿namespace DaJet.Flow
+﻿using DaJet.Model;
+using System.Reflection;
+
+namespace DaJet.Flow
 {
     //NOTE: if (type.IsPublic && type.IsAbstract && type.IsSealed) /* that means static class */
     public static class ReflectionExtensions
@@ -40,6 +43,37 @@
             }
 
             return false;
+        }
+        public static Type[] GetHandlerConstructorOptions(this Type type)
+        {
+            if (type is null)
+            {
+                throw new ArgumentNullException(nameof(type));
+            }
+
+            List<Type> options = new();
+
+            ConstructorInfo ctor = type.FindOptionsConstructor();
+
+            if (ctor is not null)
+            {
+                ParameterInfo[] parameters = ctor.GetParameters();
+
+                int count = parameters.Length;
+
+                for (int i = 0; i < count; i++)
+                {
+                    Type parameterType = parameters[i].ParameterType;
+
+                    if (parameterType == typeof(IPipeline) ||
+                        parameterType.IsSubclassOf(typeof(OptionsBase)))
+                    {
+                        options.Add(parameterType);
+                    }
+                }
+            }
+
+            return options.ToArray();
         }
     }
 }

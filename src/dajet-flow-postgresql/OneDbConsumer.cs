@@ -19,8 +19,8 @@ namespace DaJet.Flow.PostgreSql
         private bool CanDispose { get { return Interlocked.CompareExchange(ref _state, STATE_DISPOSING, STATE_IS_ACTIVE) == STATE_IS_ACTIVE; } }
 
         #region "PRIVATE VARIABLES"
+        private readonly IPipeline _pipeline;
         private readonly ConsumerOptions _options;
-        private readonly IPipelineManager _manager;
         private readonly IMetadataService _metadata;
         private readonly ScriptDataMapper _scripts;
         private readonly InfoBaseDataMapper _databases;
@@ -30,11 +30,11 @@ namespace DaJet.Flow.PostgreSql
         private Dictionary<string, object> ScriptParameters { get; set; }
         #endregion
         
-        [ActivatorUtilitiesConstructor] public OneDbConsumer(ConsumerOptions options,
-            InfoBaseDataMapper databases, ScriptDataMapper scripts, IPipelineManager manager, IMetadataService metadata)
+        [ActivatorUtilitiesConstructor] public OneDbConsumer(IPipeline pipeline, ConsumerOptions options,
+            InfoBaseDataMapper databases, ScriptDataMapper scripts, IMetadataService metadata)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
-            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
+            _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
             _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
             _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
             _databases = databases ?? throw new ArgumentNullException(nameof(databases));
@@ -89,7 +89,7 @@ namespace DaJet.Flow.PostgreSql
         }
         private void ExecuteConsumer()
         {
-            _manager.UpdatePipelineStartTime(_options.Pipeline, DateTime.Now);
+            _pipeline.UpdateMonitorStartTime(DateTime.Now);
 
             int consumed;
             int processed = 0;
@@ -147,8 +147,8 @@ namespace DaJet.Flow.PostgreSql
                     }
                 }
 
-                _manager.UpdatePipelineStatus(_options.Pipeline, $"Processed {processed} records");
-                _manager.UpdatePipelineFinishTime(_options.Pipeline, DateTime.Now);
+                _pipeline.UpdateMonitorStatus($"Processed {processed} records");
+                _pipeline.UpdateMonitorFinishTime(DateTime.Now);
             }
             while (consumed > 0 && IsActive);
         }

@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Text.Json.Serialization;
 
 namespace DaJet.Model
 {
@@ -41,21 +40,14 @@ namespace DaJet.Model
 
             return false;
         }
-        public static Type[] GetConstructorOptions(this Type type)
+        public static ConstructorInfo FindOptionsConstructor(this Type type)
         {
             if (type is null)
             {
                 throw new ArgumentNullException(nameof(type));
             }
 
-            List<Type> options = new();
-
             ConstructorInfo[] constructors = type.GetConstructors();
-
-            if (constructors is null || constructors.Length == 0)
-            {
-                return Array.Empty<Type>();
-            }
 
             ConstructorInfo ctor = null;
 
@@ -73,6 +65,19 @@ namespace DaJet.Model
                     }
                 }
             }
+
+            return ctor;
+        }
+        public static Type[] GetConstructorOptions(this Type type)
+        {
+            if (type is null)
+            {
+                throw new ArgumentNullException(nameof(type));
+            }
+
+            List<Type> options = new();
+
+            ConstructorInfo ctor = type.FindOptionsConstructor();
 
             if (ctor is not null)
             {
@@ -118,11 +123,6 @@ namespace DaJet.Model
             foreach (PropertyInfo property in type.GetProperties(binding))
             {
                 if (!property.CanWrite)
-                {
-                    continue;
-                }
-
-                if (property.GetCustomAttribute<JsonIgnoreAttribute>() is not null)
                 {
                     continue;
                 }
