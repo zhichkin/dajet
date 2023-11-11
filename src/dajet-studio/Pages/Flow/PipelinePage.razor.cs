@@ -277,7 +277,7 @@ namespace DaJet.Studio.Pages.Flow
         }
         private void SelectProcessor()
         {
-            Navigator.NavigateTo($"/flow/processor/select/{_record.Identity}");
+            Navigator.NavigateTo($"/flow/handler/select/{_record.Identity}");
         }
         private async Task OnBeforeInternalNavigation(LocationChangingContext context)
         {

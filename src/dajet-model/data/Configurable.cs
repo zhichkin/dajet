@@ -1,11 +1,13 @@
 ﻿using DaJet.Model;
+using System;
+using System.Collections.Generic;
 using System.Reflection;
 
 namespace DaJet.Flow
 {
     public abstract class Configurable
     {
-        public void Configure(in List<OptionItem> options)
+        public void Configure(in List<OptionRecord> options)
         {
             Type type = GetType();
 

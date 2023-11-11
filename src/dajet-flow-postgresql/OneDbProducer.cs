@@ -10,7 +10,7 @@ using System.Text;
 
 namespace DaJet.Flow.PostgreSql
 {
-    [PipelineBlock] public sealed class OneDbProducer : TargetBlock<IDataRecord>
+    public sealed class OneDbProducer : TargetBlock<IDataRecord>
     {
         private readonly ProducerOptions _options;
         private readonly ScriptDataMapper _scripts;

@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components;
 
-namespace DaJet.Studio.Pages
+namespace DaJet.Studio
 {
     public partial class Index : ComponentBase, IDisposable
     {

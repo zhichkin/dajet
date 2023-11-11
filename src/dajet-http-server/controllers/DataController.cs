@@ -194,7 +194,7 @@ namespace DaJet.Http.Controllers
         [HttpGet("get-available-handlers")]
         public ActionResult GetAvailableHandlers()
         {
-            List<PipelineBlock> handlers = _manager.GetAvailableHandlers();
+            List<HandlerModel> handlers = _manager.GetAvailableHandlers();
 
             string json = JsonSerializer.Serialize(handlers, JsonOptions);
 

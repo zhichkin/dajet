@@ -15,8 +15,8 @@ namespace DaJet.Flow
         void ValidatePipeline(Guid uuid);
         PipelineInfo GetPipelineInfo(Guid uuid);
         List<PipelineInfo> GetMonitorInfo();
-        List<PipelineBlock> GetAvailableHandlers();
-        List<OptionItem> GetAvailableOptions(Type owner);
+        List<HandlerModel> GetAvailableHandlers();
+        List<OptionModel> GetAvailableOptions(Type owner);
         void UpdatePipelineStatus(Guid uuid, in string status);
         void UpdatePipelineStartTime(Guid uuid, DateTime value);
         void UpdatePipelineFinishTime(Guid uuid, DateTime value);
@@ -249,27 +249,27 @@ namespace DaJet.Flow
         }
         #endregion
 
-        public List<PipelineBlock> GetAvailableHandlers()
+        public List<HandlerModel> GetAvailableHandlers()
         {
-            List<PipelineBlock> blocks = new();
+            List<HandlerModel> handlers = new();
 
             foreach (Type type in _factory.GetRegisteredHandlers())
             {
-                blocks.Add(new PipelineBlock()
+                handlers.Add(new HandlerModel()
                 {
                     Handler = type.ToString()
                 });
             }
 
-            return blocks;
+            return handlers;
         }
-        public List<OptionItem> GetAvailableOptions(Type owner)
+        public List<OptionModel> GetAvailableOptions(Type owner)
         {
-            List<OptionItem> options = new();
+            List<OptionModel> options = new();
 
             foreach (PropertyInfo property in owner.GetWritableOptions())
             {
-                options.Add(new OptionItem()
+                options.Add(new OptionModel()
                 {
                     Name = property.Name,
                     Type = property.PropertyType.ToString()

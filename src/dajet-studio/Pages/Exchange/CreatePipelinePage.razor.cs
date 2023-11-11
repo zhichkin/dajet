@@ -19,7 +19,7 @@ namespace DaJet.Studio.Pages.Exchange
         private const string BLOCK_NAME_APACHE_KAFKA = "DaJet.Exchange.Kafka.Producer";
         [Parameter] public string Database { get; set; }
         [Parameter] public string Exchange { get; set; }
-        protected PipelineOptions Model { get; set; } = new();
+        protected PipelineModel Model { get; set; } = new();
         protected string NodeName { get; set; } = string.Empty;
         protected List<string> NodeNames { get; set; } = new();
         protected string TargetType { get; set; } = string.Empty;
@@ -50,7 +50,7 @@ namespace DaJet.Studio.Pages.Exchange
             await SelectTargetUrls();
         }
         protected void NavigateToHomePage() { Navigator.NavigateTo("/"); }
-        protected void NavigateToDaJetFlowPage() { Navigator.NavigateTo("/dajet-flow"); }
+        protected void NavigateToDaJetFlowPage() { Navigator.NavigateTo("/dajet/table"); }
         private async Task SelectNodeNames()
         {
             NodeNames.Clear();
@@ -159,69 +159,68 @@ namespace DaJet.Studio.Pages.Exchange
             Model.Activation = ActivationMode.Manual;
 
             Model.Options.Clear();
-            Model.Options.Add(new OptionItem() { Name = "SleepTimeout", Type = "System.Int32", Value = "0" });
-            Model.Options.Add(new OptionItem() { Name = "ShowStackTrace", Type = "System.Boolean", Value = "false" });
+            Model.Options.Add(new OptionModel() { Name = "SleepTimeout", Type = "System.Int32", Value = "0" });
+            Model.Options.Add(new OptionModel() { Name = "ShowStackTrace", Type = "System.Boolean", Value = "false" });
 
-            Model.Blocks.Clear();
-            Model.Blocks.Add(new PipelineBlock()
+            Model.Handlers.Clear();
+            Model.Handlers.Add(new HandlerModel()
             {
                 Handler = string.Format(BLOCK_NAME_EXCHANGE, source.DatabaseProvider),
                 Message = ONEDB_MESSAGE_NAME,
                 Options =
                 {
-                    new OptionItem() { Name = "Pipeline", Type = "System.Guid", Value = Model.Uuid.ToString().ToLower() },
-                    new OptionItem() { Name = "Source", Type = "System.String", Value = Database },
-                    new OptionItem() { Name = "Exchange", Type = "System.String", Value = Exchange },
-                    new OptionItem() { Name = "NodeName", Type = "System.String", Value = NodeName },
-                    new OptionItem() { Name = "Timeout", Type = "System.Int32", Value = "10" },
-                    new OptionItem() { Name = "BatchSize", Type = "System.Int32", Value = "1000" }
+                    new OptionModel() { Name = "Source", Type = "System.String", Value = Database },
+                    new OptionModel() { Name = "Exchange", Type = "System.String", Value = Exchange },
+                    new OptionModel() { Name = "NodeName", Type = "System.String", Value = NodeName },
+                    new OptionModel() { Name = "Timeout", Type = "System.Int32", Value = "10" },
+                    new OptionModel() { Name = "BatchSize", Type = "System.Int32", Value = "1000" }
                 }
             });
-            Model.Blocks.Add(new PipelineBlock()
+            Model.Handlers.Add(new HandlerModel()
             {
                 Handler = string.Format(BLOCK_NAME_ROUTER, source.DatabaseProvider),
                 Message = ONEDB_MESSAGE_NAME,
                 Options =
                 {
-                    new OptionItem() { Name = "Source", Type = "System.String", Value = Database },
-                    new OptionItem() { Name = "Exchange", Type = "System.String", Value = Exchange },
-                    new OptionItem() { Name = "MaxDop", Type = "System.Int32", Value = "1" },
-                    new OptionItem() { Name = "Timeout", Type = "System.Int32", Value = "10" }
+                    new OptionModel() { Name = "Source", Type = "System.String", Value = Database },
+                    new OptionModel() { Name = "Exchange", Type = "System.String", Value = Exchange },
+                    new OptionModel() { Name = "MaxDop", Type = "System.Int32", Value = "1" },
+                    new OptionModel() { Name = "Timeout", Type = "System.Int32", Value = "10" }
                 }
             });
-            Model.Blocks.Add(new PipelineBlock()
+            Model.Handlers.Add(new HandlerModel()
             {
                 Handler = string.Format(BLOCK_NAME_TRANSFORMER, source.DatabaseProvider),
                 Message = ONEDB_MESSAGE_NAME,
                 Options =
                 {
-                    new OptionItem() { Name = "Source", Type = "System.String", Value = Database },
-                    new OptionItem() { Name = "Exchange", Type = "System.String", Value = Exchange },
-                    new OptionItem() { Name = "MaxDop", Type = "System.Int32", Value = "1" },
-                    new OptionItem() { Name = "Timeout", Type = "System.Int32", Value = "10" }
+                    new OptionModel() { Name = "Source", Type = "System.String", Value = Database },
+                    new OptionModel() { Name = "Exchange", Type = "System.String", Value = Exchange },
+                    new OptionModel() { Name = "MaxDop", Type = "System.Int32", Value = "1" },
+                    new OptionModel() { Name = "Timeout", Type = "System.Int32", Value = "10" }
                 }
             });
-            Model.Blocks.Add(new PipelineBlock()
+            Model.Handlers.Add(new HandlerModel()
             {
                 Handler = BLOCK_NAME_SERIALIZER,
                 Message = ONEDB_MESSAGE_NAME,
                 Options =
                 {
-                    new OptionItem() { Name = "MaxDop", Type = "System.Int32", Value = "1" }
+                    new OptionModel() { Name = "MaxDop", Type = "System.Int32", Value = "1" }
                 }
             });
 
             if (TargetType == "SqlServer" || TargetType == "PostgreSql")
             {
-                Model.Blocks.Add(new PipelineBlock()
+                Model.Handlers.Add(new HandlerModel()
                 {
                     Handler = string.Format(BLOCK_NAME_PRODUCER, TargetType),
                     Message = ONEDB_MESSAGE_NAME,
                     Options =
                     {
-                        new OptionItem() { Name = "Target", Type = "System.String", Value = TargetUrl.Name },
-                        new OptionItem() { Name = "Script", Type = "System.String", Value = InqueueScriptUrl },
-                        new OptionItem() { Name = "Timeout", Type = "System.Int32", Value = "10" }
+                        new OptionModel() { Name = "Target", Type = "System.String", Value = TargetUrl.Name },
+                        new OptionModel() { Name = "Script", Type = "System.String", Value = InqueueScriptUrl },
+                        new OptionModel() { Name = "Timeout", Type = "System.Int32", Value = "10" }
                     }
                 });
             }
@@ -234,35 +233,34 @@ namespace DaJet.Studio.Pages.Exchange
                     url += "/" + HttpUtility.UrlEncode(VirtualHost);
                 }
 
-                Model.Blocks.Add(new PipelineBlock()
+                Model.Handlers.Add(new HandlerModel()
                 {
                     Handler = BLOCK_NAME_RABBITMQ,
                     Message = ONEDB_MESSAGE_NAME,
                     Options =
                     {
-                        new OptionItem() { Name = "Target", Type = "System.String", Value = url },
-                        new OptionItem() { Name = "Exchange", Type = "System.String", Value = TopicName },
-                        new OptionItem() { Name = "Mandatory", Type = "System.Boolean", Value = "false" },
-                        new OptionItem() { Name = "RoutingKey", Type = "System.String", Value = string.Empty },
-                        new OptionItem() { Name = "CC", Type = "System.String", Value = string.Empty }
+                        new OptionModel() { Name = "Target", Type = "System.String", Value = url },
+                        new OptionModel() { Name = "Exchange", Type = "System.String", Value = TopicName },
+                        new OptionModel() { Name = "Mandatory", Type = "System.Boolean", Value = "false" },
+                        new OptionModel() { Name = "RoutingKey", Type = "System.String", Value = string.Empty },
+                        new OptionModel() { Name = "CC", Type = "System.String", Value = string.Empty }
                     }
                 });
             }
             else // Apache Kafka
             {
-                Model.Blocks.Add(new PipelineBlock()
+                Model.Handlers.Add(new HandlerModel()
                 {
                     Handler = BLOCK_NAME_APACHE_KAFKA,
                     Message = ONEDB_MESSAGE_NAME,
                     Options =
                     {
-                        new OptionItem() { Name = "Pipeline", Type = "System.Guid", Value = Model.Uuid.ToString().ToLower() },
-                        new OptionItem() { Name = "ClientId", Type = "System.String", Value = KafkaClient },
-                        new OptionItem() { Name = "BootstrapServers", Type = "System.String", Value = KafkaBroker },
-                        new OptionItem() { Name = "Acks", Type = "System.String", Value = "all" },
-                        new OptionItem() { Name = "MaxInFlight", Type = "System.String", Value = "1" },
-                        new OptionItem() { Name = "MessageTimeoutMs", Type = "System.String", Value = "30000" },
-                        new OptionItem() { Name = "EnableIdempotence", Type = "System.String", Value = "false" }
+                        new OptionModel() { Name = "ClientId", Type = "System.String", Value = KafkaClient },
+                        new OptionModel() { Name = "BootstrapServers", Type = "System.String", Value = KafkaBroker },
+                        new OptionModel() { Name = "Acks", Type = "System.String", Value = "all" },
+                        new OptionModel() { Name = "MaxInFlight", Type = "System.String", Value = "1" },
+                        new OptionModel() { Name = "MessageTimeoutMs", Type = "System.String", Value = "30000" },
+                        new OptionModel() { Name = "EnableIdempotence", Type = "System.String", Value = "false" }
                     }
                 });
             }

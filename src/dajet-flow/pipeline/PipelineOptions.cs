@@ -1,6 +1,6 @@
-﻿using System;
+﻿using DaJet.Model;
 
-namespace DaJet.Model
+namespace DaJet.Flow
 {
     public sealed class PipelineOptions : OptionsBase
     {

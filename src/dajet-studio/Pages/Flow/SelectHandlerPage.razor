@@ -1,4 +1,4 @@
-﻿@page "/flow/processor/select/{uuid:guid}"
+﻿@page "/flow/handler/select/{uuid:guid}"
 
 @inject IDomainModel DomainModel;
 @inject DaJetHttpClient DataSource;
@@ -69,18 +69,18 @@
 
             <thead>
                 <tr>
-                    <th>Обработка</th>
+                    <th>Обработчик</th>
                     <th>Сообщение</th>
                 </tr>
             </thead>
 
             <tbody>
 
-                @foreach (PipelineBlock block in PipelineBlocks)
+                @foreach (HandlerModel model in Handlers)
                 {
-                    <tr @onclick="@(async () => { await SelectProcessorForPipeline(block); })">
-                        <td>@block.Handler</td>
-                        <td>@block.Message</td>
+                    <tr @onclick="@(async () => { await SelectHandlerForPipeline(model); })">
+                        <td>@model.Handler</td>
+                        <td>@model.Message</td>
                     </tr>
                 }
 

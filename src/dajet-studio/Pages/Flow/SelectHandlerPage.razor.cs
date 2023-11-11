@@ -3,14 +3,14 @@ using Microsoft.AspNetCore.Components;
 
 namespace DaJet.Studio.Pages.Flow
 {
-    public partial class ProcessorSelectPage : ComponentBase
+    public partial class SelectHandlerPage : ComponentBase
     {
         private TreeNodeRecord _folder;
         private PipelineRecord _record;
         [Parameter] public Guid Uuid { get; set; }
         private string TreeNodeName { get; set; }
         private string PipelineName { get; set; }
-        private List<PipelineBlock> PipelineBlocks { get; set; } = new();
+        private List<HandlerModel> Handlers { get; set; } = new();
         private void NavigateToPipelinePage()
         {
             Navigator.NavigateTo($"/flow/pipeline/{_folder.Identity}");
@@ -39,56 +39,56 @@ namespace DaJet.Studio.Pages.Flow
                 }
             }
 
-            PipelineBlocks = await DataSource.GetAvailableProcessors();
+            Handlers = await DataSource.GetAvailableHandlers();
         }
-        private async Task SelectProcessorForPipeline(PipelineBlock info)
+        private async Task SelectHandlerForPipeline(HandlerModel model)
         {
             int ordinal = 0;
             Entity pipeline = _record.GetEntity();
             
             var list = await DataSource.QueryAsync<HandlerRecord>(pipeline);
 
-            if (list is List<HandlerRecord> processors)
+            if (list is List<HandlerRecord> handlers)
             {
-                foreach (var item in processors)
+                foreach (var item in handlers)
                 {
-                    if (item.Handler == info.Handler)
+                    if (item.Handler == model.Handler)
                     {
                         return; //TODO: duplicate handler error ?
                     }
                 }
 
-                ordinal = processors.Count;
+                ordinal = handlers.Count;
             }
 
-            HandlerRecord processor = DomainModel.New<HandlerRecord>();
+            HandlerRecord new_handler = DomainModel.New<HandlerRecord>();
 
-            processor.Pipeline = pipeline;
-            processor.Ordinal = ordinal;
-            processor.Handler = info.Handler;
-            processor.Message = info.Message;
+            new_handler.Pipeline = pipeline;
+            new_handler.Ordinal = ordinal;
+            new_handler.Handler = model.Handler;
+            new_handler.Message = model.Message;
 
             try
             {
-                await DataSource.CreateAsync(processor);
+                await DataSource.CreateAsync(new_handler);
 
-                Entity owner = processor.GetEntity();
+                Entity owner = new_handler.GetEntity();
 
-                foreach (OptionItem option in info.Options)
+                foreach (OptionModel option in model.Options)
                 {
-                    OptionRecord record = DomainModel.New<OptionRecord>();
+                    OptionRecord new_option = DomainModel.New<OptionRecord>();
 
-                    record.Owner = owner;
-                    record.Name = option.Name;
-                    record.Type = option.Type;
-                    record.Value = option.Value;
+                    new_option.Owner = owner;
+                    new_option.Name = option.Name;
+                    new_option.Type = option.Type;
+                    new_option.Value = option.Value;
 
-                    if (record.Name == "Pipeline" && record.Type == "System.Guid" && string.IsNullOrWhiteSpace(record.Value))
+                    if (new_option.Name == "Pipeline" && new_option.Type == "System.Guid" && string.IsNullOrWhiteSpace(new_option.Value))
                     {
-                        record.Value = pipeline.Identity.ToString().ToLowerInvariant();
+                        new_option.Value = pipeline.Identity.ToString().ToLowerInvariant();
                     }
 
-                    await DataSource.CreateAsync(record);
+                    await DataSource.CreateAsync(new_option);
                 }
 
                 NavigateToPipelinePage();

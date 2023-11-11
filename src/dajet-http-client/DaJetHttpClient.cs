@@ -315,11 +315,11 @@ namespace DaJet.Http.Client
 
             return name;
         }
-        public async Task<List<PipelineBlock>> GetAvailableProcessors()
+        public async Task<List<HandlerModel>> GetAvailableHandlers()
         {
             HttpResponseMessage response = await _client.GetAsync($"/data/get-available-handlers");
 
-            var list = await response.Content.ReadFromJsonAsync<List<PipelineBlock>>();
+            var list = await response.Content.ReadFromJsonAsync<List<HandlerModel>>();
 
             return list;
         }

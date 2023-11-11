@@ -8,7 +8,7 @@ using System.Data;
 
 namespace DaJet.Flow.SqlServer
 {
-    [PipelineBlock] public sealed class OneDbConsumer : SourceBlock<IDataRecord>
+    public sealed class OneDbConsumer : SourceBlock<IDataRecord>
     {
         private int _state;
         private const int STATE_IS_IDLE = 0;

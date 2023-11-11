@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DaJet.Model;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
@@ -8,6 +9,7 @@ namespace DaJet.Data
 {
     public interface IDataSource
     {
+        IDomainModel Model { get; }
         void Create(EntityObject entity);
         void Update(EntityObject entity);
         void Delete(Entity entity);

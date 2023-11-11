@@ -13,7 +13,7 @@ namespace DaJet.Studio.Pages.Kafka
         private const string BLOCK_NAME_TRANSFORMER = "DaJet.Flow.Kafka.MessageToRecordTransformer";
         private const string MESSAGE_NAME_DATA_RECORD = "System.Data.IDataRecord";
         private const string BLOCK_NAME_DATABASE_PRODUCER = "DaJet.Flow.{0}.OneDbProducer";
-        protected PipelineOptions Model { get; set; } = new();
+        protected PipelineModel Model { get; set; } = new();
         protected string KafkaServer { get; set; } = "127.0.0.1:9092";
         protected string KafkaTopic { get; set; } = string.Empty;
         protected string PackageName { get; set; } = string.Empty;
@@ -33,7 +33,7 @@ namespace DaJet.Studio.Pages.Kafka
             await SelectDataSourceUrls();
         }
         protected void NavigateToHomePage() { Navigator.NavigateTo("/"); }
-        protected void NavigateToDaJetFlowPage() { Navigator.NavigateTo("/dajet-flow"); }
+        protected void NavigateToDaJetFlowPage() { Navigator.NavigateTo("/dajet/table"); }
         private async Task SelectDataSourceUrls()
         {
             DataSourceUrls.Clear();
@@ -86,36 +86,35 @@ namespace DaJet.Studio.Pages.Kafka
             Model.Activation = ActivationMode.Manual;
 
             Model.Options.Clear();
-            Model.Options.Add(new OptionItem() { Name = "SleepTimeout", Type = "System.Int32", Value = "0" });
-            Model.Options.Add(new OptionItem() { Name = "ShowStackTrace", Type = "System.Boolean", Value = "false" });
+            Model.Options.Add(new OptionModel() { Name = "SleepTimeout", Type = "System.Int32", Value = "0" });
+            Model.Options.Add(new OptionModel() { Name = "ShowStackTrace", Type = "System.Boolean", Value = "false" });
 
-            Model.Blocks.Clear();
-            Model.Blocks.Add(new PipelineBlock()
+            Model.Handlers.Clear();
+            Model.Handlers.Add(new HandlerModel()
             {
                 Handler = BLOCK_NAME_KAFKA_CONSUMER,
                 Message = MESSAGE_NAME_CONSUME_RESULT,
                 Options =
                     {
-                        new OptionItem() { Name = "Pipeline", Type = "System.Guid", Value = Model.Uuid.ToString().ToLower() },
-                        new OptionItem() { Name = "GroupId", Type = "System.String", Value = DataSourceUrl.Name },
-                        new OptionItem() { Name = "ClientId", Type = "System.String", Value = DataSourceUrl.Name },
-                        new OptionItem() { Name = "BootstrapServers", Type = "System.String", Value = KafkaServer },
-                        new OptionItem() { Name = "Topic", Type = "System.String", Value = KafkaTopic },
-                        new OptionItem() { Name = "AutoOffsetReset", Type = "System.String", Value = "earliest" },
-                        new OptionItem() { Name = "EnableAutoCommit", Type = "System.String", Value = "false" },
-                        new OptionItem() { Name = "SessionTimeoutMs", Type = "System.String", Value = "60000" },
-                        new OptionItem() { Name = "HeartbeatIntervalMs", Type = "System.String", Value = "20000" }
+                        new OptionModel() { Name = "GroupId", Type = "System.String", Value = DataSourceUrl.Name },
+                        new OptionModel() { Name = "ClientId", Type = "System.String", Value = DataSourceUrl.Name },
+                        new OptionModel() { Name = "BootstrapServers", Type = "System.String", Value = KafkaServer },
+                        new OptionModel() { Name = "Topic", Type = "System.String", Value = KafkaTopic },
+                        new OptionModel() { Name = "AutoOffsetReset", Type = "System.String", Value = "earliest" },
+                        new OptionModel() { Name = "EnableAutoCommit", Type = "System.String", Value = "false" },
+                        new OptionModel() { Name = "SessionTimeoutMs", Type = "System.String", Value = "60000" },
+                        new OptionModel() { Name = "HeartbeatIntervalMs", Type = "System.String", Value = "20000" }
                     }
             });
-            Model.Blocks.Add(new PipelineBlock()
+            Model.Handlers.Add(new HandlerModel()
             {
                 Handler = BLOCK_NAME_TRANSFORMER,
                 Message = MESSAGE_NAME_DATA_RECORD,
                 Options =
                 {
-                    new OptionItem() { Name = "PackageName", Type = "System.String", Value = PackageName },
-                    new OptionItem() { Name = "MessageType", Type = "System.String", Value = MessageType },
-                    new OptionItem()
+                    new OptionModel() { Name = "PackageName", Type = "System.String", Value = PackageName },
+                    new OptionModel() { Name = "MessageType", Type = "System.String", Value = MessageType },
+                    new OptionModel()
                     {
                         Name = "ContentType",
                         Type = "System.String",
@@ -123,15 +122,15 @@ namespace DaJet.Studio.Pages.Kafka
                     }
                 }
             });
-            Model.Blocks.Add(new PipelineBlock()
+            Model.Handlers.Add(new HandlerModel()
             {
                 Handler = string.Format(BLOCK_NAME_DATABASE_PRODUCER, DataSourceType),
                 Message = MESSAGE_NAME_DATA_RECORD,
                 Options =
                 {
-                    new OptionItem() { Name = "Target", Type = "System.String", Value = DataSourceUrl.Name },
-                    new OptionItem() { Name = "Script", Type = "System.String", Value = InsertScriptUrl },
-                    new OptionItem() { Name = "Timeout", Type = "System.Int32", Value = "10" }
+                    new OptionModel() { Name = "Target", Type = "System.String", Value = DataSourceUrl.Name },
+                    new OptionModel() { Name = "Script", Type = "System.String", Value = InsertScriptUrl },
+                    new OptionModel() { Name = "Timeout", Type = "System.Int32", Value = "10" }
                 }
             });
 

@@ -22,7 +22,8 @@ namespace DaJet.Data
             _mappers.Add(typeof(HandlerRecord), new HandlerDataMapper(_domain, connectionString));
             _mappers.Add(typeof(OptionRecord), new OptionDataMapper(_domain, connectionString));
         }
-        
+        public IDomainModel Model { get { return _domain; } }
+
         public void Create(EntityObject entity)
         {
             if (_mappers.TryGetValue(entity.GetType(), out IDataMapper mapper))

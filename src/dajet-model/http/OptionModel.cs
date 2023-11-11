@@ -2,7 +2,7 @@
 
 namespace DaJet.Model
 {
-    public sealed class OptionItem
+    public sealed class OptionModel
     {
         [JsonPropertyName(nameof(Name))] public string Name { get; set; } = string.Empty;
         [JsonPropertyName(nameof(Type))] public string Type { get; set; } = string.Empty;

@@ -46,7 +46,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("handlers")] public ActionResult GetAvailableHandlers()
         {
-            List<PipelineBlock> list = _manager.GetAvailableHandlers();
+            List<HandlerModel> list = _manager.GetAvailableHandlers();
 
             string json = JsonSerializer.Serialize(list, _settings);
 
@@ -61,7 +61,7 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            List<OptionItem> list = _manager.GetAvailableOptions(type);
+            List<OptionModel> list = _manager.GetAvailableOptions(type);
 
             string json = JsonSerializer.Serialize(list, _settings);
 
@@ -123,69 +123,71 @@ namespace DaJet.Http.Controllers
             return Ok();
         }
 
-        [HttpPost("")] public ActionResult Insert([FromBody] PipelineOptions options)
+        [HttpPost("")] public ActionResult CreatePipeline([FromBody] PipelineModel model)
         {
-            return NotFound();
+            var nodes = _source.Query<TreeNodeRecord>(Entity.Undefined);
 
-            //if (string.IsNullOrWhiteSpace(options.Name))
-            //{
-            //    return BadRequest("Неверно указаны параметры!");
-            //}
+            TreeNodeRecord flowNode = nodes.Where(n => n.Name == "flow").FirstOrDefault();
 
-            //_ = _options.Insert(in options);
+            if (flowNode is null)
+            {
+                return NotFound("Узел сервиса \"flow\" не найден!");
+            }
 
-            //int typeCode = _domain.GetTypeCode(typeof(TreeNodeRecord));
+            if (string.IsNullOrWhiteSpace(model.Name))
+            {
+                return BadRequest("Неверно указаны параметры!");
+            }
 
-            //if (typeCode > 0)
-            //{
-            //    var list = _source.Select(typeCode, Entity.Undefined);
+            PipelineRecord pipeline = _source.Model.New<PipelineRecord>();
+            pipeline.Name = model.Name;
+            pipeline.Activation = model.Activation;
+            _source.Create(pipeline);
 
-            //    if (list is List<TreeNodeRecord> nodes)
-            //    {
-            //        TreeNodeRecord flowNode = nodes.Where(n => n.Name == "flow").FirstOrDefault();
+            CreateOptions(pipeline.GetEntity(), model.Options);
 
-            //        if (flowNode is not null)
-            //        {
-            //            typeCode = _domain.GetTypeCode(typeof(PipelineRecord));
+            for (int ordinal = 0; ordinal < model.Handlers.Count; ordinal++)
+            {
+                HandlerModel item = model.Handlers[ordinal];
 
-            //            var entity = _source.Select(new Entity(typeCode, options.Uuid));
+                HandlerRecord handler = _source.Model.New<HandlerRecord>();
+                handler.Pipeline = pipeline.GetEntity();
+                handler.Ordinal = ordinal;
+                handler.Handler = item.Handler;
+                handler.Message = item.Message;
+                _source.Create(handler);
 
-            //            if (entity is PipelineRecord pipeline)
-            //            {
-            //                TreeNodeRecord treeNode = _domain.New<TreeNodeRecord>();
+                CreateOptions(handler.GetEntity(), item.Options);
+            }
 
-            //                treeNode.Name = pipeline.Name;
-            //                treeNode.Value = pipeline.GetEntity();
-            //                treeNode.Parent = flowNode.GetEntity();
-            //                treeNode.IsFolder = false;
+            TreeNodeRecord treeNode = _source.Model.New<TreeNodeRecord>();
+            treeNode.Name = pipeline.Name;
+            treeNode.Value = pipeline.GetEntity();
+            treeNode.Parent = flowNode.GetEntity();
+            treeNode.IsFolder = false;
+            _source.Create(treeNode);
 
-            //                _source.Create(treeNode);
-            //            }
-            //        }
-            //    }
-            //}
+            return Created($"{pipeline.Name}", $"{pipeline.Identity}");
+        }
+        private void CreateOptions(Entity owner, List<OptionModel> options)
+        {
+            foreach (OptionModel option in options)
+            {
+                OptionRecord record = _source.Model.New<OptionRecord>();
+
+                record.Owner = owner;
+                record.Name = option.Name;
+                record.Type = option.Type;
+                record.Value = option.Value;
+                
+                _source.Create(record);
+            }
+        }
+        [HttpDelete("{pipeline:guid}")] public async Task<ActionResult> DeletePipeline([FromRoute] Guid pipeline)
+        {
+            await _manager.DeletePipeline(pipeline);
             
-            //return Created($"{options.Name}", $"{options.Uuid}");
-        }
-        [HttpPut("")] public ActionResult Update([FromBody] PipelineOptions options)
-        {
-            return NotFound();
-
-            //PipelineOptions current = _options.Select(options.Uuid);
-
-            //if (current is null) { return NotFound(); }
-
-            //_ = _options.Update(in options);
-
-            //await _manager.ReStartPipeline(options.Uuid);
-
-            //return Ok();
-        }
-        [HttpDelete("{pipeline:guid}")] public ActionResult Delete([FromRoute] Guid pipeline)
-        {
-            return NotFound();
-
-            //await _manager.DeletePipeline(pipeline); return Ok();
+            return Ok();
         }
     }
 }
