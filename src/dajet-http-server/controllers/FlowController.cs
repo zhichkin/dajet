@@ -28,7 +28,7 @@ namespace DaJet.Http.Controllers
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
             _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
         }
-        [HttpGet("")] public ActionResult SelectPipelines()
+        [HttpGet("monitor")] public ActionResult GetPipelineInfo()
         {
             List<PipelineInfo> list = _manager.GetMonitorInfo();
 
@@ -36,6 +36,24 @@ namespace DaJet.Http.Controllers
 
             return Content(json);
         }
+        [HttpGet("monitor/{pipeline:guid}")] public ActionResult GetPipelineInfo([FromRoute] Guid pipeline)
+        {
+            HttpRequest request = HttpContext.Request;
+
+            if (request.ContentLength == 0)
+            {
+                return BadRequest();
+            }
+
+            PipelineInfo info = _manager.GetPipelineInfo(pipeline);
+
+            info ??= new PipelineInfo() { Uuid = pipeline };
+
+            string json = JsonSerializer.Serialize(info, _settings);
+
+            return Content(json, "application/json", Encoding.UTF8);
+        }
+
         [HttpGet("{pipeline:guid}")] public ActionResult SelectPipeline([FromRoute] Guid pipeline)
         {
             PipelineRecord record = _source.Select<PipelineRecord>(pipeline);
@@ -52,7 +70,7 @@ namespace DaJet.Http.Controllers
 
             return Content(json);
         }
-        [HttpGet("options/{owner}")] public ActionResult GetOwnerOptions([FromRoute] string owner)
+        [HttpGet("options/{owner}")] public ActionResult GetAvailableOptions([FromRoute] string owner)
         {
             Type type = _resolver.Resolve(owner);
 

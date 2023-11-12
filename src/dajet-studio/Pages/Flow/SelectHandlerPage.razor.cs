@@ -72,24 +72,26 @@ namespace DaJet.Studio.Pages.Flow
             {
                 await DataSource.CreateAsync(new_handler);
 
-                Entity owner = new_handler.GetEntity();
+                //TODO: add only required options !!!
 
-                foreach (OptionModel option in model.Options)
-                {
-                    OptionRecord new_option = DomainModel.New<OptionRecord>();
+                //Entity owner = new_handler.GetEntity();
 
-                    new_option.Owner = owner;
-                    new_option.Name = option.Name;
-                    new_option.Type = option.Type;
-                    new_option.Value = option.Value;
+                //foreach (OptionModel option in model.Options)
+                //{
+                //    OptionRecord new_option = DomainModel.New<OptionRecord>();
 
-                    if (new_option.Name == "Pipeline" && new_option.Type == "System.Guid" && string.IsNullOrWhiteSpace(new_option.Value))
-                    {
-                        new_option.Value = pipeline.Identity.ToString().ToLowerInvariant();
-                    }
+                //    new_option.Owner = owner;
+                //    new_option.Name = option.Name;
+                //    new_option.Type = option.Type;
+                //    new_option.Value = option.Value;
 
-                    await DataSource.CreateAsync(new_option);
-                }
+                //    if (new_option.Name == "Pipeline" && new_option.Type == "System.Guid" && string.IsNullOrWhiteSpace(new_option.Value))
+                //    {
+                //        new_option.Value = pipeline.Identity.ToString().ToLowerInvariant();
+                //    }
+
+                //    await DataSource.CreateAsync(new_option);
+                //}
 
                 NavigateToPipelinePage();
             }

@@ -197,11 +197,28 @@ namespace DaJet.Http.Client
             return result;
         }
 
+        public async Task<List<PipelineInfo>> GetPipelineInfo()
+        {
+            List<PipelineInfo> list;
+
+            try
+            {
+                HttpResponseMessage response = await _client.GetAsync("/flow/monitor");
+
+                list = await response.Content.ReadFromJsonAsync<List<PipelineInfo>>();
+            }
+            catch
+            {
+                throw;
+            }
+
+            return list;
+        }
         public async Task<PipelineInfo> GetPipelineInfo(Guid uuid)
         {
             PipelineInfo info;
 
-            string url = $"/data/get-pipeline-info/{uuid.ToString().ToLower()}";
+            string url = $"/flow/monitor/{uuid.ToString().ToLower()}";
 
             try
             {
@@ -216,23 +233,7 @@ namespace DaJet.Http.Client
 
             return info;
         }
-        public async Task<List<PipelineInfo>> GetPipelineInfo()
-        {
-            List<PipelineInfo> list;
-
-            try
-            {
-                HttpResponseMessage response = await _client.GetAsync("/flow");
-
-                list = await response.Content.ReadFromJsonAsync<List<PipelineInfo>>();
-            }
-            catch
-            {
-                throw;
-            }
-
-            return list;
-        }
+        
         public async Task DeletePipeline(Guid uuid)
         {
             try
@@ -317,9 +318,17 @@ namespace DaJet.Http.Client
         }
         public async Task<List<HandlerModel>> GetAvailableHandlers()
         {
-            HttpResponseMessage response = await _client.GetAsync($"/data/get-available-handlers");
+            HttpResponseMessage response = await _client.GetAsync($"/flow/handlers");
 
             var list = await response.Content.ReadFromJsonAsync<List<HandlerModel>>();
+
+            return list;
+        }
+        public async Task<List<OptionModel>> GetAvailableOptions(string ownerTypeName)
+        {
+            HttpResponseMessage response = await _client.GetAsync($"/flow/options/{ownerTypeName}");
+
+            var list = await response.Content.ReadFromJsonAsync<List<OptionModel>>();
 
             return list;
         }

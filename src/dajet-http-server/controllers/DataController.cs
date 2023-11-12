@@ -190,34 +190,5 @@ namespace DaJet.Http.Controllers
 
             return Content(name, "text/plain", Encoding.UTF8);
         }
-
-        [HttpGet("get-available-handlers")]
-        public ActionResult GetAvailableHandlers()
-        {
-            List<HandlerModel> handlers = _manager.GetAvailableHandlers();
-
-            string json = JsonSerializer.Serialize(handlers, JsonOptions);
-
-            return Content(json, "application/json", Encoding.UTF8);
-        }
-        
-        [HttpGet("get-pipeline-info/{pipeline:guid}")]
-        public ActionResult GetPipelineInfo([FromRoute] Guid pipeline)
-        {
-            HttpRequest request = HttpContext.Request;
-
-            if (request.ContentLength == 0)
-            {
-                return BadRequest();
-            }
-
-            PipelineInfo info = _manager.GetPipelineInfo(pipeline);
-
-            info ??= new PipelineInfo() { Uuid = pipeline };
-
-            string json = JsonSerializer.Serialize(info, JsonOptions);
-
-            return Content(json, "application/json", Encoding.UTF8);
-        }
     }
 }

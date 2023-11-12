@@ -1,6 +1,7 @@
 ﻿using DaJet.Model;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.Extensions.Options;
 using Microsoft.JSInterop;
 
 namespace DaJet.Studio.Pages.Flow
@@ -97,17 +98,29 @@ namespace DaJet.Studio.Pages.Flow
                 }
             }
 
-            var processors = await DataSource.QueryAsync<HandlerRecord>(pipeline.GetEntity());
+            var handlers = await DataSource.QueryAsync<HandlerRecord>(pipeline.GetEntity());
 
-            if (processors is not null)
+            if (handlers is not null)
             {
-                Pipeline.Processors.Clear();
+                Pipeline.Handlers.Clear();
 
-                foreach (HandlerRecord processor in processors)
+                foreach (HandlerRecord handler in handlers)
                 {
-                    ProcessorViewModel viewModel = Pipeline.Add(processor);
+                    HandlerViewModel viewModel = Pipeline.Add(handler);
+
+                    viewModel.AvailableOptions.Clear();
                     
-                    var options = await DataSource.QueryAsync<OptionRecord>(processor.GetEntity());
+                    List<OptionModel> availableOptions = await DataSource.GetAvailableOptions(handler.Handler);
+
+                    if (availableOptions is not null && availableOptions.Count > 0)
+                    {
+                        foreach (OptionModel optionModel in availableOptions)
+                        {
+                            viewModel.AvailableOptions.Add(optionModel.Name, optionModel);
+                        }
+                    }
+
+                    var options = await DataSource.QueryAsync<OptionRecord>(handler.GetEntity());
 
                     if (options is not null)
                     {
@@ -119,24 +132,24 @@ namespace DaJet.Studio.Pages.Flow
                 }
             }
         }
-        private async Task MoveUp(ProcessorViewModel processor)
+        private async Task MoveUp(HandlerViewModel handler)
         {
-            int count = Pipeline.Processors.Count;
+            int count = Pipeline.Handlers.Count;
 
             if (count == 0) { return; }
 
-            int ordinal = processor.Model.Ordinal;
+            int ordinal = handler.Model.Ordinal;
 
             if (ordinal == 0) { return; }
 
             int preceding = ordinal - 1;
 
-            ProcessorViewModel moveup = null;
-            ProcessorViewModel movedown = null;
+            HandlerViewModel moveup = null;
+            HandlerViewModel movedown = null;
 
             for (int i = 0; i < count; i++)
             {
-                ProcessorViewModel current = Pipeline.Processors[i];
+                HandlerViewModel current = Pipeline.Handlers[i];
 
                 if (current.Model.Ordinal == ordinal)
                 {
@@ -153,8 +166,8 @@ namespace DaJet.Studio.Pages.Flow
 
             if (moveup is not null && movedown is not null)
             {
-                Pipeline.Processors[ordinal] = movedown;
-                Pipeline.Processors[preceding] = moveup;
+                Pipeline.Handlers[ordinal] = movedown;
+                Pipeline.Handlers[preceding] = moveup;
 
                 moveup.Model.Ordinal -= 1;
                 movedown.Model.Ordinal += 1;
@@ -163,24 +176,24 @@ namespace DaJet.Studio.Pages.Flow
                 await DataSource.UpdateAsync(movedown.Model);
             }
         }
-        private async Task MoveDown(ProcessorViewModel processor)
+        private async Task MoveDown(HandlerViewModel handler)
         {
-            int count = Pipeline.Processors.Count;
+            int count = Pipeline.Handlers.Count;
 
             if (count == 0) { return; }
 
-            int ordinal = processor.Model.Ordinal;
+            int ordinal = handler.Model.Ordinal;
 
             if (ordinal >= count - 1) { return; }
 
             int following = ordinal + 1;
 
-            ProcessorViewModel moveup = null;
-            ProcessorViewModel movedown = null;
+            HandlerViewModel moveup = null;
+            HandlerViewModel movedown = null;
 
             for (int i = 0; i < count; i++)
             {
-                ProcessorViewModel current = Pipeline.Processors[i];
+                HandlerViewModel current = Pipeline.Handlers[i];
 
                 if (current.Model.Ordinal == ordinal)
                 {
@@ -197,8 +210,8 @@ namespace DaJet.Studio.Pages.Flow
 
             if (moveup is not null && movedown is not null)
             {
-                Pipeline.Processors[ordinal] = moveup;
-                Pipeline.Processors[following] = movedown;
+                Pipeline.Handlers[ordinal] = moveup;
+                Pipeline.Handlers[following] = movedown;
 
                 moveup.Model.Ordinal -= 1;
                 movedown.Model.Ordinal += 1;
@@ -207,25 +220,25 @@ namespace DaJet.Studio.Pages.Flow
                 await DataSource.UpdateAsync(movedown.Model);
             }
         }
-        private async Task Remove(ProcessorViewModel processor)
+        private async Task Remove(HandlerViewModel handler)
         {
-            string message = $"Удалить блок \"{processor.Handler}\" ?";
+            string message = $"Удалить блок \"{handler.Handler}\" ?";
 
             bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", message);
 
             if (!confirmed) { return; }
 
-            int count = Pipeline.Processors.Count;
+            int count = Pipeline.Handlers.Count;
 
             if (count == 0) { return; }
 
-            int ordinal = processor.Model.Ordinal;
+            int ordinal = handler.Model.Ordinal;
 
-            List<ProcessorViewModel> moveup = new();
+            List<HandlerViewModel> moveup = new();
 
             for (int i = 0; i < count; i++)
             {
-                ProcessorViewModel current = Pipeline.Processors[i];
+                HandlerViewModel current = Pipeline.Handlers[i];
 
                 if (current.Model.Ordinal > ordinal)
                 {
@@ -233,10 +246,10 @@ namespace DaJet.Studio.Pages.Flow
                 }
             }
 
-            Pipeline.Processors.Remove(processor);
-            await DataSource.DeleteAsync(processor.Model.GetEntity());
+            Pipeline.Handlers.Remove(handler);
+            await DataSource.DeleteAsync(handler.Model.GetEntity());
 
-            foreach (ProcessorViewModel item in moveup)
+            foreach (HandlerViewModel item in moveup)
             {
                 item.Model.Ordinal -= 1;
                 await DataSource.UpdateAsync(item.Model);
@@ -244,19 +257,27 @@ namespace DaJet.Studio.Pages.Flow
         }
         private async Task SaveChanges()
         {
-            foreach (ProcessorViewModel processor in Pipeline.Processors)
+            foreach (HandlerViewModel handler in Pipeline.Handlers)
             {
-                foreach (OptionViewModel option in processor.Options)
+                foreach (OptionViewModel option in handler.Options)
                 {
-                    if (option.Model.IsChanged())
+                    if (option.Model.IsNew())
+                    {
+                        //await DataSource.CreateAsync(option.Model);
+
+                        string message = $"\"{option.Model.Name}\" [{option.Model.Type}] = {option.Model.Value}";
+
+                        await JSRuntime.InvokeVoidAsync("alert", message);
+                    }
+                    else if (option.Model.IsChanged())
                     {
                         await DataSource.UpdateAsync(option.Model);
                     }
                 }
 
-                if (processor.Model.IsChanged())
+                if (handler.Model.IsChanged())
                 {
-                    await DataSource.UpdateAsync(processor.Model);
+                    await DataSource.UpdateAsync(handler.Model);
                 }
             }
 
@@ -275,7 +296,7 @@ namespace DaJet.Studio.Pages.Flow
 
             Pipeline.IsChanged = false;
         }
-        private void SelectProcessor()
+        private void SelectHandler()
         {
             Navigator.NavigateTo($"/flow/handler/select/{_record.Identity}");
         }
@@ -329,12 +350,26 @@ namespace DaJet.Studio.Pages.Flow
         {
             await DataSource.DisposePipeline(Pipeline.Model.Identity);
         }
+
+        private void AddHandlerOption(HandlerViewModel model)
+        {
+            OptionRecord record = DomainModel.New<OptionRecord>();
+
+            record.Owner = model.Model.GetEntity();
+
+            model.Insert(record);
+        }
     }
     internal interface IChangeNotifier
     {
         void NotifyChange();
     }
-    internal sealed class PipelineViewModel : IChangeNotifier
+    internal interface IOptionsOwner
+    {
+        List<OptionModel> GetAvailableOptions();
+        OptionModel GetOptionByName(string name);
+    }
+    internal sealed class PipelineViewModel : IChangeNotifier, IOptionsOwner
     {
         private PipelineRecord _model;
         internal void SetDataContext(PipelineRecord pipeline)
@@ -373,19 +408,48 @@ namespace DaJet.Studio.Pages.Flow
         }
         internal void Add(OptionRecord record)
         {
-            OptionViewModel option = new(record);
+            OptionViewModel option = new(this, record);
             option.SetChangeNotifier(this);
             Options.Add(option);
         }
-        internal ProcessorViewModel Add(HandlerRecord record)
+        internal HandlerViewModel Add(HandlerRecord record)
         {
-            ProcessorViewModel processor = new(record);
-            processor.SetChangeNotifier(this);
-            Processors.Add(processor);
-            return processor;
+            HandlerViewModel handler = new(record);
+            handler.SetChangeNotifier(this);
+            Handlers.Add(handler);
+            return handler;
         }
         internal List<OptionViewModel> Options { get; } = new();
-        internal List<ProcessorViewModel> Processors { get; } = new();
+        internal List<HandlerViewModel> Handlers { get; } = new();
+        internal Dictionary<string, OptionModel> AvailableOptions { get; } = new();
+        public List<OptionModel> GetAvailableOptions()
+        {
+            List<OptionModel> list = new();
+
+            foreach (var item in AvailableOptions)
+            {
+                bool found = false;
+
+                foreach (OptionViewModel view in Options)
+                {
+                    if (item.Key == view.Model.Name)
+                    {
+                        found = true; break;
+                    }
+                }
+
+                if (!found)
+                {
+                    list.Add(item.Value);
+                }
+            }
+            
+            return list;
+        }
+        public OptionModel GetOptionByName(string name)
+        {
+            return AvailableOptions.TryGetValue(name, out OptionModel option) ? option : null;
+        }
         internal bool ShowOptions { get; set; }
         internal void ToggleOptions()
         {
@@ -398,11 +462,11 @@ namespace DaJet.Studio.Pages.Flow
             ShowPipelineStatus = !ShowPipelineStatus;
         }
     }
-    internal sealed class ProcessorViewModel : IChangeNotifier
+    internal sealed class HandlerViewModel : IChangeNotifier, IOptionsOwner
     {
         private IChangeNotifier _notifier;
         private readonly HandlerRecord _model;
-        internal ProcessorViewModel(HandlerRecord model)
+        internal HandlerViewModel(HandlerRecord model)
         {
             _model = model;
         }
@@ -417,13 +481,49 @@ namespace DaJet.Studio.Pages.Flow
         }
         internal void Add(OptionRecord record)
         {
-            OptionViewModel option = new(record);
+            OptionViewModel option = new(this, record);
             option.SetChangeNotifier(this);
             Options.Add(option);
+        }
+        internal void Insert(OptionRecord record)
+        {
+            OptionViewModel option = new(this, record);
+            option.SetChangeNotifier(this);
+            Options.Insert(0, option);
+            _notifier?.NotifyChange();
         }
 
         internal string Handler { get { return _model.Handler; } }
         internal List<OptionViewModel> Options { get; } = new();
+        internal Dictionary<string, OptionModel> AvailableOptions { get; } = new();
+        public List<OptionModel> GetAvailableOptions()
+        {
+            List<OptionModel> list = new();
+
+            foreach (var item in AvailableOptions)
+            {
+                bool found = false;
+
+                foreach (OptionViewModel view in Options)
+                {
+                    if (item.Key == view.Model.Name)
+                    {
+                        found = true; break;
+                    }
+                }
+
+                if (!found)
+                {
+                    list.Add(item.Value);
+                }
+            }
+
+            return list;
+        }
+        public OptionModel GetOptionByName(string name)
+        {
+            return AvailableOptions.TryGetValue(name, out OptionModel option) ? option : null;
+        }
         internal bool ShowOptions { get; set; }
         internal void ToggleOptions()
         {
@@ -434,8 +534,10 @@ namespace DaJet.Studio.Pages.Flow
     {
         private IChangeNotifier _notifier;
         private readonly OptionRecord _model;
-        internal OptionViewModel(OptionRecord model)
+        private readonly IOptionsOwner _owner;
+        internal OptionViewModel(IOptionsOwner owner, OptionRecord model)
         {
+            _owner = owner;
             _model = model;
         }
         internal OptionRecord Model { get { return _model; } }
@@ -443,7 +545,10 @@ namespace DaJet.Studio.Pages.Flow
         {
             _notifier = notifier;
         }
-        internal string Name { get { return _model.Name; } }
+        internal string Name
+        {
+            get { return _model.Name; }
+        }
         internal string Value
         {
             get { return _model.Value; }
@@ -453,6 +558,21 @@ namespace DaJet.Studio.Pages.Flow
 
                 if (!_model.IsOriginal())
                 {
+                    _notifier?.NotifyChange();
+                }
+            }
+        }
+        internal void OptionSelected(ChangeEventArgs args)
+        {
+            if (args.Value is string optionName)
+            {
+                OptionModel option = _owner.GetOptionByName(optionName);
+
+                if (option is not null)
+                {
+                    _model.Name = optionName;
+                    _model.Type = option.Type;
+                    _model.Value = option.Value;
                     _notifier?.NotifyChange();
                 }
             }

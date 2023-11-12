@@ -163,7 +163,7 @@
                     <input type="button" value="@(Pipeline.ShowOptions ? "-" : "+")" style="cursor:pointer;border:none;background:none;" @onclick="@Pipeline.ToggleOptions" />
                     <span style="font-weight:bold;margin-right:5px;">Настройки конвейера</span>
                     <img src="/img/refresh.png" class="dajet-icon-button" style="margin-right:5px;" @onclick="ReStartPipeline" />
-                    <img src="/img/processor-add.png" class="dajet-icon-button" style="margin-right:5px;" @onclick="SelectProcessor" />
+                    <img src="/img/handler-add.png" class="dajet-icon-button" style="margin-right:5px;" @onclick="SelectHandler" />
                     @if (Pipeline.IsChanged)
                     {
                         <img src="/img/save.png" class="dajet-icon-button" @onclick="SaveChanges" />
@@ -188,29 +188,54 @@
 
     <div class="pipeline-content">
 
-        @foreach (ProcessorViewModel processor in Pipeline.Processors)
+        @foreach (HandlerViewModel handler in Pipeline.Handlers)
         {
             <table style="margin-top:5px;border-collapse:collapse;">
 
                 <tr>
                     <td colspan="2">
-                        <input type="button" value="@(processor.ShowOptions ? "-" : "+")" style="cursor:pointer;border:none;background:none;margin-right:5px;" @onclick="@processor.ToggleOptions" />
+                        <input type="button" value="@(handler.ShowOptions ? "-" : "+")" @onclick="@handler.ToggleOptions"
+                               style="cursor:pointer;border:none;background:none;margin-right:5px;" />
 
-                        <img src="/img/move_up.png" class="dajet-icon-button" @onclick="@(async () => { await MoveUp(processor); })" />
-                        <img src="/img/move_down.png" class="dajet-icon-button" @onclick="@(async () => { await MoveDown(processor); })" />
-                        
-                        <span style="font-weight:bold;">@processor.Handler</span>
+                        <img src="/img/move_up.png" class="dajet-icon-button" @onclick="@(async () => { await MoveUp(handler); })" />
+                        <img src="/img/move_down.png" class="dajet-icon-button" @onclick="@(async () => { await MoveDown(handler); })" />
 
-                        <img src="/img/delete.png" class="dajet-icon-button" @onclick="@(async () => { await Remove(processor); })" />
+                        <img src="/img/option-add.png" class="dajet-icon-button" @onclick="@(() => { AddHandlerOption(handler); })" />
+
+                        <span style="font-weight:bold;">@handler.Handler</span>
+
+                        <img src="/img/delete.png" class="dajet-icon-button" @onclick="@(async () => { await Remove(handler); })" />
                     </td>
                 </tr>
 
-                @if (processor.ShowOptions)
+                @if (handler.ShowOptions)
                 {
-                    @foreach (OptionViewModel option in processor.Options)
+                    @foreach (OptionViewModel option in handler.Options)
                     {
                         <tr>
-                            <td style="resize:horizontal;overflow:auto;">@option.Name</td>
+                            @if (option.Model.IsNew())
+                            {
+                                <td style="resize:horizontal;overflow:auto;">
+                                    <select @onchange="@option.OptionSelected">
+                                        @foreach (OptionModel item in handler.AvailableOptions.Values)
+                                        {
+                                            @if (option.Name == item.Name)
+                                            {
+                                                <option selected value="@item.Name">@item.Name</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@item.Name">@item.Name</option>
+                                            }
+                                        }
+                                    </select>
+                                </td>
+                            }
+                            else
+                            {
+                                <td style="resize:horizontal;overflow:auto;">@option.Name</td>
+                            }
+                            
                             <td><input type="text" size="40" @bind-value="@option.Value" /></td>
                         </tr>
                     }
