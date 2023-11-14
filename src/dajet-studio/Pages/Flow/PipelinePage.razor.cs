@@ -219,7 +219,7 @@ namespace DaJet.Studio.Pages.Flow
                 await DataSource.UpdateAsync(movedown.Model);
             }
         }
-        private async Task Remove(HandlerViewModel handler)
+        private async Task DeleteHandler(HandlerViewModel handler)
         {
             string message = $"Удалить блок \"{handler.Handler}\" ?";
 
@@ -260,13 +260,12 @@ namespace DaJet.Studio.Pages.Flow
             {
                 foreach (OptionViewModel option in handler.Options)
                 {
-                    if (option.Model.IsNew() && !string.IsNullOrWhiteSpace(option.Model.Name))
+                    if (option.Model.IsNew() &&
+                        !string.IsNullOrWhiteSpace(option.Model.Name) &&
+                        !string.IsNullOrWhiteSpace(option.Model.Type) &&
+                        !string.IsNullOrWhiteSpace(option.Model.Value))
                     {
-                        //await DataSource.CreateAsync(option.Model);
-
-                        string message = $"\"{option.Model.Name}\" [{option.Model.Type}] = {option.Model.Value}";
-
-                        await JSRuntime.InvokeVoidAsync("alert", message);
+                        await DataSource.CreateAsync(option.Model);
                     }
                     else if (option.Model.IsChanged())
                     {
@@ -294,11 +293,10 @@ namespace DaJet.Studio.Pages.Flow
             }
 
             Pipeline.IsChanged = false;
+
+            await JSRuntime.InvokeVoidAsync("alert", $"Сохранено успешно.");
         }
-        private void SelectHandler()
-        {
-            Navigator.NavigateTo($"/flow/handler/select/{_record.Identity}");
-        }
+        private void SelectHandler() { Navigator.NavigateTo($"/flow/handler/select/{_record.Identity}"); }
         private async Task OnBeforeInternalNavigation(LocationChangingContext context)
         {
             if (Pipeline is not null && Pipeline.IsChanged)
@@ -313,6 +311,7 @@ namespace DaJet.Studio.Pages.Flow
                 }
             }
         }
+        
         private async Task ValidatePipeline()
         {
             try
@@ -357,6 +356,26 @@ namespace DaJet.Studio.Pages.Flow
             record.Owner = model.Model.GetEntity();
 
             model.Insert(record);
+        }
+        private async Task DeleteHandlerOption(HandlerViewModel handler, OptionViewModel option)
+        {
+            if (option.Model.IsNew())
+            {
+                handler.Remove(option);
+            }
+            else
+            {
+                string message = $"Удалить настройку \"{option.Name}\" ?";
+
+                bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", message);
+
+                if (confirmed)
+                {
+                    await DataSource.DeleteAsync(option.Model.GetEntity());
+
+                    handler.Remove(option);
+                }
+            }
         }
     }
     internal interface IChangeNotifier
@@ -469,18 +488,29 @@ namespace DaJet.Studio.Pages.Flow
             OptionViewModel option = new(this, record);
             option.SetChangeNotifier(this);
             Options.Insert(0, option);
-            _notifier?.NotifyChange();
         }
-
+        internal void Remove(OptionViewModel option)
+        {
+            Options.Remove(option);
+        }
         internal string Handler { get { return _model.Handler; } }
         internal List<OptionViewModel> Options { get; } = new();
         internal Dictionary<string, OptionModel> AvailableOptions { get; } = new();
         public Task<List<string>> GetAvailableOptions(string filter)
         {
-            List<string> list = AvailableOptions
-                .Keys
-                .Where(key => key.Contains(filter, StringComparison.InvariantCultureIgnoreCase))
-                .ToList();
+            List<string> list = null;
+
+            if (string.IsNullOrWhiteSpace(filter))
+            {
+                list = AvailableOptions.Keys.ToList();
+            }
+            else
+            {
+               list = AvailableOptions
+                    .Keys
+                    .Where(key => key.Contains(filter, StringComparison.InvariantCultureIgnoreCase))
+                    .ToList();
+            }
 
             foreach (OptionViewModel option in Options)
             {
@@ -528,7 +558,7 @@ namespace DaJet.Studio.Pages.Flow
             {
                 _model.Value = value;
 
-                if (!_model.IsOriginal())
+                if (_model.IsChanged())
                 {
                     _notifier?.NotifyChange();
                 }
@@ -547,10 +577,15 @@ namespace DaJet.Studio.Pages.Flow
                     _model.Value = option.Value;
 
                     _notifier?.NotifyChange();
+
+                    ShowDeleteButton = "hidden";
                 }
             }
 
             return Task.CompletedTask;
         }
+        internal string ShowDeleteButton { get; set; } = "hidden";
+        internal void OnMouseLeave() { ShowDeleteButton = "hidden"; }
+        internal void OnMouseEnter() { ShowDeleteButton = "visible"; }
     }
 }

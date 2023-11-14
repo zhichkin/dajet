@@ -10,7 +10,7 @@
 <NavigationLock ConfirmExternalNavigation="true" OnBeforeInternalNavigation="OnBeforeInternalNavigation" />
 
 <style>
-    
+   
     td {
         border: solid black 1px;
         padding: 5px;
@@ -201,13 +201,19 @@
                                style="cursor:pointer;border:none;background:none;margin-right:5px;" />
 
                         <img src="/img/move_up.png" class="dajet-icon-button" @onclick="@(async () => { await MoveUp(handler); })" />
-                        <img src="/img/move_down.png" class="dajet-icon-button" @onclick="@(async () => { await MoveDown(handler); })" />
+                        
+                        <img src="/img/move_down.png" @onclick="@(async () => { await MoveDown(handler); })"
+                             class="dajet-icon-button" style="margin: 0px 5px 0px 0px;" />
 
-                        <img src="/img/option-add.png" class="dajet-icon-button" @onclick="@(() => { AddHandlerOption(handler); })" />
+                        @if (handler.ShowOptions)
+                        {
+                            <img src="/img/option-add.png" @onclick="@(()=> { AddHandlerOption(handler); })"
+                                 class="dajet-icon-button" style="margin: 0px 5px 0px 0px;" />
+                        }
 
                         <span style="font-weight:bold;">@handler.Handler</span>
 
-                        <img src="/img/delete.png" class="dajet-icon-button" @onclick="@(async () => { await Remove(handler); })" />
+                        <img src="/img/delete.png" class="dajet-icon-button" @onclick="@(async () => { await DeleteHandler(handler); })" />
                     </td>
                 </tr>
 
@@ -215,20 +221,35 @@
                 {
                     @foreach (OptionViewModel option in handler.Options)
                     {
-                        <tr>
+                        <tr @onmouseenter="@option.OnMouseEnter" @onmouseleave="@option.OnMouseLeave">
+
                             @if (option.Model.IsNew() && string.IsNullOrWhiteSpace(option.Model.Name))
                             {
                                 <td>
-                                    <AutoComplete ValueSelected="@option.OptionSelected"
-                                                  ValuesProvider="@handler.GetAvailableOptions" />
+                                    <img src="/img/option-delete.png" class="dajet-icon-button" style="margin-right: 5px;"
+                                    @onclick="@(async () => { await DeleteHandlerOption(handler, option); })" />
+                                    
+                                    <div style="display:inline-block;">
+                                        <AutoComplete ValueSelected="@option.OptionSelected"
+                                                      ValuesProvider="@handler.GetAvailableOptions" />
+                                    </div>
                                 </td>
                             }
                             else
                             {
-                                <td style="resize:horizontal;overflow:auto;">@option.Name</td>
+                                <td style="resize:horizontal;overflow:auto;">
+                                    
+                                    <span style="font-weight:bold;">@option.Name</span>
+
+                                    <img src="/img/option-delete.png" class="dajet-icon-button"
+                                         style="margin-left: 5px; visibility:@option.ShowDeleteButton"
+                                    @onclick="@(async () => { await DeleteHandlerOption(handler, option); })" />
+                                </td>
                             }
-                            
-                            <td><input type="text" size="40" @bind-value="@option.Value" /></td>
+
+                            <td>
+                                <input type="text" size="40" @bind-value="@option.Value" />
+                            </td>
                         </tr>
                     }
                 }

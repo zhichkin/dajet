@@ -11,10 +11,7 @@ namespace DaJet.Studio.Pages.Flow
         private string TreeNodeName { get; set; }
         private string PipelineName { get; set; }
         private List<HandlerModel> Handlers { get; set; } = new();
-        private void NavigateToPipelinePage()
-        {
-            Navigator.NavigateTo($"/flow/pipeline/{_folder.Identity}");
-        }
+        private void NavigateToPipelinePage() { Navigator.NavigateTo($"/flow/pipeline/{_folder.Identity}"); }
         protected override async Task OnParametersSetAsync()
         {
             _folder = await DataSource.SelectAsync<TreeNodeRecord>(Uuid);
