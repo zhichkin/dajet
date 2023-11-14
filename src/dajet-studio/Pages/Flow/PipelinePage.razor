@@ -1,4 +1,6 @@
-﻿@page "/flow/pipeline/{uuid:guid}"
+﻿@using DaJet.Studio.Components.AutoComplete;
+
+@page "/flow/pipeline/{uuid:guid}"
 
 @inject IDomainModel DomainModel;
 @inject DaJetHttpClient DataSource;
@@ -52,7 +54,7 @@
         height: calc(100vh - 60px);
         grid-template:
             "pipeline-header" min-content
-            "pipeline-content" / 1fr;
+            "pipeline-content" 1fr / 1fr;
     }
 
     .pipeline-header {
@@ -65,6 +67,7 @@
         grid-area: pipeline-content;
         overflow: scroll;
         white-space: nowrap;
+        align-content: start;
     }
 
 </style>
@@ -213,22 +216,11 @@
                     @foreach (OptionViewModel option in handler.Options)
                     {
                         <tr>
-                            @if (option.Model.IsNew())
+                            @if (option.Model.IsNew() && string.IsNullOrWhiteSpace(option.Model.Name))
                             {
-                                <td style="resize:horizontal;overflow:auto;">
-                                    <select @onchange="@option.OptionSelected">
-                                        @foreach (OptionModel item in handler.AvailableOptions.Values)
-                                        {
-                                            @if (option.Name == item.Name)
-                                            {
-                                                <option selected value="@item.Name">@item.Name</option>
-                                            }
-                                            else
-                                            {
-                                                <option value="@item.Name">@item.Name</option>
-                                            }
-                                        }
-                                    </select>
+                                <td>
+                                    <AutoComplete ValueSelected="@option.OptionSelected"
+                                                  ValuesProvider="@handler.GetAvailableOptions" />
                                 </td>
                             }
                             else

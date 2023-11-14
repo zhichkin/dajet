@@ -1,7 +1,6 @@
 ﻿using DaJet.Model;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
-using Microsoft.Extensions.Options;
 using Microsoft.JSInterop;
 
 namespace DaJet.Studio.Pages.Flow
@@ -261,7 +260,7 @@ namespace DaJet.Studio.Pages.Flow
             {
                 foreach (OptionViewModel option in handler.Options)
                 {
-                    if (option.Model.IsNew())
+                    if (option.Model.IsNew() && !string.IsNullOrWhiteSpace(option.Model.Name))
                     {
                         //await DataSource.CreateAsync(option.Model);
 
@@ -366,8 +365,8 @@ namespace DaJet.Studio.Pages.Flow
     }
     internal interface IOptionsOwner
     {
-        List<OptionModel> GetAvailableOptions();
         OptionModel GetOptionByName(string name);
+        Task<List<string>> GetAvailableOptions(string filter);
     }
     internal sealed class PipelineViewModel : IChangeNotifier, IOptionsOwner
     {
@@ -422,29 +421,9 @@ namespace DaJet.Studio.Pages.Flow
         internal List<OptionViewModel> Options { get; } = new();
         internal List<HandlerViewModel> Handlers { get; } = new();
         internal Dictionary<string, OptionModel> AvailableOptions { get; } = new();
-        public List<OptionModel> GetAvailableOptions()
+        public Task<List<string>> GetAvailableOptions(string filter)
         {
-            List<OptionModel> list = new();
-
-            foreach (var item in AvailableOptions)
-            {
-                bool found = false;
-
-                foreach (OptionViewModel view in Options)
-                {
-                    if (item.Key == view.Model.Name)
-                    {
-                        found = true; break;
-                    }
-                }
-
-                if (!found)
-                {
-                    list.Add(item.Value);
-                }
-            }
-            
-            return list;
+            return Task.FromResult(AvailableOptions.Keys.ToList());
         }
         public OptionModel GetOptionByName(string name)
         {
@@ -496,29 +475,22 @@ namespace DaJet.Studio.Pages.Flow
         internal string Handler { get { return _model.Handler; } }
         internal List<OptionViewModel> Options { get; } = new();
         internal Dictionary<string, OptionModel> AvailableOptions { get; } = new();
-        public List<OptionModel> GetAvailableOptions()
+        public Task<List<string>> GetAvailableOptions(string filter)
         {
-            List<OptionModel> list = new();
+            List<string> list = AvailableOptions
+                .Keys
+                .Where(key => key.Contains(filter, StringComparison.InvariantCultureIgnoreCase))
+                .ToList();
 
-            foreach (var item in AvailableOptions)
+            foreach (OptionViewModel option in Options)
             {
-                bool found = false;
-
-                foreach (OptionViewModel view in Options)
+                if (list.Contains(option.Model.Name))
                 {
-                    if (item.Key == view.Model.Name)
-                    {
-                        found = true; break;
-                    }
-                }
-
-                if (!found)
-                {
-                    list.Add(item.Value);
+                    list.Remove(option.Model.Name);
                 }
             }
 
-            return list;
+            return Task.FromResult(list);
         }
         public OptionModel GetOptionByName(string name)
         {
@@ -562,20 +534,23 @@ namespace DaJet.Studio.Pages.Flow
                 }
             }
         }
-        internal void OptionSelected(ChangeEventArgs args)
+        internal Task OptionSelected(string name)
         {
-            if (args.Value is string optionName)
+            if (!string.IsNullOrWhiteSpace(name))
             {
-                OptionModel option = _owner.GetOptionByName(optionName);
+                OptionModel option = _owner.GetOptionByName(name);
 
                 if (option is not null)
                 {
-                    _model.Name = optionName;
+                    _model.Name = option.Name;
                     _model.Type = option.Type;
                     _model.Value = option.Value;
+
                     _notifier?.NotifyChange();
                 }
             }
+
+            return Task.CompletedTask;
         }
     }
 }
