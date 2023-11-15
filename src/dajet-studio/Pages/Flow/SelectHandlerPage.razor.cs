@@ -40,62 +40,56 @@ namespace DaJet.Studio.Pages.Flow
         }
         private async Task SelectHandlerForPipeline(HandlerModel model)
         {
-            int ordinal = 0;
             Entity pipeline = _record.GetEntity();
             
-            var list = await DataSource.QueryAsync<HandlerRecord>(pipeline);
+            var handlers = await DataSource.QueryAsync<HandlerRecord>(pipeline);
 
-            if (list is List<HandlerRecord> handlers)
+            if (handlers is null) { return; }
+
+            int ordinal = handlers.Count();
+
+            foreach (var item in handlers)
             {
-                foreach (var item in handlers)
+                if (item.Name == model.Name)
                 {
-                    if (item.Handler == model.Handler)
-                    {
-                        return; //TODO: duplicate handler error ?
-                    }
+                    return; //TODO: throw duplicate handler error ?
                 }
-
-                ordinal = handlers.Count;
             }
-
-            HandlerRecord new_handler = DomainModel.New<HandlerRecord>();
-
-            new_handler.Pipeline = pipeline;
-            new_handler.Ordinal = ordinal;
-            new_handler.Handler = model.Handler;
-            new_handler.Message = model.Message;
 
             try
             {
+                HandlerRecord new_handler = DomainModel.New<HandlerRecord>();
+                new_handler.Pipeline = pipeline;
+                new_handler.Ordinal = ordinal;
+                new_handler.Name = model.Name;
                 await DataSource.CreateAsync(new_handler);
 
-                //TODO: add only required options !!!
+                List<OptionModel> options = await DataSource.GetAvailableOptions(new_handler.Name);
 
-                //Entity owner = new_handler.GetEntity();
+                if (options is not null && options.Count > 0)
+                {
+                    Entity owner = new_handler.GetEntity();
 
-                //foreach (OptionModel option in model.Options)
-                //{
-                //    OptionRecord new_option = DomainModel.New<OptionRecord>();
-
-                //    new_option.Owner = owner;
-                //    new_option.Name = option.Name;
-                //    new_option.Type = option.Type;
-                //    new_option.Value = option.Value;
-
-                //    if (new_option.Name == "Pipeline" && new_option.Type == "System.Guid" && string.IsNullOrWhiteSpace(new_option.Value))
-                //    {
-                //        new_option.Value = pipeline.Identity.ToString().ToLowerInvariant();
-                //    }
-
-                //    await DataSource.CreateAsync(new_option);
-                //}
-
-                NavigateToPipelinePage();
+                    foreach (OptionModel option in options)
+                    {
+                        if (option.IsRequired)
+                        {
+                            OptionRecord new_option = DomainModel.New<OptionRecord>();
+                            new_option.Owner = owner;
+                            new_option.Name = option.Name;
+                            new_option.Type = option.Type;
+                            new_option.Value = option.Value;
+                            await DataSource.CreateAsync(new_option);
+                        }
+                    }
+                }
             }
             catch
             {
                 throw;
             }
+            
+            NavigateToPipelinePage();
         }
     }
 }

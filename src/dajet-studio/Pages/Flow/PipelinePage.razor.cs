@@ -109,7 +109,7 @@ namespace DaJet.Studio.Pages.Flow
 
                     viewModel.AvailableOptions.Clear();
                     
-                    List<OptionModel> availableOptions = await DataSource.GetAvailableOptions(handler.Handler);
+                    List<OptionModel> availableOptions = await DataSource.GetAvailableOptions(handler.Name);
 
                     if (availableOptions is not null && availableOptions.Count > 0)
                     {
@@ -221,7 +221,7 @@ namespace DaJet.Studio.Pages.Flow
         }
         private async Task DeleteHandler(HandlerViewModel handler)
         {
-            string message = $"Удалить блок \"{handler.Handler}\" ?";
+            string message = $"Удалить блок \"{handler.Name}\" ?";
 
             bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", message);
 
@@ -493,7 +493,7 @@ namespace DaJet.Studio.Pages.Flow
         {
             Options.Remove(option);
         }
-        internal string Handler { get { return _model.Handler; } }
+        internal string Name { get { return _model.Name; } }
         internal List<OptionViewModel> Options { get; } = new();
         internal Dictionary<string, OptionModel> AvailableOptions { get; } = new();
         public Task<List<string>> GetAvailableOptions(string filter)

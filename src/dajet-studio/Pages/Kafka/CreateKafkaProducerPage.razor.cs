@@ -9,10 +9,8 @@ namespace DaJet.Studio.Pages.Kafka
     public partial class CreateKafkaProducerPage : ComponentBase
     {
         private const string BLOCK_NAME_DATABASE_CONSUMER = "DaJet.Flow.{0}.OneDbConsumer";
-        private const string MESSAGE_NAME_DATA_RECORD = "System.Data.IDataRecord";
         private const string BLOCK_NAME_TRANSFORMER = "DaJet.Flow.Kafka.RecordToMessageTransformer";
         private const string BLOCK_NAME_KAFKA_PRODUCER = "DaJet.Flow.Kafka.Producer";
-        private const string MESSAGE_NAME_KAFKA_MESSAGE = "Confluent.Kafka.Message`2[System.Byte[],System.Byte[]]";
         protected PipelineModel Model { get; set; } = new();
         protected string KafkaServer { get; set; } = "127.0.0.1:9092";
         protected string KafkaTopic { get; set; } = string.Empty;
@@ -91,8 +89,7 @@ namespace DaJet.Studio.Pages.Kafka
             Model.Handlers.Clear();
             Model.Handlers.Add(new HandlerModel()
             {
-                Handler = string.Format(BLOCK_NAME_DATABASE_CONSUMER, DataSourceType),
-                Message = MESSAGE_NAME_DATA_RECORD,
+                Name = string.Format(BLOCK_NAME_DATABASE_CONSUMER, DataSourceType),
                 Options =
                 {
                     new OptionModel() { Name = "Source", Type = "System.String", Value = DataSourceUrl.Name },
@@ -102,8 +99,7 @@ namespace DaJet.Studio.Pages.Kafka
             });
             Model.Handlers.Add(new HandlerModel()
             {
-                Handler = BLOCK_NAME_TRANSFORMER,
-                Message = MESSAGE_NAME_KAFKA_MESSAGE,
+                Name = BLOCK_NAME_TRANSFORMER,
                 Options =
                 {
                     new OptionModel() { Name = "PackageName", Type = "System.String", Value = PackageName },
@@ -117,8 +113,7 @@ namespace DaJet.Studio.Pages.Kafka
             });
             Model.Handlers.Add(new HandlerModel()
             {
-                Handler = BLOCK_NAME_KAFKA_PRODUCER,
-                Message = MESSAGE_NAME_KAFKA_MESSAGE,
+                Name = BLOCK_NAME_KAFKA_PRODUCER,
                 Options =
                 {
                     new OptionModel() { Name = "ClientId", Type = "System.String", Value = DataSourceUrl.Name },

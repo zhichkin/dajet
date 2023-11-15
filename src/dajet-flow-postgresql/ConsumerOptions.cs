@@ -1,11 +1,12 @@
 ﻿using DaJet.Model;
+using System.ComponentModel.DataAnnotations;
 
 namespace DaJet.Flow.PostgreSql
 {
     public sealed class ConsumerOptions : OptionsBase
     {
-        public string Source { get; set; } = string.Empty;
-        public string Script { get; set; } = string.Empty;
+        [Required] public string Source { get; set; } = string.Empty;
+        [Required] public string Script { get; set; } = string.Empty;
         public int Timeout { get; set; } = 10; // seconds (value of 0 indicates no limit)
     }
 }

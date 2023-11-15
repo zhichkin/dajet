@@ -148,7 +148,7 @@ namespace DaJet.Flow
 
             foreach (HandlerRecord handler in handlers)
             {
-                Type handlerType = _assemblyManager.Resolve(handler.Handler);
+                Type handlerType = _assemblyManager.Resolve(handler.Name);
 
                 if (_handlers.TryGetValue(handlerType, out HandlerDescriptor descriptor))
                 {

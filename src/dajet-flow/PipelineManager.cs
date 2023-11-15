@@ -1,6 +1,7 @@
 ﻿using DaJet.Data;
 using DaJet.Model;
 using Microsoft.Extensions.Logging;
+using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
 namespace DaJet.Flow
@@ -255,10 +256,16 @@ namespace DaJet.Flow
 
             foreach (Type type in _factory.GetRegisteredHandlers())
             {
-                handlers.Add(new HandlerModel()
+                if (type.IsHandler(out Type input, out Type output))
                 {
-                    Handler = type.ToString()
-                });
+                    handlers.Add(new HandlerModel()
+                    {
+                        Name = type.ToString(),
+                        Input = input is null ? string.Empty : input.ToString(),
+                        Output = output is null ? string.Empty : output.ToString()
+                        //TODO: Options = GetAvailableOptions(type)
+                    });
+                }
             }
 
             return handlers;
@@ -269,10 +276,13 @@ namespace DaJet.Flow
 
             foreach (PropertyInfo property in owner.GetWritableOptions())
             {
+                bool required = property.GetCustomAttribute<RequiredAttribute>() is not null;
+
                 options.Add(new OptionModel()
                 {
                     Name = property.Name,
-                    Type = property.PropertyType.ToString()
+                    Type = property.PropertyType.ToString(),
+                    IsRequired = required
                 });
             }
             

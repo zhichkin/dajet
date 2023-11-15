@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Components;
 
-namespace DaJet.Studio.Components.AutoComplete
+namespace DaJet.Studio.Components
 {
-    public partial class AutoComplete : ComponentBase
+    public partial class OptionSelector : ComponentBase
     {
         private string _value;
         private List<string> Values { get; set; }

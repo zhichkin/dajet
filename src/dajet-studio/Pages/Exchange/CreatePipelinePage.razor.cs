@@ -9,7 +9,6 @@ namespace DaJet.Studio.Pages.Exchange
 {
     public partial class CreatePipelinePage : ComponentBase
     {
-        private const string ONEDB_MESSAGE_NAME = "DaJet.Exchange.OneDbMessage";
         private const string BLOCK_NAME_EXCHANGE = "DaJet.Exchange.{0}.OneDbExchange";
         private const string BLOCK_NAME_ROUTER = "DaJet.Exchange.{0}.OneDbRouter";
         private const string BLOCK_NAME_TRANSFORMER = "DaJet.Exchange.{0}.OneDbTransformer";
@@ -165,8 +164,7 @@ namespace DaJet.Studio.Pages.Exchange
             Model.Handlers.Clear();
             Model.Handlers.Add(new HandlerModel()
             {
-                Handler = string.Format(BLOCK_NAME_EXCHANGE, source.DatabaseProvider),
-                Message = ONEDB_MESSAGE_NAME,
+                Name = string.Format(BLOCK_NAME_EXCHANGE, source.DatabaseProvider),
                 Options =
                 {
                     new OptionModel() { Name = "Source", Type = "System.String", Value = Database },
@@ -178,8 +176,7 @@ namespace DaJet.Studio.Pages.Exchange
             });
             Model.Handlers.Add(new HandlerModel()
             {
-                Handler = string.Format(BLOCK_NAME_ROUTER, source.DatabaseProvider),
-                Message = ONEDB_MESSAGE_NAME,
+                Name = string.Format(BLOCK_NAME_ROUTER, source.DatabaseProvider),
                 Options =
                 {
                     new OptionModel() { Name = "Source", Type = "System.String", Value = Database },
@@ -190,8 +187,7 @@ namespace DaJet.Studio.Pages.Exchange
             });
             Model.Handlers.Add(new HandlerModel()
             {
-                Handler = string.Format(BLOCK_NAME_TRANSFORMER, source.DatabaseProvider),
-                Message = ONEDB_MESSAGE_NAME,
+                Name = string.Format(BLOCK_NAME_TRANSFORMER, source.DatabaseProvider),
                 Options =
                 {
                     new OptionModel() { Name = "Source", Type = "System.String", Value = Database },
@@ -202,8 +198,7 @@ namespace DaJet.Studio.Pages.Exchange
             });
             Model.Handlers.Add(new HandlerModel()
             {
-                Handler = BLOCK_NAME_SERIALIZER,
-                Message = ONEDB_MESSAGE_NAME,
+                Name = BLOCK_NAME_SERIALIZER,
                 Options =
                 {
                     new OptionModel() { Name = "MaxDop", Type = "System.Int32", Value = "1" }
@@ -214,8 +209,7 @@ namespace DaJet.Studio.Pages.Exchange
             {
                 Model.Handlers.Add(new HandlerModel()
                 {
-                    Handler = string.Format(BLOCK_NAME_PRODUCER, TargetType),
-                    Message = ONEDB_MESSAGE_NAME,
+                    Name = string.Format(BLOCK_NAME_PRODUCER, TargetType),
                     Options =
                     {
                         new OptionModel() { Name = "Target", Type = "System.String", Value = TargetUrl.Name },
@@ -235,8 +229,7 @@ namespace DaJet.Studio.Pages.Exchange
 
                 Model.Handlers.Add(new HandlerModel()
                 {
-                    Handler = BLOCK_NAME_RABBITMQ,
-                    Message = ONEDB_MESSAGE_NAME,
+                    Name = BLOCK_NAME_RABBITMQ,
                     Options =
                     {
                         new OptionModel() { Name = "Target", Type = "System.String", Value = url },
@@ -251,8 +244,7 @@ namespace DaJet.Studio.Pages.Exchange
             {
                 Model.Handlers.Add(new HandlerModel()
                 {
-                    Handler = BLOCK_NAME_APACHE_KAFKA,
-                    Message = ONEDB_MESSAGE_NAME,
+                    Name = BLOCK_NAME_APACHE_KAFKA,
                     Options =
                     {
                         new OptionModel() { Name = "ClientId", Type = "System.String", Value = KafkaClient },

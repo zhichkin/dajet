@@ -171,8 +171,7 @@ namespace DaJet.Http.Controllers
                 HandlerRecord handler = _source.Model.New<HandlerRecord>();
                 handler.Pipeline = pipeline.GetEntity();
                 handler.Ordinal = ordinal;
-                handler.Handler = item.Handler;
-                handler.Message = item.Message;
+                handler.Name = item.Name;
                 _source.Create(handler);
 
                 CreateOptions(handler.GetEntity(), item.Options);

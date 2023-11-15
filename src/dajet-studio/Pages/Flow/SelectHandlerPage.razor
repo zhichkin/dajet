@@ -70,7 +70,8 @@
             <thead>
                 <tr>
                     <th>Обработчик</th>
-                    <th>Сообщение</th>
+                    <th>Вход</th>
+                    <th>Выход</th>
                 </tr>
             </thead>
 
@@ -79,8 +80,9 @@
                 @foreach (HandlerModel model in Handlers)
                 {
                     <tr @onclick="@(async () => { await SelectHandlerForPipeline(model); })">
-                        <td>@model.Handler</td>
-                        <td>@model.Message</td>
+                        <td>@model.Name</td>
+                        <td>@model.Input</td>
+                        <td>@model.Output</td>
                     </tr>
                 }
 

@@ -9,16 +9,16 @@ namespace DaJet.Data
         #region "SQL SCRIPTS"
         private const string CREATE_TABLE_COMMAND = "CREATE TABLE IF NOT EXISTS " +
             "handlers (uuid TEXT NOT NULL, pipeline TEXT NOT NULL, ordinal INTEGER NOT NULL, " +
-            "handler TEXT NOT NULL, message TEXT NOT NULL, PRIMARY KEY (uuid)) WITHOUT ROWID;";
+            "name TEXT NOT NULL, PRIMARY KEY (uuid)) WITHOUT ROWID;";
         private const string SELECT_BY_OWNER =
-            "SELECT uuid, pipeline, ordinal, handler, message FROM handlers WHERE pipeline = @pipeline ORDER BY ordinal ASC;";
+            "SELECT uuid, pipeline, ordinal, name FROM handlers WHERE pipeline = @pipeline ORDER BY ordinal ASC;";
         private const string SELECT_BY_UUID =
-            "SELECT uuid, pipeline, ordinal, handler, message FROM handlers WHERE uuid = @uuid;";
+            "SELECT uuid, pipeline, ordinal, name FROM handlers WHERE uuid = @uuid;";
         private const string INSERT_COMMAND =
-            "INSERT INTO handlers (uuid, pipeline, ordinal, handler, message) " +
-            "VALUES (@uuid, @pipeline, @ordinal, @handler, @message);";
+            "INSERT INTO handlers (uuid, pipeline, ordinal, name) " +
+            "VALUES (@uuid, @pipeline, @ordinal, @name);";
         private const string UPDATE_COMMAND =
-            "UPDATE handlers SET pipeline = @pipeline, ordinal = @ordinal, handler = @handler, message = @message WHERE uuid = @uuid;";
+            "UPDATE handlers SET pipeline = @pipeline, ordinal = @ordinal, name = @name WHERE uuid = @uuid;";
         private const string DELETE_COMMAND =
             "DELETE FROM handlers WHERE uuid = @uuid;";
         private const string DELETE_OPTIONS =
@@ -70,8 +70,7 @@ namespace DaJet.Data
                     command.Parameters.AddWithValue("uuid", record.Identity.ToString().ToLower());
                     command.Parameters.AddWithValue("pipeline", record.Pipeline.Identity.ToString().ToLower());
                     command.Parameters.AddWithValue("ordinal", record.Ordinal);
-                    command.Parameters.AddWithValue("handler", record.Handler);
-                    command.Parameters.AddWithValue("message", record.Message);
+                    command.Parameters.AddWithValue("name", record.Name);
 
                     int result = command.ExecuteNonQuery();
                 }
@@ -95,8 +94,7 @@ namespace DaJet.Data
                     command.Parameters.AddWithValue("uuid", record.Identity.ToString().ToLower());
                     command.Parameters.AddWithValue("pipeline", record.Pipeline.Identity.ToString().ToLower());
                     command.Parameters.AddWithValue("ordinal", record.Ordinal);
-                    command.Parameters.AddWithValue("handler", record.Handler);
-                    command.Parameters.AddWithValue("message", record.Message);
+                    command.Parameters.AddWithValue("name", record.Name);
 
                     int result = command.ExecuteNonQuery();
                 }
@@ -159,8 +157,7 @@ namespace DaJet.Data
                                 Identity = new Guid(reader.GetString(0)),
                                 Pipeline = new Entity(ownerCode, new Guid(reader.GetString(1))),
                                 Ordinal = (int)reader.GetInt64(2),
-                                Handler = reader.GetString(3),
-                                Message = reader.GetString(4)
+                                Name = reader.GetString(3)
                             };
 
                             record.MarkAsOriginal();
@@ -198,8 +195,7 @@ namespace DaJet.Data
                                 Identity = new Guid(reader.GetString(0)),
                                 Pipeline = new Entity(ownerCode, new Guid(reader.GetString(1))),
                                 Ordinal = (int)reader.GetInt64(2),
-                                Handler = reader.GetString(3),
-                                Message = reader.GetString(4)
+                                Name = reader.GetString(3)
                             };
 
                             record.MarkAsOriginal();

@@ -9,9 +9,7 @@ namespace DaJet.Studio.Pages.Kafka
     public partial class CreateKafkaConsumerPage : ComponentBase
     {
         private const string BLOCK_NAME_KAFKA_CONSUMER = "DaJet.Flow.Kafka.Consumer";
-        private const string MESSAGE_NAME_CONSUME_RESULT = "Confluent.Kafka.ConsumeResult`2[System.Byte[],System.Byte[]]";
         private const string BLOCK_NAME_TRANSFORMER = "DaJet.Flow.Kafka.MessageToRecordTransformer";
-        private const string MESSAGE_NAME_DATA_RECORD = "System.Data.IDataRecord";
         private const string BLOCK_NAME_DATABASE_PRODUCER = "DaJet.Flow.{0}.OneDbProducer";
         protected PipelineModel Model { get; set; } = new();
         protected string KafkaServer { get; set; } = "127.0.0.1:9092";
@@ -92,8 +90,7 @@ namespace DaJet.Studio.Pages.Kafka
             Model.Handlers.Clear();
             Model.Handlers.Add(new HandlerModel()
             {
-                Handler = BLOCK_NAME_KAFKA_CONSUMER,
-                Message = MESSAGE_NAME_CONSUME_RESULT,
+                Name = BLOCK_NAME_KAFKA_CONSUMER,
                 Options =
                     {
                         new OptionModel() { Name = "GroupId", Type = "System.String", Value = DataSourceUrl.Name },
@@ -108,8 +105,7 @@ namespace DaJet.Studio.Pages.Kafka
             });
             Model.Handlers.Add(new HandlerModel()
             {
-                Handler = BLOCK_NAME_TRANSFORMER,
-                Message = MESSAGE_NAME_DATA_RECORD,
+                Name = BLOCK_NAME_TRANSFORMER,
                 Options =
                 {
                     new OptionModel() { Name = "PackageName", Type = "System.String", Value = PackageName },
@@ -124,8 +120,7 @@ namespace DaJet.Studio.Pages.Kafka
             });
             Model.Handlers.Add(new HandlerModel()
             {
-                Handler = string.Format(BLOCK_NAME_DATABASE_PRODUCER, DataSourceType),
-                Message = MESSAGE_NAME_DATA_RECORD,
+                Name = string.Format(BLOCK_NAME_DATABASE_PRODUCER, DataSourceType),
                 Options =
                 {
                     new OptionModel() { Name = "Target", Type = "System.String", Value = DataSourceUrl.Name },

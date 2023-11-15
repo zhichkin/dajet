@@ -1,6 +1,4 @@
-﻿@using DaJet.Studio.Components.AutoComplete;
-
-@page "/flow/pipeline/{uuid:guid}"
+﻿@page "/flow/pipeline/{uuid:guid}"
 
 @inject IDomainModel DomainModel;
 @inject DaJetHttpClient DataSource;
@@ -211,7 +209,7 @@
                                  class="dajet-icon-button" style="margin: 0px 5px 0px 0px;" />
                         }
 
-                        <span style="font-weight:bold;">@handler.Handler</span>
+                        <span style="font-weight:bold;">@handler.Name</span>
 
                         <img src="/img/delete.png" class="dajet-icon-button" @onclick="@(async () => { await DeleteHandler(handler); })" />
                     </td>
@@ -230,8 +228,8 @@
                                     @onclick="@(async () => { await DeleteHandlerOption(handler, option); })" />
                                     
                                     <div style="display:inline-block;">
-                                        <AutoComplete ValueSelected="@option.OptionSelected"
-                                                      ValuesProvider="@handler.GetAvailableOptions" />
+                                        <OptionSelector ValueSelected="@option.OptionSelected"
+                                                        ValuesProvider="@handler.GetAvailableOptions" />
                                     </div>
                                 </td>
                             }
