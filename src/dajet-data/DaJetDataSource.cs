@@ -21,6 +21,36 @@ namespace DaJet.Data
             _mappers.Add(typeof(PipelineRecord), new PipelineDataMapper(_domain, connectionString));
             _mappers.Add(typeof(HandlerRecord), new HandlerDataMapper(_domain, connectionString));
             _mappers.Add(typeof(OptionRecord), new OptionDataMapper(_domain, connectionString));
+
+            ConfigureDatabase();
+        }
+        private void ConfigureDatabase()
+        {
+            // create services root nodes
+
+            List<string> services = new() { "flow" };
+
+            IEnumerable<TreeNodeRecord> nodes = Query<TreeNodeRecord>(Entity.Undefined);
+
+            if (nodes is not null)
+            {
+                foreach (TreeNodeRecord node in nodes)
+                {
+                    _ = services.Remove(node.Name);
+                }
+            }
+
+            foreach (string name in services)
+            {
+                TreeNodeRecord record = _domain.New<TreeNodeRecord>();
+                
+                record.Name = name;
+                record.Value = Entity.Undefined;
+                record.Parent = Entity.Undefined;
+                record.IsFolder = true;
+                
+                Create(record);
+            }
         }
         public IDomainModel Model { get { return _domain; } }
 
