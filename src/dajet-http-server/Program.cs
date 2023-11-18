@@ -49,7 +49,7 @@ namespace DaJet.Http.Server
             ConfigureOptionProviders(builder.Services);
             ConfigureMetadataService(builder.Services);
 
-            builder.Services.AddDaJetFlow(OptionsFileConnectionString);
+            builder.Services.AddDaJet(OptionsFileConnectionString);
             builder.Services.AddSingleton<RecyclableMemoryStreamManager>();
 
             WebApplication app = builder.Build();
@@ -112,36 +112,36 @@ namespace DaJet.Http.Server
         }
         private static void ConfigureOptionProviders(IServiceCollection services)
         {
-            string connectionString = OptionsFileConnectionString;
-
-            services.AddSingleton(new ScriptDataMapper(connectionString));
-            services.AddSingleton(new InfoBaseDataMapper(connectionString));
+            services.AddSingleton(new ScriptDataMapper(OptionsFileConnectionString));
         }
         private static void ConfigureMetadataService(IServiceCollection services)
         {
-            MetadataService metadataService = new();
-
-            InfoBaseDataMapper mapper = new(OptionsFileConnectionString);
-            
-            List<InfoBaseRecord> list = mapper.Select();
-
-            foreach (InfoBaseRecord entity in list)
+            services.AddSingleton<IMetadataService>(services =>
             {
-                if (!Enum.TryParse(entity.DatabaseProvider, out DatabaseProvider provider))
+                MetadataService metadataService = new();
+
+                IDataSource source = services.GetRequiredService<IDataSource>();
+
+                IEnumerable<InfoBaseRecord> list = source.Query<InfoBaseRecord>();
+
+                foreach (InfoBaseRecord record in list)
                 {
-                    provider = DatabaseProvider.SqlServer;
+                    if (!Enum.TryParse(record.DatabaseProvider, out DatabaseProvider provider))
+                    {
+                        provider = DatabaseProvider.SqlServer;
+                    }
+
+                    metadataService.Add(new InfoBaseOptions()
+                    {
+                        Key = record.Identity.ToString(),
+                        UseExtensions = record.UseExtensions,
+                        DatabaseProvider = provider,
+                        ConnectionString = record.ConnectionString
+                    });
                 }
 
-                metadataService.Add(new InfoBaseOptions()
-                {
-                    Key = entity.Uuid.ToString(),
-                    UseExtensions = entity.UseExtensions,
-                    DatabaseProvider = provider,
-                    ConnectionString = entity.ConnectionString
-                });
-            }
-
-            services.AddSingleton<IMetadataService>(metadataService);
+                return metadataService;
+            });
         }
     }
 }

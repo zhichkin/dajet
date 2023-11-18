@@ -14,12 +14,12 @@ namespace DaJet.Http.Controllers
     [ApiController][Route("query")]
     public class QueryController : ControllerBase
     {
+        private readonly IDataSource _source;
         private readonly ScriptDataMapper _scripts;
-        private readonly InfoBaseDataMapper _mapper;
         private readonly IMetadataService _metadataService;
-        public QueryController(InfoBaseDataMapper mapper, ScriptDataMapper scripts, IMetadataService metadataService)
+        public QueryController(IDataSource source, ScriptDataMapper scripts, IMetadataService metadataService)
         {
-            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _source = source ?? throw new ArgumentNullException(nameof(source));
             _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
             _metadataService = metadataService ?? throw new ArgumentNullException(nameof(metadataService));
         }
@@ -30,19 +30,19 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseRecord record = _mapper.Select(query.DbName);
+            InfoBaseRecord record = _source.Select<InfoBaseRecord>(query.DbName);
 
-            if (record == null)
+            if (record is null)
             {
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataProvider(record.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadataService.TryGetMetadataProvider(record.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
 
-            ScriptExecutor executor = new(provider, _metadataService, _mapper, _scripts);
+            ScriptExecutor executor = new(provider, _metadataService, _source, _scripts);
 
             GeneratorResult result;
 
@@ -72,19 +72,19 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseRecord record = _mapper.Select(query.DbName);
+            InfoBaseRecord record = _source.Select<InfoBaseRecord>(query.DbName);
 
-            if (record == null)
+            if (record is null)
             {
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataProvider(record.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadataService.TryGetMetadataProvider(record.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
 
-            ScriptExecutor executor = new(provider, _metadataService, _mapper, _scripts);
+            ScriptExecutor executor = new(provider, _metadataService, _source, _scripts);
 
             List<Dictionary<string, object>> result = new();
 
@@ -126,19 +126,19 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseRecord record = _mapper.Select(query.DbName);
+            InfoBaseRecord record = _source.Select<InfoBaseRecord>(query.DbName);
 
-            if (record == null)
+            if (record is null)
             {
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataProvider(record.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadataService.TryGetMetadataProvider(record.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
 
-            ScriptExecutor executor = new(provider, _metadataService, _mapper, _scripts);
+            ScriptExecutor executor = new(provider, _metadataService, _source, _scripts);
 
             GeneratorResult result = new()
             {

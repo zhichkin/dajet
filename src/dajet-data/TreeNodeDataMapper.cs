@@ -14,6 +14,8 @@ namespace DaJet.Data
             "SELECT uuid, parent, name, is_folder, entity_type, entity_uuid FROM maintree WHERE uuid = @uuid;";
         private const string SELECT_BY_PARENT =
             "SELECT uuid, parent, name, is_folder, entity_type, entity_uuid FROM maintree WHERE parent = @parent;";
+        private const string SELECT_BY_NAME =
+            "SELECT uuid, parent, name, is_folder, entity_type, entity_uuid FROM maintree WHERE parent = @parent AND name = @name LIMIT 1;";
         private const string INSERT_COMMAND =
             "INSERT INTO maintree (uuid, parent, name, is_folder, entity_type, entity_uuid) " +
             "VALUES (@uuid, @parent, @name, @is_folder, @entity_type, @entity_uuid);";
@@ -227,6 +229,68 @@ namespace DaJet.Data
             }
 
             return list;
+        }
+        public EntityObject Select(string name)
+        {
+            string[] segments = name.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+            Entity parent = Entity.Undefined;
+            TreeNodeRecord current = null;
+
+            foreach (string segment in segments)
+            {
+                current = Select(parent, segment);
+
+                if (current is null)
+                {
+                    return null; // not found
+                }
+
+                parent = current.GetEntity();
+            }
+
+            return current;
+        }
+        private TreeNodeRecord Select(Entity parent, string name)
+        {
+            TreeNodeRecord record = null;
+
+            using (SqliteConnection connection = new(_connectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = SELECT_BY_NAME;
+
+                    command.Parameters.AddWithValue("name", name);
+                    command.Parameters.AddWithValue("parent", parent.Identity.ToString().ToLower());
+
+                    using (SqliteDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            record = new TreeNodeRecord()
+                            {
+                                TypeCode = MY_TYPE_CODE,
+                                Identity = new Guid(reader.GetString(0)),
+                                Parent = new Entity(MY_TYPE_CODE, new Guid(reader.GetString(1))),
+                                Name = reader.GetString(2),
+                                IsFolder = (reader.GetInt64(3) == 1L)
+                            };
+
+                            int code = (int)reader.GetInt64(4);
+                            Guid uuid = new(reader.GetString(5));
+                            record.Value = new Entity(code, uuid);
+
+                            record.MarkAsOriginal();
+                        }
+                        reader.Close();
+                    }
+                }
+            }
+
+            return record;
         }
     }
 }

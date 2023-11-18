@@ -100,6 +100,30 @@ namespace DaJet.Http.Client
                 throw;
             }
         }
+        public async Task<T> SelectAsync<T>(string name) where T : EntityObject
+        {
+            int typeCode = _domain.GetTypeCode(typeof(T));
+
+            if (typeCode == 0)
+            {
+                throw new InvalidOperationException($"Type code of type [{typeof(T)}] is not found.");
+            }
+
+            string url = $"/data/{typeCode}/{name}";
+
+            HttpResponseMessage response = await _client.GetAsync(url);
+
+            object record = await response.Content.ReadFromJsonAsync<T>();
+
+            if (record is not T result)
+            {
+                return null;
+            }
+
+            result.MarkAsOriginal();
+
+            return result;
+        }
         public async Task<T> SelectAsync<T>(Guid identity) where T : EntityObject
         {
             Entity entity = _domain.GetEntity<T>(identity);

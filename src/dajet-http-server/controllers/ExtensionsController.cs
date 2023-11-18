@@ -16,23 +16,23 @@ namespace DaJet.Http.Controllers
     [Produces("application/json")]
     public sealed class ExtensionsController : ControllerBase
     {
-        private readonly InfoBaseDataMapper _mapper;
+        private readonly IDataSource _source;
         private readonly IMetadataService _metadataService;
-        public ExtensionsController(InfoBaseDataMapper mapper, IMetadataService metadataService)
+        public ExtensionsController(IDataSource source, IMetadataService metadataService)
         {
-            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _source = source ?? throw new ArgumentNullException(nameof(source));
             _metadataService = metadataService ?? throw new ArgumentNullException(nameof(metadataService));
         }
         [HttpGet("{infobase}")] public ActionResult Select([FromRoute] string infobase)
         {
-            InfoBaseRecord database = _mapper.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database == null)
             {
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataCache(database.Uuid.ToString(), out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetMetadataCache(database.Identity.ToString(), out MetadataCache cache, out string error))
             {
                 return NotFound(error);
             }
@@ -65,14 +65,14 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseRecord database = _mapper.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database == null)
             {
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataCache(database.Uuid.ToString(), out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetMetadataCache(database.Identity.ToString(), out MetadataCache cache, out string error))
             {
                 return NotFound(error);
             }
@@ -124,14 +124,14 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseRecord database = _mapper.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database == null)
             {
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataCache(database.Uuid.ToString(), out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetMetadataCache(database.Identity.ToString(), out MetadataCache cache, out string error))
             {
                 return NotFound(error);
             }

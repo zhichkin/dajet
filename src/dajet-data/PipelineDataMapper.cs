@@ -14,6 +14,8 @@ namespace DaJet.Data
             "SELECT uuid, name, activation FROM pipelines ORDER BY name ASC;";
         private const string SELECT_BY_UUID =
             "SELECT uuid, name, activation FROM pipelines WHERE uuid = @uuid;";
+        private const string SELECT_BY_NAME =
+            "SELECT uuid, name, activation FROM pipelines WHERE name = @name LIMIT 1;";
         private const string INSERT_COMMAND =
             "INSERT INTO pipelines (uuid, name, activation) VALUES (@uuid, @name, @activation);";
         private const string UPDATE_COMMAND =
@@ -217,6 +219,41 @@ namespace DaJet.Data
         public IEnumerable Select(Entity owner)
         {
             throw new NotImplementedException();
+        }
+        public EntityObject Select(string name)
+        {
+            PipelineRecord record = null;
+
+            using (SqliteConnection connection = new(_connectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = SELECT_BY_NAME;
+
+                    command.Parameters.AddWithValue("name", name);
+
+                    using (SqliteDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            record = new PipelineRecord()
+                            {
+                                TypeCode = MY_TYPE_CODE,
+                                Identity = new Guid(reader.GetString(0)),
+                                Name = reader.GetString(1),
+                                Activation = (ActivationMode)reader.GetInt64(2)
+                            };
+
+                            record.MarkAsOriginal();
+                        }
+                        reader.Close();
+                    }
+                }
+            }
+
+            return record;
         }
     }
 }

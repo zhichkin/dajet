@@ -23,37 +23,37 @@ namespace DaJet.Http.Controllers
             WriteIndented = true,
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
+        private readonly IDataSource _source;
         private readonly ScriptDataMapper _scripts;
-        private readonly InfoBaseDataMapper _databases;
         private readonly IMetadataService _metadata;
-        public ExchangeController(InfoBaseDataMapper databases, ScriptDataMapper scripts, IMetadataService metadata)
+        public ExchangeController(IDataSource source, ScriptDataMapper scripts, IMetadataService metadata)
         {
-            _databases = databases ?? throw new ArgumentNullException(nameof(databases));
+            _source = source ?? throw new ArgumentNullException(nameof(source));
             _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
             _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
         }
         [HttpGet("{infobase}")] public ActionResult Select([FromRoute] string infobase)
         {
-            InfoBaseRecord database = _databases.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database is null)
             {
                 return NotFound();
             }
 
-            ScriptRecord exchange = _scripts.SelectScriptByPath(database.Uuid, "/exchange");
+            ScriptRecord exchange = _scripts.SelectScriptByPath(database.Identity, "/exchange");
 
             if (exchange is null)
             {
                 exchange = new ScriptRecord()
                 {
-                    Owner = database.Uuid,
+                    Owner = database.Identity,
                     Name = "exchange"
                 };
                 _scripts.Insert(exchange);
             }
 
-            List<ScriptRecord> list = _scripts.Select(database.Uuid, exchange.Uuid);
+            List<ScriptRecord> list = _scripts.Select(database.Identity, exchange.Uuid);
 
             foreach (ScriptRecord parent in list)
             {
@@ -66,14 +66,14 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("{infobase}/{publication}")] public ActionResult Select([FromRoute] string infobase, [FromRoute] string publication)
         {
-            InfoBaseRecord database = _databases.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database is null)
             {
                 return NotFound();
             }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, $"/exchange/{publication}");
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, $"/exchange/{publication}");
 
             if (script is null)
             {
@@ -88,14 +88,14 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("{infobase}/publications")] public ActionResult SelectPublications([FromRoute] string infobase)
         {
-            InfoBaseRecord database = _databases.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database is null)
             {
                 return NotFound();
             }
 
-            if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
@@ -113,14 +113,14 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("{infobase}/{publication}/subscribers")] public ActionResult SelectSubscribers([FromRoute] string infobase, [FromRoute] string publication)
         {
-            InfoBaseRecord database = _databases.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database is null)
             {
                 return NotFound();
             }
 
-            if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
@@ -141,14 +141,14 @@ namespace DaJet.Http.Controllers
         }
         [HttpDelete("{infobase}/{publication}")] public ActionResult DeletePublication([FromRoute] string infobase, [FromRoute] string publication)
         {
-            InfoBaseRecord database = _databases.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database is null)
             {
                 return NotFound();
             }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, $"/exchange/{publication}");
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, $"/exchange/{publication}");
 
             if (script is null)
             {
@@ -168,19 +168,19 @@ namespace DaJet.Http.Controllers
         [HttpPost("{infobase}/{publication}/{type}/{article}")]
         public ActionResult CreateArticle([FromRoute] string infobase, [FromRoute] string publication, [FromRoute] string type, [FromRoute] string article)
         {
-            InfoBaseRecord database = _databases.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database is null) { return NotFound(); }
 
-            ScriptRecord parent = _scripts.SelectScriptByPath(database.Uuid, $"/exchange/{publication}/pub/{type}");
+            ScriptRecord parent = _scripts.SelectScriptByPath(database.Identity, $"/exchange/{publication}/pub/{type}");
 
             if (parent is null) { return NotFound(); }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, $"/exchange/{publication}/pub/{type}/{article}");
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, $"/exchange/{publication}/pub/{type}/{article}");
 
             if (script is not null) { return BadRequest($"Article {article} exists!"); }
 
-            if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
@@ -206,22 +206,22 @@ namespace DaJet.Http.Controllers
 
             if (entity is Catalog catalog && type == "Справочник")
             {
-                CreateCatalogScripts(database.Uuid, in publication, parent, in catalog);
+                CreateCatalogScripts(database.Identity, in publication, parent, in catalog);
             }
             else if (entity is Document document && type == "Документ")
             {
-                CreateDocumentScripts(database.Uuid, in publication, parent, in document);
+                CreateDocumentScripts(database.Identity, in publication, parent, in document);
             }
             else if (entity is InformationRegister register && type == "РегистрСведений")
             {
-                CreateRegisterScripts(database.Uuid, in publication, parent, in register, in provider);
+                CreateRegisterScripts(database.Identity, in publication, parent, in register, in provider);
             }
             else
             {
                 return BadRequest($"Unsupported metadata type \"{entity}\"");
             }
 
-            script = _scripts.SelectScriptByPath(database.Uuid, $"/exchange/{publication}/pub/{type}/{article}");
+            script = _scripts.SelectScriptByPath(database.Identity, $"/exchange/{publication}/pub/{type}/{article}");
 
             if (script is null)
             {
@@ -240,11 +240,11 @@ namespace DaJet.Http.Controllers
         [HttpDelete("{infobase}/{publication}/{type}/{article}")]
         public ActionResult DeleteArticle([FromRoute] string infobase, [FromRoute] string publication, [FromRoute] string type, [FromRoute] string article)
         {
-            InfoBaseRecord database = _databases.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database is null) { return NotFound(); }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, $"/exchange/{publication}/pub/{type}/{article}");
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, $"/exchange/{publication}/pub/{type}/{article}");
 
             if (script is not null)
             {
@@ -256,7 +256,7 @@ namespace DaJet.Http.Controllers
 
         private Type GetExchangeTuningServiceType(in InfoBaseRecord database)
         {
-            if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 throw new InvalidOperationException(error);
             }
@@ -286,7 +286,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpPost("configure/tuning/{infobase}")] public ActionResult EnableExchangeTuning([FromRoute] string infobase)
         {
-            InfoBaseRecord database = _databases.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database is null) { return NotFound($"Database [{infobase}] not found."); }
 
@@ -319,7 +319,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpDelete("configure/tuning/{infobase}")] public ActionResult DisableExchangeTuning([FromRoute] string infobase)
         {
-            InfoBaseRecord database = _databases.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database is null) { return NotFound($"Database [{infobase}] not found."); }
 
@@ -359,7 +359,7 @@ namespace DaJet.Http.Controllers
             script.AppendLine($"DECLARE @EmptyUuid uuid;");
             script.AppendLine($"SELECT Код FROM ПланОбмена.{publication} WHERE Предопределённый = @EmptyUuid ORDER BY Код ASC");
 
-            ScriptExecutor executor = new(provider, _metadata, _databases, _scripts);
+            ScriptExecutor executor = new(provider, _metadata, _source, _scripts);
             executor.Parameters.Add("ThisNode", Guid.Empty);
 
             try
@@ -399,15 +399,15 @@ namespace DaJet.Http.Controllers
                 return BadRequest($"Parameter \"BrokerUrl\" missing.");
             }
 
-            InfoBaseRecord database = _databases.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database is null) { return NotFound($"Database [{infobase}] not found."); }
 
-            ScriptRecord exchange = _scripts.SelectScriptByPath(database.Uuid, "/exchange");
+            ScriptRecord exchange = _scripts.SelectScriptByPath(database.Identity, "/exchange");
 
             if (exchange is null) { return NotFound("Exchange service not found."); }
 
-            if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
@@ -419,7 +419,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest($"Metadata object not found: {metadataName}");
             }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, $"/exchange/{publication}");
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, $"/exchange/{publication}");
 
             if (script is null)
             {
@@ -601,17 +601,17 @@ namespace DaJet.Http.Controllers
         [HttpPut("configure/script/monitor/{infobase}/{publication}/{node}")] public ActionResult ConfigureScriptMonitor(
             [FromRoute] string infobase, [FromRoute] string publication, [FromRoute] string node, [FromBody] ScriptRecord script)
         {
-            InfoBaseRecord database = _databases.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database is null) { return NotFound(infobase); }
 
-            ScriptRecord record = _scripts.SelectScriptByPath(database.Uuid, script.Name);
+            ScriptRecord record = _scripts.SelectScriptByPath(database.Identity, script.Name);
 
             if (record is null) { return NotFound(script.Name); }
 
             if (string.IsNullOrWhiteSpace(node)) { return BadRequest("Node code is empty"); }
 
-            if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
@@ -678,11 +678,11 @@ namespace DaJet.Http.Controllers
         [HttpPut("configure/script/inqueue/{infobase}")] public ActionResult ConfigureScriptInqueue(
             [FromRoute] string infobase, [FromBody] ScriptRecord script)
         {
-            InfoBaseRecord database = _databases.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database is null) { return NotFound(infobase); }
 
-            ScriptRecord record = _scripts.SelectScriptByPath(database.Uuid, script.Name);
+            ScriptRecord record = _scripts.SelectScriptByPath(database.Identity, script.Name);
 
             if (record is null) { return NotFound(script.Name); }
 
@@ -727,26 +727,26 @@ namespace DaJet.Http.Controllers
         [HttpPost("{infobase}/{publication}")]
         public ActionResult CreatePublication([FromRoute] string infobase, [FromRoute] string publication)
         {
-            InfoBaseRecord database = _databases.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database is null)
             {
                 return NotFound();
             }
 
-            ScriptRecord exchange = _scripts.SelectScriptByPath(database.Uuid, "/exchange");
+            ScriptRecord exchange = _scripts.SelectScriptByPath(database.Identity, "/exchange");
 
             if (exchange is null)
             {
                 exchange = new ScriptRecord()
                 {
-                    Owner = database.Uuid,
+                    Owner = database.Identity,
                     Name = "exchange"
                 };
                 _scripts.Insert(exchange);
             }
 
-            if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
@@ -758,7 +758,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest($"Metadata object not found: {metadataName}");
             }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, $"/exchange/{publication}");
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, $"/exchange/{publication}");
             
             if (script is not null)
             {
@@ -770,7 +770,7 @@ namespace DaJet.Http.Controllers
             script = new ScriptRecord()
             {
                 Name = publication,
-                Owner = database.Uuid,
+                Owner = database.Identity,
                 Parent = exchange.Uuid
             };
 
@@ -779,24 +779,24 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            ScriptRecord pub = CreatePubScriptNode(database.Uuid, script);
+            ScriptRecord pub = CreatePubScriptNode(database.Identity, script);
             if (pub is null) { return BadRequest(); }
 
-            ScriptRecord route = CreateRouteScriptNode(database.Uuid, pub, in publication);
+            ScriptRecord route = CreateRouteScriptNode(database.Identity, pub, in publication);
             if (route is null) { return BadRequest(); }
 
-            ScriptRecord document = CreateDocumentScriptNode(database.Uuid, pub);
+            ScriptRecord document = CreateDocumentScriptNode(database.Identity, pub);
             if (route is null) { return BadRequest(); }
 
-            ScriptRecord catalog = CreateCatalogScriptNode(database.Uuid, pub);
+            ScriptRecord catalog = CreateCatalogScriptNode(database.Identity, pub);
             if (route is null) { return BadRequest(); }
 
-            ScriptRecord register = CreateRegisterScriptNode(database.Uuid, pub);
+            ScriptRecord register = CreateRegisterScriptNode(database.Identity, pub);
             if (route is null) { return BadRequest(); }
 
             List<ScriptRecord> parents = new() { catalog, document, register };
 
-            CreateArticleScripts(database.Uuid, in publication, in parents, in articles, in provider);
+            CreateArticleScripts(database.Identity, in publication, in parents, in articles, in provider);
 
             return Created(new Uri($"/{database.Name}/{publication}", UriKind.Relative), null);
         }
@@ -1364,11 +1364,11 @@ namespace DaJet.Http.Controllers
         [HttpPut("configure/script/consume/{infobase}")]
         public ActionResult ConfigureConsumeScript([FromRoute] string infobase, [FromBody] ScriptRecord script)
         {
-            InfoBaseRecord database = _databases.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database is null) { return NotFound(infobase); }
 
-            ScriptRecord record = _scripts.SelectScriptByPath(database.Uuid, script.Name);
+            ScriptRecord record = _scripts.SelectScriptByPath(database.Identity, script.Name);
 
             if (record is null) { return NotFound(script.Name); }
 
@@ -1403,11 +1403,11 @@ namespace DaJet.Http.Controllers
         [HttpPut("configure/script/produce/{infobase}")]
         public ActionResult ConfigureProduceScript([FromRoute] string infobase, [FromBody] ScriptRecord script)
         {
-            InfoBaseRecord database = _databases.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
             if (database is null) { return NotFound(infobase); }
 
-            ScriptRecord record = _scripts.SelectScriptByPath(database.Uuid, script.Name);
+            ScriptRecord record = _scripts.SelectScriptByPath(database.Identity, script.Name);
 
             if (record is null) { return NotFound(script.Name); }
 

@@ -12,16 +12,16 @@ namespace DaJet.Flow.SqlServer
 {
     public sealed class OneDbProducer : TargetBlock<IDataRecord>
     {
+        private readonly IDataSource _source;
         private readonly ProducerOptions _options;
         private readonly ScriptDataMapper _scripts;
-        private readonly InfoBaseDataMapper _databases;
         private readonly IMetadataService _metadata;
-        [ActivatorUtilitiesConstructor] public OneDbProducer(ProducerOptions options,
-            InfoBaseDataMapper databases, ScriptDataMapper scripts, IMetadataService metadata)
+        [ActivatorUtilitiesConstructor]
+        public OneDbProducer(IDataSource source, ProducerOptions options, ScriptDataMapper scripts, IMetadataService metadata)
         {
+            _source = source ?? throw new ArgumentNullException(nameof(source));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
-            _databases = databases ?? throw new ArgumentNullException(nameof(databases));
             _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
 
             Configure();
@@ -33,20 +33,20 @@ namespace DaJet.Flow.SqlServer
         {
             if (_options.Timeout < 0) { _options.Timeout = 10; }
 
-            InfoBaseRecord database = _databases.Select(_options.Target)
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(_options.Target)
                 ?? throw new ArgumentException($"Target not found: {_options.Target}");
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, _options.Script)
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, _options.Script)
                 ?? throw new ArgumentException($"Script not found: {_options.Script}");
 
-            if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 throw new Exception(error);
             }
             
             ConnectionString = database.ConnectionString;
 
-            ScriptExecutor executor = new(provider, _metadata, _databases, _scripts);
+            ScriptExecutor executor = new(provider, _metadata, _source, _scripts);
             executor.PrepareScript(script.Script, out ScriptModel _, out List<ScriptCommand> commands);
             ScriptParameters = executor.Parameters;
             CommandText = GetInsertStatementScript(in commands);

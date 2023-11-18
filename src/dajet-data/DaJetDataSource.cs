@@ -21,6 +21,7 @@ namespace DaJet.Data
             _mappers.Add(typeof(PipelineRecord), new PipelineDataMapper(_domain, connectionString));
             _mappers.Add(typeof(HandlerRecord), new HandlerDataMapper(_domain, connectionString));
             _mappers.Add(typeof(OptionRecord), new OptionDataMapper(_domain, connectionString));
+            _mappers.Add(typeof(InfoBaseRecord), new InfoBaseDataMapper(_domain, connectionString));
 
             ConfigureDatabase();
         }
@@ -170,6 +171,20 @@ namespace DaJet.Data
             return list;
         }
 
+        public T Select<T>(string name) where T : EntityObject
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return null;
+            }
+
+            if (_mappers.TryGetValue(typeof(T), out IDataMapper mapper))
+            {
+                return mapper.Select(name) as T;
+            }
+
+            return null;
+        }
         public T Select<T>(Guid identity) where T : EntityObject
         {
             if (_mappers.TryGetValue(typeof(T), out IDataMapper mapper))

@@ -1,9 +1,10 @@
 ﻿using DaJet.Model;
 using Microsoft.Data.Sqlite;
+using System.Collections;
 
 namespace DaJet.Data
 {
-    public sealed class InfoBaseDataMapper
+    public sealed class InfoBaseDataMapper : IDataMapper
     {
         #region "SQL SCRIPTS"
         private const string CREATE_INFOBASE_TABLE_SCRIPT = "CREATE TABLE IF NOT EXISTS " +
@@ -23,17 +24,24 @@ namespace DaJet.Data
             "UPDATE infobases SET name = @name, description = @description, " +
             "use_extensions = @use_extensions, provider = @provider, dbconnect = @dbconnect " +
             "WHERE uuid = @uuid;";
-        private const string DELETE_SCRIPT = "DELETE FROM infobases WHERE uuid = @uuid;";
+        private const string DELETE_COMMAND = "DELETE FROM infobases WHERE uuid = @uuid;";
+        private const string DELETE_SCRIPTS = "DELETE FROM scripts WHERE owner = @owner;";
         #endregion
 
+        private readonly int MY_TYPE_CODE;
         private readonly string _connectionString;
-        public InfoBaseDataMapper(string connectionString)
+        private readonly IDomainModel _domain;
+        public InfoBaseDataMapper(IDomainModel domain, string connectionString)
         {
             _connectionString = connectionString;
 
-            InitializeDatabase();
+            ConfigureDatabase();
+
+            _domain = domain;
+
+            MY_TYPE_CODE = _domain.GetTypeCode(typeof(InfoBaseRecord));
         }
-        private void InitializeDatabase()
+        private void ConfigureDatabase()
         {
             using (SqliteConnection connection = new(_connectionString))
             {
@@ -47,9 +55,163 @@ namespace DaJet.Data
                 }
             }
         }
+        public void Insert(EntityObject entity)
+        {
+            if (entity is not InfoBaseRecord record)
+            {
+                return;
+            }
 
-        #region "CRUD COMMANDS"
-        public List<InfoBaseRecord> Select()
+            using (SqliteConnection connection = new(_connectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = INSERT_SCRIPT;
+
+                    command.Parameters.AddWithValue("uuid", record.Identity.ToString().ToLower());
+                    command.Parameters.AddWithValue("name", record.Name);
+                    command.Parameters.AddWithValue("description", record.Description);
+                    command.Parameters.AddWithValue("use_extensions", record.UseExtensions ? 1L : 0L);
+                    command.Parameters.AddWithValue("provider", record.DatabaseProvider);
+                    command.Parameters.AddWithValue("dbconnect", record.ConnectionString);
+
+                    int result = command.ExecuteNonQuery();
+                }
+            }
+        }
+        public void Update(EntityObject entity)
+        {
+            if (entity is not InfoBaseRecord record)
+            {
+                return;
+            }
+
+            using (SqliteConnection connection = new(_connectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = UPDATE_SCRIPT;
+
+                    command.Parameters.AddWithValue("uuid", record.Identity.ToString().ToLower());
+                    command.Parameters.AddWithValue("name", record.Name);
+                    command.Parameters.AddWithValue("description", record.Description);
+                    command.Parameters.AddWithValue("use_extensions", record.UseExtensions ? 1L : 0L);
+                    command.Parameters.AddWithValue("provider", record.DatabaseProvider);
+                    command.Parameters.AddWithValue("dbconnect", record.ConnectionString);
+
+                    int result = command.ExecuteNonQuery();
+                }
+            }
+        }
+        public void Delete(Entity entity)
+        {
+            int result = 0;
+
+            using (SqliteConnection connection = new(_connectionString))
+            {
+                connection.Open();
+
+                using (SqliteTransaction transaction = connection.BeginTransaction())
+                {
+                    using (SqliteCommand command = connection.CreateCommand())
+                    {
+                        command.Connection = connection;
+                        command.Transaction = transaction;
+
+                        command.CommandText = DELETE_SCRIPTS;
+                        command.Parameters.Clear();
+                        command.Parameters.AddWithValue("owner", entity.Identity.ToString().ToLower());
+                        result += command.ExecuteNonQuery();
+
+                        command.CommandText = DELETE_COMMAND;
+                        command.Parameters.Clear();
+                        command.Parameters.AddWithValue("uuid", entity.Identity.ToString().ToLower());
+                        result += command.ExecuteNonQuery();
+                    }
+
+                    transaction.Commit();
+                }
+            }
+        }
+        public EntityObject Select(string name)
+        {
+            InfoBaseRecord record = null;
+
+            using (SqliteConnection connection = new(_connectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = SELECT_BY_NAME_SCRIPT;
+
+                    command.Parameters.AddWithValue("name", name);
+
+                    using (SqliteDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            record = new InfoBaseRecord()
+                            {
+                                TypeCode = MY_TYPE_CODE,
+                                Identity = new Guid(reader.GetString(0)),
+                                Name = reader.GetString(1),
+                                Description = reader.GetString(2),
+                                UseExtensions = (reader.GetInt64(3) == 1L),
+                                DatabaseProvider = reader.GetString(4),
+                                ConnectionString = reader.GetString(5)
+                            };
+                            record.MarkAsOriginal();
+                        }
+                        reader.Close();
+                    }
+                }
+            }
+
+            return record;
+        }
+        public EntityObject Select(Guid idenity)
+        {
+            InfoBaseRecord record = null;
+
+            using (SqliteConnection connection = new(_connectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = SELECT_SCRIPT;
+
+                    command.Parameters.AddWithValue("uuid", idenity.ToString().ToLower());
+
+                    using (SqliteDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            record = new InfoBaseRecord()
+                            {
+                                TypeCode = MY_TYPE_CODE,
+                                Identity = new Guid(reader.GetString(0)),
+                                Name = reader.GetString(1),
+                                Description = reader.GetString(2),
+                                UseExtensions = (reader.GetInt64(3) == 1L),
+                                DatabaseProvider = reader.GetString(4),
+                                ConnectionString = reader.GetString(5)
+                            };
+                            record.MarkAsOriginal();
+                        }
+                        reader.Close();
+                    }
+                }
+            }
+
+            return record;
+        }
+        public IEnumerable Select()
         {
             List<InfoBaseRecord> list = new();
 
@@ -67,13 +229,17 @@ namespace DaJet.Data
                         {
                             InfoBaseRecord item = new()
                             {
-                                Uuid = new Guid(reader.GetString(0)),
+                                TypeCode = MY_TYPE_CODE,
+                                Identity = new Guid(reader.GetString(0)),
                                 Name = reader.GetString(1),
                                 Description = reader.GetString(2),
                                 UseExtensions = (reader.GetInt64(3) == 1L),
                                 DatabaseProvider = reader.GetString(4),
                                 ConnectionString = reader.GetString(5)
                             };
+
+                            item.MarkAsOriginal();
+
                             list.Add(item);
                         }
                         reader.Close();
@@ -83,146 +249,9 @@ namespace DaJet.Data
 
             return list;
         }
-        public InfoBaseRecord Select(Guid uuid)
+        public IEnumerable Select(Entity owner)
         {
-            InfoBaseRecord entity = null;
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = SELECT_SCRIPT;
-
-                    command.Parameters.AddWithValue("uuid", uuid.ToString().ToLower());
-
-                    using (SqliteDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            entity = new InfoBaseRecord()
-                            {
-                                Uuid = new Guid(reader.GetString(0)),
-                                Name = reader.GetString(1),
-                                Description = reader.GetString(2),
-                                UseExtensions = (reader.GetInt64(3) == 1L),
-                                DatabaseProvider = reader.GetString(4),
-                                ConnectionString = reader.GetString(5)
-                            };
-                        }
-                        reader.Close();
-                    }
-                }
-            }
-
-            return entity;
+            throw new NotImplementedException();
         }
-        public InfoBaseRecord Select(string name)
-        {
-            InfoBaseRecord entity = null;
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = SELECT_BY_NAME_SCRIPT;
-
-                    command.Parameters.AddWithValue("name", name);
-
-                    using (SqliteDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            entity = new InfoBaseRecord()
-                            {
-                                Uuid = new Guid(reader.GetString(0)),
-                                Name = reader.GetString(1),
-                                Description = reader.GetString(2),
-                                UseExtensions = (reader.GetInt64(3) == 1L),
-                                DatabaseProvider = reader.GetString(4),
-                                ConnectionString = reader.GetString(5)
-                            };
-                        }
-                        reader.Close();
-                    }
-                }
-            }
-
-            return entity;
-        }
-        public bool Insert(InfoBaseRecord entity)
-        {
-            int result;
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = INSERT_SCRIPT;
-
-                    command.Parameters.AddWithValue("uuid", entity.Uuid.ToString().ToLower());
-                    command.Parameters.AddWithValue("name", entity.Name);
-                    command.Parameters.AddWithValue("description", entity.Description);
-                    command.Parameters.AddWithValue("use_extensions", entity.UseExtensions);
-                    command.Parameters.AddWithValue("provider", entity.DatabaseProvider);
-                    command.Parameters.AddWithValue("dbconnect", entity.ConnectionString);
-
-                    result = command.ExecuteNonQuery();
-                }
-            }
-
-            return (result == 1);
-        }
-        public bool Update(InfoBaseRecord entity)
-        {
-            int result;
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = UPDATE_SCRIPT;
-
-                    command.Parameters.AddWithValue("uuid", entity.Uuid.ToString().ToLower());
-                    command.Parameters.AddWithValue("name", entity.Name);
-                    command.Parameters.AddWithValue("description", entity.Description);
-                    command.Parameters.AddWithValue("use_extensions", entity.UseExtensions);
-                    command.Parameters.AddWithValue("provider", entity.DatabaseProvider);
-                    command.Parameters.AddWithValue("dbconnect", entity.ConnectionString);
-
-                    result = command.ExecuteNonQuery();
-                }
-            }
-
-            return (result == 1);
-        }
-        public bool Delete(InfoBaseRecord entity)
-        {
-            int result;
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = DELETE_SCRIPT;
-
-                    command.Parameters.AddWithValue("uuid", entity.Uuid.ToString().ToLower());
-
-                    result = command.ExecuteNonQuery();
-                }
-            }
-
-            return (result > 0);
-        }
-        #endregion
     }
 }

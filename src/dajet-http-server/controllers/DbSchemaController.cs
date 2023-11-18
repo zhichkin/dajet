@@ -16,23 +16,23 @@ namespace DaJet.Http.Controllers
     {
         private const string INFOBASE_IS_NOT_FOUND_ERROR = "InfoBase [{0}] is not found. Try register it with the /md service first.";
 
-        private readonly InfoBaseDataMapper _mapper;
+        private readonly IDataSource _source;
         private readonly IMetadataService _metadataService;
-        public DbSchemaController(InfoBaseDataMapper mapper, IMetadataService metadataService)
+        public DbSchemaController(IDataSource source, IMetadataService metadataService)
         {
-            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _source = source ?? throw new ArgumentNullException(nameof(source));
             _metadataService = metadataService ?? throw new ArgumentNullException(nameof(metadataService));
         }
         [HttpGet("{infobase}")] public ActionResult Select([FromRoute] string infobase)
         {
-            InfoBaseRecord record = _mapper.Select(infobase);
+            InfoBaseRecord record = _source.Select<InfoBaseRecord>(infobase);
 
             if (record == null)
             {
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetDbViewGenerator(record.Uuid.ToString(), out IDbViewGenerator generator, out string error))
+            if (!_metadataService.TryGetDbViewGenerator(record.Identity.ToString(), out IDbViewGenerator generator, out string error))
             {
                 return BadRequest(error);
             }
@@ -50,14 +50,14 @@ namespace DaJet.Http.Controllers
         }
         [HttpPost("{infobase}/{schema}")] public ActionResult Create([FromRoute] string infobase, [FromRoute] string schema)
         {
-            InfoBaseRecord record = _mapper.Select(infobase);
+            InfoBaseRecord record = _source.Select<InfoBaseRecord>(infobase);
 
             if (record == null)
             {
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetDbViewGenerator(record.Uuid.ToString(), out IDbViewGenerator generator, out string error))
+            if (!_metadataService.TryGetDbViewGenerator(record.Identity.ToString(), out IDbViewGenerator generator, out string error))
             {
                 return BadRequest(error);
             }
@@ -77,14 +77,14 @@ namespace DaJet.Http.Controllers
         }
         [HttpDelete("{infobase}/{schema}")] public ActionResult Delete([FromRoute] string infobase, [FromRoute] string schema)
         {
-            InfoBaseRecord record = _mapper.Select(infobase);
+            InfoBaseRecord record = _source.Select<InfoBaseRecord>(infobase);
 
             if (record == null)
             {
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetDbViewGenerator(record.Uuid.ToString(), out IDbViewGenerator generator, out string error))
+            if (!_metadataService.TryGetDbViewGenerator(record.Identity.ToString(), out IDbViewGenerator generator, out string error))
             {
                 return BadRequest(error);
             }

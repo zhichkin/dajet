@@ -6,7 +6,7 @@ namespace DaJet.Flow
 {
     public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection AddDaJetFlow(this IServiceCollection services, string connectionString)
+        public static IServiceCollection AddDaJet(this IServiceCollection services, string connectionString)
         {
             AssemblyManager manager = new();
             manager.Register(typeof(Pipeline).Assembly);

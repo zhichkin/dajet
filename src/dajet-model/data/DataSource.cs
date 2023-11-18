@@ -15,6 +15,7 @@ namespace DaJet.Data
         void Delete(Entity entity);
         void Delete<T>(Guid identity) where T : EntityObject;
         EntityObject Select(Entity entity);
+        T Select<T>(string name) where T : EntityObject;
         T Select<T>(Guid identity) where T : EntityObject;
         T Select<T>(Entity entity) where T : EntityObject;
         IEnumerable Select(int typeCode);
@@ -29,6 +30,7 @@ namespace DaJet.Data
         Task UpdateAsync(EntityObject entity);
         Task DeleteAsync(Entity entity);
         Task<EntityObject> SelectAsync(Entity entity);
+        Task<T> SelectAsync<T>(string name) where T : EntityObject;
         Task<T> SelectAsync<T>(Guid identity) where T : EntityObject;
         Task<T> SelectAsync<T>(Entity entity) where T : EntityObject;
         Task<IEnumerable<T>> QueryAsync<T>() where T : EntityObject;
@@ -40,6 +42,7 @@ namespace DaJet.Data
         void Insert(EntityObject entity);
         void Update(EntityObject entity);
         void Delete(Entity entity);
+        EntityObject Select(string name);
         EntityObject Select(Guid idenity);
         IEnumerable Select();
         IEnumerable Select(Entity owner);

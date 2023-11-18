@@ -15,17 +15,17 @@ namespace DaJet.Http.Controllers
     [Produces("application/json")]
     public sealed class MetadataController : ControllerBase
     {
-        private readonly InfoBaseDataMapper _mapper;
+        private readonly IDataSource _source;
         private readonly IMetadataService _metadataService;
-        public MetadataController(InfoBaseDataMapper mapper, IMetadataService metadataService)
+        public MetadataController(IDataSource source, IMetadataService metadataService)
         {
-            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _source = source ?? throw new ArgumentNullException(nameof(source));
             _metadataService = metadataService ?? throw new ArgumentNullException(nameof(metadataService));
         }
         
         [HttpGet("")] public ActionResult Select()
         {
-            List<InfoBaseRecord> list = _mapper.Select();
+            IEnumerable<InfoBaseRecord> list = _source.Query<InfoBaseRecord>();
             JsonSerializerOptions options = new()
             {
                 WriteIndented = true,
@@ -36,14 +36,14 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("{infobase}")] public ActionResult Select([FromRoute] string infobase)
         {
-            InfoBaseRecord record = _mapper.Select(infobase);
+            InfoBaseRecord record = _source.Select<InfoBaseRecord>(infobase);
 
             if (record == null)
             {
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetInfoBase(record.Uuid.ToString(), out InfoBase entity, out string error))
+            if (!_metadataService.TryGetInfoBase(record.Identity.ToString(), out InfoBase entity, out string error))
             {
                 return BadRequest(error);
             }
@@ -60,7 +60,7 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("reset/{infobase}")] public ActionResult ResetCache([FromRoute] string infobase)
         {
-            InfoBaseRecord options = _mapper.Select(infobase);
+            InfoBaseRecord options = _source.Select<InfoBaseRecord>(infobase);
 
             if (options == null)
             {
@@ -72,7 +72,7 @@ namespace DaJet.Http.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, $"Unsupported database privider: {options.DatabaseProvider}");
             }
 
-            string key = options.Uuid.ToString();
+            string key = options.Identity.ToString();
 
             _metadataService.Remove(key);
 
@@ -93,7 +93,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseRecord entity = _mapper.Select(infobase);
+            InfoBaseRecord entity = _source.Select<InfoBaseRecord>(infobase);
 
             if (entity == null)
             {
@@ -108,7 +108,7 @@ namespace DaJet.Http.Controllers
                 Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
             };
 
-            if (!_metadataService.TryGetMetadataProvider(entity.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadataService.TryGetMetadataProvider(entity.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 return NotFound(error);
             }
@@ -145,7 +145,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseRecord entity = _mapper.Select(infobase);
+            InfoBaseRecord entity = _source.Select<InfoBaseRecord>(infobase);
 
             if (entity == null)
             {
@@ -158,7 +158,7 @@ namespace DaJet.Http.Controllers
                 Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
             };
 
-            if (!_metadataService.TryGetMetadataProvider(entity.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadataService.TryGetMetadataProvider(entity.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 return NotFound(error);
             }
@@ -200,13 +200,15 @@ namespace DaJet.Http.Controllers
                 return BadRequest("Неверно указаны параметры!");
             }
 
-            string key = entity.Uuid.ToString();
+            string key = entity.Identity.ToString();
 
-            if (_mapper.Select(key) != null || !_mapper.Insert(entity))
+            if (_source.Select<InfoBaseRecord>(entity.Identity) is not null)
             {
                 return Conflict();
             }
-            
+
+            _source.Create(entity);
+
             _metadataService.Add(new InfoBaseOptions()
             {
                 Key = key,
@@ -215,7 +217,7 @@ namespace DaJet.Http.Controllers
                 ConnectionString = entity.ConnectionString
             });
 
-            return Created($"{entity.Name}", $"{entity.Uuid}");
+            return Created($"{entity.Name}", $"{entity.Identity}");
         }
         [HttpPut("")] public ActionResult Update([FromBody] InfoBaseRecord entity)
         {
@@ -226,19 +228,16 @@ namespace DaJet.Http.Controllers
                 return BadRequest("Неверно указаны параметры!");
             }
 
-            InfoBaseRecord record = _mapper.Select(entity.Uuid)!;
+            InfoBaseRecord record = _source.Select<InfoBaseRecord>(entity.Identity);
 
-            if (record == null)
+            if (record is null)
             {
                 return NotFound();
             }
 
-            if (!_mapper.Update(entity))
-            {
-                return Conflict();
-            }
+            _source.Update(entity);
 
-            string key = entity.Uuid.ToString();
+            string key = entity.Identity.ToString();
 
             _metadataService.Remove(key);
 
@@ -259,19 +258,16 @@ namespace DaJet.Http.Controllers
                 return BadRequest("Неверно указаны параметры!");
             }
 
-            InfoBaseRecord record = _mapper.Select(entity.Uuid)!;
+            InfoBaseRecord record = _source.Select<InfoBaseRecord>(entity.Identity);
 
-            if (record == null)
+            if (record is null)
             {
                 return NotFound();
             }
 
-            if (!_mapper.Delete(record))
-            {
-                return Conflict();
-            }
+            _source.Delete(record.GetEntity());
 
-            _metadataService.Remove(entity.Uuid.ToString());
+            _metadataService.Remove(entity.Identity.ToString());
 
             return Ok();
         }

@@ -352,7 +352,7 @@ namespace DaJet.Studio.Components
                 node.Nodes.Clear();
                 ConfigureInfoBaseNode(node, entity);
 
-                InfoBaseRecord database = AppState.GetDatabase(entity.Uuid);
+                InfoBaseRecord database = AppState.GetDatabase(entity.Identity);
                 if (database != null)
                 {
                     database.Name = entity.Name;

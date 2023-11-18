@@ -3,7 +3,9 @@ using DaJet.Flow;
 using DaJet.Json;
 using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
 using System.Data;
+using System.Reflection;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -62,6 +64,39 @@ namespace DaJet.Http.Controllers
             Entity entity = new(typeCode, identity);
 
             EntityObject record = _source.Select(entity);
+
+            string json = JsonSerializer.Serialize(record, type, JsonOptions);
+
+            return Content(json, "application/json", Encoding.UTF8);
+        }
+        
+        [HttpGet("{typeCode:int}/{**name}")]
+        public ActionResult Select([FromRoute] int typeCode, [FromRoute] string name)
+        {
+            Type type = _domain.GetEntityType(typeCode);
+
+            if (type is null)
+            {
+                return NotFound();
+            }
+
+            Type[] parameters = new Type[] { typeof(string) };
+
+            MethodInfo method = _source.GetType().GetMethod(nameof(IDataSource.Select), 1, parameters);
+
+            if (method is null)
+            {
+                return NotFound();
+            }
+
+            method = method.MakeGenericMethod(type);
+
+            object record = method.Invoke(_source, new object[] { name });
+
+            if (record is null)
+            {
+                return NotFound();
+            }
 
             string json = JsonSerializer.Serialize(record, type, JsonOptions);
 

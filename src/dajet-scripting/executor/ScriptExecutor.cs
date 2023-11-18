@@ -10,16 +10,16 @@ namespace DaJet.Scripting
 {
     public sealed class ScriptExecutor
     {
+        private readonly IDataSource _source;
         private readonly IMetadataService _metadata;
         private readonly IMetadataProvider _context; // execution context database
         private readonly ScriptDataMapper _scripts;
-        private readonly InfoBaseDataMapper _databases;
-        public ScriptExecutor(IMetadataProvider context, IMetadataService metadata, InfoBaseDataMapper databases, ScriptDataMapper scripts)
+        public ScriptExecutor(IMetadataProvider context, IMetadataService metadata, IDataSource source, ScriptDataMapper scripts)
         {
-            _context = context;
-            _metadata = metadata;
+            _source = source ?? throw new ArgumentNullException(nameof(source));
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
             _scripts = scripts;
-            _databases = databases;
         }
         public Dictionary<string, object> Parameters { get; } = new();
         public GeneratorResult PrepareScript(in string script)
@@ -301,15 +301,15 @@ namespace DaJet.Scripting
             string target = uri.Host;
             string script = uri.AbsolutePath;
 
-            InfoBaseRecord database = _databases.Select(target) ?? throw new ArgumentException($"Target not found: {target}");
-            ScriptRecord record = _scripts.SelectScriptByPath(database.Uuid, script) ?? throw new ArgumentException($"Script not found: {script}");
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(target) ?? throw new ArgumentException($"Target not found: {target}");
+            ScriptRecord record = _scripts.SelectScriptByPath(database.Identity, script) ?? throw new ArgumentException($"Script not found: {script}");
 
-            if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 throw new Exception(error);
             }
 
-            ScriptExecutor executor = new(provider, _metadata, _databases, _scripts);
+            ScriptExecutor executor = new(provider, _metadata, _source, _scripts);
 
             string query = uri.Query;
 

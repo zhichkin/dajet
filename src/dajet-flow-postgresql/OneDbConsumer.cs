@@ -19,25 +19,25 @@ namespace DaJet.Flow.PostgreSql
         private bool CanDispose { get { return Interlocked.CompareExchange(ref _state, STATE_DISPOSING, STATE_IS_ACTIVE) == STATE_IS_ACTIVE; } }
 
         #region "PRIVATE VARIABLES"
+        private readonly IDataSource _source;
         private readonly IPipeline _pipeline;
         private readonly ConsumerOptions _options;
         private readonly IMetadataService _metadata;
         private readonly ScriptDataMapper _scripts;
-        private readonly InfoBaseDataMapper _databases;
         private string CommandText { get; set; }
         private string ConnectionString { get; set; }
         private GeneratorResult ScriptGenerator { get; set; }
         private Dictionary<string, object> ScriptParameters { get; set; }
         #endregion
         
-        [ActivatorUtilitiesConstructor] public OneDbConsumer(IPipeline pipeline, ConsumerOptions options,
-            InfoBaseDataMapper databases, ScriptDataMapper scripts, IMetadataService metadata)
+        [ActivatorUtilitiesConstructor]
+        public OneDbConsumer(IDataSource source, IPipeline pipeline, ConsumerOptions options, ScriptDataMapper scripts, IMetadataService metadata)
         {
+            _source = source ?? throw new ArgumentNullException(nameof(source));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
             _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
             _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
-            _databases = databases ?? throw new ArgumentNullException(nameof(databases));
         }
         public override void Execute()
         {
@@ -62,18 +62,18 @@ namespace DaJet.Flow.PostgreSql
         protected override void _Dispose() { if (CanDispose) { _ = Interlocked.Exchange(ref _state, STATE_IS_IDLE); } }
         private void ConfigureConsumer()
         {
-            InfoBaseRecord database = _databases.Select(_options.Source);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(_options.Source);
             if (database is null) { throw new Exception($"Source not found: {_options.Source}"); }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, _options.Script);
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, _options.Script);
             if (script is null) { throw new Exception($"Script not found: {_options.Script}"); }
 
-            if (!_metadata.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 throw new Exception(error);
             }
 
-            ScriptExecutor executor = new(provider, _metadata, _databases, _scripts);
+            ScriptExecutor executor = new(provider, _metadata, _source, _scripts);
             ScriptGenerator = executor.PrepareScript(script.Script);
             ScriptParameters = executor.Parameters;
 

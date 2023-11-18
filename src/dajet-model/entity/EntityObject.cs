@@ -1,5 +1,4 @@
 ﻿using System;
-using static DaJet.Union;
 
 namespace DaJet.Data
 {

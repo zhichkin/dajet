@@ -17,21 +17,22 @@ namespace DaJet.Http.Controllers
             WriteIndented = true,
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
+        private readonly IDataSource _source;
         private readonly ScriptDataMapper _scripts;
-        private readonly InfoBaseDataMapper _mapper;
         private readonly IMetadataService _metadataService;
-        public ScriptController(InfoBaseDataMapper mapper, ScriptDataMapper scripts, IMetadataService metadataService)
+        public ScriptController(IDataSource source, ScriptDataMapper scripts, IMetadataService metadataService)
         {
-            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _source = source ?? throw new ArgumentNullException(nameof(source));
             _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
             _metadataService = metadataService ?? throw new ArgumentNullException(nameof(metadataService));
         }
         [HttpGet("select/{infobase}")] public ActionResult Select([FromRoute] string infobase)
         {
-            InfoBaseRecord database = _mapper.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
+
             if (database is null) { return NotFound(); }
 
-            List<ScriptRecord> list = _scripts.Select(database.Uuid);
+            List<ScriptRecord> list = _scripts.Select(database.Identity);
 
             foreach (ScriptRecord parent in list)
             {
@@ -44,14 +45,14 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("{infobase}/{**path}")] public ActionResult Select([FromRoute] string infobase, [FromRoute] string path)
         {
-            InfoBaseRecord database = _mapper.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
             
             if (database is null)
             {
                 return NotFound();
             }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, path);
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, path);
             
             if (script is null)
             {
@@ -69,7 +70,8 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            InfoBaseRecord database = _mapper.Select(script.Owner);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(script.Owner);
+
             if (database is null) { return NotFound(); }
 
             string url = "/" + script.Name;
@@ -167,10 +169,10 @@ namespace DaJet.Http.Controllers
         [HttpPost("{infobase}/{**path}")]
         public async Task<ActionResult> ExecuteScript([FromRoute] string infobase, [FromRoute] string path)
         {
-            InfoBaseRecord database = _mapper.Select(infobase);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
             if (database is null) { return NotFound(); }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Uuid, path);
+            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, path);
             if (script is null) { return NotFound(); }
 
             if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(script.Script))
@@ -178,12 +180,12 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            if (!_metadataService.TryGetMetadataProvider(database.Uuid.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadataService.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
 
-            ScriptExecutor executor = new(provider, _metadataService, _mapper, _scripts);
+            ScriptExecutor executor = new(provider, _metadataService, _source, _scripts);
 
             Dictionary<string, object> parameters = await ParseScriptParametersFromBody();
 

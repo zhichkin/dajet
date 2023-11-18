@@ -27,7 +27,7 @@ namespace DaJet.Studio.Pages
             {
                 Model.Name = "Скрипт 1QL";
                 Model.IsFolder = false;
-                Model.Owner = AppState.CurrentDatabase.Uuid;
+                Model.Owner = AppState.CurrentDatabase.Identity;
                 ScriptUrl = Model.Name;
             }
 

@@ -186,7 +186,7 @@ namespace DaJet.Studio.Controllers
             }
             else
             {
-                script.Owner = infobase.Uuid;
+                script.Owner = infobase.Identity;
                 script.Parent = Guid.Empty;
             }
 

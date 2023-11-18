@@ -18,7 +18,7 @@ namespace DaJet.Studio
         {
             for (int i = 0; i < DatabaseList.Count; i++)
             {
-                if (DatabaseList[i].Uuid == uuid)
+                if (DatabaseList[i].Identity == uuid)
                 {
                     return DatabaseList[i];
                 }
