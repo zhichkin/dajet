@@ -27,21 +27,18 @@ namespace DaJet.Data
         #endregion
 
         private readonly int MY_TYPE_CODE;
-        private readonly string _connectionString;
-        private readonly IDomainModel _domain;
-        public OptionDataMapper(IDomainModel domain, string connectionString)
+        private readonly IDataSource _source;
+        public OptionDataMapper(IDataSource source)
         {
-            _connectionString = connectionString;
+            _source = source;
+
+            MY_TYPE_CODE = _source.Model.GetTypeCode(typeof(OptionRecord));
 
             ConfigureDatabase();
-
-            _domain = domain;
-
-            MY_TYPE_CODE = _domain.GetTypeCode(typeof(OptionRecord));
         }
         private void ConfigureDatabase()
         {
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -60,7 +57,7 @@ namespace DaJet.Data
                 return;
             }
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -86,7 +83,7 @@ namespace DaJet.Data
                 return;
             }
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -107,7 +104,7 @@ namespace DaJet.Data
         }
         public void Delete(Entity entity)
         {
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -125,7 +122,7 @@ namespace DaJet.Data
         {
             OptionRecord record = null;
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -165,7 +162,7 @@ namespace DaJet.Data
         {
             List<OptionRecord> list = new();
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 

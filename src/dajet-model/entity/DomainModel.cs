@@ -35,6 +35,7 @@ namespace DaJet.Model
             Entity<HandlerRecord>(30);
             Entity<OptionRecord>(40);
             Entity<InfoBaseRecord>(50);
+            Entity<ScriptRecord>(60);
         }
         public void Entity<T>(int typeCode)
         {

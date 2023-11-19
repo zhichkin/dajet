@@ -18,12 +18,10 @@ namespace DaJet.Http.Controllers
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
         private readonly IDataSource _source;
-        private readonly ScriptDataMapper _scripts;
         private readonly IMetadataService _metadataService;
-        public ScriptController(IDataSource source, ScriptDataMapper scripts, IMetadataService metadataService)
+        public ScriptController(IDataSource source, IMetadataService metadataService)
         {
             _source = source ?? throw new ArgumentNullException(nameof(source));
-            _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
             _metadataService = metadataService ?? throw new ArgumentNullException(nameof(metadataService));
         }
         [HttpGet("select/{infobase}")] public ActionResult Select([FromRoute] string infobase)
@@ -32,12 +30,7 @@ namespace DaJet.Http.Controllers
 
             if (database is null) { return NotFound(); }
 
-            List<ScriptRecord> list = _scripts.Select(database.Identity);
-
-            foreach (ScriptRecord parent in list)
-            {
-                _scripts.GetScriptChildren(parent);
-            }
+            IEnumerable<ScriptRecord> list = _source.Query<ScriptRecord>(database.GetEntity());
 
             string json = JsonSerializer.Serialize(list, JsonOptions);
 
@@ -52,7 +45,7 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, path);
+            ScriptRecord script = _source.Select<ScriptRecord>(database.Name + "/" + path);
             
             if (script is null)
             {
@@ -65,7 +58,9 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("url/{uuid:guid}")] public ActionResult SelectScriptUrl([FromRoute] Guid uuid)
         {
-            if (!_scripts.TrySelect(uuid, out ScriptRecord script))
+            ScriptRecord script = _source.Select<ScriptRecord>(uuid);
+
+            if (script is null)
             {
                 return NotFound();
             }
@@ -76,12 +71,12 @@ namespace DaJet.Http.Controllers
 
             string url = "/" + script.Name;
 
-            script = _scripts.SelectScript(script.Parent);
+            script = _source.Select<ScriptRecord>(script.Parent);
 
-            while (script != null)
+            while (script is not null)
             {
                 url = "/" + script.Name + url;
-                script = _scripts.SelectScript(script.Parent);
+                script = _source.Select<ScriptRecord>(script.Parent);
             }
 
             url = "/api/" + database.Name + url;
@@ -90,7 +85,9 @@ namespace DaJet.Http.Controllers
         }
         [HttpGet("{uuid:guid}")] public ActionResult SelectScript([FromRoute] Guid uuid)
         {
-            if (!_scripts.TrySelect(uuid, out ScriptRecord script))
+            ScriptRecord script = _source.Select<ScriptRecord>(uuid);
+
+            if (script is null)
             {
                 return NotFound();
             }
@@ -101,69 +98,21 @@ namespace DaJet.Http.Controllers
         }
         [HttpPost("")] public ActionResult InsertScript([FromBody] ScriptRecord script)
         {
-            if (script.Parent != Guid.Empty && !_scripts.TrySelect(script.Parent, out ScriptRecord _))
-            {
-                return NotFound();
-            }
+            _source.Create(script);
 
-            if (!_scripts.Insert(script))
-            {
-                return BadRequest();
-            }
-
-            return Created($"{script.Name}", $"{script.Uuid}");
+            return Created($"{script.Name}", $"{script.Identity}");
         }
         [HttpPut("")] public ActionResult UpdateScript([FromBody] ScriptRecord script)
         {
-            if (!_scripts.Update(script))
-            {
-                return Conflict();
-            }
-            return Ok();
+            _source.Update(script); return Ok();
         }
         [HttpPut("name")] public ActionResult UpdateScriptName([FromBody] ScriptRecord script)
         {
-            if (!_scripts.UpdateName(script))
-            {
-                return Conflict();
-            }
-            return Ok();
+            _source.Update(script); return Ok(); // TODO: update name only !?
         }
         [HttpDelete("{uuid:guid}")] public ActionResult DeleteScript([FromRoute] Guid uuid)
         {
-            if (!_scripts.TrySelect(uuid, out ScriptRecord script))
-            {
-                return NotFound();
-            }
-
-            if (script.IsFolder)
-            {
-                DeleteScriptFolder(script);
-            }
-            else if (!_scripts.Delete(script))
-            {
-                return Conflict();
-            }
-
-            return Ok();
-        }
-        private void DeleteScriptFolder(ScriptRecord script)
-        {
-            List<ScriptRecord> children = _scripts.Select(script);
-
-            foreach (ScriptRecord child in children)
-            {
-                if (child.IsFolder)
-                {
-                    DeleteScriptFolder(child);
-                }
-                else
-                {
-                    _scripts.Delete(child);
-                }
-            }
-
-            _scripts.Delete(script);
+            _source.Delete<ScriptRecord>(uuid); return Ok();
         }
         
         [HttpPost("{infobase}/{**path}")]
@@ -172,7 +121,7 @@ namespace DaJet.Http.Controllers
             InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
             if (database is null) { return NotFound(); }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, path);
+            ScriptRecord script = _source.Select<ScriptRecord>(database.Name + "/" + path);
             if (script is null) { return NotFound(); }
 
             if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(script.Script))
@@ -185,7 +134,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest(error);
             }
 
-            ScriptExecutor executor = new(provider, _metadataService, _source, _scripts);
+            ScriptExecutor executor = new(provider, _metadataService, _source);
 
             Dictionary<string, object> parameters = await ParseScriptParametersFromBody();
 

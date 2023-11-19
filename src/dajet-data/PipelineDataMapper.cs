@@ -33,21 +33,18 @@ namespace DaJet.Data
         #endregion
 
         private readonly int MY_TYPE_CODE;
-        private readonly string _connectionString;
-        private readonly IDomainModel _domain;
-        public PipelineDataMapper(IDomainModel domain, string connectionString)
+        private readonly IDataSource _source;
+        public PipelineDataMapper(IDataSource source)
         {
-            _connectionString = connectionString;
+            _source = source;
+
+            MY_TYPE_CODE = _source.Model.GetTypeCode(typeof(PipelineRecord));
 
             ConfigureDatabase();
-
-            _domain = domain;
-
-            MY_TYPE_CODE = _domain.GetTypeCode(typeof(PipelineRecord));
         }
         private void ConfigureDatabase()
         {
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -66,7 +63,7 @@ namespace DaJet.Data
                 return;
             }
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -89,7 +86,7 @@ namespace DaJet.Data
                 return;
             }
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -108,10 +105,10 @@ namespace DaJet.Data
         public void Delete(Entity entity)
         {
             int result = 0;
-            int pipeline = _domain.GetTypeCode(typeof(PipelineRecord));
-            int processor = _domain.GetTypeCode(typeof(HandlerRecord));
+            int pipeline = _source.Model.GetTypeCode(typeof(PipelineRecord));
+            int processor = _source.Model.GetTypeCode(typeof(HandlerRecord));
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -150,7 +147,7 @@ namespace DaJet.Data
         {
             List<PipelineRecord> list = new();
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -185,7 +182,7 @@ namespace DaJet.Data
         {
             PipelineRecord record = null;
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -224,7 +221,7 @@ namespace DaJet.Data
         {
             PipelineRecord record = null;
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 

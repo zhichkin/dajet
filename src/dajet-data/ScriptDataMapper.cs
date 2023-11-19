@@ -1,391 +1,327 @@
 ﻿using DaJet.Model;
 using Microsoft.Data.Sqlite;
+using System.Collections;
 
 namespace DaJet.Data
 {
-    public sealed class ScriptDataMapper
+    public sealed class ScriptDataMapper : IDataMapper
     {
         #region "SQL SCRIPTS"
-        private const string CREATE_INFOBASE_TABLE_SCRIPT = "CREATE TABLE IF NOT EXISTS " +
+        private const string CREATE_TABLE_SCRIPT = "CREATE TABLE IF NOT EXISTS " +
             "scripts (uuid TEXT NOT NULL, owner TEXT NOT NULL, parent TEXT NOT NULL, " +
             "is_folder INTEGER NOT NULL, name TEXT NOT NULL, script TEXT NOT NULL, " +
             "PRIMARY KEY (uuid)) WITHOUT ROWID;";
-        private const string SELECT_ROOT_SCRIPT = "SELECT uuid, owner, parent, is_folder, name FROM scripts WHERE owner = @owner AND parent = @parent ORDER BY is_folder ASC, name ASC;";
-        private const string SELECT_NODE_SCRIPT = "SELECT uuid, owner, parent, is_folder, name FROM scripts WHERE parent = @parent ORDER BY is_folder ASC, name ASC;";
-        private const string SELECT_INFO_SCRIPT = "SELECT uuid, owner, parent, is_folder, name FROM scripts WHERE uuid = @uuid;";
-        private const string SELECT_SCRIPT = "SELECT uuid, owner, parent, is_folder, name, script FROM scripts WHERE uuid = @uuid;";
-        private const string INSERT_SCRIPT = "INSERT INTO scripts (uuid, owner, parent, is_folder, name, script) VALUES (@uuid, @owner, @parent, @is_folder, @name, @script);";
-        private const string UPDATE_SCRIPT = "UPDATE scripts SET owner = @owner, parent = @parent, is_folder = @is_folder, name = @name, script = @script WHERE uuid = @uuid;";
-        private const string UPDATE_NAME_SCRIPT = "UPDATE scripts SET name = @name WHERE uuid = @uuid;";
-        private const string DELETE_SCRIPT = "DELETE FROM scripts WHERE uuid = @uuid;";
+        private const string INSERT_COMMAND = "INSERT INTO scripts (uuid, owner, parent, is_folder, name, script) VALUES (@uuid, @owner, @parent, @is_folder, @name, @script);";
+        private const string UPDATE_COMMAND = "UPDATE scripts SET owner = @owner, parent = @parent, is_folder = @is_folder, name = @name, script = @script WHERE uuid = @uuid;";
+        private const string DELETE_COMMAND = "DELETE FROM scripts WHERE uuid = @uuid;";
+        private const string SELECT_BY_UUID =
+            "SELECT uuid, owner, parent, is_folder, name, script FROM scripts WHERE uuid = @uuid;";
+        private const string SELECT_BY_OWNER =
+            "SELECT uuid, owner, parent, is_folder, name, script FROM scripts WHERE owner = @owner " +
+            "AND parent = '00000000-0000-0000-0000-000000000000' ORDER BY is_folder ASC, name ASC;";
+        private const string SELECT_BY_OWNER_AND_NAME =
+            "SELECT uuid, owner, parent, is_folder, name, script FROM scripts WHERE owner = @owner " +
+            "AND parent = '00000000-0000-0000-0000-000000000000' AND name = @name LIMIT 1;";
+        private const string SELECT_BY_PARENT =
+            "SELECT uuid, owner, parent, is_folder, name, script FROM scripts WHERE parent = @parent ORDER BY is_folder ASC, name ASC;";
+        private const string SELECT_BY_PARENT_AND_NAME =
+            "SELECT uuid, owner, parent, is_folder, name, script FROM scripts WHERE parent = @parent AND name = @name LIMIT 1;";
         #endregion
 
-        private readonly string _connectionString;
-        public ScriptDataMapper(string connectionString)
+        private readonly int MY_TYPE_CODE;
+        private readonly int OWNER_TYPE_CODE;
+        private readonly IDataSource _source;
+        public ScriptDataMapper(IDataSource source)
         {
-            _connectionString = connectionString;
+            _source = source ?? throw new ArgumentNullException(nameof(source));
 
-            InitializeDatabase();
+            MY_TYPE_CODE = _source.Model.GetTypeCode(typeof(ScriptRecord));
+            OWNER_TYPE_CODE = _source.Model.GetTypeCode(typeof(InfoBaseRecord));
+
+            ConfigureDatabase();
         }
-        private void InitializeDatabase()
+        private void ConfigureDatabase()
         {
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
                 using (SqliteCommand command = connection.CreateCommand())
                 {
-                    command.CommandText = CREATE_INFOBASE_TABLE_SCRIPT;
+                    command.CommandText = CREATE_TABLE_SCRIPT;
 
                     _ = command.ExecuteNonQuery();
                 }
             }
         }
-
-        #region "CRUD COMMANDS"
-        public List<ScriptRecord> Select(Guid database)
+        public void Insert(EntityObject entity)
         {
-            List<ScriptRecord> list = new();
+            if (entity is not ScriptRecord record)
+            {
+                return;
+            }
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
                 using (SqliteCommand command = connection.CreateCommand())
                 {
-                    command.CommandText = SELECT_ROOT_SCRIPT;
+                    command.CommandText = INSERT_COMMAND;
 
-                    command.Parameters.AddWithValue("owner", database.ToString().ToLower());
-                    command.Parameters.AddWithValue("parent", Guid.Empty.ToString().ToLower());
+                    command.Parameters.AddWithValue("uuid", record.Identity.ToString().ToLowerInvariant());
+                    command.Parameters.AddWithValue("owner", record.Owner.Identity.ToString().ToLowerInvariant());
+                    command.Parameters.AddWithValue("parent", record.Parent.Identity.ToString().ToLowerInvariant());
+                    command.Parameters.AddWithValue("is_folder", record.IsFolder ? 1L : 0L);
+                    command.Parameters.AddWithValue("name", record.Name);
+                    command.Parameters.AddWithValue("script", record.Script);
 
-                    using (SqliteDataReader reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            ScriptRecord item = new()
-                            {
-                                Uuid = new Guid(reader.GetString(0)),
-                                Owner = new Guid(reader.GetString(1)),
-                                Parent = new Guid(reader.GetString(2)),
-                                IsFolder = (reader.GetInt64(3) == 1L),
-                                Name = reader.GetString(4),
-                                Script = string.Empty
-                            };
-                            list.Add(item);
-                        }
-                        reader.Close();
-                    }
+                    int result = command.ExecuteNonQuery();
                 }
             }
-
-            return list;
         }
-        public List<ScriptRecord> Select(Guid database, Guid parent)
+        public void Update(EntityObject entity)
         {
-            List<ScriptRecord> list = new();
+            if (entity is not ScriptRecord record)
+            {
+                return;
+            }
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
                 using (SqliteCommand command = connection.CreateCommand())
                 {
-                    command.CommandText = SELECT_ROOT_SCRIPT;
+                    command.CommandText = UPDATE_COMMAND;
 
-                    command.Parameters.AddWithValue("owner", database.ToString().ToLower());
-                    command.Parameters.AddWithValue("parent", parent.ToString().ToLower());
+                    command.Parameters.AddWithValue("uuid", record.Identity.ToString().ToLowerInvariant());
+                    command.Parameters.AddWithValue("owner", record.Owner.Identity.ToString().ToLowerInvariant());
+                    command.Parameters.AddWithValue("parent", record.Parent.Identity.ToString().ToLowerInvariant());
+                    command.Parameters.AddWithValue("is_folder", record.IsFolder ? 1L : 0L);
+                    command.Parameters.AddWithValue("name", record.Name);
+                    command.Parameters.AddWithValue("script", record.Script);
 
-                    using (SqliteDataReader reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            ScriptRecord item = new()
-                            {
-                                Uuid = new Guid(reader.GetString(0)),
-                                Owner = new Guid(reader.GetString(1)),
-                                Parent = new Guid(reader.GetString(2)),
-                                IsFolder = (reader.GetInt64(3) == 1L),
-                                Name = reader.GetString(4),
-                                Script = string.Empty
-                            };
-                            list.Add(item);
-                        }
-                        reader.Close();
-                    }
+                    int result = command.ExecuteNonQuery();
                 }
             }
-
-            return list;
         }
-        public List<ScriptRecord> Select(ScriptRecord parent)
+        public void Delete(Entity entity)
         {
-            List<ScriptRecord> list = new();
+            if (entity.IsEmpty || entity.IsUndefined)
+            {
+                return;
+            }
 
-            if (parent is null) { return list; }
-
-            using (SqliteConnection connection = new(_connectionString))
+            DeleteRecursively(entity); // database, script folder or record reference
+        }
+        private void DeleteScript(Entity entity)
+        {
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
                 using (SqliteCommand command = connection.CreateCommand())
                 {
-                    command.CommandText = SELECT_NODE_SCRIPT;
+                    command.CommandText = DELETE_COMMAND;
 
-                    command.Parameters.AddWithValue("parent", parent.Uuid.ToString().ToLower());
+                    command.Parameters.AddWithValue("uuid", entity.Identity.ToString().ToLowerInvariant());
 
-                    using (SqliteDataReader reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            ScriptRecord item = new()
-                            {
-                                Uuid = new Guid(reader.GetString(0)),
-                                Owner = new Guid(reader.GetString(1)),
-                                Parent = new Guid(reader.GetString(2)),
-                                IsFolder = (reader.GetInt64(3) == 1L),
-                                Name = reader.GetString(4),
-                                Script = string.Empty
-                            };
-                            list.Add(item);
-                        }
-                        reader.Close();
-                    }
+                    int result = command.ExecuteNonQuery();
                 }
             }
-
-            return list;
         }
-        public ScriptRecord SelectScript(Guid uuid)
+        private void DeleteRecursively(Entity parent)
         {
-            ScriptRecord script = null;
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = SELECT_INFO_SCRIPT;
-
-                    command.Parameters.AddWithValue("uuid", uuid.ToString().ToLower());
-
-                    using (SqliteDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            script = new ScriptRecord()
-                            {
-                                Uuid = new Guid(reader.GetString(0)),
-                                Owner = new Guid(reader.GetString(1)),
-                                Parent = new Guid(reader.GetString(2)),
-                                IsFolder = (reader.GetInt64(3) == 1L),
-                                Name = reader.GetString(4)
-                            };
-                        }
-                        reader.Close();
-                    }
-                }
-            }
-
-            return script;
-        }
-        public bool TrySelect(Guid uuid, out ScriptRecord script)
-        {
-            script = null;
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = SELECT_SCRIPT;
-
-                    command.Parameters.AddWithValue("uuid", uuid.ToString().ToLower());
-
-                    using (SqliteDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            script = new ScriptRecord()
-                            {
-                                Uuid = new Guid(reader.GetString(0)),
-                                Owner = new Guid(reader.GetString(1)),
-                                Parent = new Guid(reader.GetString(2)),
-                                IsFolder = (reader.GetInt32(3) == 1),
-                                Name = reader.GetString(4),
-                                Script = reader.GetString(5)
-                            };
-                        }
-                        reader.Close();
-                    }
-                }
-            }
-
-            return (script != null);
-        }
-        public bool Insert(ScriptRecord script)
-        {
-            int result;
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = INSERT_SCRIPT;
-
-                    command.Parameters.AddWithValue("uuid", script.Uuid.ToString().ToLower());
-                    command.Parameters.AddWithValue("owner", script.Owner.ToString().ToLower());
-                    command.Parameters.AddWithValue("parent", script.Parent.ToString().ToLower());
-                    command.Parameters.AddWithValue("is_folder", script.IsFolder ? 1L : 0L);
-                    command.Parameters.AddWithValue("name", script.Name);
-                    command.Parameters.AddWithValue("script", script.Script);
-
-                    result = command.ExecuteNonQuery();
-                }
-            }
-
-            return (result == 1);
-        }
-        public bool Update(ScriptRecord script)
-        {
-            int result;
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = UPDATE_SCRIPT;
-
-                    command.Parameters.AddWithValue("uuid", script.Uuid.ToString());
-                    command.Parameters.AddWithValue("owner", script.Owner.ToString());
-                    command.Parameters.AddWithValue("parent", script.Parent.ToString());
-                    command.Parameters.AddWithValue("is_folder", script.IsFolder ? 1L : 0L);
-                    command.Parameters.AddWithValue("name", script.Name);
-                    command.Parameters.AddWithValue("script", script.Script);
-
-                    result = command.ExecuteNonQuery();
-                }
-            }
-
-            return (result == 1);
-        }
-        public bool UpdateName(ScriptRecord script)
-        {
-            int result;
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = UPDATE_NAME_SCRIPT;
-
-                    command.Parameters.AddWithValue("uuid", script.Uuid.ToString().ToLower());
-                    command.Parameters.AddWithValue("name", script.Name);
-
-                    result = command.ExecuteNonQuery();
-                }
-            }
-
-            return (result == 1);
-        }
-        public bool Delete(ScriptRecord script)
-        {
-            int result;
-
-            using (SqliteConnection connection = new(_connectionString))
-            {
-                connection.Open();
-
-                using (SqliteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = DELETE_SCRIPT;
-
-                    command.Parameters.AddWithValue("uuid", script.Uuid.ToString().ToLower());
-
-                    result = command.ExecuteNonQuery();
-                }
-            }
-
-            return (result > 0);
-        }
-        public void DeleteScriptFolder(in ScriptRecord script)
-        {
-            List<ScriptRecord> children = Select(script);
+            List<ScriptRecord> children = Select(parent) as List<ScriptRecord>;
 
             foreach (ScriptRecord child in children)
             {
                 if (child.IsFolder)
                 {
-                    DeleteScriptFolder(child);
+                    DeleteRecursively(child.GetEntity());
                 }
                 else
                 {
-                    Delete(child);
+                    DeleteScript(child.GetEntity());
                 }
             }
 
-            Delete(script);
+            DeleteScript(parent);
         }
-        #endregion
-
-        public void GetScriptChildren(ScriptRecord parent)
+        public EntityObject Select(string name)
         {
-            List<ScriptRecord> list = Select(parent);
+            string[] segments = name.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
-            if (list.Count == 0)
+            if (segments is null || segments.Length < 2)
             {
-                return;
+                return null; // NOT FOUND
             }
 
-            parent.Children.AddRange(list);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(segments[0]);
 
-            foreach (ScriptRecord child in parent.Children)
+            if (database is null)
             {
-                GetScriptChildren(child);
+                return null; // NOT FOUND
             }
-        }
-        public ScriptRecord SelectScriptByPath(Guid database, string path)
-        {
-            string[] segments = path.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
-            int counter = 0;
+            string segment;
             ScriptRecord current = null;
-            List<ScriptRecord> list = Select(database);
+            Entity parent = database.GetEntity();
 
-            foreach (string segment in segments)
+            for (int i = 1; i < segments.Length; i++)
             {
-                current = list.Where(item => item.Name == segment).FirstOrDefault();
+                segment = segments[i];
+                current = Select(parent, segment);
 
-                if (current == null) { break; }
-
-                counter++;
-
-                if (counter < segments.Length)
+                if (current is null)
                 {
-                    list = Select(current);
+                    return null; // NOT FOUND
+                }
+
+                parent = current.GetEntity();
+            }
+
+            return current;
+        }
+        private ScriptRecord Select(Entity parent, string name)
+        {
+            ScriptRecord record = null;
+
+            using (SqliteConnection connection = new(_source.ConnectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.Parameters.AddWithValue("name", name);
+
+                    if (parent.TypeCode == MY_TYPE_CODE) // script
+                    {
+                        command.CommandText = SELECT_BY_PARENT_AND_NAME;
+                        command.Parameters.AddWithValue("parent", parent.Identity.ToString().ToLowerInvariant());
+                    }
+                    else // OWNER_TYPE_CODE == database
+                    {
+                        command.CommandText = SELECT_BY_OWNER_AND_NAME;
+                        command.Parameters.AddWithValue("owner", parent.Identity.ToString().ToLowerInvariant());
+                    }
+
+                    using (SqliteDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            record = new ScriptRecord()
+                            {
+                                TypeCode = MY_TYPE_CODE,
+                                Identity = new Guid(reader.GetString(0)),
+                                Owner = new Entity(OWNER_TYPE_CODE, new Guid(reader.GetString(1))),
+                                Parent = new Entity(MY_TYPE_CODE, new Guid(reader.GetString(2))),
+                                IsFolder = (reader.GetInt64(3) == 1L),
+                                Name = reader.GetString(4),
+                                Script = reader.GetString(5)
+                            };
+                            record.MarkAsOriginal();
+                        }
+                        reader.Close();
+                    }
                 }
             }
 
-            if (counter == segments.Length && current != null)
+            return record;
+        }
+        public EntityObject Select(Guid idenity)
+        {
+            ScriptRecord record = null;
+
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
-                if (TrySelect(current.Uuid, out ScriptRecord script))
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
                 {
-                    return script;
-                }
-                else
-                {
-                    return null;
+                    command.CommandText = SELECT_BY_UUID;
+
+                    command.Parameters.AddWithValue("uuid", idenity.ToString().ToLowerInvariant());
+
+                    using (SqliteDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            record = new ScriptRecord()
+                            {
+                                TypeCode = MY_TYPE_CODE,
+                                Identity = new Guid(reader.GetString(0)),
+                                Owner = new Entity(OWNER_TYPE_CODE, new Guid(reader.GetString(1))),
+                                Parent = new Entity(MY_TYPE_CODE, new Guid(reader.GetString(2))),
+                                IsFolder = (reader.GetInt64(3) == 1L),
+                                Name = reader.GetString(4),
+                                Script = reader.GetString(5)
+                            };
+                            record.MarkAsOriginal();
+                        }
+                        reader.Close();
+                    }
                 }
             }
 
-            return null; // not found
+            return record;
+        }
+        public IEnumerable Select(Entity parent)
+        {
+            List<ScriptRecord> list = new();
+
+            if (parent.IsEmpty || parent.IsUndefined)
+            {
+                return list; // database context is absent
+            }
+
+            using (SqliteConnection connection = new(_source.ConnectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    if (parent.TypeCode == MY_TYPE_CODE) // script
+                    {
+                        command.CommandText = SELECT_BY_PARENT;
+                        command.Parameters.AddWithValue("parent", parent.Identity.ToString().ToLowerInvariant());
+                    }
+                    else // OWNER_TYPE_CODE == database
+                    {
+                        command.CommandText = SELECT_BY_OWNER;
+                        command.Parameters.AddWithValue("owner", parent.Identity.ToString().ToLowerInvariant());
+                    }
+
+                    using (SqliteDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            ScriptRecord record = new()
+                            {
+                                TypeCode = MY_TYPE_CODE,
+                                Identity = new Guid(reader.GetString(0)),
+                                Owner = new Entity(OWNER_TYPE_CODE, new Guid(reader.GetString(1))),
+                                Parent = new Entity(MY_TYPE_CODE, new Guid(reader.GetString(2))),
+                                IsFolder = (reader.GetInt64(3) == 1L),
+                                Name = reader.GetString(4),
+                                Script = reader.GetString(5)
+                            };
+
+                            record.MarkAsOriginal();
+
+                            list.Add(record);
+                        }
+                        reader.Close();
+                    }
+                }
+            }
+
+            return list;
+        }
+        public IEnumerable Select()
+        {
+            throw new NotImplementedException();
         }
     }
 }

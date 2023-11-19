@@ -46,9 +46,7 @@ namespace DaJet.Http.Server
             builder.Services.AddCors(ConfigureCors);
             ConfigureFileProvider(builder.Services);
 
-            ConfigureOptionProviders(builder.Services);
             ConfigureMetadataService(builder.Services);
-
             builder.Services.AddDaJet(OptionsFileConnectionString);
             builder.Services.AddSingleton<RecyclableMemoryStreamManager>();
 
@@ -109,10 +107,6 @@ namespace DaJet.Http.Server
             PhysicalFileProvider fileProvider = new(catalogPath);
 
             services.AddSingleton<IFileProvider>(fileProvider);
-        }
-        private static void ConfigureOptionProviders(IServiceCollection services)
-        {
-            services.AddSingleton(new ScriptDataMapper(OptionsFileConnectionString));
         }
         private static void ConfigureMetadataService(IServiceCollection services)
         {

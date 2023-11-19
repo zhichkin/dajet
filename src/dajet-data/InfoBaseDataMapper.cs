@@ -29,21 +29,18 @@ namespace DaJet.Data
         #endregion
 
         private readonly int MY_TYPE_CODE;
-        private readonly string _connectionString;
-        private readonly IDomainModel _domain;
-        public InfoBaseDataMapper(IDomainModel domain, string connectionString)
+        private readonly IDataSource _source;
+        public InfoBaseDataMapper(IDataSource source)
         {
-            _connectionString = connectionString;
+            _source = source;
+
+            MY_TYPE_CODE = _source.Model.GetTypeCode(typeof(InfoBaseRecord));
 
             ConfigureDatabase();
-
-            _domain = domain;
-
-            MY_TYPE_CODE = _domain.GetTypeCode(typeof(InfoBaseRecord));
         }
         private void ConfigureDatabase()
         {
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -62,7 +59,7 @@ namespace DaJet.Data
                 return;
             }
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -88,7 +85,7 @@ namespace DaJet.Data
                 return;
             }
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -111,7 +108,7 @@ namespace DaJet.Data
         {
             int result = 0;
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -141,7 +138,7 @@ namespace DaJet.Data
         {
             InfoBaseRecord record = null;
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -178,7 +175,7 @@ namespace DaJet.Data
         {
             InfoBaseRecord record = null;
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -215,7 +212,7 @@ namespace DaJet.Data
         {
             List<InfoBaseRecord> list = new();
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 

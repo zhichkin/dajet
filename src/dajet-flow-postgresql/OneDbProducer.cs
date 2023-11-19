@@ -14,14 +14,12 @@ namespace DaJet.Flow.PostgreSql
     {
         private readonly IDataSource _source;
         private readonly ProducerOptions _options;
-        private readonly ScriptDataMapper _scripts;
         private readonly IMetadataService _metadata;
         [ActivatorUtilitiesConstructor]
-        public OneDbProducer(IDataSource source, ProducerOptions options, ScriptDataMapper scripts, IMetadataService metadata)
+        public OneDbProducer(IDataSource source, ProducerOptions options, IMetadataService metadata)
         {
             _source = source ?? throw new ArgumentNullException(nameof(source));
             _options = options ?? throw new ArgumentNullException(nameof(options));
-            _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
             _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
 
             Configure();
@@ -35,9 +33,11 @@ namespace DaJet.Flow.PostgreSql
 
             InfoBaseRecord database = _source.Select<InfoBaseRecord>(_options.Target)
                 ?? throw new ArgumentException($"Target not found: {_options.Target}");
-            
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, _options.Script)
-                ?? throw new ArgumentException($"Script not found: {_options.Script}");
+
+            string scriptPath = database.Name + "/" + _options.Script;
+
+            ScriptRecord script = _source.Select<ScriptRecord>(scriptPath)
+                ?? throw new Exception($"Script not found: {scriptPath}");
 
             if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
@@ -46,7 +46,7 @@ namespace DaJet.Flow.PostgreSql
 
             ConnectionString = database.ConnectionString;
 
-            ScriptExecutor executor = new(provider, _metadata, _source, _scripts);
+            ScriptExecutor executor = new(provider, _metadata, _source);
             executor.PrepareScript(script.Script, out ScriptModel _, out List<ScriptCommand> commands);
             ScriptParameters = executor.Parameters;
             CommandText = GetInsertStatementScript(in commands);

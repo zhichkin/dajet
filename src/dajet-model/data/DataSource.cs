@@ -10,6 +10,7 @@ namespace DaJet.Data
     public interface IDataSource
     {
         IDomainModel Model { get; }
+        string ConnectionString { get; }
         void Create(EntityObject entity);
         void Update(EntityObject entity);
         void Delete(Entity entity);

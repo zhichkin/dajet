@@ -8,6 +8,7 @@ namespace DaJet.Data
     public sealed class DaJetDataSource : IDataSource
     {
         private readonly IDomainModel _domain;
+        private readonly string _connectionString;
         private readonly DataSourceOptions _options;
         private readonly Dictionary<Type, IDataMapper> _mappers = new();
         public DaJetDataSource(DataSourceOptions options, IDomainModel domain)
@@ -15,13 +16,14 @@ namespace DaJet.Data
             _domain = domain ?? throw new ArgumentNullException(nameof(domain));
             _options = options ?? throw new ArgumentNullException(nameof(options));
 
-            string connectionString = _options.ConnectionString;
+            _connectionString = _options.ConnectionString;
 
-            _mappers.Add(typeof(TreeNodeRecord), new TreeNodeDataMapper(_domain, connectionString));
-            _mappers.Add(typeof(PipelineRecord), new PipelineDataMapper(_domain, connectionString));
-            _mappers.Add(typeof(HandlerRecord), new HandlerDataMapper(_domain, connectionString));
-            _mappers.Add(typeof(OptionRecord), new OptionDataMapper(_domain, connectionString));
-            _mappers.Add(typeof(InfoBaseRecord), new InfoBaseDataMapper(_domain, connectionString));
+            _mappers.Add(typeof(TreeNodeRecord), new TreeNodeDataMapper(this));
+            _mappers.Add(typeof(PipelineRecord), new PipelineDataMapper(this));
+            _mappers.Add(typeof(HandlerRecord), new HandlerDataMapper(this));
+            _mappers.Add(typeof(OptionRecord), new OptionDataMapper(this));
+            _mappers.Add(typeof(InfoBaseRecord), new InfoBaseDataMapper(this));
+            _mappers.Add(typeof(ScriptRecord), new ScriptDataMapper(this));
 
             ConfigureDatabase();
         }
@@ -54,6 +56,7 @@ namespace DaJet.Data
             }
         }
         public IDomainModel Model { get { return _domain; } }
+        public string ConnectionString { get { return _connectionString; } }
 
         public void Create(EntityObject entity)
         {
@@ -130,7 +133,7 @@ namespace DaJet.Data
         {
             List<IDataRecord> list = new();
 
-            using (SqliteConnection connection = new(_options.ConnectionString))
+            using (SqliteConnection connection = new(ConnectionString))
             {
                 connection.Open();
 

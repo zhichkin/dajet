@@ -23,7 +23,6 @@ namespace DaJet.Flow.SqlServer
         private readonly IPipeline _pipeline;
         private readonly ConsumerOptions _options;
         private readonly IMetadataService _metadata;
-        private readonly ScriptDataMapper _scripts;
         private string CommandText { get; set; }
         private string ConnectionString { get; set; }
         private GeneratorResult ScriptGenerator { get; set; }
@@ -31,13 +30,12 @@ namespace DaJet.Flow.SqlServer
         #endregion
         
         [ActivatorUtilitiesConstructor]
-        public OneDbConsumer(IDataSource source, ConsumerOptions options, IPipeline pipeline, ScriptDataMapper scripts, IMetadataService metadata)
+        public OneDbConsumer(IDataSource source, ConsumerOptions options, IPipeline pipeline, IMetadataService metadata)
         {
             _source = source ?? throw new ArgumentNullException(nameof(source));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
             _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
-            _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
         }
         public override void Execute()
         {
@@ -62,18 +60,20 @@ namespace DaJet.Flow.SqlServer
         protected override void _Dispose() { if (CanDispose) { _ = Interlocked.Exchange(ref _state, STATE_IS_IDLE); } }
         private void ConfigureConsumer()
         {
-            InfoBaseRecord database = _source.Select<InfoBaseRecord>(_options.Source);
-            if (database is null) { throw new Exception($"Source not found: {_options.Source}"); }
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(_options.Source)
+                ?? throw new Exception($"Source not found: {_options.Source}");
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, _options.Script);
-            if (script is null) { throw new Exception($"Script not found: {_options.Script}"); }
+            string scriptPath = database.Name + "/" + _options.Script;
+
+            ScriptRecord script = _source.Select<ScriptRecord>(scriptPath)
+                ?? throw new Exception($"Script not found: {scriptPath}");
 
             if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 throw new Exception(error);
             }
 
-            ScriptExecutor executor = new(provider, _metadata, _source, _scripts);
+            ScriptExecutor executor = new(provider, _metadata, _source);
             ScriptGenerator = executor.PrepareScript(script.Script);
             ScriptParameters = executor.Parameters;
 

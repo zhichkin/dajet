@@ -13,13 +13,11 @@ namespace DaJet.Scripting
         private readonly IDataSource _source;
         private readonly IMetadataService _metadata;
         private readonly IMetadataProvider _context; // execution context database
-        private readonly ScriptDataMapper _scripts;
-        public ScriptExecutor(IMetadataProvider context, IMetadataService metadata, IDataSource source, ScriptDataMapper scripts)
+        public ScriptExecutor(IMetadataProvider context, IMetadataService metadata, IDataSource source)
         {
             _source = source ?? throw new ArgumentNullException(nameof(source));
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
-            _scripts = scripts;
         }
         public Dictionary<string, object> Parameters { get; } = new();
         public GeneratorResult PrepareScript(in string script)
@@ -300,16 +298,17 @@ namespace DaJet.Scripting
 
             string target = uri.Host;
             string script = uri.AbsolutePath;
+            string scriptPath = target + "/" + script;
 
             InfoBaseRecord database = _source.Select<InfoBaseRecord>(target) ?? throw new ArgumentException($"Target not found: {target}");
-            ScriptRecord record = _scripts.SelectScriptByPath(database.Identity, script) ?? throw new ArgumentException($"Script not found: {script}");
+            ScriptRecord record = _source.Select<ScriptRecord>(scriptPath) ?? throw new ArgumentException($"Script not found: {script}");
 
             if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 throw new Exception(error);
             }
 
-            ScriptExecutor executor = new(provider, _metadata, _source, _scripts);
+            ScriptExecutor executor = new(provider, _metadata, _source);
 
             string query = uri.Query;
 

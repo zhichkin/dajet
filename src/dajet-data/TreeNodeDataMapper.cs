@@ -28,21 +28,18 @@ namespace DaJet.Data
         #endregion
 
         private readonly int MY_TYPE_CODE;
-        private readonly string _connectionString;
-        private readonly IDomainModel _domain;
-        public TreeNodeDataMapper(IDomainModel domain, string connectionString)
+        private readonly IDataSource _source;
+        public TreeNodeDataMapper(IDataSource source)
         {
-            _connectionString = connectionString;
+            _source = source;
+            
+            MY_TYPE_CODE = _source.Model.GetTypeCode(typeof(TreeNodeRecord));
 
             ConfigureDatabase();
-
-            _domain = domain;
-
-            MY_TYPE_CODE = _domain.GetTypeCode(typeof(TreeNodeRecord));
         }
         private void ConfigureDatabase()
         {
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -61,7 +58,7 @@ namespace DaJet.Data
                 return;
             }
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -87,7 +84,7 @@ namespace DaJet.Data
                 return;
             }
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -112,7 +109,7 @@ namespace DaJet.Data
         }
         private void DeleteTreeNode(Entity entity)
         {
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -152,7 +149,7 @@ namespace DaJet.Data
         {
             TreeNodeRecord record = null;
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -192,7 +189,7 @@ namespace DaJet.Data
         {
             List<TreeNodeRecord> list = new();
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 
@@ -255,7 +252,7 @@ namespace DaJet.Data
         {
             TreeNodeRecord record = null;
 
-            using (SqliteConnection connection = new(_connectionString))
+            using (SqliteConnection connection = new(_source.ConnectionString))
             {
                 connection.Open();
 

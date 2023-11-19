@@ -24,12 +24,10 @@ namespace DaJet.Http.Controllers
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
         private readonly IDataSource _source;
-        private readonly ScriptDataMapper _scripts;
         private readonly IMetadataService _metadata;
-        public ExchangeController(IDataSource source, ScriptDataMapper scripts, IMetadataService metadata)
+        public ExchangeController(IDataSource source, IMetadataService metadata)
         {
             _source = source ?? throw new ArgumentNullException(nameof(source));
-            _scripts = scripts ?? throw new ArgumentNullException(nameof(scripts));
             _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
         }
         [HttpGet("{infobase}")] public ActionResult Select([FromRoute] string infobase)
@@ -41,24 +39,22 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            ScriptRecord exchange = _scripts.SelectScriptByPath(database.Identity, "/exchange");
+            ScriptRecord exchange = _source.Select<ScriptRecord>($"{database.Name}/exchange");
 
             if (exchange is null)
             {
-                exchange = new ScriptRecord()
-                {
-                    Owner = database.Identity,
-                    Name = "exchange"
-                };
-                _scripts.Insert(exchange);
+                exchange = _source.Model.New<ScriptRecord>();
+                
+                exchange.Name = "exchange";
+                exchange.Owner = database.GetEntity();
+                exchange.Parent = Entity.Undefined;
+                exchange.IsFolder = true;
+                exchange.Script = string.Empty;
+
+                _source.Create(exchange);
             }
 
-            List<ScriptRecord> list = _scripts.Select(database.Identity, exchange.Uuid);
-
-            foreach (ScriptRecord parent in list)
-            {
-                _scripts.GetScriptChildren(parent);
-            }
+            IEnumerable<ScriptRecord> list = _source.Query<ScriptRecord>(exchange.GetEntity());
 
             string json = JsonSerializer.Serialize(list, JsonOptions);
 
@@ -73,14 +69,12 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, $"/exchange/{publication}");
+            ScriptRecord script = _source.Select<ScriptRecord>($"{database.Name}/exchange/{publication}");
 
             if (script is null)
             {
                 return NotFound();
             }
-
-            _scripts.GetScriptChildren(script);
 
             string json = JsonSerializer.Serialize(script, JsonOptions);
 
@@ -148,19 +142,19 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, $"/exchange/{publication}");
+            ScriptRecord script = _source.Select<ScriptRecord>($"{database.Name}/exchange/{publication}");
 
             if (script is null)
             {
                 return NotFound();
             }
 
-            if (!_scripts.TrySelect(script.Uuid, out _))
+            if (_source.Select<ScriptRecord>(script.Identity) is null)
             {
                 return NotFound();
             }
 
-            _scripts.DeleteScriptFolder(in script);
+            _source.Delete(script.GetEntity());
 
             return Ok();
         }
@@ -172,11 +166,11 @@ namespace DaJet.Http.Controllers
 
             if (database is null) { return NotFound(); }
 
-            ScriptRecord parent = _scripts.SelectScriptByPath(database.Identity, $"/exchange/{publication}/pub/{type}");
+            ScriptRecord parent = _source.Select<ScriptRecord>($"{database.Name}/exchange/{publication}/pub/{type}");
 
             if (parent is null) { return NotFound(); }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, $"/exchange/{publication}/pub/{type}/{article}");
+            ScriptRecord script = _source.Select<ScriptRecord>($"{database.Name}/exchange/{publication}/pub/{type}/{article}");
 
             if (script is not null) { return BadRequest($"Article {article} exists!"); }
 
@@ -221,14 +215,12 @@ namespace DaJet.Http.Controllers
                 return BadRequest($"Unsupported metadata type \"{entity}\"");
             }
 
-            script = _scripts.SelectScriptByPath(database.Identity, $"/exchange/{publication}/pub/{type}/{article}");
+            script = _source.Select<ScriptRecord>($"{database.Name}/exchange/{publication}/pub/{type}/{article}");
 
             if (script is null)
             {
                 return BadRequest();
             }
-
-            _scripts.GetScriptChildren(script);
 
             string json = JsonSerializer.Serialize(script, JsonOptions);
 
@@ -244,11 +236,11 @@ namespace DaJet.Http.Controllers
 
             if (database is null) { return NotFound(); }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, $"/exchange/{publication}/pub/{type}/{article}");
+            ScriptRecord script = _source.Select<ScriptRecord>($"{database.Name}/exchange/{publication}/pub/{type}/{article}");
 
             if (script is not null)
             {
-                _scripts.DeleteScriptFolder(in script);
+                _source.Delete(script.GetEntity());
             }
 
             return Ok();
@@ -359,7 +351,7 @@ namespace DaJet.Http.Controllers
             script.AppendLine($"DECLARE @EmptyUuid uuid;");
             script.AppendLine($"SELECT Код FROM ПланОбмена.{publication} WHERE Предопределённый = @EmptyUuid ORDER BY Код ASC");
 
-            ScriptExecutor executor = new(provider, _metadata, _source, _scripts);
+            ScriptExecutor executor = new(provider, _metadata, _source);
             executor.Parameters.Add("ThisNode", Guid.Empty);
 
             try
@@ -403,7 +395,7 @@ namespace DaJet.Http.Controllers
 
             if (database is null) { return NotFound($"Database [{infobase}] not found."); }
 
-            ScriptRecord exchange = _scripts.SelectScriptByPath(database.Identity, "/exchange");
+            ScriptRecord exchange = _source.Select<ScriptRecord>($"{database.Name}/exchange");
 
             if (exchange is null) { return NotFound("Exchange service not found."); }
 
@@ -419,7 +411,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest($"Metadata object not found: {metadataName}");
             }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, $"/exchange/{publication}");
+            ScriptRecord script = _source.Select<ScriptRecord>($"{database.Name}/exchange/{publication}");
 
             if (script is null)
             {
@@ -605,7 +597,7 @@ namespace DaJet.Http.Controllers
 
             if (database is null) { return NotFound(infobase); }
 
-            ScriptRecord record = _scripts.SelectScriptByPath(database.Identity, script.Name);
+            ScriptRecord record = _source.Select<ScriptRecord>(script.GetEntity());
 
             if (record is null) { return NotFound(script.Name); }
 
@@ -627,14 +619,9 @@ namespace DaJet.Http.Controllers
 
             record.Script = GenerateMonitorScriptSourceCode(in publication, in node, in articles);
 
-            if (_scripts.Update(record))
-            {
-                return Ok();
-            }
-            else
-            {
-                return Conflict();
-            }
+            _source.Update(record);
+            
+            return Ok();
         }
         private string GenerateMonitorScriptSourceCode(in string publication, in string node, in List<MetadataObject> articles)
         {
@@ -682,20 +669,15 @@ namespace DaJet.Http.Controllers
 
             if (database is null) { return NotFound(infobase); }
 
-            ScriptRecord record = _scripts.SelectScriptByPath(database.Identity, script.Name);
+            ScriptRecord record = _source.Select<ScriptRecord>(script.GetEntity());
 
             if (record is null) { return NotFound(script.Name); }
 
             record.Script = GenerateInqueueScriptSourceCode();
 
-            if (_scripts.Update(record))
-            {
-                return Ok();
-            }
-            else
-            {
-                return Conflict();
-            }
+            _source.Update(record);
+            
+            return Ok();
         }
         private string GenerateInqueueScriptSourceCode()
         {
@@ -734,16 +716,19 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            ScriptRecord exchange = _scripts.SelectScriptByPath(database.Identity, "/exchange");
+            ScriptRecord exchange = _source.Select<ScriptRecord>($"{database.Name}/exchange");
 
             if (exchange is null)
             {
-                exchange = new ScriptRecord()
-                {
-                    Owner = database.Identity,
-                    Name = "exchange"
-                };
-                _scripts.Insert(exchange);
+                exchange = _source.Model.New<ScriptRecord>();
+                
+                exchange.Name = "exchange";
+                exchange.Owner = database.GetEntity();
+                exchange.Parent = Entity.Undefined;
+                exchange.IsFolder = true;
+                exchange.Script = string.Empty;
+
+                _source.Create(exchange);
             }
 
             if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
@@ -758,7 +743,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest($"Metadata object not found: {metadataName}");
             }
 
-            ScriptRecord script = _scripts.SelectScriptByPath(database.Identity, $"/exchange/{publication}");
+            ScriptRecord script = _source.Select<ScriptRecord>($"{database.Name}/exchange/{publication}");
             
             if (script is not null)
             {
@@ -767,17 +752,15 @@ namespace DaJet.Http.Controllers
 
             List<MetadataObject> articles = GetPublicationArticles(in entity, in provider);
 
-            script = new ScriptRecord()
-            {
-                Name = publication,
-                Owner = database.Identity,
-                Parent = exchange.Uuid
-            };
+            script = _source.Model.New<ScriptRecord>();
 
-            if (!_scripts.Insert(script))
-            {
-                return BadRequest();
-            }
+            script.Name = publication;
+            script.Owner = database.GetEntity();
+            script.Parent = exchange.GetEntity();
+            script.IsFolder = true;
+            script.Script = string.Empty;
+
+            _source.Create(script);
 
             ScriptRecord pub = CreatePubScriptNode(database.Identity, script);
             if (pub is null) { return BadRequest(); }
@@ -823,95 +806,73 @@ namespace DaJet.Http.Controllers
         }
         private ScriptRecord CreatePubScriptNode(Guid database, ScriptRecord parent)
         {
-            ScriptRecord script = new()
-            {
-                Name = "pub",
-                Owner = database,
-                Parent = parent.Uuid
-            };
+            ScriptRecord script = _source.Model.New<ScriptRecord>();
 
-            if (_scripts.Insert(script))
-            {
-                return script;
-            }
-            else
-            {
-                return null;
-            }
+            script.Name = "pub";
+            script.Owner = _source.Model.GetEntity<InfoBaseRecord>(database);
+            script.Parent = parent.GetEntity();
+            script.IsFolder = true;
+            script.Script = string.Empty;
+
+            _source.Create(script);
+            
+            return script;
         }
         private ScriptRecord CreateRouteScriptNode(Guid database, ScriptRecord parent, in string publication)
         {
-            ScriptRecord script = new()
-            {
-                Name = "route", // default script for all of the articles
-                IsFolder = false,
-                Owner = database,
-                Parent = parent.Uuid,
-                Script = $"SELECT '{publication}'"
-            };
+            ScriptRecord script = _source.Model.New<ScriptRecord>();
 
-            if (_scripts.Insert(script))
-            {
-                return script;
-            }
-            else
-            {
-                return null;
-            }
+            script.Name = "route"; // default script for all of the articles
+            script.Owner = _source.Model.GetEntity<InfoBaseRecord>(database);
+            script.Parent = parent.GetEntity();
+            script.IsFolder = false;
+            script.Script = $"SELECT '{publication}'";
+
+            _source.Create(script);
+
+            return script;
         }
         private ScriptRecord CreateDocumentScriptNode(Guid database, ScriptRecord parent)
         {
-            ScriptRecord script = new()
-            {
-                Name = "Документ",
-                Owner = database,
-                Parent = parent.Uuid
-            };
+            ScriptRecord script = _source.Model.New<ScriptRecord>();
 
-            if (_scripts.Insert(script))
-            {
-                return script;
-            }
-            else
-            {
-                return null;
-            }
+            script.Name = "Документ";
+            script.Owner = _source.Model.GetEntity<InfoBaseRecord>(database);
+            script.Parent = parent.GetEntity();
+            script.IsFolder = true;
+            script.Script = string.Empty;
+
+            _source.Create(script);
+
+            return script;
         }
         private ScriptRecord CreateCatalogScriptNode(Guid database, ScriptRecord parent)
         {
-            ScriptRecord script = new()
-            {
-                Name = "Справочник",
-                Owner = database,
-                Parent = parent.Uuid
-            };
+            ScriptRecord script = _source.Model.New<ScriptRecord>();
 
-            if (_scripts.Insert(script))
-            {
-                return script;
-            }
-            else
-            {
-                return null;
-            }
+            script.Name = "Справочник";
+            script.Owner = _source.Model.GetEntity<InfoBaseRecord>(database);
+            script.Parent = parent.GetEntity();
+            script.IsFolder = true;
+            script.Script = string.Empty;
+
+            _source.Create(script);
+
+            return script;
         }
         private ScriptRecord CreateRegisterScriptNode(Guid database, ScriptRecord parent)
         {
-            ScriptRecord script = new()
-            {
-                Name = "РегистрСведений",
-                Owner = database,
-                Parent = parent.Uuid
-            };
+            ScriptRecord script = _source.Model.New<ScriptRecord>();
 
-            if (_scripts.Insert(script))
-            {
-                return script;
-            }
-            else
-            {
-                return null;
-            }
+            script.Name = "РегистрСведений";
+            script.Owner = _source.Model.GetEntity<InfoBaseRecord>(database);
+            script.Parent = parent.GetEntity();
+            script.IsFolder = true;
+            script.Script = string.Empty;
+
+            _source.Create(script);
+
+            return script;
         }
         
         private void CreateArticleScripts(Guid database, in string publication, in List<ScriptRecord> parents, in List<MetadataObject> articles, in IMetadataProvider provider)
@@ -930,40 +891,37 @@ namespace DaJet.Http.Controllers
         
         private void CreateCatalogScripts(Guid database, in string publication, in ScriptRecord parent, in Catalog catalog)
         {
-            ScriptRecord script = new()
-            {
-                Name = catalog.Name,
-                Owner = database,
-                Parent = parent.Uuid
-            };
-            _ = _scripts.Insert(script);
+            ScriptRecord folder = _source.Model.New<ScriptRecord>();
+            folder.Name = catalog.Name;
+            folder.Owner = _source.Model.GetEntity<InfoBaseRecord>(database);
+            folder.Parent = parent.GetEntity();
+            folder.IsFolder = true;
+            folder.Script = string.Empty;
+            _source.Create(folder);
 
-            _ = _scripts.Insert(new ScriptRecord()
-            {
-                IsFolder = false,
-                Name = "consume",
-                Owner = database,
-                Parent = script.Uuid,
-                Script = GenerateConsumeScript(in catalog, in publication)
-            });
+            ScriptRecord script = _source.Model.New<ScriptRecord>();
+            script.Name = "consume";
+            script.Owner = _source.Model.GetEntity<InfoBaseRecord>(database);
+            script.Parent = folder.GetEntity();
+            script.IsFolder = false;
+            script.Script = GenerateConsumeScript(in catalog, in publication);
+            _source.Create(script);
 
-            _ = _scripts.Insert(new ScriptRecord()
-            {
-                IsFolder = false,
-                Name = "_route", // script is disabled by default
-                Owner = database,
-                Parent = script.Uuid,
-                Script = GenerateRouteScript(in catalog, in publication)
-            });
+            script = _source.Model.New<ScriptRecord>();
+            script.Name = "_route"; // script is disabled by default
+            script.Owner = _source.Model.GetEntity<InfoBaseRecord>(database);
+            script.Parent = folder.GetEntity();
+            script.IsFolder = false;
+            script.Script = GenerateRouteScript(in catalog, in publication);
+            _source.Create(script);
 
-            _ = _scripts.Insert(new ScriptRecord()
-            {
-                IsFolder = false,
-                Name = "contract",
-                Owner = database,
-                Parent = script.Uuid,
-                Script = GenerateContractScript(in catalog, in publication)
-            });
+            script = _source.Model.New<ScriptRecord>();
+            script.Name = "contract";
+            script.Owner = _source.Model.GetEntity<InfoBaseRecord>(database);
+            script.Parent = folder.GetEntity();
+            script.IsFolder = false;
+            script.Script = GenerateContractScript(in catalog, in publication);
+            _source.Create(script);
         }
         private string GenerateConsumeScript(in Catalog catalog, in string publication)
         {
@@ -1045,40 +1003,37 @@ namespace DaJet.Http.Controllers
 
         private void CreateDocumentScripts(Guid database, in string publication, in ScriptRecord parent, in Document document)
         {
-            ScriptRecord script = new()
-            {
-                Name = document.Name,
-                Owner = database,
-                Parent = parent.Uuid
-            };
-            _ = _scripts.Insert(script);
+            ScriptRecord folder = _source.Model.New<ScriptRecord>();
+            folder.Name = document.Name;
+            folder.Owner = _source.Model.GetEntity<InfoBaseRecord>(database);
+            folder.Parent = parent.GetEntity();
+            folder.IsFolder = true;
+            folder.Script = string.Empty;
+            _source.Create(folder);
 
-            _ = _scripts.Insert(new ScriptRecord()
-            {
-                IsFolder = false,
-                Name = "consume",
-                Owner = database,
-                Parent = script.Uuid,
-                Script = GenerateConsumeScript(in document, in publication)
-            });
+            ScriptRecord script = _source.Model.New<ScriptRecord>();
+            script.Name = "consume";
+            script.Owner = _source.Model.GetEntity<InfoBaseRecord>(database);
+            script.Parent = folder.GetEntity();
+            script.IsFolder = false;
+            script.Script = GenerateConsumeScript(in document, in publication);
+            _source.Create(script);
 
-            _ = _scripts.Insert(new ScriptRecord()
-            {
-                IsFolder = false,
-                Name = "_route", // script is disabled by default
-                Owner = database,
-                Parent = script.Uuid,
-                Script = GenerateRouteScript(in document, in publication)
-            });
+            script = _source.Model.New<ScriptRecord>();
+            script.Name = "_route"; // script is disabled by default
+            script.Owner = _source.Model.GetEntity<InfoBaseRecord>(database);
+            script.Parent = folder.GetEntity();
+            script.IsFolder = false;
+            script.Script = GenerateRouteScript(in document, in publication);
+            _source.Create(script);
 
-            _ = _scripts.Insert(new ScriptRecord()
-            {
-                IsFolder = false,
-                Name = "contract",
-                Owner = database,
-                Parent = script.Uuid,
-                Script = GenerateContractScript(in document, in publication)
-            });
+            script = _source.Model.New<ScriptRecord>();
+            script.Name = "contract";
+            script.Owner = _source.Model.GetEntity<InfoBaseRecord>(database);
+            script.Parent = folder.GetEntity();
+            script.IsFolder = false;
+            script.Script = GenerateContractScript(in document, in publication);
+            _source.Create(script);
         }
         private string GenerateConsumeScript(in Document document, in string publication)
         {
@@ -1167,40 +1122,37 @@ namespace DaJet.Http.Controllers
                 return; // объект метаданных не включён ни в один план обмена
             }
 
-            ScriptRecord script = new()
-            {
-                Name = register.Name,
-                Owner = database,
-                Parent = parent.Uuid
-            };
-            _ = _scripts.Insert(script);
+            ScriptRecord folder = _source.Model.New<ScriptRecord>();
+            folder.Name = register.Name;
+            folder.Owner = _source.Model.GetEntity<InfoBaseRecord>(database);
+            folder.Parent = parent.GetEntity();
+            folder.IsFolder = true;
+            folder.Script = string.Empty;
+            _source.Create(folder);
 
-            _ = _scripts.Insert(new ScriptRecord()
-            {
-                IsFolder = false,
-                Name = "consume",
-                Owner = database,
-                Parent = script.Uuid,
-                Script = GenerateConsumeScript(in table, in publication)
-            });
+            ScriptRecord script = _source.Model.New<ScriptRecord>();
+            script.Name = "consume";
+            script.Owner = _source.Model.GetEntity<InfoBaseRecord>(database);
+            script.Parent = folder.GetEntity();
+            script.IsFolder = false;
+            script.Script = GenerateConsumeScript(in table, in publication);
+            _source.Create(script);
 
-            _ = _scripts.Insert(new ScriptRecord()
-            {
-                IsFolder = false,
-                Name = "_route", // script is disabled by default
-                Owner = database,
-                Parent = script.Uuid,
-                Script = GenerateRouteScript(in table, in publication)
-            });
+            script = _source.Model.New<ScriptRecord>();
+            script.Name = "_route"; // script is disabled by default
+            script.Owner = _source.Model.GetEntity<InfoBaseRecord>(database);
+            script.Parent = folder.GetEntity();
+            script.IsFolder = false;
+            script.Script = GenerateRouteScript(in table, in publication);
+            _source.Create(script);
 
-            _ = _scripts.Insert(new ScriptRecord()
-            {
-                IsFolder = false,
-                Name = "contract",
-                Owner = database,
-                Parent = script.Uuid,
-                Script = GenerateContractScript(in table, in publication)
-            });
+            script = _source.Model.New<ScriptRecord>();
+            script.Name = "contract";
+            script.Owner = _source.Model.GetEntity<InfoBaseRecord>(database);
+            script.Parent = folder.GetEntity();
+            script.IsFolder = false;
+            script.Script = GenerateContractScript(in table, in publication);
+            _source.Create(script);
         }
         private string GenerateConsumeScript(in ChangeTrackingTable table, in string publication)
         {
@@ -1368,20 +1320,15 @@ namespace DaJet.Http.Controllers
 
             if (database is null) { return NotFound(infobase); }
 
-            ScriptRecord record = _scripts.SelectScriptByPath(database.Identity, script.Name);
+            ScriptRecord record = _source.Select<ScriptRecord>(script.GetEntity());
 
             if (record is null) { return NotFound(script.Name); }
 
             record.Script = GenerateConsumeScriptSourceCode();
 
-            if (_scripts.Update(record))
-            {
-                return Ok();
-            }
-            else
-            {
-                return Conflict();
-            }
+            _source.Update(record);
+            
+            return Ok();
         }
         private string GenerateConsumeScriptSourceCode()
         {
@@ -1407,20 +1354,15 @@ namespace DaJet.Http.Controllers
 
             if (database is null) { return NotFound(infobase); }
 
-            ScriptRecord record = _scripts.SelectScriptByPath(database.Identity, script.Name);
+            ScriptRecord record = _source.Select<ScriptRecord>(script.GetEntity());
 
             if (record is null) { return NotFound(script.Name); }
 
             record.Script = GenerateProduceScriptSourceCode();
 
-            if (_scripts.Update(record))
-            {
-                return Ok();
-            }
-            else
-            {
-                return Conflict();
-            }
+            _source.Update(record);
+            
+            return Ok();
         }
         private string GenerateProduceScriptSourceCode()
         {
