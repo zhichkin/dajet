@@ -10,7 +10,7 @@ namespace DaJet.Studio.Pages
         [CascadingParameter] MudDialogInstance MudDialog { get; set; }
         [Parameter] public MainTreeView MainTreeView { get; set; }
         [Parameter] public TreeNodeModel TreeNode { get; set; }
-        [Parameter] public InfoBaseRecord Model { get; set; } = new();
+        [Parameter] public InfoBaseRecord Model { get; set; }
         private void Cancel()
         {
             MudDialog.Cancel();

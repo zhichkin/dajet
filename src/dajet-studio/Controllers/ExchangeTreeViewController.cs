@@ -1,6 +1,6 @@
-﻿using DaJet.Model;
+﻿using DaJet.Http.Client;
+using DaJet.Model;
 using DaJet.Studio.Components;
-using DaJet.Studio.Model;
 using DaJet.Studio.Pages;
 using DaJet.Studio.Pages.Exchange;
 using Microsoft.AspNetCore.Components;
@@ -14,11 +14,13 @@ namespace DaJet.Studio.Controllers
     {
         private HttpClient Http { get; set; }
         private AppState AppState { get; set; }
+        private DaJetHttpClient DataSource { get; set; }
         private NavigationManager Navigator { get; set; }
-        public ExchangeTreeViewController(AppState appState, HttpClient http, NavigationManager navigator)
+        public ExchangeTreeViewController(AppState appState, DaJetHttpClient client, NavigationManager navigator, HttpClient http)
         {
             Http = http;
             AppState = appState;
+            DataSource = client;
             Navigator = navigator;
         }
         public TreeNodeModel CreateRootNode(InfoBaseRecord model)
@@ -39,18 +41,18 @@ namespace DaJet.Studio.Controllers
                 return;
             }
 
-            if (root.Tag is not InfoBaseRecord)
+            if (root.Tag is not InfoBaseRecord database)
             {
                 return;
             }
 
-            HttpResponseMessage response = await Http.GetAsync(root.Url);
+            ScriptRecord exchange = await DataSource.SelectAsync<ScriptRecord>(database.Name + "/exchange");
 
-            List<ScriptModel> list = await response.Content.ReadFromJsonAsync<List<ScriptModel>>();
+            IEnumerable<ScriptRecord> list = await DataSource.QueryAsync<ScriptRecord>(exchange.GetEntity());
 
-            foreach (ScriptModel model in list)
+            foreach (ScriptRecord model in list)
             {
-                TreeNodeModel node = CreateScriptNodeTree(in root, in model);
+                TreeNodeModel node = await CreateScriptNodeTree(root, model);
                 node.Parent = root;
                 root.Nodes.Add(node);
             }
@@ -74,12 +76,12 @@ namespace DaJet.Studio.Controllers
             {
                 await OpenArticleContextMenu(node, dialogService);
             }
-            else if (node.Tag is ScriptModel script && !script.IsFolder)
+            else if (node.Tag is ScriptRecord script && !script.IsFolder)
             {
                 await OpenScriptContextMenu(node, dialogService);
             }
         }
-        private TreeNodeModel CreateScriptNodeTree(in TreeNodeModel parent, in ScriptModel model)
+        private async Task<TreeNodeModel> CreateScriptNodeTree(TreeNodeModel parent, ScriptRecord model)
         {
             string url = string.Empty;
 
@@ -95,9 +97,11 @@ namespace DaJet.Studio.Controllers
                 ContextMenuHandler = ContextMenuHandler
             };
 
-            foreach (ScriptModel script in model.Children)
+            IEnumerable<ScriptRecord> children = await DataSource.QueryAsync<ScriptRecord>(model.GetEntity());
+
+            foreach (ScriptRecord script in children)
             {
-                TreeNodeModel child = CreateScriptNodeTree(in node, in script);
+                TreeNodeModel child = await CreateScriptNodeTree(node, script);
                 child.Parent = node;
                 node.Nodes.Add(child);
             }
@@ -184,7 +188,7 @@ namespace DaJet.Studio.Controllers
 
             if (root is null || root.Tag is not InfoBaseRecord database) { return; }
 
-            if (node.Tag is not ScriptModel exchange) { return; }
+            if (node.Tag is not ScriptRecord exchange) { return; }
 
             Navigator.NavigateTo($"/create-pipeline/{database.Name}/{exchange.Name}");
         }
@@ -194,7 +198,7 @@ namespace DaJet.Studio.Controllers
 
             if (root is null || root.Tag is not InfoBaseRecord database) { return; }
 
-            if (node.Tag is not ScriptModel exchange) { return; }
+            if (node.Tag is not ScriptRecord exchange) { return; }
 
             Navigator.NavigateTo($"/configure-rabbit/{database.Name}/{exchange.Name}");
         }
@@ -245,11 +249,11 @@ namespace DaJet.Studio.Controllers
                 Navigator.NavigateTo("/error-page"); return;
             }
 
-            HttpResponseMessage response = await Http.GetAsync($"{root.Url}/{name}");
+            string url = $"{root.Url}/{name}";
 
-            ScriptModel model = await response.Content.ReadFromJsonAsync<ScriptModel>();
+            ScriptRecord model = await DataSource.SelectAsync<ScriptRecord>(url);
 
-            TreeNodeModel node = CreateScriptNodeTree(in root, in model);
+            TreeNodeModel node = await CreateScriptNodeTree(root, model);
             node.Parent = root;
             root.Nodes.Add(node);
         }
@@ -277,7 +281,7 @@ namespace DaJet.Studio.Controllers
         {
             if (node.Parent is null ||
                 node.Parent.Tag is not InfoBaseRecord infobase ||
-                node.Tag is not ScriptModel script)
+                node.Tag is not ScriptRecord script)
             {
                 return;
             }
@@ -349,12 +353,12 @@ namespace DaJet.Studio.Controllers
                 return; // owner database is not found
             }
 
-            if (node.Tag is not ScriptModel)
+            if (node.Tag is not ScriptRecord)
             {
                 return;
             }
 
-            ScriptModel script = await CreateArticle(database.Name, node.Parent.Parent.Title, node.Title, articleName);
+            ScriptRecord script = await CreateArticle(database.Name, node.Parent.Parent.Title, node.Title, articleName);
 
             if (script is null)
             {
@@ -363,11 +367,11 @@ namespace DaJet.Studio.Controllers
                 return;
             }
 
-            TreeNodeModel child = CreateScriptNodeTree(in node, in script);
+            TreeNodeModel child = await CreateScriptNodeTree(node, script);
             child.Parent = node;
             node.Nodes.Add(child);
         }
-        private async Task<ScriptModel> CreateArticle(string database, string publication, string type, string article)
+        private async Task<ScriptRecord> CreateArticle(string database, string publication, string type, string article)
         {
             try
             {
@@ -377,7 +381,7 @@ namespace DaJet.Studio.Controllers
 
                 if (response.StatusCode == HttpStatusCode.Created)
                 {
-                    return await response.Content.ReadFromJsonAsync<ScriptModel>();
+                    return await response.Content.ReadFromJsonAsync<ScriptRecord>();
                 }
 
                 AppState.LastErrorText = response.ReasonPhrase;
@@ -428,7 +432,7 @@ namespace DaJet.Studio.Controllers
         }
         private async Task EnableArticle(TreeNodeModel node)
         {
-            if (node.Tag is not ScriptModel script)
+            if (node.Tag is not ScriptRecord script)
             {
                 return;
             }
@@ -440,9 +444,9 @@ namespace DaJet.Studio.Controllers
 
             string newName = node.Title.TrimStart('_');
 
-            bool success = await ChangeScriptTitle(new ScriptModel()
+            bool success = await ChangeScriptTitle(new ScriptRecord()
             {
-                Uuid = script.Uuid,
+                Identity = script.Identity,
                 Name = newName
             });
 
@@ -458,7 +462,7 @@ namespace DaJet.Studio.Controllers
         }
         private async Task DisableArticle(TreeNodeModel node)
         {
-            if (node.Tag is not ScriptModel script)
+            if (node.Tag is not ScriptRecord script)
             {
                 return;
             }
@@ -470,9 +474,9 @@ namespace DaJet.Studio.Controllers
 
             string newName = $"_{node.Title}";
 
-            bool success = await ChangeScriptTitle(new ScriptModel()
+            bool success = await ChangeScriptTitle(new ScriptRecord()
             {
-                Uuid = script.Uuid,
+                Identity = script.Identity,
                 Name = newName
             });
 
@@ -486,7 +490,7 @@ namespace DaJet.Studio.Controllers
                 Navigator.NavigateTo("/error-page");
             }
         }
-        private async Task<bool> ChangeScriptTitle(ScriptModel script)
+        private async Task<bool> ChangeScriptTitle(ScriptRecord script)
         {
             try
             {
@@ -511,12 +515,12 @@ namespace DaJet.Studio.Controllers
                 return; // owner database is not found
             }
 
-            if (node.Parent.Tag is not ScriptModel parent)
+            if (node.Parent.Tag is not ScriptRecord parent)
             {
                 return;
             }
 
-            if (node.Tag is not ScriptModel child)
+            if (node.Tag is not ScriptRecord child)
             {
                 return;
             }
@@ -528,7 +532,7 @@ namespace DaJet.Studio.Controllers
                 Navigator.NavigateTo("/error-page"); return;
             }
 
-            parent.Children.Remove(child);
+            //parent.Children.Remove(child);
 
             node.Parent.Nodes.Remove(node);
 
@@ -588,15 +592,15 @@ namespace DaJet.Studio.Controllers
             }
             else if (dialogResult.CommandType == ExchangeDialogCommand.OpenScriptInEditor)
             {
-                if (node.Tag is ScriptModel script && !script.IsFolder)
+                if (node.Tag is ScriptRecord script && !script.IsFolder)
                 {
-                    Navigator.NavigateTo($"/script-editor/{script.Uuid}");
+                    Navigator.NavigateTo($"/script-editor/{script.Identity}");
                 }
             }
         }
         private async Task EnableScript(TreeNodeModel node)
         {
-            if (node.Tag is not ScriptModel script)
+            if (node.Tag is not ScriptRecord script)
             {
                 return;
             }
@@ -608,9 +612,9 @@ namespace DaJet.Studio.Controllers
 
             string newName = node.Title.TrimStart('_');
 
-            bool success = await ChangeScriptTitle(new ScriptModel()
+            bool success = await ChangeScriptTitle(new ScriptRecord()
             {
-                Uuid = script.Uuid,
+                Identity = script.Identity,
                 Name = newName
             });
 
@@ -626,7 +630,7 @@ namespace DaJet.Studio.Controllers
         }
         private async Task DisableScript(TreeNodeModel node)
         {
-            if (node.Tag is not ScriptModel script)
+            if (node.Tag is not ScriptRecord script)
             {
                 return;
             }
@@ -638,9 +642,9 @@ namespace DaJet.Studio.Controllers
 
             string newName = $"_{node.Title}";
 
-            bool success = await ChangeScriptTitle(new ScriptModel()
+            bool success = await ChangeScriptTitle(new ScriptRecord()
             {
-                Uuid = script.Uuid,
+                Identity = script.Identity,
                 Name = newName
             });
 

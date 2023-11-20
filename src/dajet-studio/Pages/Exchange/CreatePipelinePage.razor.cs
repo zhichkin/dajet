@@ -1,5 +1,4 @@
 ﻿using DaJet.Model;
-using DaJet.Studio.Model;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using System.Net.Http.Json;
@@ -294,7 +293,7 @@ namespace DaJet.Studio.Pages.Exchange
                 return;
             }
 
-            ScriptModel script = new()
+            ScriptRecord script = new()
             {
                 Name = InqueueScriptUrl
             };
@@ -326,7 +325,7 @@ namespace DaJet.Studio.Pages.Exchange
         }
         private async Task GenerateMonitorScriptAtServer()
         {
-            ScriptModel script = new()
+            ScriptRecord script = new()
             {
                 Name = MonitorScriptUrl
             };

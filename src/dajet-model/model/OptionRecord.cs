@@ -4,9 +4,9 @@ namespace DaJet.Model
 {
     public sealed class OptionRecord : EntityObject
     {
-        private string _name;
-        private string _type;
-        private string _value;
+        private string _name = string.Empty;
+        private string _type = string.Empty;
+        private string _value = string.Empty;
         private Entity _owner;
         public string Name { get { return _name; } set { Set(value, ref _name); } }
         public string Type { get { return _type; } set { Set(value, ref _type); } }

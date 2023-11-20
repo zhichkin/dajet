@@ -1,7 +1,7 @@
 ﻿@page "/script-editor/{uuid:guid?}"
 
-@inject HttpClient Http;
 @inject AppState AppState;
+@inject DaJetHttpClient DataSource;
 @inject NavigationManager Navigator;
 
 <div class="script-editor-layout">
@@ -11,7 +11,7 @@
         <div style="margin:5px;">
             <span style="font-weight:bold;">@DatabaseName</span>
             <MudTooltip Text="Закрыть скрипт">
-                <input type="button" value="✕" class="script-editor-close-button" @onclick="CloseScriptEditor">
+                <input type="button" value="✕" class="script-editor-close-button" @onclick="NavigateToHomePage">
             </MudTooltip>
             <span style="font-weight:bold;display:block;">@ScriptUrl</span>
         </div>
@@ -33,9 +33,8 @@
     </div>
 
     <div class="script-editor-script">
-        <textarea rows="10" @oninput="OnScriptChanged"
-                  style="border: 1px solid black; padding: 3px; white-space: nowrap; font-family: monospace">
-            @Model.Script
+        <textarea rows="10" @oninput="OnScriptChanged" style="border: 1px solid black; padding: 3px; white-space: nowrap; font-family: monospace">
+            @Model?.Script
         </textarea>
     </div>
 

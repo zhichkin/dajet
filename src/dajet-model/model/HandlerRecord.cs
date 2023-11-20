@@ -5,7 +5,7 @@ namespace DaJet.Model
     public sealed class HandlerRecord : EntityObject
     {
         private int _ordinal;
-        private string _name;
+        private string _name = string.Empty;
         private Entity _pipeline;
         public int Ordinal { get { return _ordinal; } set { Set(value, ref _ordinal); } }
         public string Name { get { return _name; } set { Set(value, ref _name); } }

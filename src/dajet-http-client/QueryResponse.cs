@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace DaJet.Studio.Model
+namespace DaJet.Http.Client
 {
     public sealed class QueryResponse
     {

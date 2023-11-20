@@ -5,11 +5,11 @@ namespace DaJet.Model
 {
     public sealed class InfoBaseRecord : EntityObject
     {
-        private string _name;
-        private string _description;
-        private bool _use_extensions;
-        private string _provider;
-        private string _connection;
+        private string _name = string.Empty;
+        private string _description = string.Empty;
+        private bool _use_extensions = false;
+        private string _provider = string.Empty;
+        private string _connection = string.Empty;
         [JsonPropertyName(nameof(Name))] public string Name { get { return _name; } set { Set(value, ref _name); } }
         [JsonPropertyName(nameof(Description))] public string Description { get { return _description; } set { Set(value, ref _description); } }
         [JsonPropertyName(nameof(UseExtensions))] public bool UseExtensions { get { return _use_extensions; } set { Set(value, ref _use_extensions); } }

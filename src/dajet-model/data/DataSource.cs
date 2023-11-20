@@ -27,6 +27,7 @@ namespace DaJet.Data
     }
     public interface IAsyncDataSource
     {
+        IDomainModel Model { get; }
         Task CreateAsync(EntityObject entity);
         Task UpdateAsync(EntityObject entity);
         Task DeleteAsync(Entity entity);

@@ -95,9 +95,7 @@ namespace DaJet.Studio.Components
             {
                 root.Nodes.Clear();
 
-                HttpResponseMessage response = await Http.GetAsync(root.Url);
-
-                List<InfoBaseRecord> list = await response.Content.ReadFromJsonAsync<List<InfoBaseRecord>>();
+                IEnumerable<InfoBaseRecord> list = await DataSource.QueryAsync<InfoBaseRecord>();
 
                 foreach (InfoBaseRecord model in list)
                 {

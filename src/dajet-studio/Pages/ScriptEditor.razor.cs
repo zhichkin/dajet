@@ -1,38 +1,39 @@
-﻿using DaJet.Model;
-using DaJet.Studio.Model;
+﻿using DaJet.Http.Client;
+using DaJet.Model;
 using Microsoft.AspNetCore.Components;
-using System.Net;
-using System.Net.Http.Json;
 
 namespace DaJet.Studio.Pages
 {
     public partial class ScriptEditor : ComponentBase
     {
         [Parameter] public Guid Uuid { get; set; } = Guid.Empty;
-        protected ScriptModel Model { get; set; } = new ScriptModel();
+        protected ScriptRecord Model { get; set; }
         protected string DatabaseName { get; set; } = string.Empty;
         protected string ScriptUrl { get; set; } = string.Empty;
         protected bool ScriptIsChanged { get; set; } = false;
         protected string ErrorText { get; set; } = string.Empty;
         protected string ResultText { get; set; } = string.Empty;
         protected List<Dictionary<string, object>> ResultTable { get; set; }
+        protected void NavigateToHomePage() { Navigator.NavigateTo("/"); }
         protected override async Task OnParametersSetAsync()
         {
             if (Uuid != Guid.Empty)
             {
-                Model = await SelectScript(Uuid);
-                ScriptUrl = await SelectScriptUrl(Model.Uuid);
+                Model = await DataSource.SelectAsync<ScriptRecord>(Uuid);
+                ScriptUrl = await DataSource.GetScriptUrl(Uuid);
             }
             else
             {
+                Model = DataSource.Model.New<ScriptRecord>();
                 Model.Name = "Скрипт 1QL";
                 Model.IsFolder = false;
-                Model.Owner = AppState.CurrentDatabase.Identity;
+                Model.Owner = DataSource.Model.GetEntity<InfoBaseRecord>(AppState.CurrentDatabase.Identity);
                 ScriptUrl = Model.Name;
             }
 
-            InfoBaseRecord database = AppState.GetDatabase(Model.Owner);
-            DatabaseName = (database == null ? "База данных не определена" : database.Name);
+            InfoBaseRecord database = await DataSource.SelectAsync<InfoBaseRecord>(Model.Owner);
+            
+            DatabaseName = (database is null ? "База данных не определена" : database.Name);
 
             ErrorText = string.Empty;
             ResultText = string.Empty;
@@ -44,82 +45,41 @@ namespace DaJet.Studio.Pages
             Model.Script = args.Value.ToString();
             ScriptIsChanged = true;
         }
-        protected void CloseScriptEditor()
-        {
-            Navigator.NavigateTo("/");
-        }
-        private async Task<string> SelectScriptUrl(Guid uuid)
-        {
-            try
-            {
-                HttpResponseMessage response = await Http.GetAsync($"/api/url/{uuid}");
-
-                string result = await response.Content.ReadAsStringAsync();
-
-                if (response.IsSuccessStatusCode)
-                {
-                    return result;
-                }
-
-                ErrorText = response.ReasonPhrase
-                    + (string.IsNullOrEmpty(result)
-                    ? string.Empty
-                    : Environment.NewLine + result);
-            }
-            catch (Exception error)
-            {
-                ErrorText = error.Message;
-            }
-
-            return string.Empty;
-        }
-        private async Task<ScriptModel> SelectScript(Guid uuid)
-        {
-            ScriptModel script = null;
-
-            try
-            {
-                HttpResponseMessage response = await Http.GetAsync($"/api/{uuid}");
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    string result = await response.Content.ReadAsStringAsync();
-
-                    ErrorText = response.ReasonPhrase
-                        + (string.IsNullOrEmpty(result)
-                        ? string.Empty
-                        : Environment.NewLine + result);
-                }
-                else
-                {
-                    script = await response.Content.ReadFromJsonAsync<ScriptModel>();
-                }
-            }
-            catch (Exception error)
-            {
-                ErrorText = error.Message;
-            }
-
-            return script;
-        }
         private async Task SaveScriptCommand()
         {
             try
             {
-                HttpResponseMessage response = await Http.PutAsJsonAsync($"/api", Model);
-
-                if (response.StatusCode != HttpStatusCode.OK)
+                if (Model.IsNew())
                 {
-                    AppState.FooterText = response.ReasonPhrase;
+                    await DataSource.CreateAsync(Model);
                 }
-                else
+                else if (Model.IsChanged())
                 {
-                    ScriptIsChanged = false;
+                    await DataSource.UpdateAsync(Model);
                 }
+                
+                ScriptIsChanged = !Model.IsOriginal();
             }
             catch (Exception error)
             {
                 AppState.FooterText = error.Message;
+            }
+        }
+        protected async Task ExecuteNonQuery()
+        {
+            ErrorText = string.Empty;
+            ResultText = string.Empty;
+            ResultTable = null;
+
+            QueryResponse result = await DataSource.ExecuteNonQuery(Model);
+
+            if (result.Success)
+            {
+                ResultText = result.Script;
+            }
+            else
+            {
+                ErrorText = result.Error;
             }
         }
         protected async Task ExecuteScriptSql()
@@ -128,44 +88,15 @@ namespace DaJet.Studio.Pages
             ResultText = string.Empty;
             ResultTable = null;
 
-            try
+            QueryResponse result = await DataSource.ExecuteScriptSql(Model);
+
+            if (result.Success)
             {
-                InfoBaseRecord database = AppState.GetDatabaseOrThrowException(Model.Owner);
-
-                QueryRequest request = new()
-                {
-                    DbName = database.Name,
-                    Script = Model.Script
-                };
-
-                HttpResponseMessage response = await Http.PostAsJsonAsync("/query/prepare", request);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    string result = await response.Content.ReadAsStringAsync();
-
-                    ErrorText = response.ReasonPhrase
-                        + (string.IsNullOrEmpty(result)
-                        ? string.Empty
-                        : Environment.NewLine + result);
-                }
-                else
-                {
-                    QueryResponse result = await response.Content.ReadFromJsonAsync<QueryResponse>();
-
-                    if (result.Success)
-                    {
-                        ResultText = result.Script;
-                    }
-                    else
-                    {
-                        ErrorText = result.Error;
-                    }
-                }
+                ResultText = result.Script;
             }
-            catch (Exception error)
+            else
             {
-                ErrorText = error.Message;
+                ErrorText = result.Error;
             }
         }
         protected async Task ExecuteScriptJson()
@@ -174,31 +105,15 @@ namespace DaJet.Studio.Pages
             ResultText = string.Empty;
             ResultTable = null;
 
-            try
+            QueryResponse response = await DataSource.ExecuteScriptJson(Model);
+
+            if (response.Success)
             {
-                InfoBaseRecord database = AppState.GetDatabaseOrThrowException(Model.Owner);
-
-                Dictionary<string, object> parameters = new();
-
-                HttpResponseMessage response = await Http.PostAsJsonAsync(ScriptUrl, parameters);
-
-                string result = await response.Content.ReadAsStringAsync();
-
-                if (response.IsSuccessStatusCode)
-                {
-                    ResultText = result;
-                }
-                else
-                {
-                    ErrorText = response.ReasonPhrase
-                        + (string.IsNullOrEmpty(result)
-                        ? string.Empty
-                        : Environment.NewLine + result);
-                }
+                ResultText = response.Script;
             }
-            catch (Exception error)
+            else
             {
-                ErrorText = error.Message;
+                ErrorText = response.Error;
             }
         }
         protected async Task ExecuteScriptTable()
@@ -207,79 +122,18 @@ namespace DaJet.Studio.Pages
             ResultText = string.Empty;
             ResultTable = null;
 
-            try
+            QueryResponse response = await DataSource.ExecuteScriptTable(Model);
+
+            if (response.Success)
             {
-                InfoBaseRecord database = AppState.GetDatabaseOrThrowException(Model.Owner);
-
-                Dictionary<string, object> parameters = new();
-
-                HttpResponseMessage response = await Http.PostAsJsonAsync(ScriptUrl, parameters);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    string result = await response.Content.ReadAsStringAsync();
-
-                    ErrorText = response.ReasonPhrase
-                        + (string.IsNullOrEmpty(result)
-                        ? string.Empty
-                        : Environment.NewLine + result);
-                }
-                else
-                {
-                    ResultTable = await response.Content.ReadFromJsonAsync<List<Dictionary<string, object>>>();
-                }
+                ResultTable = response.Result as List<Dictionary<string, object>>;
             }
-            catch (Exception error)
+            else
             {
-                ErrorText = error.Message;
+                ErrorText = response.Error;
             }
         }
 
-        protected async Task ExecuteNonQuery()
-        {
-            ErrorText = string.Empty;
-            ResultText = string.Empty;
-            ResultTable = null;
-
-            try
-            {
-                InfoBaseRecord database = AppState.GetDatabaseOrThrowException(Model.Owner);
-
-                QueryRequest request = new()
-                {
-                    DbName = database.Name,
-                    Script = Model.Script
-                };
-
-                HttpResponseMessage response = await Http.PostAsJsonAsync("/query/ddl", request);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    string result = await response.Content.ReadAsStringAsync();
-
-                    ErrorText = response.ReasonPhrase
-                        + (string.IsNullOrEmpty(result)
-                        ? string.Empty
-                        : Environment.NewLine + result);
-                }
-                else
-                {
-                    QueryResponse result = await response.Content.ReadFromJsonAsync<QueryResponse>();
-
-                    if (result.Success)
-                    {
-                        ResultText = result.Script;
-                    }
-                    else
-                    {
-                        ErrorText = result.Error;
-                    }
-                }
-            }
-            catch (Exception error)
-            {
-                ErrorText = error.Message;
-            }
-        }
+        
     }
 }

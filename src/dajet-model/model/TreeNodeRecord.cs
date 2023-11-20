@@ -4,7 +4,7 @@ namespace DaJet.Model
 {
     public sealed class TreeNodeRecord : EntityObject
     {
-        private string _name;
+        private string _name = string.Empty;
         private bool _is_folder;
         private Entity _value;
         private Entity _parent;

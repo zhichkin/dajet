@@ -1,25 +1,21 @@
-﻿using DaJet.Model;
+﻿using DaJet.Http.Client;
+using DaJet.Model;
 using DaJet.Studio.Components;
-using DaJet.Studio.Model;
 using DaJet.Studio.Pages;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using System.ComponentModel;
-using System.Net;
-using System.Net.Http.Json;
 
 namespace DaJet.Studio.Controllers
 {
     public sealed class ApiTreeViewController
     {
-        private HttpClient Http { get; set; }
-        private AppState AppState { get; set; }
+        private DaJetHttpClient DataSource { get; set; }
         private NavigationManager Navigator { get; set; }
         private readonly Func<TreeNodeModel, CancelEventArgs, Task> _updateTitleCommandHandler;
-        public ApiTreeViewController(AppState appState, HttpClient http, NavigationManager navigator)
+        public ApiTreeViewController(DaJetHttpClient client, NavigationManager navigator)
         {
-            Http = http;
-            AppState = appState;
+            DataSource = client;
             Navigator = navigator;
 
             _updateTitleCommandHandler = new(UpdateTitleCommandHandler);
@@ -31,7 +27,7 @@ namespace DaJet.Studio.Controllers
                 Tag = model,
                 Url = $"/api/select/{model.Name}",
                 Title = "api",
-                OpenNodeHandler = OpenApiNodeHandler,
+                OpenNodeHandler = OpenRootNodeHandler,
                 ContextMenuHandler = ContextMenuHandler
             };
         }
@@ -39,38 +35,33 @@ namespace DaJet.Studio.Controllers
         {
             await OpenContextMenu(root, dialogService);
         }
-        private async Task OpenApiNodeHandler(TreeNodeModel root)
+        private async Task OpenRootNodeHandler(TreeNodeModel root)
         {
             if (root == null || root.Nodes.Count > 0)
             {
                 return;
             }
 
-            if (root.Tag is not InfoBaseRecord)
+            if (root.Tag is not InfoBaseRecord database)
             {
                 return;
             }
 
-            HttpResponseMessage response = await Http.GetAsync(root.Url);
+            IEnumerable<ScriptRecord> list = await DataSource.QueryAsync<ScriptRecord>(database.GetEntity());
 
-            List<ScriptModel> list = await response.Content.ReadFromJsonAsync<List<ScriptModel>>();
-
-            for (int i = 0; i < list.Count; i++)
+            foreach (ScriptRecord model in list)
             {
-                if (list[i].Name == "exchange")
+                if (model.Name == "exchange")
                 {
-                    list.RemoveAt(i); break;
+                    continue;
                 }
-            }
 
-            foreach (ScriptModel model in list)
-            {
-                TreeNodeModel node = CreateScriptNodeTree(in root, in model);
+                TreeNodeModel node = await CreateScriptNodeTree(root, model);
                 node.Parent = root;
                 root.Nodes.Add(node);
             }
         }
-        private TreeNodeModel CreateScriptNodeTree(in TreeNodeModel parent, in ScriptModel model)
+        private async Task<TreeNodeModel> CreateScriptNodeTree(TreeNodeModel parent, ScriptRecord model)
         {
             string url = string.Empty;
 
@@ -95,9 +86,11 @@ namespace DaJet.Studio.Controllers
                 UpdateTitleCommand = _updateTitleCommandHandler
             };
 
-            foreach (ScriptModel script in model.Children)
+            IEnumerable<ScriptRecord> children = await DataSource.QueryAsync<ScriptRecord>(model.GetEntity());
+
+            foreach (ScriptRecord script in children)
             {
-                TreeNodeModel child = CreateScriptNodeTree(in node, in script);
+                TreeNodeModel child = await CreateScriptNodeTree(node, script);
                 child.Parent = node;
                 node.Nodes.Add(child);
             }
@@ -150,25 +143,21 @@ namespace DaJet.Studio.Controllers
         }
         private async Task CreateFolder(TreeNodeModel node)
         {
-            ScriptModel script = new()
-            {
-                Name = "NewFolder",
-                IsFolder = true
-            };
+            ScriptRecord script = DataSource.Model.New<ScriptRecord>();
+            script.Name = "NewFolder";
+            script.IsFolder = true;
 
             await CreateFolderScript(node, script);
         }
         private async Task CreateScript(TreeNodeModel node)
         {
-            ScriptModel script = new()
-            {
-                Name = "NewScript",
-                IsFolder = false
-            };
+            ScriptRecord script = DataSource.Model.New<ScriptRecord>();
+            script.Name = "NewScript";
+            script.IsFolder = false;
 
             await CreateFolderScript(node, script);
         }
-        private async Task CreateFolderScript(TreeNodeModel node, ScriptModel script)
+        private async Task CreateFolderScript(TreeNodeModel node, ScriptRecord script)
         {
             TreeNodeModel root = TreeNodeModel.GetAncestor<InfoBaseRecord>(in node);
 
@@ -177,20 +166,31 @@ namespace DaJet.Studio.Controllers
                 return; // owner database is not found
             }
 
-            ScriptModel parent = node.Tag as ScriptModel;
+            ScriptRecord parent = node.Tag as ScriptRecord;
 
-            if (parent != null)
+            if (parent is not null)
             {
                 script.Owner = parent.Owner;
-                script.Parent = parent.Uuid;
+                script.Parent = parent.GetEntity();
             }
             else
             {
-                script.Owner = infobase.Identity;
-                script.Parent = Guid.Empty;
+                script.Owner = infobase.GetEntity();
+                script.Parent = Entity.Undefined;
             }
 
-            bool success = await InsertScript(script);
+            script.Script = string.Empty;
+
+            bool success = true;
+
+            try
+            {
+                await DataSource.CreateAsync(script);
+            }
+            catch
+            {
+                success = false;
+            }
 
             if (!success)
             {
@@ -205,7 +205,7 @@ namespace DaJet.Studio.Controllers
             }
             else
             {
-                parent.Children.Add(script);
+                //parent.Children.Add(script);
                 url = $"{node.Url}/{script.Name}";
             }
 
@@ -225,27 +225,35 @@ namespace DaJet.Studio.Controllers
         }
         private void UpdateScript(TreeNodeModel node)
         {
-            if (node.Tag is ScriptModel script)
+            if (node.Tag is ScriptRecord script)
             {
-                Navigator.NavigateTo($"/script-editor/{script.Uuid}");
+                Navigator.NavigateTo($"/script-editor/{script.Identity}");
             }
         }
         private async Task UpdateTitleCommandHandler(TreeNodeModel node, CancelEventArgs args)
         {
-            if (node.Tag is not ScriptModel script)
+            if (node.Tag is not ScriptRecord script)
             {
                 return;
             }
 
-            bool success = await UpdateScriptName(new ScriptModel()
+            bool success = true;
+
+            string originalName = script.Name;
+
+            try
             {
-                Uuid = script.Uuid,
-                Name = node.Title
-            });
+                script.Name = node.Title;
+                await DataSource.UpdateAsync(script);
+            }
+            catch
+            {
+                success = false;
+            }
 
             if (success)
             {
-                script.Name = node.Title;
+                //script.Name = node.Title;
 
                 if (node.Parent is not null)
                 {
@@ -261,90 +269,42 @@ namespace DaJet.Studio.Controllers
             }
             else
             {
+                script.Name = originalName;
+                script.MarkAsOriginal();
                 args.Cancel = true;
             }
         }
         private async Task DeleteFolderScript(TreeNodeModel node)
         {
-            if (node.Tag is not ScriptModel script)
+            if (node.Tag is not ScriptRecord script)
             {
                 return;
             }
 
-            bool success = await DeleteScript(script);
+            bool success = true;
+
+            try
+            {
+                await DataSource.DeleteAsync(script.GetEntity());
+            }
+            catch
+            {
+                success = false;
+            }
             
             if (!success)
             {
                 return;
             }
 
-            if (node.Parent.Tag is ScriptModel parent && node.Tag is ScriptModel child)
-            {
-                parent.Children.Remove(child);
-            }
+            //if (node.Parent.Tag is ScriptRecord parent && node.Tag is ScriptRecord child)
+            //{
+            //    parent.Children.Remove(child);
+            //}
 
             node.Parent.Nodes.Remove(node);
 
             node.IsVisible = false;
-        }
-
-        private async Task<bool> InsertScript(ScriptModel script)
-        {
-            try
-            {
-                HttpResponseMessage response = await Http.PostAsJsonAsync($"/api", script);
-
-                if (response.StatusCode != HttpStatusCode.Created)
-                {
-                    AppState.FooterText = response.ReasonPhrase;
-                    return false;
-                }
-                return true;
-            }
-            catch (Exception error)
-            {
-                AppState.FooterText = error.Message;
-                return false;
-            }
-        }
-        private async Task<bool> UpdateScriptName(ScriptModel script)
-        {
-            try
-            {
-                HttpResponseMessage response = await Http.PutAsJsonAsync($"/api/name", script);
-
-                if (response.StatusCode == HttpStatusCode.OK)
-                {
-                    return true;
-                }
-
-                AppState.FooterText = response.ReasonPhrase;
-                return false;
-            }
-            catch (Exception error)
-            {
-                AppState.FooterText = error.Message;
-                return false;
-            }
-        }
-        private async Task<bool> DeleteScript(ScriptModel script)
-        {
-            try
-            {
-                HttpResponseMessage response = await Http.DeleteAsync($"/api/{script.Uuid}");
-
-                if (response.StatusCode != HttpStatusCode.OK)
-                {
-                    AppState.FooterText = response.ReasonPhrase;
-                    return false;
-                }
-                return true;
-            }
-            catch (Exception error)
-            {
-                AppState.FooterText = error.Message;
-                return false;
-            }
         }
     }
 }

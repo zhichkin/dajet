@@ -5,8 +5,8 @@ namespace DaJet.Model
 {
     public sealed class ScriptRecord : EntityObject
     {
-        private string _name;
-        private string _script; // source code
+        private string _name = string.Empty;
+        private string _script = string.Empty; // script source code
         private Entity _owner; // database
         private Entity _parent; // script folder
         private bool _is_folder;

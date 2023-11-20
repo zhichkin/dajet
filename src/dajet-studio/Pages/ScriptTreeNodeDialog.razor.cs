@@ -1,5 +1,5 @@
-﻿using DaJet.Studio.Components;
-using DaJet.Studio.Model;
+﻿using DaJet.Model;
+using DaJet.Studio.Components;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 
@@ -33,7 +33,7 @@ namespace DaJet.Studio.Pages
         }
         private void UpdateScript()
         {
-            if (Model.Tag is not ScriptModel)
+            if (Model.Tag is not ScriptRecord)
             {
                 return;
             }
@@ -47,7 +47,7 @@ namespace DaJet.Studio.Pages
         }
         private void DeleteFolderOrScript()
         {
-            if (Model.Tag is not ScriptModel script)
+            if (Model.Tag is not ScriptRecord script)
             {
                 return;
             }

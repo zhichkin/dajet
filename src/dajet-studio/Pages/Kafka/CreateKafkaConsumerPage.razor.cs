@@ -1,5 +1,4 @@
 ﻿using DaJet.Model;
-using DaJet.Studio.Model;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using System.Net.Http.Json;
@@ -158,10 +157,9 @@ namespace DaJet.Studio.Pages.Kafka
         {
             if (!GenerateInsertScript) { return; }
 
-            ScriptModel script = new()
-            {
-                Name = InsertScriptUrl
-            };
+            string scriptUrl = DataSourceUrl.Name + "/" + InsertScriptUrl.TrimStart('/');
+
+            ScriptRecord script = await DataSource.SelectAsync<ScriptRecord>(scriptUrl);
 
             try
             {

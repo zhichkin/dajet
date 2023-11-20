@@ -27,9 +27,10 @@ namespace DaJet.Http.Client
         private readonly IDomainModel _domain;
         public DaJetHttpClient(IDomainModel domain, HttpClient client)
         {
-            _domain = domain;
-            _client = client;
+            _domain = domain ?? throw new ArgumentNullException(nameof(domain));
+            _client = client ?? throw new ArgumentNullException(nameof(client));
         }
+        public IDomainModel Model { get { return _domain; } }
         public async Task CreateAsync(EntityObject entity)
         {
             string url = $"/data/{entity.TypeCode}";
@@ -257,7 +258,7 @@ namespace DaJet.Http.Client
 
             return info;
         }
-        
+
         public async Task DeletePipeline(Guid uuid)
         {
             try
@@ -355,6 +356,169 @@ namespace DaJet.Http.Client
             var list = await response.Content.ReadFromJsonAsync<List<OptionModel>>();
 
             return list;
+        }
+
+        public async Task<string> GetScriptUrl(Guid uuid)
+        {
+            string url = $"/api/url/{uuid}";
+
+            HttpResponseMessage response = await _client.GetAsync(url);
+
+            string result = await response.Content.ReadAsStringAsync();
+
+            return result;
+        }
+        public async Task<QueryResponse> ExecuteNonQuery(ScriptRecord script)
+        {
+            QueryResponse result = new();
+
+            try
+            {
+                InfoBaseRecord database = await SelectAsync<InfoBaseRecord>(script.Owner);
+
+                QueryRequest request = new()
+                {
+                    DbName = database.Name,
+                    Script = script.Script
+                };
+
+                HttpResponseMessage response = await _client.PostAsJsonAsync("/query/ddl", request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    string content = await response.Content.ReadAsStringAsync();
+
+                    result.Success = false;
+                    result.Error = response.ReasonPhrase
+                        + (string.IsNullOrEmpty(content)
+                        ? string.Empty
+                        : Environment.NewLine + content);
+                }
+                else
+                {
+                    result = await response.Content.ReadFromJsonAsync<QueryResponse>();
+                }
+            }
+            catch (Exception error)
+            {
+                result.Success = false;
+                result.Error = error.Message;
+            }
+
+            return result;
+        }
+        public async Task<QueryResponse> ExecuteScriptSql(ScriptRecord script)
+        {
+            QueryResponse result = new();
+
+            try
+            {
+                InfoBaseRecord database = await SelectAsync<InfoBaseRecord>(script.Owner);
+
+                QueryRequest request = new()
+                {
+                    DbName = database.Name,
+                    Script = script.Script
+                };
+
+                HttpResponseMessage response = await _client.PostAsJsonAsync("/query/prepare", request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    string content = await response.Content.ReadAsStringAsync();
+
+                    result.Success = false;
+                    result.Error = response.ReasonPhrase
+                        + (string.IsNullOrEmpty(content)
+                        ? string.Empty
+                        : Environment.NewLine + content);
+                }
+                else
+                {
+                    result = await response.Content.ReadFromJsonAsync<QueryResponse>();
+                }
+            }
+            catch (Exception error)
+            {
+                result.Success = false;
+                result.Error = error.Message;
+            }
+
+            return result;
+        }
+        public async Task<QueryResponse> ExecuteScriptJson(ScriptRecord script)
+        {
+            QueryResponse result = new();
+
+            try
+            {
+                string url = await GetScriptUrl(script.Identity);
+
+                // do not override parameters defined in script
+                Dictionary<string, object> parameters = new();
+
+                HttpResponseMessage response = await _client.PostAsJsonAsync(url, parameters);
+
+                string content = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    result.Success = true;
+                    result.Script = content;
+                }
+                else
+                {
+                    result.Success = false;
+                    result.Error = response.ReasonPhrase
+                        + (string.IsNullOrEmpty(content)
+                        ? string.Empty
+                        : Environment.NewLine + content);
+                }
+            }
+            catch (Exception error)
+            {
+                result.Success = false;
+                result.Error = error.Message;
+            }
+
+            return result;
+        }
+        public async Task<QueryResponse> ExecuteScriptTable(ScriptRecord script)
+        {
+            QueryResponse result = new();
+
+            try
+            {
+                string url = await GetScriptUrl(script.Identity);
+
+                // do not override parameters defined in script
+                Dictionary<string, object> parameters = new();
+
+                HttpResponseMessage response = await _client.PostAsJsonAsync(url, parameters);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    string content = await response.Content.ReadAsStringAsync();
+
+                    result.Success = false;
+                    result.Error = response.ReasonPhrase
+                        + (string.IsNullOrEmpty(content)
+                        ? string.Empty
+                        : Environment.NewLine + content);
+                }
+                else
+                {
+                    result.Success = true;
+                    result.Result = await response.Content.ReadFromJsonAsync<List<Dictionary<string, object>>>();
+                }
+            }
+            catch (Exception error)
+            {
+                result.Success = false;
+                result.Error = error.Message;
+            }
+
+            return result;
         }
     }
 }

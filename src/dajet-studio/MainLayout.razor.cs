@@ -48,21 +48,14 @@ namespace DaJet.Studio
 
                 HttpResponseMessage response = await Http.GetAsync("/md");
 
-                List<InfoBaseRecord> list = await response.Content.ReadFromJsonAsync<List<InfoBaseRecord>>();
+                IEnumerable<InfoBaseRecord> list = await DataSource.QueryAsync<InfoBaseRecord>();
 
                 foreach (InfoBaseRecord model in list)
                 {
                     AppState.DatabaseList.Add(model);
                 }
 
-                if (list != null && list.Count > 0)
-                {
-                    AppState.CurrentDatabase = list[0];
-                }
-                else
-                {
-                    AppState.CurrentDatabase = null;
-                }
+                AppState.CurrentDatabase = list.FirstOrDefault();
 
                 AppState.FooterText = string.Empty;
             }
@@ -79,7 +72,7 @@ namespace DaJet.Studio
         }
         protected async Task RegisterNewInfoBase(MouseEventArgs args)
         {
-            InfoBaseRecord model = new();
+            InfoBaseRecord model = DataSource.Model.New<InfoBaseRecord>();
             DialogOptions options = new() { CloseButton = true };
             DialogParameters parameters = new()
             {
