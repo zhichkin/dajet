@@ -1,5 +1,0 @@
-CREATE TYPE ТабличнаяЧасть
-PRIMARY KEY НомерСтроки
-(
-  НомерСтроки numeric(5,0)
-)

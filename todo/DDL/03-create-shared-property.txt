@@ -1,4 +1,0 @@
-CREATE SHARED PROPERTY РазделительДанныхПоОрганизациям
-(
-  numeric(2,0) NOT NULL DEFAULT = 1
-)

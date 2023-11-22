@@ -1,7 +1,0 @@
-2013 https://www.red-gate.com/simple-talk/databases/sql-server/performance-sql-server/comparing-multiple-rows-insert-vs-single-row-insert-with-three-data-load-methods/
-
-2021 https://makolyte.com/csharp-how-to-use-table-valued-parameters-tvp-with-ado-net-dapper-and-ef-core/
-
-SqlBulkCopy - IEnumerable<SqlDataRecord>
-
-Streaming TVPs (table-valued parameters)

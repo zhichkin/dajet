@@ -1,2 +1,0 @@
-LATCH_EX Waits on Resource METADATA_SEQUENCE_GENERATOR
-https://dba.stackexchange.com/questions/40459/latch-ex-waits-on-resource-metadata-sequence-generator
