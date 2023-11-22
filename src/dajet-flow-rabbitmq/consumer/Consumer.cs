@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using RabbitMQ.Client;
+﻿using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
 using System.Timers;
@@ -7,7 +6,7 @@ using System.Web;
 
 namespace DaJet.Flow.RabbitMQ
 {
-    [PipelineBlock] public sealed class Consumer : SourceBlock<Message>
+    public sealed class Consumer : SourceBlock<Message>
     {
         private int _state;
         private const int STATE_IS_IDLE = 0;
@@ -23,30 +22,25 @@ namespace DaJet.Flow.RabbitMQ
         private IModel _channel;
         private IConnection _connection;
         private EventingBasicConsumer _consumer;
-        private Message _message;
-        private int _consumed = 0;
+        private Message _message; // data buffer
+        private int _consumed = 0; // in-memory counter
         private string _consumerTag;
-        private readonly IPipelineManager _manager;
-        [ActivatorUtilitiesConstructor] public Consumer(IPipelineManager manager)
+        private readonly IPipeline _pipeline; // in-memory online monitoring
+        private readonly ConsumerOptions _options;
+        public Consumer(ConsumerOptions options, IPipeline pipeline)
         {
-            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
+            _options = options ?? throw new ArgumentNullException(nameof(options));
+            _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
+            
+            Configure();
         }
-
-        #region "CONFIGURATION OPTIONS"
-        [Option] public Guid Pipeline { get; set; } = Guid.Empty;
-        [Option] public string Source { get; set; } = "amqp://guest:guest@localhost:5672/%2F";
-        [Option] public string Queue { get; set; } = string.Empty;
-        [Option] public int Heartbeat { get; set; } = 60; // seconds
-        private string HostName { get; set; } = "localhost";
-        private int HostPort { get; set; } = 5672;
-        private string VirtualHost { get; set; } = "/";
-        private string UserName { get; set; } = "guest";
-        private string Password { get; set; } = "guest";
-        private void ParseSourceUri()
+        private void Configure()
         {
-            if (string.IsNullOrWhiteSpace(Source)) { return; }
+            if (_options.Heartbeat < 10) { _options.Heartbeat = 10; }
 
-            Uri uri = new(Source);
+            if (string.IsNullOrWhiteSpace(_options.Source)) { return; }
+
+            Uri uri = new(_options.Source);
 
             if (uri.Scheme != "amqp") { return; }
 
@@ -66,19 +60,21 @@ namespace DaJet.Flow.RabbitMQ
                 VirtualHost = HttpUtility.UrlDecode(uri.Segments[1].TrimEnd('/'), Encoding.UTF8);
             }
         }
-        protected override void _Configure()
-        {
-            ParseSourceUri();
 
-            if (Heartbeat < 10) { Heartbeat = 10; }
-        }
+        #region "CONFIGURATION OPTIONS"
+        private string HostName { get; set; } = "localhost";
+        private int HostPort { get; set; } = 5672;
+        private string VirtualHost { get; set; } = "/";
+        private string UserName { get; set; } = "guest";
+        private string Password { get; set; } = "guest";
         #endregion
 
         private void UpdatePipelineStatus()
         {
             int consumed = Interlocked.Exchange(ref _consumed, 0);
-            _manager.UpdatePipelineStatus(Pipeline, $"Consumed {consumed} messages in {Heartbeat} seconds.");
-            _manager.UpdatePipelineFinishTime(Pipeline, DateTime.Now);
+
+            _pipeline.UpdateMonitorStatus($"Consumed {consumed} messages in {_options.Heartbeat} seconds.");
+            _pipeline.UpdateMonitorFinishTime(DateTime.Now);
         }
         private bool ConsumerIsHealthy()
         {
@@ -101,7 +97,7 @@ namespace DaJet.Flow.RabbitMQ
 
             _consumer = new EventingBasicConsumer(_channel);
             _consumer.Received += ProcessMessage;
-            _consumerTag = _channel.BasicConsume(Queue, false, _consumer);
+            _consumerTag = _channel.BasicConsume(_options.Queue, false, _consumer);
         }
         private void EnsureConsumerIsActive(object sender, ElapsedEventArgs args)
         {
@@ -120,7 +116,8 @@ namespace DaJet.Flow.RabbitMQ
                 catch (Exception error)
                 {
                     DisposeConsumer();
-                    _manager.UpdatePipelineStatus(Pipeline, error.Message);
+
+                    _pipeline.UpdateMonitorStatus(error.Message);
                 }
                 finally
                 {
@@ -142,7 +139,7 @@ namespace DaJet.Flow.RabbitMQ
                 {
                     _heartbeat.AutoReset = true;
                     _heartbeat.Elapsed += EnsureConsumerIsActive;
-                    _heartbeat.Interval = TimeSpan.FromSeconds(Heartbeat).TotalMilliseconds;
+                    _heartbeat.Interval = TimeSpan.FromSeconds(_options.Heartbeat).TotalMilliseconds;
                 }
 
                 ManualResetEvent cancellation = new(false);
@@ -155,7 +152,7 @@ namespace DaJet.Flow.RabbitMQ
                 EnsureConsumerIsActive(this, null);
 
                 _heartbeat.Start();
-                _cancellation.WaitOne();
+                _cancellation.WaitOne(); // instead of Task.Delay(TimeSpan)
             }
         }
         
@@ -164,7 +161,7 @@ namespace DaJet.Flow.RabbitMQ
             if (sender is not EventingBasicConsumer consumer) { return; }
 
             _message ??= new Message();
-            _message.Payload = new Payload(args.Body, null);
+            _message.Payload = args.Body;
             _message.AppId = args.BasicProperties.AppId;
             _message.Type = args.BasicProperties.Type;
             _message.ReplyTo = args.BasicProperties.ReplyTo;
@@ -190,15 +187,15 @@ namespace DaJet.Flow.RabbitMQ
         }
         private void NackMessage(in EventingBasicConsumer consumer, in BasicDeliverEventArgs args, in Exception error)
         {
-            _manager.UpdatePipelineStatus(Pipeline, error.Message);
-            _manager.UpdatePipelineFinishTime(Pipeline, DateTime.Now);
+            _pipeline.UpdateMonitorStatus(error.Message);
+            _pipeline.UpdateMonitorFinishTime(DateTime.Now);
 
             if (_cancellation is null)
             {
                 return; // Consumer is most likely already disposed
             }
 
-            bool signaled = _cancellation.WaitOne(TimeSpan.FromSeconds(Heartbeat));
+            bool signaled = _cancellation.WaitOne(TimeSpan.FromSeconds(_options.Heartbeat));
 
             if (!signaled) // Consumer is still active
             {

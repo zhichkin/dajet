@@ -7,44 +7,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-metadata", "dajet-met
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-scripting", "dajet-scripting\dajet-scripting.csproj", "{8D74C7A9-1DE8-4207-A145-3EC3A29180CF}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-test", "dajet-test\dajet-test.csproj", "{93EDEB2C-92A8-4D1F-B6FC-71C3A33D5E96}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-http-server", "dajet-http-server\dajet-http-server.csproj", "{29BF6B99-FC1A-4F08-9D9E-14C8C6CDC7CA}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-data-provider", "dajet-data-provider\dajet-data-provider.csproj", "{72378D5D-039A-4AC0-875F-271350B5B49C}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-console", "dajet-console\dajet-console.csproj", "{91BAFE54-3DD0-408A-8AC1-8F8F0A7DCF0E}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dajet-http-app", "dajet-http-app", "{7B967D22-CE57-4062-AFC6-EB75191D77BF}"
-	ProjectSection(SolutionItems) = preProject
-		dajet-http-app\1ql-console.js = dajet-http-app\1ql-console.js
-		dajet-http-app\1ql-executor.js = dajet-http-app\1ql-executor.js
-		dajet-http-app\main.css = dajet-http-app\main.css
-		dajet-http-app\main.html = dajet-http-app\main.html
-		dajet-http-app\main.js = dajet-http-app\main.js
-		dajet-http-app\popup.css = dajet-http-app\popup.css
-		dajet-http-app\popup.js = dajet-http-app\popup.js
-		dajet-http-app\treeview.js = dajet-http-app\treeview.js
-		dajet-http-app\ui-loader.js = dajet-http-app\ui-loader.js
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "img", "img", "{40E26238-CA7D-4C9A-9BE3-68E986A293EF}"
-	ProjectSection(SolutionItems) = preProject
-		dajet-http-app\img\database.png = dajet-http-app\img\database.png
-		dajet-http-app\img\ВложеннаяТаблица.png = dajet-http-app\img\ВложеннаяТаблица.png
-		dajet-http-app\img\Документ.png = dajet-http-app\img\Документ.png
-		dajet-http-app\img\Измерение.png = dajet-http-app\img\Измерение.png
-		dajet-http-app\img\Конфигурация.png = dajet-http-app\img\Конфигурация.png
-		dajet-http-app\img\Перечисление.png = dajet-http-app\img\Перечисление.png
-		dajet-http-app\img\ПланВидовХарактеристик.png = dajet-http-app\img\ПланВидовХарактеристик.png
-		dajet-http-app\img\ПланОбмена.png = dajet-http-app\img\ПланОбмена.png
-		dajet-http-app\img\Расширение.png = dajet-http-app\img\Расширение.png
-		dajet-http-app\img\РегистрНакопления.png = dajet-http-app\img\РегистрНакопления.png
-		dajet-http-app\img\РегистрСведений.png = dajet-http-app\img\РегистрСведений.png
-		dajet-http-app\img\Реквизит.png = dajet-http-app\img\Реквизит.png
-		dajet-http-app\img\Ресурс.png = dajet-http-app\img\Ресурс.png
-		dajet-http-app\img\Справочник.png = dajet-http-app\img\Справочник.png
-	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-studio", "dajet-studio\dajet-studio.csproj", "{1FD3F812-EB69-407F-BD78-FC5542308B91}"
 EndProject
@@ -66,12 +31,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-exchange", "dajet-exc
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-rabbitmq", "dajet-rabbitmq\dajet-rabbitmq.csproj", "{F9ED175E-1D6A-4B2E-870F-1389F2D26CD8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-flow-transformers", "dajet-flow-transformers\dajet-flow-transformers.csproj", "{A67DEB7B-5997-4273-9533-458E76190EE8}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-stream", "dajet-stream\dajet-stream.csproj", "{B8C942F0-488D-4414-8093-79B7B1BF6E58}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-proxy", "dajet-proxy\dajet-proxy.csproj", "{E4B5A680-827C-4291-A596-79F4D5AC5EAF}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-data", "dajet-data\dajet-data.csproj", "{EDDE7105-3E77-4FA0-A2BD-E390EF812AE8}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-file-logger", "dajet-file-logger\dajet-file-logger.csproj", "{212A8AA8-5AA2-4D5B-8311-D25B6B9C7D79}"
@@ -92,18 +51,10 @@ Global
 		{8D74C7A9-1DE8-4207-A145-3EC3A29180CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8D74C7A9-1DE8-4207-A145-3EC3A29180CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8D74C7A9-1DE8-4207-A145-3EC3A29180CF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{93EDEB2C-92A8-4D1F-B6FC-71C3A33D5E96}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{93EDEB2C-92A8-4D1F-B6FC-71C3A33D5E96}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{93EDEB2C-92A8-4D1F-B6FC-71C3A33D5E96}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{93EDEB2C-92A8-4D1F-B6FC-71C3A33D5E96}.Release|Any CPU.Build.0 = Release|Any CPU
 		{29BF6B99-FC1A-4F08-9D9E-14C8C6CDC7CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{29BF6B99-FC1A-4F08-9D9E-14C8C6CDC7CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{29BF6B99-FC1A-4F08-9D9E-14C8C6CDC7CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{29BF6B99-FC1A-4F08-9D9E-14C8C6CDC7CA}.Release|Any CPU.Build.0 = Release|Any CPU
-		{72378D5D-039A-4AC0-875F-271350B5B49C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{72378D5D-039A-4AC0-875F-271350B5B49C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{72378D5D-039A-4AC0-875F-271350B5B49C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{72378D5D-039A-4AC0-875F-271350B5B49C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{91BAFE54-3DD0-408A-8AC1-8F8F0A7DCF0E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{91BAFE54-3DD0-408A-8AC1-8F8F0A7DCF0E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{91BAFE54-3DD0-408A-8AC1-8F8F0A7DCF0E}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -148,18 +99,6 @@ Global
 		{F9ED175E-1D6A-4B2E-870F-1389F2D26CD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F9ED175E-1D6A-4B2E-870F-1389F2D26CD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F9ED175E-1D6A-4B2E-870F-1389F2D26CD8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A67DEB7B-5997-4273-9533-458E76190EE8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A67DEB7B-5997-4273-9533-458E76190EE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A67DEB7B-5997-4273-9533-458E76190EE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A67DEB7B-5997-4273-9533-458E76190EE8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B8C942F0-488D-4414-8093-79B7B1BF6E58}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B8C942F0-488D-4414-8093-79B7B1BF6E58}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B8C942F0-488D-4414-8093-79B7B1BF6E58}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B8C942F0-488D-4414-8093-79B7B1BF6E58}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E4B5A680-827C-4291-A596-79F4D5AC5EAF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E4B5A680-827C-4291-A596-79F4D5AC5EAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E4B5A680-827C-4291-A596-79F4D5AC5EAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E4B5A680-827C-4291-A596-79F4D5AC5EAF}.Release|Any CPU.Build.0 = Release|Any CPU
 		{EDDE7105-3E77-4FA0-A2BD-E390EF812AE8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{EDDE7105-3E77-4FA0-A2BD-E390EF812AE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EDDE7105-3E77-4FA0-A2BD-E390EF812AE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -175,9 +114,6 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{40E26238-CA7D-4C9A-9BE3-68E986A293EF} = {7B967D22-CE57-4062-AFC6-EB75191D77BF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {EBFA2DCC-5FF1-4151-B0EB-1DD23076B5FB}

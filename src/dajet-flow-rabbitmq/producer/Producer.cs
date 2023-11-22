@@ -1,6 +1,4 @@
-﻿using DaJet.Flow.Model;
-using Microsoft.Extensions.DependencyInjection;
-using RabbitMQ.Client;
+﻿using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Buffers;
 using System.Text;
@@ -8,7 +6,7 @@ using System.Web;
 
 namespace DaJet.Flow.RabbitMQ
 {
-    [PipelineBlock] public sealed class Producer : TargetBlock<Message>
+    public sealed class Producer : TargetBlock<Message>
     {
         #region "PRIVATE FIELDS AND CONSTANTS"
 
@@ -35,31 +33,24 @@ namespace DaJet.Flow.RabbitMQ
         private IModel _channel;
         private IConnection _connection;
         private IBasicProperties _properties;
-        [ActivatorUtilitiesConstructor] public Producer() { }
-        
-        #region "CONFIGURATION OPTIONS"
-        [Option] public string Target { get; set; } = "amqp://guest:guest@localhost:5672/%2F";
-        [Option] public string Exchange { get; set; } = string.Empty; // if exchange name is empty, then RoutingKey is a queue name to send directly
-        [Option] public string RoutingKey { get; set; } = string.Empty; // if exchange name is not empty, then this is routing key value
-        [Option] public string CC { get; set; } = string.Empty; // additional routing keys not seen by consumers
-        [Option] public string BCC { get; set; } = string.Empty; // additional routing keys seen by consumers
-        [Option] public bool Mandatory { get; set; } = false; // helps to detect unroutable messages, firing BasicReturn event on producer
-        [Option] public string Sender { get; set; } = string.Empty; // Sender application identifier (AppId)
-        [Option] public string MessageType { get; set; } = string.Empty; // Message type identifier (Type)
+        private readonly ProducerOptions _options;
+        public Producer(ProducerOptions options)
+        {
+            _options = options ?? throw new ArgumentNullException(nameof(options));
 
-        private string HostName { get; set; } = "localhost";
-        private int HostPort { get; set; } = 5672;
-        private string VirtualHost { get; set; } = "/";
-        private string UserName { get; set; } = "guest";
-        private string Password { get; set; } = "guest";
-        private string[] CarbonCopy { get; set; }
-        private string[] BlindCarbonCopy { get; set; }
-
+            Configure();
+        }
+        private void Configure()
+        {
+            ParseTargetUri();
+            ConfigureHeader_CarbonCopy();
+            ConfigureHeader_BlindCarbonCopy();
+        }
         private void ParseTargetUri()
         {
-            if (string.IsNullOrWhiteSpace(Target)) { return; }
+            if (string.IsNullOrWhiteSpace(_options.Target)) { return; }
 
-            Uri uri = new(Target);
+            Uri uri = new(_options.Target);
 
             if (uri.Scheme != "amqp") { return; }
 
@@ -79,38 +70,41 @@ namespace DaJet.Flow.RabbitMQ
                 VirtualHost = HttpUtility.UrlDecode(uri.Segments[1].TrimEnd('/'), Encoding.UTF8);
             }
         }
-        protected override void _Configure()
-        {
-            ParseTargetUri();
-            ConfigureHeader_CarbonCopy();
-            ConfigureHeader_BlindCarbonCopy();
-        }
         private void ConfigureHeader_CarbonCopy()
         {
-            if (!string.IsNullOrWhiteSpace(CC))
+            if (!string.IsNullOrWhiteSpace(_options.CC))
             {
-                CarbonCopy = CC.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                CarbonCopy = _options.CC.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
                 if (CarbonCopy is not null && CarbonCopy.Length == 0)
                 {
                     CarbonCopy = null;
                 }
             }
-            CC = null;
+            _options.CC = null;
         }
         private void ConfigureHeader_BlindCarbonCopy()
         {
-            if (!string.IsNullOrWhiteSpace(BCC))
+            if (!string.IsNullOrWhiteSpace(_options.BCC))
             {
-                BlindCarbonCopy = BCC.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                BlindCarbonCopy = _options.BCC.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
                 if (BlindCarbonCopy is not null && BlindCarbonCopy.Length == 0)
                 {
                     BlindCarbonCopy = null;
                 }
             }
-            BCC = null;
+            _options.BCC = null;
         }
+
+        #region "CONFIGURATION OPTIONS"
+        private string HostName { get; set; } = "localhost";
+        private int HostPort { get; set; } = 5672;
+        private string VirtualHost { get; set; } = "/";
+        private string UserName { get; set; } = "guest";
+        private string Password { get; set; } = "guest";
+        private string[] CarbonCopy { get; set; }
+        private string[] BlindCarbonCopy { get; set; }
         #endregion
 
         #region "RABBITMQ CONNECTION AND CHANNEL"
@@ -305,10 +299,6 @@ namespace DaJet.Flow.RabbitMQ
             {
                 _Dispose(); throw;
             }
-            finally
-            {
-                input.Payload.Dispose();
-            }
         }
         private void PublishMessageOrThrow(in Message message)
         {
@@ -330,26 +320,28 @@ namespace DaJet.Flow.RabbitMQ
             ConfigureMessageHeaders(in message);
             ConfigureMessageProperties(in message);
 
-            ReadOnlyMemory<byte> payload = message.Payload.IsEmpty ? EncodeMessageBody(message.Body) : message.Payload.Data;
+            ReadOnlyMemory<byte> payload = message.Payload.IsEmpty
+                ? EncodeMessageBody(message.Body)
+                : message.Payload;
 
-            if (string.IsNullOrWhiteSpace(Exchange))
+            if (string.IsNullOrWhiteSpace(_options.Exchange))
             {
                 // clear CC and BCC headers if present
                 _ = _properties?.Headers?.Remove("CC"); // carbon copy
                 _ = _properties?.Headers?.Remove("BCC"); // blind carbon copy
 
                 // send message directly to the specified queue
-                _channel.BasicPublish(string.Empty, RoutingKey, Mandatory, _properties, payload);
+                _channel.BasicPublish(string.Empty, _options.RoutingKey, _options.Mandatory, _properties, payload);
             }
-            else if (string.IsNullOrWhiteSpace(RoutingKey))
+            else if (string.IsNullOrWhiteSpace(_options.RoutingKey))
             {
                 // send message to the specified exchange
-                _channel.BasicPublish(Exchange, string.Empty, Mandatory, _properties, payload);
+                _channel.BasicPublish(_options.Exchange, string.Empty, _options.Mandatory, _properties, payload);
             }
             else
             {
-                // send message to the specified exchange and routing key
-                _channel.BasicPublish(Exchange, RoutingKey, Mandatory, _properties, payload);
+                // send message to the specified exchange using provided routing key
+                _channel.BasicPublish(_options.Exchange, _options.RoutingKey, _options.Mandatory, _properties, payload);
             }
         }
         private void ConfigureMessageHeaders(in Message message)
@@ -390,18 +382,18 @@ namespace DaJet.Flow.RabbitMQ
             {
                 _properties.AppId = message.AppId;
             }
-            else if (!string.IsNullOrEmpty(Sender))
+            else if (!string.IsNullOrEmpty(_options.Sender))
             {
-                _properties.AppId = Sender;
+                _properties.AppId = _options.Sender;
             }
 
             if (!string.IsNullOrEmpty(message.Type))
             {
                 _properties.Type = message.Type;
             }
-            else if (!string.IsNullOrEmpty(MessageType))
+            else if (!string.IsNullOrEmpty(_options.MessageType))
             {
-                _properties.Type = MessageType;
+                _properties.Type = _options.MessageType;
             }
 
             if (message.MessageId is not null) { _properties.MessageId = message.MessageId; }

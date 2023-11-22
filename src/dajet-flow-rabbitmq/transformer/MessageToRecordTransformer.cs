@@ -6,7 +6,6 @@ using System.Text.Unicode;
 
 namespace DaJet.Flow.RabbitMQ
 {
-    [PipelineBlock]
     public sealed class MessageToRecordTransformer : TransformerBlock<Message, IDataRecord>
     {
         private static readonly DataRecordJsonConverter _converter = new();
@@ -16,7 +15,7 @@ namespace DaJet.Flow.RabbitMQ
         };
         protected override void _Transform(in Message input, out IDataRecord output)
         {
-            Utf8JsonReader reader = new(input.Payload.Data.Span, true, default);
+            Utf8JsonReader reader = new(input.Payload.Span, true, default);
 
             output = _converter.Read(ref reader, typeof(IDataRecord), JsonOptions);
         }
