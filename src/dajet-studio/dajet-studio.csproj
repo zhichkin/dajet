@@ -39,7 +39,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\dajet-http-client\dajet-http-client.csproj" />
-    <ProjectReference Include="..\dajet-model\dajet-model.csproj" />
   </ItemGroup>
 
   <ItemGroup>
