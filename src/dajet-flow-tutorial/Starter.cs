@@ -7,20 +7,22 @@
         {
             _next = next;
         }
+        private readonly IPipeline _pipeline;
         private readonly StarterOptions _options;
-        public Starter(StarterOptions options)
+        public Starter(StarterOptions options, IPipeline pipeline)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
+            _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
         }
         public void Execute()
         {
-            FileLogger.Default.Write("Starter executing...");
+            _pipeline.UpdateMonitorStatus("Starter is executing...");
 
-            FileLogger.Default.Write($"Starter: {_options.Greeting}, {_options.Name} !");
+            Thread.Sleep(TimeSpan.FromSeconds(15));
         }
         public void Dispose()
         {
-            FileLogger.Default.Write("Starter stopped.");
+            _pipeline.UpdateMonitorStatus("Starter stopped.");
         }
     }
 }
