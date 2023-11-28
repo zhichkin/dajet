@@ -7,24 +7,20 @@
         {
             _next = next;
         }
+        private readonly StarterOptions _options;
+        public Starter(StarterOptions options)
+        {
+            _options = options ?? throw new ArgumentNullException(nameof(options));
+        }
         public void Execute()
         {
-            for (int i = 0; i < 3; i++)
-            {
-                if (_next is not null)
-                {
-                    Message message = new()
-                    {
-                        Text = i.ToString()
-                    };
+            FileLogger.Default.Write("Starter executing...");
 
-                    _next.Process(message);
-                }
-            }
+            FileLogger.Default.Write($"Starter: {_options.Greeting}, {_options.Name} !");
         }
         public void Dispose()
         {
-            FileLogger.Default.Write("Plugin is stopped.");
+            FileLogger.Default.Write("Starter stopped.");
         }
     }
 }
