@@ -1,9 +1,11 @@
-﻿namespace DaJet.Scripting
+﻿using DaJet.Data;
+
+namespace DaJet.Scripting
 {
     public sealed class PropertyMappingRule
     {
-        public PropertyMap Target { get; set; }
-        public PropertyMap Source { get; set; }
+        public PropertyMapper Target { get; set; }
+        public PropertyMapper Source { get; set; }
         public List<ColumnMappingRule> Columns { get; set; }
         public override string ToString()
         {

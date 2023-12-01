@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Data.Common;
 
-namespace DaJet.Data.Provider
+namespace DaJet.Data.Client
 {
     public sealed class OneDbParameterCollection : DbParameterCollection, IList<OneDbParameter>
     {

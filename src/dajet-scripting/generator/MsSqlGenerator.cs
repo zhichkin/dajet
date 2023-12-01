@@ -11,9 +11,9 @@ namespace DaJet.Scripting
         {
             StringBuilder columns = new();
 
-            ColumnMap column;
-            PropertyMap property;
-            EntityMap map = DataMapper.CreateEntityMap(in select);
+            ColumnMapper column;
+            PropertyMapper property;
+            EntityMapper map = DataMapper.CreateEntityMap(in select);
 
             for (int i = 0; i < map.Properties.Count; i++)
             {
@@ -176,7 +176,7 @@ namespace DaJet.Scripting
 
                             if (reference.Mapping is not null)
                             {
-                                foreach (ColumnMap map in reference.Mapping)
+                                foreach (ColumnMapper map in reference.Mapping)
                                 {
                                     map.Name = "deleted." + map.Name;
                                 }
@@ -345,11 +345,11 @@ namespace DaJet.Scripting
 
                     if (column.Mapping is not null)
                     {
-                        reference.Mapping = new List<ColumnMap>();
+                        reference.Mapping = new List<ColumnMapper>();
 
-                        foreach (ColumnMap map in column.Mapping)
+                        foreach (ColumnMapper map in column.Mapping)
                         {
-                            reference.Mapping.Add(new ColumnMap()
+                            reference.Mapping.Add(new ColumnMapper()
                             {
                                 Type = map.Type,
                                 Name = "deleted." + map.Alias
@@ -369,9 +369,9 @@ namespace DaJet.Scripting
                         {
                             Binding = output,
                             Identifier = "deleted." + output.Alias,
-                            Mapping = new List<ColumnMap>()
+                            Mapping = new List<ColumnMapper>()
                             {
-                                new ColumnMap()
+                                new ColumnMapper()
                                 {
                                     Type = UnionTag.Integer,
                                     Name ="deleted." + output.Alias
@@ -438,9 +438,9 @@ namespace DaJet.Scripting
                     {
                         Binding = column,
                         Identifier = targetName + "." + column.Name,
-                        Mapping = new List<ColumnMap>()
+                        Mapping = new List<ColumnMapper>()
                         {
-                            new ColumnMap()
+                            new ColumnMapper()
                             {
                                 Alias = column.Name,
                                 Name = targetName + "." + column.Name,
@@ -507,11 +507,11 @@ namespace DaJet.Scripting
 
                     if (orderColumn.Mapping is not null)
                     {
-                        reference.Mapping = new List<ColumnMap>();
+                        reference.Mapping = new List<ColumnMapper>();
 
-                        foreach (ColumnMap map in orderColumn.Mapping)
+                        foreach (ColumnMapper map in orderColumn.Mapping)
                         {
-                            reference.Mapping.Add(new ColumnMap()
+                            reference.Mapping.Add(new ColumnMapper()
                             {
                                 Alias = columnName,
                                 Name = map.Name,
@@ -583,14 +583,14 @@ namespace DaJet.Scripting
 
                     if (column.Mapping is not null)
                     {
-                        reference.Mapping = new List<ColumnMap>();
+                        reference.Mapping = new List<ColumnMapper>();
 
-                        foreach (ColumnMap map in column.Mapping)
+                        foreach (ColumnMapper map in column.Mapping)
                         {
                             ScriptHelper.GetColumnIdentifiers(map.Name, out _, out columnName);
                             if (!string.IsNullOrEmpty(map.Alias)) { columnName = map.Alias; }
 
-                            reference.Mapping.Add(new ColumnMap()
+                            reference.Mapping.Add(new ColumnMapper()
                             {
                                 Type = map.Type,
                                 Name = "changes." + columnName
@@ -616,11 +616,11 @@ namespace DaJet.Scripting
 
                         if (parameter.Mapping is not null)
                         {
-                            reference.Mapping = new List<ColumnMap>();
+                            reference.Mapping = new List<ColumnMapper>();
 
-                            foreach (ColumnMap map in parameter.Mapping)
+                            foreach (ColumnMapper map in parameter.Mapping)
                             {
-                                reference.Mapping.Add(new ColumnMap()
+                                reference.Mapping.Add(new ColumnMapper()
                                 {
                                     Name = "changes." + map.Name,
                                     Type = map.Type,
@@ -686,18 +686,18 @@ namespace DaJet.Scripting
 
             if (column.Mapping is not null)
             {
-                column1.Mapping = new List<ColumnMap>();
-                column2.Mapping = new List<ColumnMap>();
+                column1.Mapping = new List<ColumnMapper>();
+                column2.Mapping = new List<ColumnMapper>();
 
-                foreach (ColumnMap map in column.Mapping)
+                foreach (ColumnMapper map in column.Mapping)
                 {
-                    column1.Mapping.Add(new ColumnMap()
+                    column1.Mapping.Add(new ColumnMapper()
                     {
                         Type = map.Type,
                         Name = "target." + columnName
                     });
 
-                    column2.Mapping.Add(new ColumnMap()
+                    column2.Mapping.Add(new ColumnMapper()
                     {
                         Type = map.Type,
                         Name = "changes." + columnName
@@ -746,11 +746,11 @@ namespace DaJet.Scripting
 
                     if (column.Mapping is not null)
                     {
-                        reference.Mapping = new List<ColumnMap>();
+                        reference.Mapping = new List<ColumnMapper>();
 
-                        foreach (ColumnMap map in column.Mapping)
+                        foreach (ColumnMapper map in column.Mapping)
                         {
-                            reference.Mapping.Add(new ColumnMap()
+                            reference.Mapping.Add(new ColumnMapper()
                             {
                                 Type = map.Type,
                                 Name = "source." + map.Alias
@@ -776,11 +776,11 @@ namespace DaJet.Scripting
 
                         if (parameter.Mapping is not null)
                         {
-                            reference.Mapping = new List<ColumnMap>();
+                            reference.Mapping = new List<ColumnMapper>();
 
-                            foreach (ColumnMap map in parameter.Mapping)
+                            foreach (ColumnMapper map in parameter.Mapping)
                             {
-                                reference.Mapping.Add(new ColumnMap()
+                                reference.Mapping.Add(new ColumnMapper()
                                 {
                                     Type = map.Type,
                                     Name = "source." + property.Alias
@@ -813,11 +813,11 @@ namespace DaJet.Scripting
 
                         if (column.Mapping is not null)
                         {
-                            reference.Mapping = new List<ColumnMap>();
+                            reference.Mapping = new List<ColumnMapper>();
 
-                            foreach (ColumnMap map in column.Mapping)
+                            foreach (ColumnMapper map in column.Mapping)
                             {
-                                reference.Mapping.Add(new ColumnMap()
+                                reference.Mapping.Add(new ColumnMapper()
                                 {
                                     Type = map.Type,
                                     Name = "source." + columnName

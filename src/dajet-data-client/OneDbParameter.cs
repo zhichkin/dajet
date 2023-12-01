@@ -1,7 +1,7 @@
 ﻿using System.Data;
 using System.Data.Common;
 
-namespace DaJet.Data.Provider
+namespace DaJet.Data.Client
 {
     public sealed class OneDbParameter : DbParameter
     {

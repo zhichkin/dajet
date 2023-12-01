@@ -1,8 +1,10 @@
-﻿namespace DaJet.Scripting
+﻿using DaJet.Data;
+
+namespace DaJet.Scripting
 {
     public sealed class ColumnMappingRule
     {
-        public ColumnMap Target { get; set; }
+        public ColumnMapper Target { get; set; }
         public object Source { get; set; }
         public override string ToString()
         {

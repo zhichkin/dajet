@@ -4,7 +4,7 @@ using DaJet.Scripting.Model;
 using System.Data;
 using System.Data.Common;
 
-namespace DaJet.Data.Provider
+namespace DaJet.Data.Client
 {
     public sealed class OneDbCommand : DbCommand
     {
@@ -112,7 +112,7 @@ namespace DaJet.Data.Provider
             {
                 if (parameter.Value is Guid uuid)
                 {
-                    parameter.Value = SQLHelper.GetSqlUuid(uuid);
+                    parameter.Value = DbUtilities.GetSqlUuid(uuid);
                     parameter.Size = 16;
                     parameter.DbType = DbType.Binary;
                 }
@@ -127,7 +127,7 @@ namespace DaJet.Data.Provider
                 }
                 else if (parameter.Value is Entity entity)
                 {
-                    parameter.Value = SQLHelper.GetSqlUuid(entity.Identity);
+                    parameter.Value = DbUtilities.GetSqlUuid(entity.Identity);
                     parameter.Size = 16;
                     parameter.DbType = DbType.Binary;
                 }

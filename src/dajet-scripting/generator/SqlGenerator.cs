@@ -37,7 +37,7 @@ namespace DaJet.Scripting
                         //TODO: implement outside of this class !!!
                         ConfigureDataMapper(in select, result.Mapper);
 
-                        EntityMap mapper = new();
+                        EntityMapper mapper = new();
                         ConfigureDataMapper(in select, mapper);
                         if (mapper.Properties.Count > 0)
                         {
@@ -51,7 +51,7 @@ namespace DaJet.Scripting
                     {
                         Visit(in consume, in script);
 
-                        EntityMap mapper = new();
+                        EntityMapper mapper = new();
                         ConfigureDataMapper(in consume, mapper);
                         result.Mapper = mapper;
 
@@ -73,7 +73,7 @@ namespace DaJet.Scripting
                             //TODO: implement outside of this class !!!
                             ConfigureDataMapper(delete.Output, result.Mapper);
 
-                            EntityMap mapper = new();
+                            EntityMapper mapper = new();
                             ConfigureDataMapper(delete.Output, mapper);
                             if (mapper.Properties.Count > 0)
                             {
@@ -145,7 +145,7 @@ namespace DaJet.Scripting
             
             Visit(in node, in script);
 
-            EntityMap mapper = new()
+            EntityMapper mapper = new()
             {
                 YearOffset = Metadata.YearOffset
             };
@@ -164,7 +164,7 @@ namespace DaJet.Scripting
 
             Visit(in select, in script);
 
-            EntityMap mapper = new()
+            EntityMapper mapper = new()
             {
                 YearOffset = Metadata.YearOffset
             };
@@ -192,7 +192,7 @@ namespace DaJet.Scripting
 
             Visit(in consume, in script);
 
-            EntityMap mapper = new()
+            EntityMapper mapper = new()
             {
                 YearOffset = Metadata.YearOffset
             };
@@ -220,7 +220,7 @@ namespace DaJet.Scripting
 
             Visit(in delete, in script);
 
-            EntityMap mapper = new()
+            EntityMapper mapper = new()
             {
                 YearOffset = Metadata.YearOffset
             };
@@ -242,7 +242,7 @@ namespace DaJet.Scripting
                 Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias)
             };
         }
-        private void ConfigureDataMapper(in SelectStatement statement, in EntityMap mapper)
+        private void ConfigureDataMapper(in SelectStatement statement, in EntityMapper mapper)
         {
             if (statement.Select is not SelectExpression select)
             {
@@ -276,7 +276,7 @@ namespace DaJet.Scripting
                 DataMapper.Map(in column, in mapper);
             }
         }
-        private void ConfigureDataMapper(in ConsumeStatement statement, in EntityMap mapper)
+        private void ConfigureDataMapper(in ConsumeStatement statement, in EntityMapper mapper)
         {
             if (statement.Into is not null)
             {
@@ -288,7 +288,7 @@ namespace DaJet.Scripting
                 DataMapper.Map(in column, in mapper);
             }
         }
-        private void ConfigureDataMapper(in OutputClause output, in EntityMap mapper)
+        private void ConfigureDataMapper(in OutputClause output, in EntityMapper mapper)
         {
             if (output.Into is not null)
             {
@@ -432,9 +432,9 @@ namespace DaJet.Scripting
                 Visit(in value, in script);
             }
         }
-        protected virtual void Visit(in List<ColumnMap> mapping, in StringBuilder script)
+        protected virtual void Visit(in List<ColumnMapper> mapping, in StringBuilder script)
         {
-            ColumnMap column;
+            ColumnMapper column;
 
             for (int i = 0; i < mapping.Count; i++)
             {
@@ -607,7 +607,7 @@ namespace DaJet.Scripting
 
                 if (order.Expression is ColumnReference column && column.Mapping is not null && column.Mapping.Count > 1)
                 {
-                    ColumnMap field;
+                    ColumnMapper field;
 
                     for (int f = 0; f < column.Mapping.Count; f++)
                     {
@@ -961,7 +961,7 @@ namespace DaJet.Scripting
                     // SELECT column list
                     if (select.Length > 0) { select.Append(", "); }
 
-                    if (map.Source is ColumnMap source_column)
+                    if (map.Source is ColumnMapper source_column)
                     {
                         select.Append(source_column.Alias);
                     }
@@ -1033,7 +1033,7 @@ namespace DaJet.Scripting
 
                             script.Append(" = ");
 
-                            if (map.Source is ColumnMap column)
+                            if (map.Source is ColumnMapper column)
                             {
                                 if (!string.IsNullOrEmpty(source_table))
                                 {
@@ -1307,7 +1307,7 @@ namespace DaJet.Scripting
                     Hints = node.Hints
                 };
 
-                // change all ColumnMap identifiers in ColumnReference nodes, which are referencing ColumnExpression of the Source
+                // change all ColumnMapper identifiers in ColumnReference nodes, which are referencing ColumnExpression of the Source
                 // to avoid ambiguous column names when they are the same for both Target and Source (WHERE clause)
                 new UpdateStatementTransformer().Transform(update);
 
@@ -1341,7 +1341,7 @@ namespace DaJet.Scripting
                 }
                 else
                 {
-                    ColumnMap map = null;
+                    ColumnMapper map = null;
 
                     for (int i = 0; i < column.Mapping.Count; i++)
                     {
@@ -1399,7 +1399,7 @@ namespace DaJet.Scripting
                 }
                 else
                 {
-                    ColumnMap map = null;
+                    ColumnMapper map = null;
 
                     for (int i = 0; i < column.Mapping.Count; i++)
                     {

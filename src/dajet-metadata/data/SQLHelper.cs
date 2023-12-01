@@ -292,37 +292,6 @@ namespace DaJet.Data
             return list;
         }
 
-        public static byte[] Get1CUuid(byte[] uuid_sql)
-        {
-            // CAST(REVERSE(SUBSTRING(@uuid_sql, 9, 8)) AS binary(8)) + SUBSTRING(@uuid_sql, 1, 8)
-
-            byte[] uuid_1c = new byte[16];
-
-            for (int i = 0; i < 8; i++)
-            {
-                uuid_1c[i] = uuid_sql[15 - i];
-                uuid_1c[8 + i] = uuid_sql[i];
-            }
-
-            return uuid_1c;
-        }
-        public static byte[] GetSqlUuid(byte[] uuid_1c)
-        {
-            byte[] uuid_sql = new byte[16];
-
-            for (int i = 0; i < 8; i++)
-            {
-                uuid_sql[i] = uuid_1c[8 + i];
-                uuid_sql[8 + i] = uuid_1c[7 - i];
-            }
-
-            return uuid_sql;
-        }
-        public static byte[] GetSqlUuid(Guid guid_1c)
-        {
-            return GetSqlUuid(guid_1c.ToByteArray());
-        }
-
         private const string TABLE_EXISTS_SCRIPT = "SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{0}';";
         private const string TABLE_SELECT_SCRIPT = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES ORDER BY TABLE_NAME ASC;";
         public static string GetTableExistsScript(in string tableName)

@@ -1,6 +1,6 @@
 ﻿using DaJet.Metadata;
 
-namespace DaJet.Data.Provider
+namespace DaJet.Data.Client
 {
     internal static class MetadataSingleton
     {

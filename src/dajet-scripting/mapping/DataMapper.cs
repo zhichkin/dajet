@@ -35,7 +35,7 @@ namespace DaJet.Scripting
             return union;
         }
         private static string _name = string.Empty; // TODO: убрать костыль !
-        public static void Map(in ColumnExpression node, in EntityMap map)
+        public static void Map(in ColumnExpression node, in EntityMapper map)
         {
             UnionType type = new();
 
@@ -352,7 +352,7 @@ namespace DaJet.Scripting
             return string.Empty;
         }
 
-        public static EntityMap CreateEntityMap(in SyntaxNode node)
+        public static EntityMapper CreateEntityMap(in SyntaxNode node)
         {
             object source = GetColumnSource(in node);
 
@@ -367,22 +367,22 @@ namespace DaJet.Scripting
             
             throw new InvalidOperationException("Failed to create entity map from data source");
         }
-        public static EntityMap CreateEntityMap(in ApplicationObject entity)
+        public static EntityMapper CreateEntityMap(in ApplicationObject entity)
         {
             if (entity is null) { throw new ArgumentNullException(nameof(entity)); }
 
-            EntityMap map = new();
+            EntityMapper map = new();
 
             int ordinal = 0;
-            PropertyMap column;
-            List<ColumnMap> columns;
+            PropertyMapper column;
+            List<ColumnMapper> columns;
             MetadataProperty property;
             List<MetadataProperty> select = entity.Properties;
 
             for (int i = 0; i < select.Count; i++)
             {
                 property = select[i];
-                column = new PropertyMap();
+                column = new PropertyMapper();
                 Visit(in property, in column);
 
                 columns = column.ColumnSequence;
@@ -396,13 +396,13 @@ namespace DaJet.Scripting
 
             return map;
         }
-        public static EntityMap CreateEntityMap(in SelectExpression source)
+        public static EntityMapper CreateEntityMap(in SelectExpression source)
         {
-            EntityMap map = new();
+            EntityMapper map = new();
 
             int ordinal = 0;
-            PropertyMap property;
-            List<ColumnMap> columns;
+            PropertyMapper property;
+            List<ColumnMapper> columns;
             ColumnExpression column;
             List<ColumnExpression> select = source.Select;
 
@@ -424,9 +424,9 @@ namespace DaJet.Scripting
 
             return map;
         }
-        public static PropertyMap CreatePropertyMap(in SyntaxNode expression)
+        public static PropertyMapper CreatePropertyMap(in SyntaxNode expression)
         {
-            PropertyMap map = new();
+            PropertyMapper map = new();
             
             Map(in expression, in map);
             
@@ -436,9 +436,9 @@ namespace DaJet.Scripting
 
             return map;
         }
-        public static PropertyMap CreatePropertyMap(in ColumnExpression source)
+        public static PropertyMapper CreatePropertyMap(in ColumnExpression source)
         {
-            PropertyMap map = new();
+            PropertyMapper map = new();
 
             if (!string.IsNullOrEmpty(source.Alias))
             {
@@ -468,7 +468,7 @@ namespace DaJet.Scripting
 
             return map;
         }
-        private static void Map(in SyntaxNode expression, in PropertyMap map)
+        private static void Map(in SyntaxNode expression, in PropertyMapper map)
         {
             UnionType type = new();
             
@@ -480,7 +480,7 @@ namespace DaJet.Scripting
 
             for (int i = 0; i < columns.Count; i++)
             {
-                ColumnMap column = new()
+                ColumnMapper column = new()
                 {
                     Name = map.Name,
                     Type = columns[i],
@@ -491,7 +491,7 @@ namespace DaJet.Scripting
                 map.Columns.Add(column.Type, column);
             }
         }
-        private static void Visit(in ColumnReference node, in PropertyMap map)
+        private static void Visit(in ColumnReference node, in PropertyMapper map)
         {
             if (node.Binding is MetadataProperty property)
             {
@@ -513,7 +513,7 @@ namespace DaJet.Scripting
                 Map(node, in map);
             }
         }
-        private static void Visit(in MetadataProperty property, in PropertyMap map)
+        private static void Visit(in MetadataProperty property, in PropertyMapper map)
         {
             map.IsDbGenerated = property.IsDbGenerated;
 
@@ -528,7 +528,7 @@ namespace DaJet.Scripting
             
             foreach (MetadataColumn source in property.Columns)
             {
-                ColumnMap column = new()
+                ColumnMapper column = new()
                 {
                     Name = source.Name,
                     TypeName = GetDbTypeName(in property, source.Purpose),
@@ -585,8 +585,8 @@ namespace DaJet.Scripting
         {
             List<PropertyMappingRule> rules = new();
 
-            EntityMap target_map = CreateEntityMap(in target);
-            EntityMap source_map = CreateEntityMap(in source);
+            EntityMapper target_map = CreateEntityMap(in target);
+            EntityMapper source_map = CreateEntityMap(in source);
 
             if (mapping is not null) // update set clause mapping
             {
@@ -594,7 +594,7 @@ namespace DaJet.Scripting
                 {
                     for (int i = 0; i < target_map.Properties.Count; i++)
                     {
-                        PropertyMap column = target_map.Properties[i];
+                        PropertyMapper column = target_map.Properties[i];
 
                         if (set.Column.GetName() == column.Name)
                         {
@@ -603,9 +603,9 @@ namespace DaJet.Scripting
                                 Target = column
                             };
 
-                            PropertyMap initializer = CreatePropertyMap(set.Initializer);
+                            PropertyMapper initializer = CreatePropertyMap(set.Initializer);
 
-                            foreach (PropertyMap source_column in source_map.Properties)
+                            foreach (PropertyMapper source_column in source_map.Properties)
                             {
                                 if (initializer.Name == source_column.Name)
                                 {
@@ -626,14 +626,14 @@ namespace DaJet.Scripting
             {
                 for (int i = 0; i < target_map.Properties.Count; i++)
                 {
-                    PropertyMap property = target_map.Properties[i];
+                    PropertyMapper property = target_map.Properties[i];
 
                     PropertyMappingRule rule = new()
                     {
                         Target = property
                     };
 
-                    foreach (PropertyMap initializer in source_map.Properties)
+                    foreach (PropertyMapper initializer in source_map.Properties)
                     {
                         if (property.Name == initializer.Name)
                         {
@@ -654,11 +654,11 @@ namespace DaJet.Scripting
         public static List<ColumnMappingRule> CreateMappingRules(in PropertyMappingRule mapping)
         {
             List<ColumnMappingRule> rules = new();
-            List<ColumnMap> sequence = mapping.Target.ColumnSequence;
+            List<ColumnMapper> sequence = mapping.Target.ColumnSequence;
 
             if (mapping.Source is null) // map default values
             {
-                foreach (ColumnMap column in sequence)
+                foreach (ColumnMapper column in sequence)
                 {
                     rules.Add(new ColumnMappingRule()
                     {
@@ -675,11 +675,11 @@ namespace DaJet.Scripting
 
             for (int i = 0; i < sequence.Count; i++)
             {
-                ColumnMap target_column = sequence[i];
+                ColumnMapper target_column = sequence[i];
 
                 ColumnMappingRule rule = new() { Target = target_column };
 
-                if (mapping.Source.TryMapColumn(target_column.Type, out ColumnMap source_column))
+                if (mapping.Source.TryMapColumn(target_column.Type, out ColumnMapper source_column))
                 {
                     rule.Source = source_column; // map column to column
                 }

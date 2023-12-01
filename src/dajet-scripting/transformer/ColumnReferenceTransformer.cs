@@ -37,11 +37,11 @@ namespace DaJet.Scripting
                 .OrderBy((column) => { return column.Purpose; })
                 .ToList();
 
-            column.Mapping = new List<ColumnMap>(columns.Count);
+            column.Mapping = new List<ColumnMapper>(columns.Count);
 
             for (int i = 0; i < columns.Count; i++)
             {
-                ColumnMap map = new()
+                ColumnMapper map = new()
                 {
                     Name = string.IsNullOrEmpty(tableAlias)
                         ? columns[i].Name
@@ -69,11 +69,11 @@ namespace DaJet.Scripting
             DataMapper.Visit(parent.Expression, in type);
             List<UnionTag> columns = type.ToColumnList();
 
-            column.Mapping = new List<ColumnMap>(columns.Count);
+            column.Mapping = new List<ColumnMapper>(columns.Count);
 
             for (int i = 0; i < columns.Count; i++)
             {
-                ColumnMap map = new()
+                ColumnMapper map = new()
                 {
                     Type = columns[i],
                     Name = column.Identifier,
@@ -117,11 +117,11 @@ namespace DaJet.Scripting
                 .OrderBy((column) => { return column.Purpose; })
                 .ToList();
 
-            column.Mapping = new List<ColumnMap>(columns.Count);
+            column.Mapping = new List<ColumnMapper>(columns.Count);
 
             for (int i = 0; i < columns.Count; i++)
             {
-                ColumnMap map = new()
+                ColumnMapper map = new()
                 {
                     Name = string.IsNullOrEmpty(tableAlias)
                         ? columns[i].Name
@@ -141,11 +141,11 @@ namespace DaJet.Scripting
             DataMapper.Visit(parent.Expression, in type);
             List<UnionTag> columns = type.ToColumnList();
 
-            column.Mapping = new List<ColumnMap>(columns.Count);
+            column.Mapping = new List<ColumnMapper>(columns.Count);
 
             for (int i = 0; i < columns.Count; i++)
             {
-                ColumnMap map = new()
+                ColumnMapper map = new()
                 {
                     Type = columns[i],
                     Name = column.Identifier

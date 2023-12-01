@@ -424,12 +424,12 @@ namespace DaJet.Scripting
 
                 if (column.Binding is MetadataColumn source)
                 {
-                    ColumnMap map = new()
+                    ColumnMapper map = new()
                     {
                         Type = UnionType.GetPurposeUnionTag(source.Purpose),
                         Name = string.IsNullOrEmpty(tableAlias) ? source.Name : $"{tableAlias}.{source.Name}"
                     };
-                    column.Mapping = new List<ColumnMap>() { map };
+                    column.Mapping = new List<ColumnMapper>() { map };
                 }
 
                 return column;
@@ -674,7 +674,7 @@ namespace DaJet.Scripting
 
             for (int i = 0; i < node.Mapping.Count; i++)
             {
-                ColumnMap column = node.Mapping[i];
+                ColumnMapper column = node.Mapping[i];
 
                 UnionTag tag = column.Type == UnionTag.Uuid ? UnionTag.Entity : column.Type;
 
@@ -684,7 +684,7 @@ namespace DaJet.Scripting
                     {
                         Binding = node.Binding,
                         Identifier = node.Identifier,
-                        Mapping = new List<ColumnMap>() { column }
+                        Mapping = new List<ColumnMapper>() { column }
                     };
 
                     setter(comparison, copy);

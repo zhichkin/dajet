@@ -1,4 +1,5 @@
-﻿using DaJet.Metadata.Model;
+﻿using DaJet.Data;
+using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 
 namespace DaJet.Scripting
@@ -69,7 +70,7 @@ namespace DaJet.Scripting
                 return;
             }
 
-            foreach (ColumnMap map in column.Mapping)
+            foreach (ColumnMapper map in column.Mapping)
             {
                 ScriptHelper.GetColumnIdentifiers(map.Name, out string tableAlias, out string columnName);
 

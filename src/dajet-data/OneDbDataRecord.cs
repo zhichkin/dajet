@@ -2,13 +2,13 @@
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 
-namespace DaJet.Scripting
+namespace DaJet.Data
 {
     public sealed class OneDbDataRecord : IDataRecord
     {
-        private readonly EntityMap _map;
+        private readonly EntityMapper _map;
         private readonly DbDataReader _reader;
-        public OneDbDataRecord(in DbDataReader reader, in EntityMap map) : base()
+        public OneDbDataRecord(in DbDataReader reader, in EntityMapper map) : base()
         {
             _map = map ?? throw new ArgumentNullException(nameof(map));
             _reader = reader ?? throw new ArgumentNullException(nameof(reader));
@@ -18,7 +18,7 @@ namespace DaJet.Scripting
         {
             get
             {
-                PropertyMap property;
+                PropertyMapper property;
 
                 for (int ordinal = 0; ordinal < _map.Properties.Count; ordinal++)
                 {
@@ -38,7 +38,7 @@ namespace DaJet.Scripting
         public object GetValue(int ordinal) { return _map.Properties[ordinal].GetValue(_reader); }
         public int GetOrdinal(string name)
         {
-            PropertyMap property;
+            PropertyMapper property;
 
             for (int ordinal = 0; ordinal < _map.Properties.Count; ordinal++)
             {

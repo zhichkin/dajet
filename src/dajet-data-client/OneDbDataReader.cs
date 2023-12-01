@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Data.Common;
 
-namespace DaJet.Data.Provider
+namespace DaJet.Data.Client
 {
     public sealed class OneDbDataReader : DbDataReader
     {
@@ -30,7 +30,7 @@ namespace DaJet.Data.Provider
         {
             get
             {
-                PropertyMap property;
+                PropertyMapper property;
 
                 for (int ordinal = 0; ordinal < _generator.Mapper.Properties.Count; ordinal++)
                 {
@@ -98,7 +98,7 @@ namespace DaJet.Data.Provider
         }
         public override int GetOrdinal(string name)
         {
-            PropertyMap property;
+            PropertyMapper property;
 
             for (int ordinal = 0; ordinal < _generator.Mapper.Properties.Count; ordinal++)
             {

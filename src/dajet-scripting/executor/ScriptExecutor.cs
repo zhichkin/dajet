@@ -395,7 +395,7 @@ namespace DaJet.Scripting
             IQueryExecutor executor = _context.CreateQueryExecutor();
 
             int next = 0;
-            EntityMap mapper = null;
+            EntityMapper mapper = null;
             List<Dictionary<string, object>> result = null;
 
             foreach (IDataReader reader in executor.ExecuteBatch(commands.Script, 10, Parameters))

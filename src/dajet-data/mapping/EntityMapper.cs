@@ -1,19 +1,18 @@
-﻿using DaJet.Data;
-using System.Data;
+﻿using System.Data;
 using System.Dynamic;
 using System.Reflection;
 
-namespace DaJet.Scripting
+namespace DaJet.Data
 {
-    public sealed class EntityMap
+    public sealed class EntityMapper
     {
         private int ordinal = -1;
-        public EntityMap() { }
+        public EntityMapper() { }
         public int YearOffset { get; set; } = 0;
-        public List<PropertyMap> Properties { get; } = new();
+        public List<PropertyMapper> Properties { get; } = new();
         public void Map(in string name, in UnionType type)
         {
-            PropertyMap property = new()
+            PropertyMapper property = new()
             {
                 Name = name,
                 YearOffset = YearOffset
@@ -24,7 +23,7 @@ namespace DaJet.Scripting
 
             for (int i = 0; i < columns.Count; i++)
             {
-                property.Columns.Add(columns[i], new ColumnMap()
+                property.Columns.Add(columns[i], new ColumnMapper()
                 {
                     Type = columns[i],
                     Ordinal = ++ordinal
@@ -43,7 +42,7 @@ namespace DaJet.Scripting
 
             IDictionary<string, object> bag = entity;
 
-            foreach (PropertyMap property in Properties)
+            foreach (PropertyMapper property in Properties)
             {
                 bag.Add(property.Name, property.GetValue(in reader));
             }
@@ -52,7 +51,7 @@ namespace DaJet.Scripting
         {
             DataRecord data = new();
 
-            foreach (PropertyMap property in Properties)
+            foreach (PropertyMapper property in Properties)
             {
                 data.SetValue(property.Name, property.GetValue(in reader));
             }
@@ -61,7 +60,7 @@ namespace DaJet.Scripting
         }
         public void Map(in IDataReader reader, in DataRecord record)
         {
-            foreach (PropertyMap property in Properties)
+            foreach (PropertyMapper property in Properties)
             {
                 record.SetValue(property.Name, property.GetValue(in reader));
             }
@@ -70,7 +69,7 @@ namespace DaJet.Scripting
         {
             Dictionary<string, object> entity = new();
 
-            foreach (PropertyMap property in Properties)
+            foreach (PropertyMapper property in Properties)
             {
                 entity.Add(property.Name, property.GetValue(in reader));
             }
@@ -85,7 +84,7 @@ namespace DaJet.Scripting
             PropertyInfo property;
             Type type = typeof(TEntity);
 
-            foreach (PropertyMap map in Properties)
+            foreach (PropertyMapper map in Properties)
             {
                 property = type.GetProperty(map.Name);
 
@@ -107,7 +106,7 @@ namespace DaJet.Scripting
             PropertyInfo property;
             Type type = typeof(TEntity);
 
-            foreach (PropertyMap map in Properties)
+            foreach (PropertyMapper map in Properties)
             {
                 property = type.GetProperty(map.Name);
 

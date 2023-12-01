@@ -1,25 +1,24 @@
-﻿using DaJet.Data;
-using Npgsql;
+﻿using Npgsql;
 using System.Buffers;
 using System.Data;
 using System.Text;
 
-namespace DaJet.Scripting
+namespace DaJet.Data
 {
-    public sealed class PropertyMap
+    public sealed class PropertyMapper
     {
-        public PropertyMap() { }
+        public PropertyMapper() { }
         public int YearOffset { get; set; } = 0;
         public string Name { get; set; } = string.Empty;
         public bool IsDbGenerated { get; set; } = false;
         public UnionType DataType { get; } = new();
         public Type Type { get { return UnionType.MapToType(DataType); } }
-        public Dictionary<UnionTag, ColumnMap> Columns { get; } = new();
-        public List<ColumnMap> ColumnSequence
+        public Dictionary<UnionTag, ColumnMapper> Columns { get; } = new();
+        public List<ColumnMapper> ColumnSequence
         {
             get
             {
-                List<ColumnMap> sequence = new();
+                List<ColumnMapper> sequence = new();
 
                 foreach (var item in Columns.OrderBy(item => item.Key))
                 {
@@ -29,9 +28,9 @@ namespace DaJet.Scripting
                 return sequence;
             }
         }
-        public ColumnMap MapColumn(UnionTag tag)
+        public ColumnMapper MapColumn(UnionTag tag)
         {
-            ColumnMap column;
+            ColumnMapper column;
 
             if (Columns.TryGetValue(tag, out column))
             {
@@ -53,7 +52,7 @@ namespace DaJet.Scripting
 
             return column;
         }
-        public bool TryMapColumn(UnionTag tag, out ColumnMap column)
+        public bool TryMapColumn(UnionTag tag, out ColumnMapper column)
         {
             column = MapColumn(tag);
             return (column is not null);
@@ -77,7 +76,7 @@ namespace DaJet.Scripting
                 return GetMultipleValue(in reader);
             }
         }
-        private int GetOrdinal(in IDataReader reader, UnionTag tag, out ColumnMap column)
+        private int GetOrdinal(in IDataReader reader, UnionTag tag, out ColumnMapper column)
         {
             if (Columns.Count == 1)
             {
@@ -195,7 +194,7 @@ namespace DaJet.Scripting
         }
         private object GetBoolean(in IDataReader reader)
         {
-            int ordinal = GetOrdinal(in reader, UnionTag.Boolean, out ColumnMap column);
+            int ordinal = GetOrdinal(in reader, UnionTag.Boolean, out ColumnMapper column);
 
             if (reader.IsDBNull(ordinal))
             {
@@ -225,7 +224,7 @@ namespace DaJet.Scripting
         }
         private object GetNumeric(in IDataReader reader)
         {
-            int ordinal = GetOrdinal(in reader, UnionTag.Numeric, out ColumnMap column);
+            int ordinal = GetOrdinal(in reader, UnionTag.Numeric, out ColumnMapper column);
 
             if (reader.IsDBNull(ordinal))
             {

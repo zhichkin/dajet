@@ -6,7 +6,7 @@ using System.Data.Common;
 using System.Transactions;
 using IsolationLevel = System.Data.IsolationLevel;
 
-namespace DaJet.Data.Provider
+namespace DaJet.Data.Client
 {
     public sealed class OneDbConnection : DbConnection
     {

@@ -1,4 +1,5 @@
-﻿using DaJet.Metadata.Model;
+﻿using DaJet.Data;
+using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 
 namespace DaJet.Scripting
@@ -85,9 +86,9 @@ namespace DaJet.Scripting
                 {
                     Binding = column,
                     Identifier = $"source.{columnName}",
-                    Mapping = new List<ColumnMap>()
+                    Mapping = new List<ColumnMapper>()
                     {
-                        new ColumnMap()
+                        new ColumnMapper()
                         {
                             Name = $"source.{columnName}",
                             Type = DataMapper.Infer(set.Initializer).GetSingleTagOrUndefined()
@@ -175,9 +176,9 @@ namespace DaJet.Scripting
                     {
                         Binding = target_binding,
                         Identifier = map.Target.Name,
-                        Mapping = new List<ColumnMap>()
+                        Mapping = new List<ColumnMapper>()
                         {
-                            new ColumnMap()
+                            new ColumnMapper()
                             {
                                 Name = map.Target.Name,
                                 Type = map.Target.Type
@@ -186,15 +187,15 @@ namespace DaJet.Scripting
                     };
                     new_set.Column = target;
 
-                    if (map.Source is ColumnMap column)
+                    if (map.Source is ColumnMapper column)
                     {
                         ColumnReference source = new()
                         {
                             Binding = source_binding,
                             Identifier = column.Alias,
-                            Mapping = new List<ColumnMap>()
+                            Mapping = new List<ColumnMapper>()
                             {
-                                new ColumnMap()
+                                new ColumnMapper()
                                 {
                                     Type = column.Type,
                                     Name = string.IsNullOrEmpty(source_table_name)
@@ -290,9 +291,9 @@ namespace DaJet.Scripting
                     {
                         Binding = target_binding,
                         Identifier = map.Target.Name,
-                        Mapping = new List<ColumnMap>()
+                        Mapping = new List<ColumnMapper>()
                         {
-                            new ColumnMap()
+                            new ColumnMapper()
                             {
                                 Name = map.Target.Name,
                                 Type = map.Target.Type
@@ -301,15 +302,15 @@ namespace DaJet.Scripting
                     };
                     new_set.Column = target;
 
-                    if (map.Source is ColumnMap column)
+                    if (map.Source is ColumnMapper column)
                     {
                         ColumnReference source = new()
                         {
                             Binding = source_binding,
                             Identifier = column.Alias,
-                            Mapping = new List<ColumnMap>()
+                            Mapping = new List<ColumnMapper>()
                             {
-                                new ColumnMap()
+                                new ColumnMapper()
                                 {
                                     Type = column.Type,
                                     Name = string.IsNullOrEmpty(source_table_name)

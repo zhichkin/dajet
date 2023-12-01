@@ -11,7 +11,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -1388,7 +1387,7 @@ namespace DaJet.Metadata
             {
                 zippedInfo = (byte[])reader.GetValue(6);
 
-                Guid uuid = new(SQLHelper.Get1CUuid((byte[])reader.GetValue(0)));
+                Guid uuid = new(DbUtilities.Get1CUuid((byte[])reader.GetValue(0)));
 
                 ExtensionInfo extension = new()
                 {
@@ -1421,7 +1420,7 @@ namespace DaJet.Metadata
             {
                 zippedInfo = (byte[])reader.GetValue(6);
 
-                Guid uuid = new(SQLHelper.Get1CUuid((byte[])reader.GetValue(0)));
+                Guid uuid = new(DbUtilities.Get1CUuid((byte[])reader.GetValue(0)));
 
                 ExtensionInfo extension = new()
                 {
