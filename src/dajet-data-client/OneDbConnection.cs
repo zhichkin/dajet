@@ -1,4 +1,6 @@
-﻿using DaJet.Metadata;
+﻿using DaJet.Data.OneDbClient;
+using DaJet.Metadata;
+using DaJet.Scripting;
 using Microsoft.Data.SqlClient;
 using Npgsql;
 using System.Data;
@@ -60,7 +62,7 @@ namespace DaJet.Data.Client
         }
         private void InitializeMetadataCache()
         {
-            if (_metadata != null) { return; }
+            if (_metadata is not null) { return; }
 
             if (MetadataSingleton.Instance.TryGetMetadataCache(IB_KEY, out MetadataCache cache, out string error))
             {
@@ -85,6 +87,8 @@ namespace DaJet.Data.Client
                 throw new InvalidOperationException($"Metadata cache error: {error}");
             }
         }
+
+        #region "ABSTRACT BASE CLASS IMPLEMENTATION"
         public override string ConnectionString
         {
             get { return _connection.ConnectionString; }
@@ -136,6 +140,14 @@ namespace DaJet.Data.Client
         public new OneDbCommand CreateCommand()
         {
             return new OneDbCommand(_metadata) { Connection = _connection };
+        }
+        #endregion
+
+        public IDataRecord GetEntityObject(Entity entity)
+        {
+            List<ScriptCommand> scripts = CommandGenerator.GenerateSelectEntity(in _metadata, entity, out Dictionary<string, object> parameters);
+
+            return null;
         }
     }
 }

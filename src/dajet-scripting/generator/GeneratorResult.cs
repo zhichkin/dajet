@@ -18,5 +18,6 @@ namespace DaJet.Scripting
         [JsonIgnore] public string Script { get; set; } = string.Empty;
         [JsonIgnore] public EntityMapper Mapper { get; set; }
         [JsonIgnore] public SyntaxNode Statement { get; set; }
+        [JsonIgnore] public Dictionary<string, object> Parameters { get; set; }
     }
 }
