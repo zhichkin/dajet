@@ -16,6 +16,8 @@ namespace DaJet.Data
         {
             _names = new(capacity); _values = new(capacity); _map = new(capacity);
         }
+        public int TypeCode { get; set; }
+        public string TypeName { get; set; } = string.Empty;
         public int Count() { return _values.Count; }
         public void Clear() { _names.Clear(); _values.Clear(); _map.Clear(); }
         public string GetName(int i) { return _names[i]; }
@@ -34,7 +36,17 @@ namespace DaJet.Data
                 _map.Add(name, _values.Count - 1);
             }
         }
+        public bool TryGetValue(string name, out object value)
+        {
+            if (_map.TryGetValue(name, out int ordinal))
+            {
+                value = _values[ordinal]; return true;
+            }
 
+            value = null;
+            return false;
+        }
+        
         #region "TYPED VALUE GETTERS"
         public bool IsDBNull(int i) { return DBNull.Value.Equals(_values[i]); }
         public byte GetByte(int i) { return (byte)_values[i]; }

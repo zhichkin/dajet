@@ -24,8 +24,18 @@ namespace DaJet.Metadata.Core
                 return "Неопределено";
             }
 
+            string typeName = MetadataTypes.ResolveNameRu(Type);
+
+            if (!string.IsNullOrEmpty(typeName))
+            {
+                return string.Format("{0}.{1}", typeName, Name);
+            }
+
+            //NOTE: простые специальные типы данных
             if (Type == SingleTypes.ValueStorage) { return "ХранилищеЗначения"; }
             if (Type == SingleTypes.UniqueIdentifier) { return "УникальныйИдентификатор"; }
+
+            //NOTE: обобщённые типы данных, например, справочник любого типа
             if (Type == ReferenceTypes.AnyReference) { return "ЛюбаяСсылка"; }
             if (Type == ReferenceTypes.Catalog) { return "СправочникСсылка"; }
             if (Type == ReferenceTypes.Document) { return "ДокументСсылка"; }
@@ -43,17 +53,8 @@ namespace DaJet.Metadata.Core
                     return string.Format("Характеристика.{0}", Name);
                 }
             }
-            
-            string typeName = MetadataTypes.ResolveNameRu(Type);
 
-            if (string.IsNullOrEmpty(typeName))
-            {
-                return "???";
-            }
-            else
-            {
-                return string.Format("{0}.{1}", typeName, Name);
-            }
+            return string.Format("Unknown.{0}", Name);
         }
 
         #region " Переопределение методов сравнения "

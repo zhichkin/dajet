@@ -48,30 +48,6 @@ namespace DaJet.Data
 
             return bytes;
         }
-        public static string GetBinaryLiteral(ColumnPurpose purpose, int value)
-        {
-            byte[] bytes = BitConverter.GetBytes(value);
-
-            if (purpose == ColumnPurpose.Tag)
-            {
-                if (BitConverter.IsLittleEndian)
-                {
-                    return "0x" + ByteArrayToString(new byte[] { bytes[0] });
-                }
-                else
-                {
-                    return "0x" + ByteArrayToString(new byte[] { bytes[3] });
-                }
-            }
-            else
-            {
-                if (BitConverter.IsLittleEndian)
-                {
-                    Array.Reverse(bytes);
-                }
-                return "0x" + ByteArrayToString(bytes); // '\\x00000024'
-            }
-        }
 
         public static byte[] Get1CUuid(byte[] uuid_sql)
         {

@@ -532,8 +532,8 @@ namespace DaJet.Scripting
                 {
                     Name = source.Name,
                     TypeName = GetDbTypeName(in property, source.Purpose),
-                    Type = type.IsUnion ? UnionType.GetPurposeUnionTag(source.Purpose) : type.GetSingleTagOrUndefined(),
-                    Alias = type.IsUnion ? $"{map.Name}_{UnionType.GetPurposeLiteral(source.Purpose)}" : map.Name
+                    Type = type.IsUnion ? source.Purpose.GetUnionTag() : type.GetSingleTagOrUndefined(),
+                    Alias = type.IsUnion ? $"{map.Name}_{source.Purpose.GetLiteral()}" : map.Name
                 };
                 map.Columns.Add(column.Type, column);
             }

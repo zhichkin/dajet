@@ -1561,7 +1561,7 @@ namespace DaJet.Scripting
             {
                 MetadataColumn field = fields[i];
 
-                string columnName = UnionType.GetPurposeLiteral(field.Purpose);
+                string columnName = field.Purpose.GetLiteral();
 
                 ColumnDefinition column = new()
                 {

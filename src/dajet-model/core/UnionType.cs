@@ -1,5 +1,4 @@
-﻿using DaJet.Data;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -382,80 +381,6 @@ namespace DaJet
         public static string GetHexString(UnionTag tag)
         {
             return $"0x{Convert.ToHexString(new byte[] { (byte)tag })}";
-        }
-        public static string GetPurposeLiteral(ColumnPurpose purpose)
-        {
-            if (purpose == ColumnPurpose.Tag)
-            {
-                return "TYPE";
-            }
-            else if (purpose == ColumnPurpose.Boolean)
-            {
-                return "L";
-            }
-            else if (purpose == ColumnPurpose.Numeric)
-            {
-                return "N";
-            }
-            else if (purpose == ColumnPurpose.DateTime)
-            {
-                return "T";
-            }
-            else if (purpose == ColumnPurpose.String)
-            {
-                return "S";
-            }
-            else if (purpose == ColumnPurpose.Binary)
-            {
-                return "B";
-            }
-            else if (purpose == ColumnPurpose.TypeCode)
-            {
-                return "TRef";
-            }
-            else if (purpose == ColumnPurpose.Identity)
-            {
-                return "RRef";
-            }
-
-            return string.Empty; // ColumnPurpose.Default
-        }
-        public static UnionTag GetPurposeUnionTag(ColumnPurpose purpose)
-        {
-            if (purpose == ColumnPurpose.Tag)
-            {
-                return UnionTag.Tag;
-            }
-            else if (purpose == ColumnPurpose.Boolean)
-            {
-                return UnionTag.Boolean;
-            }
-            else if (purpose == ColumnPurpose.Numeric)
-            {
-                return UnionTag.Numeric;
-            }
-            else if (purpose == ColumnPurpose.DateTime)
-            {
-                return UnionTag.DateTime;
-            }
-            else if (purpose == ColumnPurpose.String)
-            {
-                return UnionTag.String;
-            }
-            else if (purpose == ColumnPurpose.Binary)
-            {
-                return UnionTag.Binary;
-            }
-            else if (purpose == ColumnPurpose.TypeCode)
-            {
-                return UnionTag.TypeCode;
-            }
-            else if (purpose == ColumnPurpose.Identity)
-            {
-                return UnionTag.Entity;
-            }
-
-            return UnionTag.Undefined; // ColumnPurpose.Default
         }
         public UnionTag GetSingleTagOrUndefined()
         {

@@ -25,8 +25,15 @@ namespace DaJet.Flow.Tutorial
         {
             DataObject message = new();
 
-            message.SetValue("ТипСообщения", _options.MessageType);
-
+            if (string.IsNullOrWhiteSpace(_options.MessageType))
+            {
+                message.SetValue("ТипСообщения", input.TypeName);
+            }
+            else
+            {
+                message.SetValue("ТипСообщения", _options.MessageType);
+            }
+            
             using (MemoryStream memory = new())
             {
                 using (Utf8JsonWriter writer = new(memory, JsonOptions))

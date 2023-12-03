@@ -387,7 +387,7 @@ namespace DaJet.Scripting
                 comparison.Expression1 = new ScalarExpression()
                 {
                     Token = TokenType.Number,
-                    Literal = DbUtilities.GetBinaryLiteral((ColumnPurpose)tag, value1)
+                    Literal = ((ColumnPurpose)tag).GetBinaryLiteral(value1)
                 };
             }
             else
@@ -400,7 +400,7 @@ namespace DaJet.Scripting
                 comparison.Expression2 = new ScalarExpression()
                 {
                     Token = TokenType.Number,
-                    Literal = DbUtilities.GetBinaryLiteral((ColumnPurpose)tag, value2)
+                    Literal = ((ColumnPurpose)tag).GetBinaryLiteral(value2)
                 };
             }
             else
@@ -426,7 +426,7 @@ namespace DaJet.Scripting
                 {
                     ColumnMapper map = new()
                     {
-                        Type = UnionType.GetPurposeUnionTag(source.Purpose),
+                        Type = source.Purpose.GetUnionTag(),
                         Name = string.IsNullOrEmpty(tableAlias) ? source.Name : $"{tableAlias}.{source.Name}"
                     };
                     column.Mapping = new List<ColumnMapper>() { map };

@@ -190,10 +190,7 @@ namespace DaJet.Http.Controllers
             JsonSerializerOptions options = new()
             {
                 Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
-                Converters =
-                {
-                    new ScriptParametersJsonConverter()
-                }
+                Converters = { new DictionaryJsonConverter() }
             };
 
             return await JsonSerializer.DeserializeAsync<Dictionary<string, object>>(request.Body, options);

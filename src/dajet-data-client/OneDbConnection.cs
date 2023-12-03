@@ -153,6 +153,9 @@ namespace DaJet.Data.Client
 
             ScriptDetails details = ScriptGenerator.GenerateSelectEntityScript(in _context, entity);
 
+            int typeCode = entity.TypeCode;
+            string typeName = _context.GetMetadataItem(typeCode).ToString();
+
             using (DbConnection connection = CreateDbConnection())
             {
                 connection.Open();
@@ -186,8 +189,12 @@ namespace DaJet.Data.Client
                         {
                             capacity = details.Mappers[mapper].Properties.Count;
 
-                            root = new DataObject(capacity);
-
+                            root = new DataObject(capacity)
+                            {
+                                TypeCode = typeCode,
+                                TypeName = typeName
+                            };
+                            
                             details.Mappers[mapper].Map(in reader, in root);
                         }
 

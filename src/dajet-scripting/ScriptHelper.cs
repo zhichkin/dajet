@@ -334,20 +334,6 @@ namespace DaJet.Scripting
             
             return token.ToString();
         }
-        internal static string GetColumnPurposePostfix(ColumnPurpose purpose)
-        {
-            if (purpose == ColumnPurpose.Default) { return string.Empty; }
-            else if (purpose == ColumnPurpose.Tag)      { return "_TYPE"; }
-            else if (purpose == ColumnPurpose.Boolean)  { return "_L"; }
-            else if (purpose == ColumnPurpose.Numeric)  { return "_N"; }
-            else if (purpose == ColumnPurpose.DateTime) { return "_T"; }
-            else if (purpose == ColumnPurpose.String)   { return "_S"; }
-            else if (purpose == ColumnPurpose.Binary)   { return "_B"; }
-            else if (purpose == ColumnPurpose.TypeCode) { return "_TRef"; }
-            else if (purpose == ColumnPurpose.Identity) { return "_RRef"; }
-
-            return string.Empty;
-        }
 
         internal static string GetUuidHexLiteral(Guid uuid)
         {

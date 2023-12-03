@@ -50,14 +50,14 @@ namespace DaJet.Scripting
                         ? property.Name
                         : parent.Alias,
                     Type = (columns.Count > 1)
-                        ? UnionType.GetPurposeUnionTag(columns[i].Purpose)
+                        ? columns[i].Purpose.GetUnionTag()
                         : DataMapper.GetUnionType(in property).ToColumnList()[0],
                     TypeName = columns[i].TypeName
                 };
 
                 if (columns.Count > 1)
                 {
-                    map.Alias += $"_{UnionType.GetPurposeLiteral(columns[i].Purpose)}";
+                    map.Alias += $"_{columns[i].Purpose.GetLiteral()}";
                 }
 
                 column.Mapping.Add(map);
@@ -127,7 +127,7 @@ namespace DaJet.Scripting
                         ? columns[i].Name
                         : $"{tableAlias}.{columns[i].Name}",
                     Type = (columns.Count > 1)
-                        ? UnionType.GetPurposeUnionTag(columns[i].Purpose)
+                        ? columns[i].Purpose.GetUnionTag()
                         : DataMapper.GetUnionType(in property).ToColumnList()[0],
                     TypeName = columns[i].TypeName
                 };
