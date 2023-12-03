@@ -388,9 +388,9 @@ namespace DaJet.Scripting
         {
             List<List<Dictionary<string, object>>> batch = new();
 
-            GeneratorResult commands = PrepareScript(in script);
+            GeneratorResult generator = PrepareScript(in script);
 
-            if (!commands.Success) { throw new Exception(commands.Error); }
+            if (!generator.Success) { throw new Exception(generator.Error); }
 
             IQueryExecutor executor = _context.CreateQueryExecutor();
 
@@ -398,12 +398,12 @@ namespace DaJet.Scripting
             EntityMapper mapper = null;
             List<Dictionary<string, object>> result = null;
 
-            foreach (IDataReader reader in executor.ExecuteBatch(commands.Script, 10, Parameters))
+            foreach (IDataReader reader in executor.ExecuteBatch(generator.Script, 10, Parameters))
             {
                 if (reader is null) // new result
                 {
                     result = new List<Dictionary<string, object>>();
-                    mapper = commands.Commands[next++].Mapper;
+                    mapper = generator.Statements[next++].Mapper;
                     batch.Add(result);
                 }
                 else
@@ -415,7 +415,7 @@ namespace DaJet.Scripting
             return batch;
         }
 
-        public void PrepareScript(in string script, out ScriptModel model, out List<ScriptCommand> commands)
+        public void PrepareScript(in string script, out ScriptModel model, out List<ScriptStatement> statements)
         {
             string error;
             
@@ -469,7 +469,7 @@ namespace DaJet.Scripting
                 throw new InvalidOperationException($"Unsupported database provider: {_context.DatabaseProvider}");
             }
 
-            if (!generator.TryGenerate(in model, in _context, out commands, out error))
+            if (!generator.TryGenerate(in model, in _context, out statements, out error))
             {
                 throw new Exception(error);
             }

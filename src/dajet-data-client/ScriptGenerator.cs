@@ -5,11 +5,11 @@ using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using System.Text;
 
-namespace DaJet.Data.OneDbClient
+namespace DaJet.Data.Client
 {
-    internal static class CommandGenerator
+    internal static class ScriptGenerator
     {
-        internal static List<ScriptCommand> GenerateSelectEntity(in IMetadataProvider context, Entity entity, out Dictionary<string, object> parameters)
+        internal static ScriptDetails GenerateSelectEntityScript(in IMetadataProvider context, Entity entity)
         {
             MetadataItem item = context.GetMetadataItem(entity.TypeCode);
 
@@ -32,14 +32,22 @@ namespace DaJet.Data.OneDbClient
                 throw new InvalidOperationException();
             }
 
-            if (!ScriptProcessor.TryProcess(in context, in script, out ScriptModel model, out List<ScriptCommand> commands, out string error))
+            if (!ScriptProcessor.TryTranspile(in context, in script, out ScriptModel model, out List<ScriptStatement> statements, out string error))
             {
                 throw new Exception(error);
             }
 
-            ScriptProcessor.ConfigureParameters(in context, in model, out parameters);
+            //ScriptProcessor.ConfigureParameters(in context, in model, out Dictionary<string, object> parameters);
 
-            return commands;
+            return new ScriptDetails()
+            {
+                Mappers = GetEntityMappers(in statements),
+                SqlScript = AssembleSqlScript(in statements),
+                Parameters = new Dictionary<string, object>()
+                {
+                    { "Ссылка", entity.Identity.ToByteArray() }
+                }
+            };
         }
 
         internal static string GenerateContractScript(in MetadataObject info)
@@ -211,6 +219,41 @@ namespace DaJet.Data.OneDbClient
 
             return type;
         }
+
+        private static string AssembleSqlScript(in List<ScriptStatement> statements)
+        {
+            StringBuilder script = new();
+
+            for (int i = 0; i < statements.Count; i++)
+            {
+                ScriptStatement statement = statements[i];
+
+                if (string.IsNullOrEmpty(statement.Script))
+                {
+                    continue; //NOTE: declaration of parameters
+                }
+
+                script.AppendLine(statement.Script);
+            }
+
+            return script.ToString();
+        }
+        private static List<EntityMapper> GetEntityMappers(in List<ScriptStatement> statements)
+        {
+            List<EntityMapper> mappers = new();
+
+            foreach (ScriptStatement command in statements)
+            {
+                if (command.Mapper.Properties.Count > 0)
+                {
+                    mappers.Add(command.Mapper);
+                }
+            }
+
+            return mappers;
+        }
+
+
 
         internal static string GenerateProducerScript()
         {

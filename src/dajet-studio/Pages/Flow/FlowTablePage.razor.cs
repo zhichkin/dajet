@@ -1,6 +1,6 @@
-﻿using DaJet.Model;
+﻿using DaJet.Data;
+using DaJet.Model;
 using Microsoft.AspNetCore.Components;
-using System.Data;
 using System.Globalization;
 
 namespace DaJet.Studio.Pages.Flow
@@ -88,7 +88,7 @@ namespace DaJet.Studio.Pages.Flow
                 { "uuid", pipeline.Uuid }
             };
 
-            List<IDataRecord> list = await DataSource.QueryAsync(query, parameters);
+            List<DataObject> list = await DataSource.QueryAsync(query, parameters);
 
             if (list is null || list.Count == 0) { return; }
 

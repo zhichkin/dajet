@@ -10,14 +10,12 @@ namespace DaJet.Scripting
         public string Error { get; set; } = string.Empty;
         public string Script { get; set; } = string.Empty;
         [JsonIgnore] public EntityMapper Mapper { get; set; } = new();
-        [JsonIgnore] public List<ScriptCommand> Commands { get; set; } = new();
+        [JsonIgnore] public List<ScriptStatement> Statements { get; set; } = new();
     }
-    public sealed class ScriptCommand
+    public sealed class ScriptStatement
     {
-        [JsonIgnore] public string Name { get; set; } = string.Empty;
-        [JsonIgnore] public string Script { get; set; } = string.Empty;
-        [JsonIgnore] public EntityMapper Mapper { get; set; }
-        [JsonIgnore] public SyntaxNode Statement { get; set; }
-        [JsonIgnore] public Dictionary<string, object> Parameters { get; set; }
+        [JsonIgnore] public SyntaxNode Node { get; set; }
+        [JsonIgnore] public string Script { get; set; } = string.Empty; // SQL script code
+        [JsonIgnore] public EntityMapper Mapper { get; set; } // SELECT, CONSUME, OUTPUT
     }
 }

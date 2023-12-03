@@ -35,13 +35,13 @@ namespace DaJet.Scripting
             return union;
         }
         private static string _name = string.Empty; // TODO: убрать костыль !
-        public static void Map(in ColumnExpression node, in EntityMapper map)
+        public static void Map(in ColumnExpression node, in EntityMapper mapper)
         {
             UnionType type = new();
 
             Visit(in node, in type);
 
-            map.Map(in _name, in type);
+            mapper.AddPropertyMapper(in _name, in type);
 
             _name = string.Empty;
         }

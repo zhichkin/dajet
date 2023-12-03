@@ -1,7 +1,6 @@
 ﻿using DaJet.Model;
 using Microsoft.Data.Sqlite;
 using System.Collections;
-using System.Data;
 
 namespace DaJet.Data
 {
@@ -129,9 +128,9 @@ namespace DaJet.Data
 
             return null;
         }
-        public List<IDataRecord> Query(string query, Dictionary<string, object> parameters)
+        public List<DataObject> Query(string query, Dictionary<string, object> parameters)
         {
-            List<IDataRecord> list = new();
+            List<DataObject> list = new();
 
             using (SqliteConnection connection = new(ConnectionString))
             {
@@ -157,7 +156,7 @@ namespace DaJet.Data
                     {
                         while (reader.Read())
                         {
-                            DataRecord record = new();
+                            DataObject record = new(reader.FieldCount);
                             
                             for (int i = 0; i < reader.FieldCount; i++)
                             {

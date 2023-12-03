@@ -1,5 +1,4 @@
 ﻿using System.Data;
-using System.Dynamic;
 using System.Reflection;
 
 namespace DaJet.Data
@@ -8,9 +7,10 @@ namespace DaJet.Data
     {
         private int ordinal = -1;
         public EntityMapper() { }
+        public string Name { get; set; } //NOTE: SELECT, CONSUME, DELETE OUTPUT : table name if present
         public int YearOffset { get; set; } = 0;
         public List<PropertyMapper> Properties { get; } = new();
-        public void Map(in string name, in UnionType type)
+        public void AddPropertyMapper(in string name, in UnionType type)
         {
             PropertyMapper property = new()
             {
@@ -36,32 +36,16 @@ namespace DaJet.Data
         {
             //TODO: map IDbCommand for DML
         }
-        public void Map(in IDataReader reader, out dynamic entity)
+        public void Map(in IDataReader reader, in DataObject record)
         {
-            entity = new ExpandoObject();
+            PropertyMapper property;
 
-            IDictionary<string, object> bag = entity;
+            int count = Properties.Count;
 
-            foreach (PropertyMapper property in Properties)
+            for (int i = 0; i < count; i++)
             {
-                bag.Add(property.Name, property.GetValue(in reader));
-            }
-        }
-        public void Map(in IDataReader reader, out IDataRecord record)
-        {
-            DataRecord data = new();
+                property = Properties[i];
 
-            foreach (PropertyMapper property in Properties)
-            {
-                data.SetValue(property.Name, property.GetValue(in reader));
-            }
-
-            record = data;
-        }
-        public void Map(in IDataReader reader, in DataRecord record)
-        {
-            foreach (PropertyMapper property in Properties)
-            {
                 record.SetValue(property.Name, property.GetValue(in reader));
             }
         }

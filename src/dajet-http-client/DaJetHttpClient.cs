@@ -1,7 +1,6 @@
 ﻿using DaJet.Data;
 using DaJet.Json;
 using DaJet.Model;
-using System.Data;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
@@ -20,7 +19,7 @@ namespace DaJet.Http.Client
         };
         static DaJetHttpClient()
         {
-            JsonOptions.Converters.Add(new DataRecordJsonConverter());
+            JsonOptions.Converters.Add(new DataObjectJsonConverter());
             JsonOptions.Converters.Add(new DictionaryJsonConverter());
         }
         private readonly HttpClient _client;
@@ -209,7 +208,7 @@ namespace DaJet.Http.Client
             return list;
         }
 
-        public async Task<List<IDataRecord>> QueryAsync(string query, Dictionary<string, object> parameters)
+        public async Task<List<DataObject>> QueryAsync(string query, Dictionary<string, object> parameters)
         {
             string url = $"/data/query";
 
@@ -217,7 +216,7 @@ namespace DaJet.Http.Client
 
             HttpResponseMessage response = await _client.PostAsJsonAsync(url, parameters, JsonOptions);
 
-            List<IDataRecord> result = await response.Content.ReadFromJsonAsync<List<IDataRecord>>(JsonOptions);
+            List<DataObject> result = await response.Content.ReadFromJsonAsync<List<DataObject>>(JsonOptions);
 
             return result;
         }

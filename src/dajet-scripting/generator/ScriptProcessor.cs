@@ -8,7 +8,7 @@ namespace DaJet.Scripting
 {
     public static class ScriptProcessor
     {
-        private static void ThrowImportStatementsAreNotSupported(in ScriptModel model)
+        private static void ThrowImportStatementAreNotSupported(in ScriptModel model)
         {
             foreach (SyntaxNode node in model.Statements)
             {
@@ -18,37 +18,39 @@ namespace DaJet.Scripting
                 }
             }
         }
-        public static bool TryProcess(in IMetadataProvider context, in string script, out ScriptModel model, out List<ScriptCommand> commands, out string error)
+        public static bool TryTranspile(in IMetadataProvider context, in string script, out ScriptModel model, out List<ScriptStatement> statements, out string error)
         {
+            statements = null;
+
             using (ScriptParser parser = new())
             {
                 if (!parser.TryParse(in script, out model, out error))
                 {
-                    commands = null; return false;
+                    return false;
                 }
             }
 
-            ThrowImportStatementsAreNotSupported(in model);
+            ThrowImportStatementAreNotSupported(in model);
 
             ScopeBuilder builder = new();
 
             if (!builder.TryBuild(in model, out ScriptScope scope, out error))
             {
-                commands = null; return false;
+                return false;
             }
 
             MetadataBinder binder = new();
 
             if (!binder.TryBind(in scope, in context, out error))
             {
-                commands = null; return false;
+                return false;
             }
 
             ScriptTransformer transformer = new();
 
             if (!transformer.TryTransform(model, out error))
             {
-                commands = null; return false;
+                 return false;
             }
 
             ISqlGenerator generator;
@@ -64,11 +66,10 @@ namespace DaJet.Scripting
             else
             {
                 error = $"Unsupported database provider: {context.DatabaseProvider}";
-                commands = null;
                 return false;
             }
 
-            if (!generator.TryGenerate(in model, in context, out commands, out error))
+            if (!generator.TryGenerate(in model, in context, out statements, out error))
             {
                 return false;
             }
@@ -144,7 +145,7 @@ namespace DaJet.Scripting
                             }
                             else if (type == typeof(byte[]))
                             {
-                                value = DbUtilities.StringToByteArray(literal.Substring(2)); // remove leading 0x
+                                value = DbUtilities.StringToByteArray(literal[2..]); // remove leading 0x
                             }
                             else if (type == typeof(Entity))
                             {

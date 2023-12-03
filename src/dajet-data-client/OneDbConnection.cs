@@ -1,6 +1,4 @@
-﻿using DaJet.Data.OneDbClient;
-using DaJet.Metadata;
-using DaJet.Scripting;
+﻿using DaJet.Metadata;
 using Microsoft.Data.SqlClient;
 using Npgsql;
 using System.Data;
@@ -16,23 +14,16 @@ namespace DaJet.Data.Client
 
         private readonly string IB_KEY;
         private DatabaseProvider _provider;
-        private IMetadataProvider _metadata;
+        private IMetadataProvider _context;
         private readonly string _connectionString;
-        public OneDbConnection(IMetadataProvider metadata)
+        public OneDbConnection(IMetadataProvider context)
         {
-            _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
+            _context = context ?? throw new ArgumentNullException(nameof(context));
 
-            _provider = _metadata.DatabaseProvider;
-            _connectionString = _metadata.ConnectionString;
+            _provider = _context.DatabaseProvider;
+            _connectionString = _context.ConnectionString;
 
-            if (_provider == DatabaseProvider.PostgreSql)
-            {
-                _connection = new NpgsqlConnection(_connectionString);
-            }
-            else
-            {
-                _connection = new SqlConnection(_connectionString);
-            }
+            _connection = CreateDbConnection();
 
             //TODO: ib key generation algorithm !?
             IB_KEY = _connection.Database;
@@ -49,24 +40,37 @@ namespace DaJet.Data.Client
             if (connectionString.StartsWith("Host"))
             {
                 _provider = DatabaseProvider.PostgreSql;
-                _connection = new NpgsqlConnection(_connectionString);
             }
             else
             {
                 _provider = DatabaseProvider.SqlServer;
-                _connection = new SqlConnection(_connectionString);
             }
+
+            _connection = CreateDbConnection();
 
             //TODO: ib key generation algorithm !?
             IB_KEY = _connection.Database;
         }
+        private DbConnection CreateDbConnection()
+        {
+            if (_provider == DatabaseProvider.SqlServer)
+            {
+                return new SqlConnection(_connectionString);
+            }
+            else if(_provider == DatabaseProvider.PostgreSql)
+            {
+                return new NpgsqlConnection(_connectionString);
+            }
+
+            throw new InvalidOperationException($"Unsupported database provider: {_provider}");
+        }
         private void InitializeMetadataCache()
         {
-            if (_metadata is not null) { return; }
+            if (_context is not null) { return; }
 
             if (MetadataSingleton.Instance.TryGetMetadataCache(IB_KEY, out MetadataCache cache, out string error))
             {
-                _metadata = cache; return;
+                _context = cache; return;
             }
 
             InfoBaseOptions options = new()
@@ -80,7 +84,7 @@ namespace DaJet.Data.Client
 
             if (MetadataSingleton.Instance.TryGetMetadataCache(IB_KEY, out cache, out error))
             {
-                _metadata = cache;
+                _context = cache;
             }
             else
             {
@@ -119,7 +123,7 @@ namespace DaJet.Data.Client
                 _connection.Dispose();
             }
 
-            _metadata = null!;
+            _context = null!;
         }
         protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
         {
@@ -139,15 +143,80 @@ namespace DaJet.Data.Client
         }
         public new OneDbCommand CreateCommand()
         {
-            return new OneDbCommand(_metadata) { Connection = _connection };
+            return new OneDbCommand(_context) { Connection = _connection };
         }
         #endregion
 
-        public IDataRecord GetEntityObject(Entity entity)
+        public DataObject GetDataObject(Entity entity)
         {
-            List<ScriptCommand> scripts = CommandGenerator.GenerateSelectEntity(in _metadata, entity, out Dictionary<string, object> parameters);
+            DataObject root = null;
 
-            return null;
+            ScriptDetails details = ScriptGenerator.GenerateSelectEntityScript(in _context, entity);
+
+            using (DbConnection connection = CreateDbConnection())
+            {
+                connection.Open();
+
+                using (DbCommand command = connection.CreateCommand())
+                {
+                    command.CommandType = CommandType.Text;
+                    command.CommandText = details.SqlScript;
+
+                    if (command is SqlCommand ms)
+                    {
+                        foreach (var parameter in details.Parameters)
+                        {
+                            ms.Parameters.AddWithValue(parameter.Key, parameter.Value);
+                        }
+                    }
+                    else if (command is NpgsqlCommand pg)
+                    {
+                        foreach (var parameter in details.Parameters)
+                        {
+                            pg.Parameters.AddWithValue(parameter.Key, parameter.Value);
+                        }
+                    }
+
+                    int mapper = 0;
+                    int capacity;
+
+                    using (IDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            capacity = details.Mappers[mapper].Properties.Count;
+
+                            root = new DataObject(capacity);
+
+                            details.Mappers[mapper].Map(in reader, in root);
+                        }
+
+                        while (reader.NextResult())
+                        {
+                            ++mapper;
+
+                            capacity = details.Mappers[mapper].Properties.Count;
+
+                            List<DataObject> table = new();
+
+                            while (reader.Read())
+                            {
+                                DataObject record = new(capacity);
+
+                                details.Mappers[mapper].Map(in reader, in record);
+                                
+                                table.Add(record);
+                            }
+
+                            root.SetValue(details.Mappers[mapper].Name, table);
+                        }
+                        
+                        reader.Close();
+                    }
+                }
+            }
+
+            return root;
         }
     }
 }

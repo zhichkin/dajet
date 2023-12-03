@@ -10,7 +10,7 @@ using System.Text;
 
 namespace DaJet.Flow.PostgreSql
 {
-    public sealed class OneDbProducer : TargetBlock<IDataRecord>
+    public sealed class OneDbProducer : TargetBlock<DataObject>
     {
         private readonly IDataSource _source;
         private readonly ProducerOptions _options;
@@ -47,32 +47,32 @@ namespace DaJet.Flow.PostgreSql
             ConnectionString = database.ConnectionString;
 
             ScriptExecutor executor = new(provider, _metadata, _source);
-            executor.PrepareScript(script.Script, out ScriptModel _, out List<ScriptCommand> commands);
+            executor.PrepareScript(script.Script, out ScriptModel _, out List<ScriptStatement> statements);
             ScriptParameters = executor.Parameters;
-            CommandText = GetInsertStatementScript(in commands);
+            CommandText = GetInsertStatementScript(in statements);
 
-            for (int i = 0; i < commands.Count; i++)
+            for (int i = 0; i < statements.Count; i++)
             {
-                if (commands[i].Statement is CreateSequenceStatement) // configure sequence database object
+                if (statements[i].Node is CreateSequenceStatement) // configure sequence database object
                 {
-                    provider.CreateQueryExecutor().ExecuteNonQuery(commands[i].Script, 10); break;
+                    provider.CreateQueryExecutor().ExecuteNonQuery(statements[i].Script, 10); break;
                 }
             }
         }
-        private string GetInsertStatementScript(in List<ScriptCommand> commands)
+        private string GetInsertStatementScript(in List<ScriptStatement> statements)
         {
             StringBuilder script = new();
 
-            for (int i = 0; i < commands.Count; i++)
+            for (int i = 0; i < statements.Count; i++)
             {
-                ScriptCommand command = commands[i];
+                ScriptStatement command = statements[i];
 
                 if (string.IsNullOrEmpty(command.Script))
                 {
                     continue;
                 }
 
-                if (command.Statement is InsertStatement)
+                if (command.Node is InsertStatement)
                 {
                     script.AppendLine(command.Script); break;
                 }
@@ -80,7 +80,7 @@ namespace DaJet.Flow.PostgreSql
 
             return script.ToString();
         }
-        public override void Process(in IDataRecord input)
+        public override void Process(in DataObject input)
         {
             using (NpgsqlConnection connection = new(ConnectionString))
             {
@@ -116,14 +116,14 @@ namespace DaJet.Flow.PostgreSql
                 }
             }
         }
-        private void ConfigureParameters(in NpgsqlCommand command, in IDataRecord input)
+        private void ConfigureParameters(in NpgsqlCommand command, in DataObject input)
         {
             command.Parameters.Clear();
 
             string name;
             object value;
 
-            for (int i = 0; i < input.FieldCount; i++)
+            for (int i = 0; i < input.Count(); i++)
             {
                 name = input.GetName(i);
                 value = input.GetValue(i);
@@ -132,19 +132,19 @@ namespace DaJet.Flow.PostgreSql
 
                 if (value is null)
                 {
-                    command.Parameters.AddWithValue(input.GetName(i), DBNull.Value);
+                    command.Parameters.AddWithValue(name, DBNull.Value);
                 }
                 else if (value is Entity entity)
                 {
-                    command.Parameters.AddWithValue(input.GetName(i), entity.Identity.ToByteArray());
+                    command.Parameters.AddWithValue(name, entity.Identity.ToByteArray());
                 }
                 else if (value is Guid uuid)
                 {
-                    command.Parameters.AddWithValue(input.GetName(i), uuid.ToByteArray());
+                    command.Parameters.AddWithValue(name, uuid.ToByteArray());
                 }
                 else
                 {
-                    command.Parameters.AddWithValue(input.GetName(i), value);
+                    command.Parameters.AddWithValue(name, value);
                 }
             }
         }

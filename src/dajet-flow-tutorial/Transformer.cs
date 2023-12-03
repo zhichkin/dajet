@@ -1,6 +1,5 @@
 ﻿using DaJet.Data;
 using DaJet.Json;
-using System.Data;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -8,25 +7,25 @@ using System.Text.Unicode;
 
 namespace DaJet.Flow.Tutorial
 {
-    public sealed class Transformer : TransformerBlock<IDataRecord, IDataRecord>
+    public sealed class Transformer : TransformerBlock<DataObject, DataObject>
     {
         private static readonly JsonWriterOptions JsonOptions = new()
         {
             Indented = true,
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
-        private static readonly DataRecordJsonConverter _converter = new();
+        private static readonly DataObjectJsonConverter _converter = new();
 
         private readonly TransformerOptions _options;
         public Transformer(TransformerOptions options)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
         }
-        protected override void _Transform(in IDataRecord input, out IDataRecord output)
+        protected override void _Transform(in DataObject input, out DataObject output)
         {
-            DataRecord record = new();
+            DataObject message = new();
 
-            record.SetValue("ТипСообщения", _options.MessageType);
+            message.SetValue("ТипСообщения", _options.MessageType);
 
             using (MemoryStream memory = new())
             {
@@ -38,11 +37,11 @@ namespace DaJet.Flow.Tutorial
 
                     string json = Encoding.UTF8.GetString(memory.ToArray());
 
-                    record.SetValue("ТелоСообщения", json);
+                    message.SetValue("ТелоСообщения", json);
                 }
             }
 
-            output = record;
+            output = message;
         }
     }
 }

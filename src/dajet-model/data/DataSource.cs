@@ -2,7 +2,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Data;
 using System.Threading.Tasks;
 
 namespace DaJet.Data
@@ -23,7 +22,7 @@ namespace DaJet.Data
         IEnumerable Select(int typeCode, Entity owner);
         IEnumerable<T> Query<T>() where T : EntityObject;
         IEnumerable<T> Query<T>(Entity owner) where T : EntityObject;
-        List<IDataRecord> Query(string query, Dictionary<string, object> parameters);
+        List<DataObject> Query(string query, Dictionary<string, object> parameters);
     }
     public interface IAsyncDataSource
     {
@@ -37,7 +36,7 @@ namespace DaJet.Data
         Task<T> SelectAsync<T>(Entity entity) where T : EntityObject;
         Task<IEnumerable<T>> QueryAsync<T>() where T : EntityObject;
         Task<IEnumerable<T>> QueryAsync<T>(Entity owner) where T : EntityObject;
-        Task<List<IDataRecord>> QueryAsync(string query, Dictionary<string, object> parameters);
+        Task<List<DataObject>> QueryAsync(string query, Dictionary<string, object> parameters);
     }
     public interface IDataMapper
     {

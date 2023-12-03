@@ -10,15 +10,15 @@ namespace DaJet.Data.Client
     {
         private readonly OneDbParameterCollection _parameters = new();
 
-        private IMetadataProvider _metadata;
+        private IMetadataProvider _context;
 
         private DbCommand? _command;
         private DbConnection? _connection;
         private DbTransaction? _transaction;
         private GeneratorResult _generator;
-        public OneDbCommand(IMetadataProvider metadata)
+        public OneDbCommand(IMetadataProvider context)
         {
-            _metadata = metadata;
+            _context = context;
         }
         protected override void Dispose(bool disposing)
         {
@@ -26,7 +26,7 @@ namespace DaJet.Data.Client
             {
                 _command?.Dispose();
             }
-            _metadata = null!;
+            _context = null!;
         }
         public override bool DesignTimeVisible { get; set; }
         public override UpdateRowSource UpdatedRowSource { get; set; } = UpdateRowSource.Both;
@@ -74,7 +74,7 @@ namespace DaJet.Data.Client
 
             MetadataBinder binder = new();
 
-            if (!binder.TryBind(in scope, in _metadata, out error))
+            if (!binder.TryBind(in scope, in _context, out error))
             {
                 throw new Exception(error);
             }
@@ -88,20 +88,20 @@ namespace DaJet.Data.Client
 
             ISqlGenerator generator;
 
-            if (_metadata.DatabaseProvider == DatabaseProvider.SqlServer)
+            if (_context.DatabaseProvider == DatabaseProvider.SqlServer)
             {
-                generator = new MsSqlGenerator() { YearOffset = _metadata.YearOffset };
+                generator = new MsSqlGenerator() { YearOffset = _context.YearOffset };
             }
-            else if (_metadata.DatabaseProvider == DatabaseProvider.PostgreSql)
+            else if (_context.DatabaseProvider == DatabaseProvider.PostgreSql)
             {
-                generator = new PgSqlGenerator() { YearOffset = _metadata.YearOffset };
+                generator = new PgSqlGenerator() { YearOffset = _context.YearOffset };
             }
             else
             {
-                throw new InvalidOperationException($"Unsupported database provider: {_metadata.DatabaseProvider}");
+                throw new InvalidOperationException($"Unsupported database provider: {_context.DatabaseProvider}");
             }
 
-            if (!generator.TryGenerate(in model, in _metadata, out _generator))
+            if (!generator.TryGenerate(in model, in _context, out _generator))
             {
                 throw new Exception(_generator.Error);
             }
@@ -118,7 +118,7 @@ namespace DaJet.Data.Client
                 }
                 else if (parameter.Value is bool boolean)
                 {
-                    if (_metadata.DatabaseProvider == DatabaseProvider.SqlServer)
+                    if (_context.DatabaseProvider == DatabaseProvider.SqlServer)
                     {
                         parameter.Value = new byte[] { Convert.ToByte(boolean) };
                         parameter.Size = 1;
@@ -133,7 +133,7 @@ namespace DaJet.Data.Client
                 }
                 else if (parameter.Value is DateTime dateTime)
                 {
-                    parameter.Value = dateTime.AddYears(_metadata.YearOffset);
+                    parameter.Value = dateTime.AddYears(_context.YearOffset);
                     parameter.DbType = DbType.DateTime2;
                 }
 

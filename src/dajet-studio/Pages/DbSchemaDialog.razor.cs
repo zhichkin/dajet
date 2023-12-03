@@ -12,7 +12,7 @@ namespace DaJet.Studio.Pages
         {
             MudDialog.Cancel();
         }
-        private void ScriptCommand()
+        private void ScriptFileCommand()
         {
             DbSchemaDialogResult result = new(Model, typeof(TreeNodeModel), false)
             {

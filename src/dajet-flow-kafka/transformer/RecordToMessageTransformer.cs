@@ -1,15 +1,15 @@
 ﻿using Confluent.Kafka;
+using DaJet.Data;
 using DaJet.Model;
 using Google.Protobuf;
 using Google.Protobuf.Reflection;
-using System.Data;
 using System.Reflection;
 using System.Text;
 
 namespace DaJet.Flow.Kafka
 {
     // https://protobuf.dev/getting-started/csharptutorial/
-    public sealed class RecordToMessageTransformer : TransformerBlock<IDataRecord, Message<byte[], byte[]>>
+    public sealed class RecordToMessageTransformer : TransformerBlock<DataObject, Message<byte[], byte[]>>
     {
         private const string HEADER_TOPIC = "topic";
         private const string CONTENT_TYPE_PROTOBUF = "protobuf";
@@ -64,7 +64,7 @@ namespace DaJet.Flow.Kafka
                 }
             }
         }
-        protected override void _Transform(in IDataRecord input, out Message<byte[], byte[]> output)
+        protected override void _Transform(in DataObject input, out Message<byte[], byte[]> output)
         {
             _output.Key = null;
             _output.Value = null;
@@ -75,7 +75,7 @@ namespace DaJet.Flow.Kafka
             object body = null;
             string topic = null;
 
-            for (int i = 0; i < input.FieldCount; i++)
+            for (int i = 0; i < input.Count(); i++)
             {
                 string name = input.GetName(i);
                 

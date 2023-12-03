@@ -41,7 +41,7 @@ namespace DaJet.Scripting
                         ConfigureDataMapper(in select, mapper);
                         if (mapper.Properties.Count > 0)
                         {
-                            result.Commands.Add(new ScriptCommand()
+                            result.Statements.Add(new ScriptStatement()
                             {
                                 Mapper = mapper
                             });
@@ -57,11 +57,11 @@ namespace DaJet.Scripting
 
                         if (mapper.Properties.Count > 0)
                         {
-                            ScriptCommand command = new()
+                            ScriptStatement command = new()
                             {
                                 Mapper = mapper
                             };
-                            result.Commands.Add(command);
+                            result.Statements.Add(command);
                         }
                     }
                     else if (node is DeleteStatement delete)
@@ -77,7 +77,7 @@ namespace DaJet.Scripting
                             ConfigureDataMapper(delete.Output, mapper);
                             if (mapper.Properties.Count > 0)
                             {
-                                result.Commands.Add(new ScriptCommand()
+                                result.Statements.Add(new ScriptStatement()
                                 {
                                     Mapper = mapper
                                 });
@@ -104,11 +104,11 @@ namespace DaJet.Scripting
 
             return result.Success;
         }
-        public bool TryGenerate(in ScriptModel model, in IMetadataProvider metadata, out List<ScriptCommand> commands, out string error)
+        public bool TryGenerate(in ScriptModel model, in IMetadataProvider metadata, out List<ScriptStatement> statements, out string error)
         {
             Metadata = metadata;
             error = string.Empty;
-            commands = new List<ScriptCommand>();
+            statements = new List<ScriptStatement>();
 
             try
             {
@@ -116,19 +116,19 @@ namespace DaJet.Scripting
                 {
                     if (node is SelectStatement select)
                     {
-                        commands.Add(GenerateScriptCommand(in select));
+                        statements.Add(GenerateScriptStatement(in select));
                     }
                     else if (node is ConsumeStatement consume)
                     {
-                        commands.Add(GenerateScriptCommand(in consume));
+                        statements.Add(GenerateScriptStatement(in consume));
                     }
                     else if (node is DeleteStatement delete)
                     {
-                        commands.Add(GenerateScriptCommand(in delete));
+                        statements.Add(GenerateScriptStatement(in delete));
                     }
                     else
                     {
-                        commands.Add(GenerateScriptCommand(in node));
+                        statements.Add(GenerateScriptStatement(in node));
                     }
                 }
             }
@@ -139,7 +139,7 @@ namespace DaJet.Scripting
 
             return string.IsNullOrEmpty(error);
         }
-        private ScriptCommand GenerateScriptCommand(in SyntaxNode node)
+        private ScriptStatement GenerateScriptStatement(in SyntaxNode node)
         {
             StringBuilder script = new();
             
@@ -147,18 +147,18 @@ namespace DaJet.Scripting
 
             EntityMapper mapper = new()
             {
+                Name = string.Empty,
                 YearOffset = Metadata.YearOffset
             };
 
-            return new ScriptCommand()
+            return new ScriptStatement()
             {
-                Name = string.Empty,
+                Node = node,
                 Mapper = mapper,
-                Script = script.ToString(),
-                Statement = node
+                Script = script.ToString()
             };
         }
-        private ScriptCommand GenerateScriptCommand(in SelectStatement select)
+        private ScriptStatement GenerateScriptStatement(in SelectStatement select)
         {
             StringBuilder script = new();
 
@@ -178,15 +178,16 @@ namespace DaJet.Scripting
 
             ScriptHelper.GetColumnIdentifiers(table.Identifier, out _, out string tableName);
 
-            return new ScriptCommand()
+            mapper.Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias);
+
+            return new ScriptStatement()
             {
+                Node = select,
                 Mapper = mapper,
-                Script = script.ToString(),
-                Statement = select,
-                Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias)
+                Script = script.ToString()
             };
         }
-        private ScriptCommand GenerateScriptCommand(in ConsumeStatement consume)
+        private ScriptStatement GenerateScriptStatement(in ConsumeStatement consume)
         {
             StringBuilder script = new();
 
@@ -206,15 +207,16 @@ namespace DaJet.Scripting
 
             ScriptHelper.GetColumnIdentifiers(table.Identifier, out _, out string tableName);
 
-            return new ScriptCommand()
+            mapper.Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias);
+
+            return new ScriptStatement()
             {
+                Node = consume,
                 Mapper = mapper,
-                Script = script.ToString(),
-                Statement = consume,
-                Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias)
+                Script = script.ToString()
             };
         }
-        private ScriptCommand GenerateScriptCommand(in DeleteStatement delete)
+        private ScriptStatement GenerateScriptStatement(in DeleteStatement delete)
         {
             StringBuilder script = new();
 
@@ -234,12 +236,13 @@ namespace DaJet.Scripting
 
             ScriptHelper.GetColumnIdentifiers(table.Identifier, out _, out string tableName);
 
-            return new ScriptCommand()
+            mapper.Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias);
+
+            return new ScriptStatement()
             {
+                Node = delete,
                 Mapper = mapper,
-                Script = script.ToString(),
-                Statement = delete,
-                Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias)
+                Script = script.ToString()
             };
         }
         private void ConfigureDataMapper(in SelectStatement statement, in EntityMapper mapper)

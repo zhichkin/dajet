@@ -1,24 +1,73 @@
-﻿namespace DaJet.Flow.Tutorial
+﻿using DaJet.Data;
+using DaJet.Data.Client;
+using DaJet.Metadata;
+using DaJet.Model;
+
+namespace DaJet.Flow.Tutorial
 {
-    public sealed class Starter : ISourceBlock, IOutputBlock<Message>
+    public sealed class Starter : ISourceBlock, IOutputBlock<DataObject>
     {
-        private IInputBlock<Message> _next;
-        public void LinkTo(in IInputBlock<Message> next)
+        private IInputBlock<DataObject> _next;
+        public void LinkTo(in IInputBlock<DataObject> next)
         {
             _next = next;
         }
         private readonly IPipeline _pipeline;
         private readonly StarterOptions _options;
-        public Starter(StarterOptions options, IPipeline pipeline)
+        private readonly IMetadataProvider _context;
+        public Starter(StarterOptions options, IPipeline pipeline, IDataSource dajet, IMetadataService metadata)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
+
+            if (dajet is null)
+            {
+                throw new ArgumentNullException(nameof(dajet));
+            }
+
+            if (metadata is null)
+            {
+                throw new ArgumentNullException(nameof(metadata));
+            }
+
+            InfoBaseRecord database = dajet.Select<InfoBaseRecord>(_options.Source)
+                ?? throw new InvalidOperationException($"Source database not found: {_options.Source}");
+            
+            if (!metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider context, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            _context = context;
         }
         public void Execute()
         {
-            _pipeline.UpdateMonitorStatus("Starter is executing...");
+            //List<Entity> orders = new();
 
-            Thread.Sleep(TimeSpan.FromSeconds(15));
+            using (OneDbConnection connection = new(_context))
+            {
+                connection.Open();
+
+                using (OneDbCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = $"SELECT Ссылка FROM {_options.Metadata}";
+
+                    using (OneDbDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            Entity entity = (Entity)reader[0];
+
+                            DataObject order = connection.GetDataObject(entity);
+
+                            _next?.Process(in order);
+
+                            //orders.Add(order);
+                        }
+                        reader.Close();
+                    }
+                }
+            }
         }
         public void Dispose()
         {

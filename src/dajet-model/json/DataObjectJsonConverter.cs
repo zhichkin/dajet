@@ -1,17 +1,16 @@
 ﻿using DaJet.Data;
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace DaJet.Json
 {
-    public sealed class DataRecordJsonConverter : JsonConverter<IDataRecord>
+    public sealed class DataObjectJsonConverter : JsonConverter<DataObject>
     {
-        public override IDataRecord Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override DataObject Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            DataRecord record = new();
+            DataObject record = new();
 
             string name = null;
             object value = null;
@@ -97,11 +96,11 @@ namespace DaJet.Json
                 }
                 else if (reader.TokenType == JsonTokenType.StartArray)
                 {
-                    IDataRecord item;
-                    List<IDataRecord> list = new();
+                    DataObject item;
+                    List<DataObject> list = new();
                     do
                     {
-                        item = Read(ref reader, typeof(IDataRecord), options);
+                        item = Read(ref reader, typeof(DataObject), options);
 
                         if (item is not null) { list.Add(item); }
                     }
@@ -134,14 +133,14 @@ namespace DaJet.Json
 
             return record;
         }
-        public override void Write(Utf8JsonWriter writer, IDataRecord record, JsonSerializerOptions options)
+        public override void Write(Utf8JsonWriter writer, DataObject record, JsonSerializerOptions options)
         {
             writer.WriteStartObject();
 
             string name;
             object value;
 
-            for (int i = 0; i < record.FieldCount; i++)
+            for (int i = 0; i < record.Count(); i++)
             {
                 name = record.GetName(i);
                 value = record.GetValue(i);
@@ -181,11 +180,11 @@ namespace DaJet.Json
                 else if (value is ushort uint2) { writer.WriteNumber(name, uint2); }
                 else if (value is uint uint4) { writer.WriteNumber(name, uint4); }
                 else if (value is ulong uint8) { writer.WriteNumber(name, uint8); }
-                else if (value is List<IDataRecord> list)
+                else if (value is List<DataObject> list)
                 {
                     writer.WritePropertyName(name);
                     writer.WriteStartArray();
-                    foreach (IDataRecord item in list)
+                    foreach (DataObject item in list)
                     {
                         Write(writer, item, options);
                     }

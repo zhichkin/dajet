@@ -3,7 +3,6 @@ using DaJet.Flow;
 using DaJet.Json;
 using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
-using System.Data;
 using System.Reflection;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -24,7 +23,7 @@ namespace DaJet.Http.Controllers
         };
         static DataController()
         {
-            JsonOptions.Converters.Add(new DataRecordJsonConverter());
+            JsonOptions.Converters.Add(new DataObjectJsonConverter());
             JsonOptions.Converters.Add(new DictionaryJsonConverter());
         }
         private readonly IDataSource _source;
@@ -134,7 +133,7 @@ namespace DaJet.Http.Controllers
 
             _ = parameters.Remove("Query");
 
-            List<IDataRecord> list = _source.Query(query, parameters);
+            List<DataObject> list = _source.Query(query, parameters);
 
             string json = JsonSerializer.Serialize(list, JsonOptions);
 

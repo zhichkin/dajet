@@ -8,7 +8,7 @@ using System.Data;
 
 namespace DaJet.Flow.SqlServer
 {
-    public sealed class OneDbConsumer : SourceBlock<IDataRecord>
+    public sealed class OneDbConsumer : SourceBlock<DataObject>
     {
         private int _state;
         private const int STATE_IS_IDLE = 0;
@@ -120,9 +120,13 @@ namespace DaJet.Flow.SqlServer
                     {
                         using (SqlDataReader reader = command.ExecuteReader())
                         {
+                            DataObject record = new(ScriptGenerator.Mapper.Properties.Count);
+
                             while (reader.Read())
                             {
-                                _next?.Process(new OneDbDataRecord(reader, ScriptGenerator.Mapper));
+                                ScriptGenerator.Mapper.Map(reader, in record);
+
+                                _next?.Process(in record);
 
                                 consumed++;
                                 processed++;

@@ -2,11 +2,11 @@
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
-    <RootNamespace>DaJet.Data.OneDbClient</RootNamespace>
+    <RootNamespace>DaJet.Data.Client</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
-    <AssemblyName>DaJet.Data.OneDbClient</AssemblyName>
-    <Version>1.1.1</Version>
+    <AssemblyName>DaJet.Data.Client</AssemblyName>
+    <Version>2.0.0</Version>
     <Authors>Zhichkin</Authors>
     <Description>ADO .NET data provider for 1C:Enterprise 8.
 Microsoft SQL Server and PostgreSQL databases are supported.</Description>

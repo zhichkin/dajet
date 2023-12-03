@@ -2,21 +2,20 @@
 using DaJet.Data;
 using DaJet.Model;
 using Google.Protobuf;
-using System.Data;
 using System.Reflection;
 using System.Text;
 
 namespace DaJet.Flow.Kafka
 {
     // https://protobuf.dev/getting-started/csharptutorial/
-    public sealed class MessageToRecordTransformer : TransformerBlock<ConsumeResult<byte[], byte[]>, IDataRecord>
+    public sealed class MessageToRecordTransformer : TransformerBlock<ConsumeResult<byte[], byte[]>, DataObject>
     {
         private const string CONTENT_TYPE_PROTOBUF = "protobuf";
 
         private object _parser = null;
         private MethodInfo _parseFrom = null;
         private readonly object[] _parameters = new object[1];
-        private readonly DataRecord _output = new();
+        private readonly DataObject _output = new(4);
         private readonly IAssemblyManager _manager;
         private readonly MessageToRecordTransformerOptions _options;
         public MessageToRecordTransformer(MessageToRecordTransformerOptions options, IAssemblyManager manager)
@@ -71,7 +70,7 @@ namespace DaJet.Flow.Kafka
                 throw new InvalidOperationException($"Method \"ParseFrom\" not found [{options.MessageType}]");
             }
         }
-        protected override void _Transform(in ConsumeResult<byte[], byte[]> input, out IDataRecord output)
+        protected override void _Transform(in ConsumeResult<byte[], byte[]> input, out DataObject output)
         {
             if (_options.ContentType != CONTENT_TYPE_PROTOBUF)
             {
