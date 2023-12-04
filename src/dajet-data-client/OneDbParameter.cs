@@ -13,6 +13,6 @@ namespace DaJet.Data.Client
         public override void ResetDbType() { DbType = DbType.Object; }
         public override DbType DbType { get; set; } = DbType.Object;
         public override string ParameterName { get; set; } = string.Empty;
-        public override object? Value { get; set; }
+        public override object Value { get; set; }
     }
 }

@@ -27,13 +27,13 @@ namespace DaJet.Flow.Tutorial
 
             if (string.IsNullOrWhiteSpace(_options.MessageType))
             {
-                message.SetValue("ТипСообщения", input.TypeName);
+                message.SetValue("ТипСообщения", input.GetName());
             }
             else
             {
                 message.SetValue("ТипСообщения", _options.MessageType);
             }
-            
+
             using (MemoryStream memory = new())
             {
                 using (Utf8JsonWriter writer = new(memory, JsonOptions))
@@ -47,8 +47,12 @@ namespace DaJet.Flow.Tutorial
                     message.SetValue("ТелоСообщения", json);
                 }
             }
-
+            
             output = message;
+
+            //NOTE: dynamic msg = message;
+            //NOTE: msg.ТипСообщения = "test dynamic";
+            //NOTE: msg.ТелоСообщения = msg.ТипСообщения;
         }
     }
 }

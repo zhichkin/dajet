@@ -1,6 +1,7 @@
 ﻿using DaJet.Metadata;
 using DaJet.Scripting;
-using DaJet.Scripting.Model;
+using Microsoft.Data.SqlClient;
+using Npgsql;
 using System.Data;
 using System.Data.Common;
 
@@ -8,17 +9,19 @@ namespace DaJet.Data.Client
 {
     public sealed class OneDbCommand : DbCommand
     {
-        private readonly OneDbParameterCollection _parameters = new();
-
+        private DbCommand _command;
+        private string _commandText;
         private IMetadataProvider _context;
-
-        private DbCommand? _command;
-        private DbConnection? _connection;
-        private DbTransaction? _transaction;
-        private GeneratorResult _generator;
-        public OneDbCommand(IMetadataProvider context)
+        public OneDbCommand(IMetadataProvider context, DbConnection connection)
         {
-            _context = context;
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+
+            if (connection is null)
+            {
+                throw new ArgumentNullException(nameof(connection));
+            }
+            
+            _command = connection.CreateCommand();
         }
         protected override void Dispose(bool disposing)
         {
@@ -26,211 +29,79 @@ namespace DaJet.Data.Client
             {
                 _command?.Dispose();
             }
-            _context = null!;
+            _command = null;
+            _context = null;
         }
         public override bool DesignTimeVisible { get; set; }
         public override UpdateRowSource UpdatedRowSource { get; set; } = UpdateRowSource.Both;
         public override CommandType CommandType { get; set; } = CommandType.Text;
         public override int CommandTimeout { get; set; } = 30;
-        public override string CommandText { get; set; }
-        protected override DbConnection? DbConnection
+        public override string CommandText { get { return _commandText; } set { _commandText = value; } }
+        protected override DbConnection DbConnection
         {
-            get { return _connection; }
-            set { _connection = value; }
+            get { return _command.Connection; }
+            set { _command.Connection = value; }
         }
-        protected override DbTransaction? DbTransaction
+        protected override DbTransaction DbTransaction
         {
-            get { return _transaction; }
-            set { _transaction = value; }
+            get { return _command.Transaction; }
+            set { _command.Transaction = value; }
         }
-        public new OneDbParameterCollection Parameters { get { return _parameters; } }
-        protected override DbParameterCollection DbParameterCollection { get { return Parameters; } }
-        protected override DbParameter CreateDbParameter() { return new OneDbParameter(); }
-        public override void Cancel()
-        {
-            _command?.Cancel();
-        }
-        public override void Prepare()
-        {
-            string error;
-            ScriptModel model;
-
-            using (ScriptParser parser = new())
-            {
-                if (!parser.TryParse(CommandText, out model, out error))
-                {
-                    throw new Exception(error);
-                }
-            }
-
-            ConfigureParameters(in model);
-
-            ScopeBuilder builder = new();
-
-            if (!builder.TryBuild(in model, out ScriptScope scope, out error))
-            {
-                throw new Exception(error);
-            }
-
-            MetadataBinder binder = new();
-
-            if (!binder.TryBind(in scope, in _context, out error))
-            {
-                throw new Exception(error);
-            }
-
-            ScriptTransformer transformer = new();
-
-            if (!transformer.TryTransform(model, out error))
-            {
-                throw new Exception(error);
-            }
-
-            ISqlGenerator generator;
-
-            if (_context.DatabaseProvider == DatabaseProvider.SqlServer)
-            {
-                generator = new MsSqlGenerator() { YearOffset = _context.YearOffset };
-            }
-            else if (_context.DatabaseProvider == DatabaseProvider.PostgreSql)
-            {
-                generator = new PgSqlGenerator() { YearOffset = _context.YearOffset };
-            }
-            else
-            {
-                throw new InvalidOperationException($"Unsupported database provider: {_context.DatabaseProvider}");
-            }
-
-            if (!generator.TryGenerate(in model, in _context, out _generator))
-            {
-                throw new Exception(_generator.Error);
-            }
-        }
-        private void ConfigureParameters(in ScriptModel model)
-        {
-            foreach (OneDbParameter parameter in Parameters)
-            {
-                if (parameter.Value is Guid uuid)
-                {
-                    parameter.Value = DbUtilities.GetSqlUuid(uuid);
-                    parameter.Size = 16;
-                    parameter.DbType = DbType.Binary;
-                }
-                else if (parameter.Value is bool boolean)
-                {
-                    if (_context.DatabaseProvider == DatabaseProvider.SqlServer)
-                    {
-                        parameter.Value = new byte[] { Convert.ToByte(boolean) };
-                        parameter.Size = 1;
-                        parameter.DbType = DbType.Binary;
-                    }
-                }
-                else if (parameter.Value is Entity entity)
-                {
-                    parameter.Value = DbUtilities.GetSqlUuid(entity.Identity);
-                    parameter.Size = 16;
-                    parameter.DbType = DbType.Binary;
-                }
-                else if (parameter.Value is DateTime dateTime)
-                {
-                    parameter.Value = dateTime.AddYears(_context.YearOffset);
-                    parameter.DbType = DbType.DateTime2;
-                }
-
-                if (DeclareStatementExists(in model, parameter.ParameterName))
-                {
-                    continue;
-                }
-
-                if (parameter.Value == null)
-                {
-                    continue; // TODO TokenType.NULL
-                }
-
-                Type parameterType = parameter.Value.GetType();
-
-                DeclareStatement declare = new()
-                {
-                    Name = "@" + parameter.ParameterName,
-                    Type = new TypeIdentifier() { Identifier = ScriptHelper.GetDataTypeLiteral(parameterType) },
-                    Initializer = new ScalarExpression()
-                    {
-                        Token = ScriptHelper.GetDataTypeToken(parameterType),
-                        Literal = parameter.Value.ToString()!
-                    }
-                };
-
-                model.Statements.Insert(0, declare);
-            }
-        }
-        private bool DeclareStatementExists(in ScriptModel model, string name)
-        {
-            foreach (SyntaxNode statement in model.Statements)
-            {
-                if (statement is not DeclareStatement declare)
-                {
-                    continue;
-                }
-
-                if (declare.Name.Substring(1) == name) // remove leading @ or &
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-        public override object? ExecuteScalar()
-        {
-            Prepare();
-
-            using (_command = Connection.CreateCommand())
-            {
-                _command.CommandText = _generator.Script;
-
-                foreach (OneDbParameter parameter in Parameters)
-                {
-                    DbParameter p = _command.CreateParameter();
-                    p.Value = parameter.Value;
-                    p.ParameterName = parameter.ParameterName;
-                    _ = _command.Parameters.Add(p);
-                }
-
-                using (DbDataReader reader = _command.ExecuteReader())
-                {
-                    if (reader.Read())
-                    {
-                        return _generator.Mapper.Properties[0].GetValue(reader);
-                    }
-                }
-            }
-
-            return null!;
-        }
+        protected override DbParameter CreateDbParameter() { return _command.CreateParameter(); }
+        protected override DbParameterCollection DbParameterCollection { get { return _command.Parameters; } }
+        public override void Cancel() { _command.Cancel(); }
+        public override void Prepare() { _command.Prepare(); }
+        public override int ExecuteNonQuery() { throw new NotImplementedException(); }
         public new OneDbDataReader ExecuteReader()
         {
             return ExecuteDbDataReader(CommandBehavior.Default);
         }
-        protected override OneDbDataReader ExecuteDbDataReader(CommandBehavior behavior)
+        public void AddParameter(string name, object value)
         {
-            Prepare();
-            
-            _command = Connection.CreateCommand();
-            _command.CommandText = _generator.Script;
-            
-            foreach (OneDbParameter parameter in Parameters)
+            if (_command is SqlCommand ms)
             {
-                DbParameter p = _command.CreateParameter();
-                p.Value = parameter.Value;
-                p.ParameterName = parameter.ParameterName;
-                _ = _command.Parameters.Add(p);
+                ms.Parameters.AddWithValue(name, value);
+            }
+            else if (_command is NpgsqlCommand pg)
+            {
+                pg.Parameters.AddWithValue(name, value);
+            }
+        }
+        public override object ExecuteScalar()
+        {
+            ScriptDetails details = GetScriptDetails();
+
+            using (DbDataReader reader = _command.ExecuteReader())
+            {
+                if (reader.Read())
+                {
+                    return details.Mappers[0].Properties[0].GetValue(reader);
+                }
+                reader.Close();
             }
 
-            DbDataReader reader = _command.ExecuteReader(behavior);
-            return new OneDbDataReader(in reader, in _generator);
+            return null;
         }
-        public override int ExecuteNonQuery()
+        protected override OneDbDataReader ExecuteDbDataReader(CommandBehavior behavior)
         {
-            throw new NotImplementedException();
+            ScriptDetails details = GetScriptDetails();
+
+            DbDataReader reader = _command.ExecuteReader(behavior);
+
+            return new OneDbDataReader(in reader, details.Mappers);
+        }
+        private ScriptDetails GetScriptDetails()
+        {
+            if (!ScriptProcessor.TryTranspile(in _context, in _commandText, out ScriptDetails result, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            _command.CommandText = result.SqlScript;
+
+            //TODO: parameters ???
+
+            return result;
         }
     }
 }

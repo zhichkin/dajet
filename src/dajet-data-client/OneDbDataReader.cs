@@ -1,5 +1,4 @@
-﻿using DaJet.Scripting;
-using System.Collections;
+﻿using System.Collections;
 using System.Data.Common;
 
 namespace DaJet.Data.Client
@@ -7,11 +6,20 @@ namespace DaJet.Data.Client
     public sealed class OneDbDataReader : DbDataReader
     {
         private readonly DbDataReader _reader;
-        private readonly GeneratorResult _generator;
-        internal OneDbDataReader(in DbDataReader reader, in GeneratorResult generator) : base()
+        private int _current = 0;
+        private readonly EntityMapper _mapper;
+        private readonly List<EntityMapper> _mappers;
+        internal OneDbDataReader(in DbDataReader reader, in List<EntityMapper> mappers) : base()
         {
-            _reader = reader;
-            _generator = generator;
+            _reader = reader ?? throw new ArgumentNullException(nameof(reader));
+            _mappers = mappers ?? throw new ArgumentNullException(nameof(mappers));
+
+            if (_mappers.Count == 0)
+            {
+                throw new InvalidOperationException("Entity mapper is not provided.");
+            }
+
+            _mapper = _mappers[_current]; //NOTE: current data reader mapper
         }
         public new void Close()
         {
@@ -32,9 +40,9 @@ namespace DaJet.Data.Client
             {
                 PropertyMapper property;
 
-                for (int ordinal = 0; ordinal < _generator.Mapper.Properties.Count; ordinal++)
+                for (int ordinal = 0; ordinal < _mapper.Properties.Count; ordinal++)
                 {
-                    property = _generator.Mapper.Properties[ordinal];
+                    property = _mapper.Properties[ordinal];
 
                     if (property.Name == name)
                     {
@@ -46,7 +54,7 @@ namespace DaJet.Data.Client
             }
         }
 
-        public override int FieldCount { get { return _generator.Mapper.Properties.Count; } }
+        public override int FieldCount { get { return _mapper.Properties.Count; } }
         public override int Depth { get { return _reader.Depth; } }
         public override bool HasRows { get { return _reader.HasRows; } }
         public override bool IsClosed { get { return _reader.IsClosed; } }
@@ -71,38 +79,38 @@ namespace DaJet.Data.Client
         }
         public override string GetName(int ordinal)
         {
-            return _generator.Mapper.Properties[ordinal].Name;
+            return _mapper.Properties[ordinal].Name;
         }
         public override object GetValue(int ordinal)
         {
-            return _generator.Mapper.Properties[ordinal].GetValue(_reader)!;
+            return _mapper.Properties[ordinal].GetValue(_reader)!;
         }
         public TEntity Map<TEntity>() where TEntity : class, new()
         {
-            return _generator.Mapper.Map<TEntity>(_reader);
+            return _mapper.Map<TEntity>(_reader);
         }
         public void Map<TEntity>(in TEntity entity) where TEntity : class, new()
         {
-            _generator.Mapper.Map(_reader, in entity);
+            _mapper.Map(_reader, in entity);
         }
 
         #region "FIELD METADATA"
 
         public override Type GetFieldType(int ordinal)
         {
-            return _generator.Mapper.Properties[ordinal].Type;
+            return _mapper.Properties[ordinal].Type;
         }
         public override string GetDataTypeName(int ordinal)
         {
-            return _generator.Mapper.Properties[ordinal].Type.Name;
+            return _mapper.Properties[ordinal].Type.Name;
         }
         public override int GetOrdinal(string name)
         {
             PropertyMapper property;
 
-            for (int ordinal = 0; ordinal < _generator.Mapper.Properties.Count; ordinal++)
+            for (int ordinal = 0; ordinal < _mapper.Properties.Count; ordinal++)
             {
-                property = _generator.Mapper.Properties[ordinal];
+                property = _mapper.Properties[ordinal];
 
                 if (property.Name == name)
                 {
@@ -129,7 +137,7 @@ namespace DaJet.Data.Client
         {
             throw new NotImplementedException();
         }
-        public override long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length)
+        public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
         {
             throw new NotImplementedException();
         }
@@ -137,7 +145,7 @@ namespace DaJet.Data.Client
         {
             throw new NotImplementedException();
         }
-        public override long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length)
+        public override long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)
         {
             throw new NotImplementedException();
         }

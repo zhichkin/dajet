@@ -3,11 +3,39 @@ using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 using System.Globalization;
+using System.Text;
 
 namespace DaJet.Scripting
 {
     public static class ScriptProcessor
     {
+        public static bool TryTranspile(in IMetadataProvider context, in string script, out ScriptDetails result, out string error)
+        {
+            result = null;
+
+            if (!TryTranspile(in context, in script, out ScriptModel model, out List<ScriptStatement> statements, out error))
+            {
+                return false;
+            }
+
+            try
+            {
+                ConfigureParameters(in context, in model, out Dictionary<string, object> parameters);
+
+                result = new ScriptDetails()
+                {
+                    Mappers = GetEntityMappers(in statements),
+                    SqlScript = AssembleSqlScript(in statements),
+                    Parameters = parameters
+                };
+            }
+            catch (Exception exception)
+            {
+                error = ExceptionHelper.GetErrorMessage(exception);
+            }
+
+            return result is not null;
+        }
         private static void ThrowImportStatementAreNotSupported(in ScriptModel model)
         {
             foreach (SyntaxNode node in model.Statements)
@@ -262,6 +290,48 @@ namespace DaJet.Scripting
                 }
             }
             return false;
+        }
+        public static string AssembleSqlScript(in List<ScriptStatement> statements)
+        {
+            if (statements is null)
+            {
+                return string.Empty;
+            }
+
+            StringBuilder script = new();
+
+            for (int i = 0; i < statements.Count; i++)
+            {
+                ScriptStatement statement = statements[i];
+
+                if (string.IsNullOrEmpty(statement.Script))
+                {
+                    continue; //NOTE: declaration of parameters
+                }
+
+                script.AppendLine(statement.Script);
+            }
+
+            return script.ToString();
+        }
+        public static List<EntityMapper> GetEntityMappers(in List<ScriptStatement> statements)
+        {
+            List<EntityMapper> mappers = new();
+
+            if (statements is null)
+            {
+                return mappers;
+            }
+
+            foreach (ScriptStatement command in statements)
+            {
+                if (command.Mapper.Properties.Count > 0)
+                {
+                    mappers.Add(command.Mapper);
+                }
+            }
+
+            return mappers;
         }
     }
 }

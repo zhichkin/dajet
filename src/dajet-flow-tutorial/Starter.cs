@@ -14,7 +14,7 @@ namespace DaJet.Flow.Tutorial
         }
         private readonly IPipeline _pipeline;
         private readonly StarterOptions _options;
-        private readonly IMetadataProvider _context;
+        private readonly IMetadataProvider _metadata;
         public Starter(StarterOptions options, IPipeline pipeline, IDataSource dajet, IMetadataService metadata)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -38,13 +38,13 @@ namespace DaJet.Flow.Tutorial
                 throw new InvalidOperationException(error);
             }
 
-            _context = context;
+            _metadata = context;
         }
         public void Execute()
         {
             //List<Entity> orders = new();
 
-            using (OneDbConnection connection = new(_context))
+            using (OneDbConnection connection = new(_metadata))
             {
                 connection.Open();
 

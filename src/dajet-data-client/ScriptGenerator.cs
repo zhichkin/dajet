@@ -2,7 +2,6 @@
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Scripting;
-using DaJet.Scripting.Model;
 using System.Text;
 
 namespace DaJet.Data.Client
@@ -25,24 +24,22 @@ namespace DaJet.Data.Client
                 throw new InvalidOperationException();
             }
 
-            string script = GenerateContractScript(in info);
+            string script = GenerateSelectEntityScript(in info);
 
             if (string.IsNullOrEmpty(script))
             {
                 throw new InvalidOperationException();
             }
 
-            if (!ScriptProcessor.TryTranspile(in context, in script, out ScriptModel model, out List<ScriptStatement> statements, out string error))
+            if (!ScriptProcessor.TryTranspile(in context, in script, out _, out List<ScriptStatement> statements, out string error))
             {
                 throw new Exception(error);
             }
 
-            //ScriptProcessor.ConfigureParameters(in context, in model, out Dictionary<string, object> parameters);
-
             return new ScriptDetails()
             {
-                Mappers = GetEntityMappers(in statements),
-                SqlScript = AssembleSqlScript(in statements),
+                Mappers = ScriptProcessor.GetEntityMappers(in statements),
+                SqlScript = ScriptProcessor.AssembleSqlScript(in statements),
                 Parameters = new Dictionary<string, object>()
                 {
                     { "Ссылка", entity.Identity.ToByteArray() }
@@ -50,20 +47,20 @@ namespace DaJet.Data.Client
             };
         }
 
-        internal static string GenerateContractScript(in MetadataObject info)
+        internal static string GenerateSelectEntityScript(in MetadataObject info)
         {
             if (info is Catalog catalog)
             {
-                return GenerateContractScript(in catalog);
+                return GenerateSelectEntityScript(in catalog);
             }
             else if (info is Document document)
             {
-                return GenerateContractScript(in document);
+                return GenerateSelectEntityScript(in document);
             }
             
             throw new NotSupportedException(info.GetType().ToString());
         }
-        internal static string GenerateContractScript(in Catalog catalog)
+        internal static string GenerateSelectEntityScript(in Catalog catalog)
         {
             int line = 0;
 
@@ -111,7 +108,7 @@ namespace DaJet.Data.Client
 
             return script.ToString();
         }
-        internal static string GenerateContractScript(in Document document)
+        internal static string GenerateSelectEntityScript(in Document document)
         {
             int line = 0;
 
@@ -159,7 +156,7 @@ namespace DaJet.Data.Client
 
             return script.ToString();
         }
-        internal static string GenerateContractScript(in ChangeTrackingTable table)
+        internal static string GenerateSelectEntityScript(in ChangeTrackingTable table)
         {
             if (table.Entity is not InformationRegister register) { return string.Empty; }
 
@@ -219,41 +216,6 @@ namespace DaJet.Data.Client
 
             return type;
         }
-
-        private static string AssembleSqlScript(in List<ScriptStatement> statements)
-        {
-            StringBuilder script = new();
-
-            for (int i = 0; i < statements.Count; i++)
-            {
-                ScriptStatement statement = statements[i];
-
-                if (string.IsNullOrEmpty(statement.Script))
-                {
-                    continue; //NOTE: declaration of parameters
-                }
-
-                script.AppendLine(statement.Script);
-            }
-
-            return script.ToString();
-        }
-        private static List<EntityMapper> GetEntityMappers(in List<ScriptStatement> statements)
-        {
-            List<EntityMapper> mappers = new();
-
-            foreach (ScriptStatement command in statements)
-            {
-                if (command.Mapper.Properties.Count > 0)
-                {
-                    mappers.Add(command.Mapper);
-                }
-            }
-
-            return mappers;
-        }
-
-
 
         internal static string GenerateProducerScript()
         {

@@ -1,4 +1,5 @@
 ﻿using DaJet.Metadata;
+using DaJet.Scripting;
 using Microsoft.Data.SqlClient;
 using Npgsql;
 using System.Data;
@@ -24,9 +25,6 @@ namespace DaJet.Data.Client
             _connectionString = _context.ConnectionString;
 
             _connection = CreateDbConnection();
-
-            //TODO: ib key generation algorithm !?
-            IB_KEY = _connection.Database;
         }
         public OneDbConnection(string connectionString)
         {
@@ -120,16 +118,16 @@ namespace DaJet.Data.Client
         {
             if (disposing)
             {
-                _connection.Dispose();
+                _connection?.Dispose();
             }
 
-            _context = null!;
+            _context = null;
         }
         protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
         {
             return _connection.BeginTransaction(isolationLevel);
         }
-        public override void EnlistTransaction(Transaction? transaction)
+        public override void EnlistTransaction(Transaction transaction)
         {
             _connection.EnlistTransaction(transaction);
         }
@@ -143,13 +141,13 @@ namespace DaJet.Data.Client
         }
         public new OneDbCommand CreateCommand()
         {
-            return new OneDbCommand(_context) { Connection = _connection };
+            return new OneDbCommand(_context, _connection);
         }
         #endregion
 
         public DataObject GetDataObject(Entity entity)
         {
-            DataObject root = null;
+            DataObject root = null; // reference object
 
             ScriptDetails details = ScriptGenerator.GenerateSelectEntityScript(in _context, entity);
 
@@ -164,58 +162,40 @@ namespace DaJet.Data.Client
                 {
                     command.CommandType = CommandType.Text;
                     command.CommandText = details.SqlScript;
+                    ConfigureParameters(in command, in details);
 
-                    if (command is SqlCommand ms)
-                    {
-                        foreach (var parameter in details.Parameters)
-                        {
-                            ms.Parameters.AddWithValue(parameter.Key, parameter.Value);
-                        }
-                    }
-                    else if (command is NpgsqlCommand pg)
-                    {
-                        foreach (var parameter in details.Parameters)
-                        {
-                            pg.Parameters.AddWithValue(parameter.Key, parameter.Value);
-                        }
-                    }
-
-                    int mapper = 0;
+                    int next = 0;
                     int capacity;
+                    EntityMapper mapper;
 
                     using (IDataReader reader = command.ExecuteReader())
                     {
-                        if (reader.Read())
+                        if (reader.Read()) // reference object main table
                         {
-                            capacity = details.Mappers[mapper].Properties.Count;
+                            mapper = details.Mappers[next];
+                            capacity = mapper.Properties.Count;
 
-                            root = new DataObject(capacity)
-                            {
-                                TypeCode = typeCode,
-                                TypeName = typeName
-                            };
+                            root = new DataObject(capacity);
+                            root.SetCodeAndName(typeCode, typeName);
                             
-                            details.Mappers[mapper].Map(in reader, in root);
+                            mapper.Map(in reader, in root);
                         }
 
-                        while (reader.NextResult())
+                        while (reader.NextResult()) // table parts of the reference object
                         {
-                            ++mapper;
-
-                            capacity = details.Mappers[mapper].Properties.Count;
+                            mapper = details.Mappers[++next];
+                            capacity = mapper.Properties.Count;
 
                             List<DataObject> table = new();
 
                             while (reader.Read())
                             {
                                 DataObject record = new(capacity);
-
-                                details.Mappers[mapper].Map(in reader, in record);
-                                
+                                mapper.Map(in reader, in record);
                                 table.Add(record);
                             }
 
-                            root.SetValue(details.Mappers[mapper].Name, table);
+                            root.SetValue(mapper.Name, table);
                         }
                         
                         reader.Close();
@@ -224,6 +204,23 @@ namespace DaJet.Data.Client
             }
 
             return root;
+        }
+        private void ConfigureParameters(in DbCommand command, in ScriptDetails details)
+        {
+            if (command is SqlCommand ms)
+            {
+                foreach (var parameter in details.Parameters)
+                {
+                    ms.Parameters.AddWithValue(parameter.Key, parameter.Value);
+                }
+            }
+            else if (command is NpgsqlCommand pg)
+            {
+                foreach (var parameter in details.Parameters)
+                {
+                    pg.Parameters.AddWithValue(parameter.Key, parameter.Value);
+                }
+            }
         }
     }
 }

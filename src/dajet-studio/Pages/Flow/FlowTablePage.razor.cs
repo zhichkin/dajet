@@ -94,6 +94,9 @@ namespace DaJet.Studio.Pages.Flow
 
             Guid identity = list[0].GetGuid(0);
 
+            //NOTE: dynamic data = list[0]; Guid identity = data.uuid;
+            //NOTE: IEnumerable<string> names = list[0].GetDynamicMemberNames();
+
             TreeNodeRecord record = await DataSource.SelectAsync<TreeNodeRecord>(identity);
 
             if (record is not null)
