@@ -46,7 +46,10 @@ namespace DaJet.Data
             {
                 property = Properties[i];
 
-                record.SetValue(property.Name, property.GetValue(in reader));
+                if (property is not null)
+                {
+                    record.SetValue(property.Name, property.GetValue(in reader));
+                }
             }
         }
         public Dictionary<string, object> Map(in IDataReader reader)
@@ -84,17 +87,19 @@ namespace DaJet.Data
 
             return entity;
         }
-        public void Map<TEntity>(in IDataReader reader, in TEntity entity) where TEntity : class, new()
+        public void Map<TEntity>(in IDataReader reader, in TEntity entity) where TEntity : class
         {
             object value;
+
             PropertyInfo property;
+            
             Type type = typeof(TEntity);
 
             foreach (PropertyMapper map in Properties)
             {
                 property = type.GetProperty(map.Name);
 
-                if (property == null)
+                if (property is null)
                 {
                     continue;
                 }

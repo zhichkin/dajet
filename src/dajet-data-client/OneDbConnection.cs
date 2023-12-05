@@ -12,11 +12,9 @@ namespace DaJet.Data.Client
     public sealed class OneDbConnection : DbConnection
     {
         private readonly DbConnection _connection;
-
-        private readonly string IB_KEY;
-        private DatabaseProvider _provider;
-        private IMetadataProvider _context;
         private readonly string _connectionString;
+        private readonly DatabaseProvider _provider;
+        private readonly IMetadataProvider _context;
         public OneDbConnection(IMetadataProvider context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
@@ -26,68 +24,18 @@ namespace DaJet.Data.Client
 
             _connection = CreateDbConnection();
         }
-        public OneDbConnection(string connectionString)
-        {
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                throw new ArgumentNullException(nameof(connectionString));
-            }
-
-            _connectionString = connectionString;
-
-            if (connectionString.StartsWith("Host"))
-            {
-                _provider = DatabaseProvider.PostgreSql;
-            }
-            else
-            {
-                _provider = DatabaseProvider.SqlServer;
-            }
-
-            _connection = CreateDbConnection();
-
-            //TODO: ib key generation algorithm !?
-            IB_KEY = _connection.Database;
-        }
         private DbConnection CreateDbConnection()
         {
             if (_provider == DatabaseProvider.SqlServer)
             {
                 return new SqlConnection(_connectionString);
             }
-            else if(_provider == DatabaseProvider.PostgreSql)
+            else if (_provider == DatabaseProvider.PostgreSql)
             {
                 return new NpgsqlConnection(_connectionString);
             }
 
             throw new InvalidOperationException($"Unsupported database provider: {_provider}");
-        }
-        private void InitializeMetadataCache()
-        {
-            if (_context is not null) { return; }
-
-            if (MetadataSingleton.Instance.TryGetMetadataCache(IB_KEY, out MetadataCache cache, out string error))
-            {
-                _context = cache; return;
-            }
-
-            InfoBaseOptions options = new()
-            {
-                Key = IB_KEY,
-                DatabaseProvider = _provider,
-                ConnectionString = _connectionString
-            };
-            
-            MetadataSingleton.Instance.Add(options);
-
-            if (MetadataSingleton.Instance.TryGetMetadataCache(IB_KEY, out cache, out error))
-            {
-                _context = cache;
-            }
-            else
-            {
-                throw new InvalidOperationException($"Metadata cache error: {error}");
-            }
         }
 
         #region "ABSTRACT BASE CLASS IMPLEMENTATION"
@@ -104,24 +52,14 @@ namespace DaJet.Data.Client
         {
             _connection.ChangeDatabase(databaseName);
         }
-        public override void Open()
-        {
-            _connection.Open();
-
-            InitializeMetadataCache();
-        }
-        public override void Close()
-        {
-            _connection.Close();
-        }
+        public override void Open() { _connection.Open(); }
+        public override void Close() { _connection.Close(); }
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                _connection?.Dispose();
+                _connection.Dispose();
             }
-
-            _context = null;
         }
         protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
         {

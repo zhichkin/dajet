@@ -3,156 +3,95 @@ using System.Data.Common;
 
 namespace DaJet.Data.Client
 {
-    public sealed class OneDbParameterCollection : DbParameterCollection, IList<OneDbParameter>
+    public sealed class OneDbParameterCollection : DbParameterCollection
     {
-        private readonly List<OneDbParameter> _parameters = new();
-        public override int Count { get { return _parameters.Count; } }
-        public override object SyncRoot { get { return ((ICollection)_parameters).SyncRoot; } }
+        private readonly DbParameterCollection _collection;
+        private readonly Dictionary<string, object> _parameters = new();
+        public OneDbParameterCollection(DbCommand command)
+        {
+            if (command is null)
+            {
+                throw new ArgumentNullException(nameof(command));
+            }
+
+            _collection = command.Parameters;
+        }
+        public override void Clear()
+        {
+            _collection.Clear();
+            _parameters.Clear();
+        }
         public override IEnumerator GetEnumerator() { return _parameters.GetEnumerator(); }
-        IEnumerator<OneDbParameter> IEnumerable<OneDbParameter>.GetEnumerator() { return _parameters.GetEnumerator(); }
-        public new OneDbParameter this[int index]
+        public override int Count { get { throw new NotImplementedException(); } }
+        public override object SyncRoot { get { return ((ICollection)_collection).SyncRoot; } }
+        public void Add(string name, object value)
         {
-            get { return _parameters[index]; }
-            set { _parameters[index] = value; }
+
         }
-        public new OneDbParameter this[string parameterName]
+        public void SetValue(string name, object value)
         {
-            get
-            {
-                if (string.IsNullOrWhiteSpace(parameterName))
-                {
-                    throw new ArgumentNullException(nameof(parameterName));
-                }
 
-                OneDbParameter parameter;
-
-                for (int index = 0; index < _parameters.Count; index++)
-                {
-                    parameter = _parameters[index];
-
-                    if (parameter.ParameterName == parameterName)
-                    {
-                        return parameter;
-                    }
-                }
-
-                throw new ArgumentOutOfRangeException(parameterName);
-            }
-            set
-            {
-                throw new NotImplementedException();
-            }
         }
-        public override void Clear() { _parameters.Clear(); }
-        public void AddWithValue(string parameterName, object value)
+        public object GetValue(string name)
         {
-            _parameters.Add(new OneDbParameter()
-            {
-                Value = value,
-                ParameterName = parameterName
-            });
+            return null;
         }
-
         public override int Add(object value)
         {
             throw new NotImplementedException();
         }
-
-        public void Add(OneDbParameter item)
-        {
-            throw new NotImplementedException();
-        }
-        
-        public override void Remove(object value)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool Remove(OneDbParameter item)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void RemoveAt(int index)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void RemoveAt(string parameterName)
-        {
-            throw new NotImplementedException();
-        }
-
         public override void AddRange(Array values)
         {
             throw new NotImplementedException();
         }
-
         public override bool Contains(object value)
         {
             throw new NotImplementedException();
         }
-
         public override bool Contains(string value)
         {
             throw new NotImplementedException();
         }
-
-        public bool Contains(OneDbParameter item)
-        {
-            throw new NotImplementedException();
-        }
-
         public override void CopyTo(Array array, int index)
         {
             throw new NotImplementedException();
         }
-
-        public void CopyTo(OneDbParameter[] array, int arrayIndex)
-        {
-            throw new NotImplementedException();
-        }
-
         public override int IndexOf(object value)
         {
             throw new NotImplementedException();
         }
-
         public override int IndexOf(string parameterName)
         {
             throw new NotImplementedException();
         }
-
-        public int IndexOf(OneDbParameter item)
-        {
-            throw new NotImplementedException();
-        }
-
         public override void Insert(int index, object value)
         {
             throw new NotImplementedException();
         }
-
-        public void Insert(int index, OneDbParameter item)
+        public override void Remove(object value)
         {
             throw new NotImplementedException();
         }
-
+        public override void RemoveAt(int index)
+        {
+            throw new NotImplementedException();
+        }
+        public override void RemoveAt(string parameterName)
+        {
+            throw new NotImplementedException();
+        }
         protected override DbParameter GetParameter(int index)
         {
             throw new NotImplementedException();
         }
-
         protected override DbParameter GetParameter(string parameterName)
         {
             throw new NotImplementedException();
         }
-
         protected override void SetParameter(int index, DbParameter value)
         {
             throw new NotImplementedException();
         }
-
         protected override void SetParameter(string parameterName, DbParameter value)
         {
             throw new NotImplementedException();

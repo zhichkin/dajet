@@ -1,7 +1,5 @@
 ﻿using DaJet.Metadata;
 using DaJet.Scripting;
-using Microsoft.Data.SqlClient;
-using Npgsql;
 using System.Data;
 using System.Data.Common;
 
@@ -9,9 +7,11 @@ namespace DaJet.Data.Client
 {
     public sealed class OneDbCommand : DbCommand
     {
-        private DbCommand _command;
+        private IDataReader _reader; //TODO: command.NextResult() !!!
+        private readonly DbCommand _command;
+        private readonly OneDbParameterCollection _parameters;
+        private readonly IMetadataProvider _context;
         private string _commandText;
-        private IMetadataProvider _context;
         public OneDbCommand(IMetadataProvider context, DbConnection connection)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
@@ -22,15 +22,16 @@ namespace DaJet.Data.Client
             }
             
             _command = connection.CreateCommand();
+            _parameters = new OneDbParameterCollection(_command);
         }
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                _command?.Dispose();
+                _reader?.Close();
+                _reader?.Dispose();
+                _command.Dispose();
             }
-            _command = null;
-            _context = null;
         }
         public override bool DesignTimeVisible { get; set; }
         public override UpdateRowSource UpdatedRowSource { get; set; } = UpdateRowSource.Both;
@@ -47,29 +48,33 @@ namespace DaJet.Data.Client
             get { return _command.Transaction; }
             set { _command.Transaction = value; }
         }
-        protected override DbParameter CreateDbParameter() { return _command.CreateParameter(); }
-        protected override DbParameterCollection DbParameterCollection { get { return _command.Parameters; } }
+        public new OneDbParameterCollection Parameters { get { return DbParameterCollection; } }
+        protected override DbParameter CreateDbParameter() { throw new NotImplementedException(); }
+        protected override OneDbParameterCollection DbParameterCollection { get { return _parameters; } }
         public override void Cancel() { _command.Cancel(); }
         public override void Prepare() { _command.Prepare(); }
         public override int ExecuteNonQuery() { throw new NotImplementedException(); }
-        public new OneDbDataReader ExecuteReader()
+        private ScriptDetails ConfigureCommand()
         {
-            return ExecuteDbDataReader(CommandBehavior.Default);
-        }
-        public void AddParameter(string name, object value)
-        {
-            if (_command is SqlCommand ms)
+            if (!ScriptProcessor.TryTranspile(in _context, in _commandText, out ScriptDetails result, out string error))
             {
-                ms.Parameters.AddWithValue(name, value);
+                throw new InvalidOperationException(error);
             }
-            else if (_command is NpgsqlCommand pg)
+
+            _command.CommandText = result.SqlScript;
+
+            _parameters.Clear();
+
+            foreach (var parameter in result.Parameters)
             {
-                pg.Parameters.AddWithValue(name, value);
+                _parameters.Add(parameter.Key, parameter.Value);
             }
+
+            return result;
         }
         public override object ExecuteScalar()
         {
-            ScriptDetails details = GetScriptDetails();
+            ScriptDetails details = ConfigureCommand();
 
             using (DbDataReader reader = _command.ExecuteReader())
             {
@@ -82,26 +87,55 @@ namespace DaJet.Data.Client
 
             return null;
         }
+        public new OneDbDataReader ExecuteReader()
+        {
+            return ExecuteDbDataReader(CommandBehavior.Default);
+        }
         protected override OneDbDataReader ExecuteDbDataReader(CommandBehavior behavior)
         {
-            ScriptDetails details = GetScriptDetails();
+            ScriptDetails details = ConfigureCommand();
 
             DbDataReader reader = _command.ExecuteReader(behavior);
 
             return new OneDbDataReader(in reader, details.Mappers);
         }
-        private ScriptDetails GetScriptDetails()
+        public IEnumerable<DataObject> Stream()
         {
-            if (!ScriptProcessor.TryTranspile(in _context, in _commandText, out ScriptDetails result, out string error))
+            ScriptDetails details = ConfigureCommand();
+
+            EntityMapper mapper = details.Mappers[0];
+
+            DataObject record = new(); // memory buffer
+
+            using (IDataReader reader = _command.ExecuteReader())
             {
-                throw new InvalidOperationException(error);
+                while (reader.Read())
+                {
+                    mapper.Map(in reader, in record);
+
+                    yield return record;
+                }
+                reader.Close();
             }
+        }
+        public IEnumerable<T> Stream<T>() where T : class, new()
+        {
+            ScriptDetails details = ConfigureCommand();
 
-            _command.CommandText = result.SqlScript;
+            EntityMapper mapper = details.Mappers[0];
 
-            //TODO: parameters ???
+            T record = new(); // memory buffer
 
-            return result;
+            using (IDataReader reader = _command.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    mapper.Map(in reader, in record);
+
+                    yield return record;
+                }
+                reader.Close();
+            }
         }
     }
 }

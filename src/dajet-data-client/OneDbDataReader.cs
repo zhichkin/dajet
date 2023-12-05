@@ -5,9 +5,9 @@ namespace DaJet.Data.Client
 {
     public sealed class OneDbDataReader : DbDataReader
     {
-        private readonly DbDataReader _reader;
         private int _current = 0;
-        private readonly EntityMapper _mapper;
+        private EntityMapper _mapper;
+        private readonly DbDataReader _reader;
         private readonly List<EntityMapper> _mappers;
         internal OneDbDataReader(in DbDataReader reader, in List<EntityMapper> mappers) : base()
         {
@@ -21,10 +21,7 @@ namespace DaJet.Data.Client
 
             _mapper = _mappers[_current]; //NOTE: current data reader mapper
         }
-        public new void Close()
-        {
-            _reader.Close();
-        }
+        public new void Close() { _reader.Close(); }
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -66,7 +63,14 @@ namespace DaJet.Data.Client
         }
         public override bool NextResult()
         {
-            return _reader.NextResult();
+            bool moveNext = _reader.NextResult();
+
+            if (moveNext)
+            {
+                _mapper = _mappers[++_current];
+            }
+
+            return moveNext;
         }
         public override IEnumerator GetEnumerator()
         {
@@ -83,13 +87,13 @@ namespace DaJet.Data.Client
         }
         public override object GetValue(int ordinal)
         {
-            return _mapper.Properties[ordinal].GetValue(_reader)!;
+            return _mapper.Properties[ordinal].GetValue(_reader);
         }
-        public TEntity Map<TEntity>() where TEntity : class, new()
+        public void Map(in DataObject record)
         {
-            return _mapper.Map<TEntity>(_reader);
+            _mapper.Map(_reader, in record);
         }
-        public void Map<TEntity>(in TEntity entity) where TEntity : class, new()
+        public void Map<TEntity>(in TEntity entity) where TEntity : class
         {
             _mapper.Map(_reader, in entity);
         }
@@ -124,7 +128,6 @@ namespace DaJet.Data.Client
         #endregion
 
         #region "VALUE GETTERS"
-
         public override int GetValues(object[] values)
         {
             throw new NotImplementedException();
@@ -185,7 +188,6 @@ namespace DaJet.Data.Client
         {
             throw new NotImplementedException();
         }
-
         #endregion
     }
 }

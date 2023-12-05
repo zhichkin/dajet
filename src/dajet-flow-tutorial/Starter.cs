@@ -20,15 +20,8 @@ namespace DaJet.Flow.Tutorial
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
 
-            if (dajet is null)
-            {
-                throw new ArgumentNullException(nameof(dajet));
-            }
-
-            if (metadata is null)
-            {
-                throw new ArgumentNullException(nameof(metadata));
-            }
+            if (dajet is null) { throw new ArgumentNullException(nameof(dajet)); }
+            if (metadata is null) { throw new ArgumentNullException(nameof(metadata)); }
 
             InfoBaseRecord database = dajet.Select<InfoBaseRecord>(_options.Source)
                 ?? throw new InvalidOperationException($"Source database not found: {_options.Source}");
@@ -42,8 +35,6 @@ namespace DaJet.Flow.Tutorial
         }
         public void Execute()
         {
-            //List<Entity> orders = new();
-
             using (OneDbConnection connection = new(_metadata))
             {
                 connection.Open();
@@ -52,19 +43,20 @@ namespace DaJet.Flow.Tutorial
                 {
                     command.CommandText = $"SELECT Ссылка FROM {_options.Metadata}";
 
-                    using (OneDbDataReader reader = command.ExecuteReader())
+                    foreach (DataObject record in command.Stream())
                     {
-                        while (reader.Read())
-                        {
-                            Entity entity = (Entity)reader[0];
+                        Entity entity = (Entity)record.GetValue(0);
+                        
+                        DataObject order = connection.GetDataObject(entity);
+                        
+                        _next?.Process(in order);
+                    }
 
-                            DataObject order = connection.GetDataObject(entity);
+                    foreach (dynamic record in command.Stream())
+                    {
+                        DataObject order = connection.GetDataObject(record.Ссылка);
 
-                            _next?.Process(in order);
-
-                            //orders.Add(order);
-                        }
-                        reader.Close();
+                        _next?.Process(in order);
                     }
                 }
             }
