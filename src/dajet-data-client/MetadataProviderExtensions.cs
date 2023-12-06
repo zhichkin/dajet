@@ -26,22 +26,31 @@ namespace DaJet.Data.Client
                     {
                         if (reader.Read()) // reference object main table
                         {
-                            root = new DataObject(reader.FieldCount); //THINK: capacity + table parts count 
+                            root = new DataObject(reader.FieldCount); //FIXME: capacity + table parts count
+
                             root.SetCodeAndName(typeCode, typeName);
+                            
                             reader.Map(in root);
+
+                            //root.Remove("ВерсияДанных");
                         }
 
                         while (reader.NextResult()) // table parts of the reference object
                         {
                             List<DataObject> table = new();
+                            
                             while (reader.Read())
                             {
                                 DataObject record = new(reader.FieldCount);
+                                
                                 reader.Map(in record);
+                                
                                 table.Add(record);
                             }
-                            root.SetValue(reader.Mapper.Name, table); //NOTE: this increments capacity of the root
+
+                            root.SetValue(reader.Mapper.Name, table); //FIXME: this increments capacity of the root
                         }
+
                         reader.Close();
                     }
                 }

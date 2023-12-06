@@ -145,7 +145,7 @@ namespace DaJet.Json
                 name = record.GetName(i);
                 value = record.GetValue(i);
 
-                if (record.IsDBNull(i) || value is null)
+                if (value is null)
                 {
                     writer.WriteNull(name);
                 }

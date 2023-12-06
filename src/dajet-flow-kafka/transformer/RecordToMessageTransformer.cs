@@ -81,22 +81,19 @@ namespace DaJet.Flow.Kafka
                 
                 if (name == "КлючСообщения")
                 {
-                    if (!input.IsDBNull(i))
-                    {
-                        key = input.GetValue(i);
-                    }
+                    key = input.GetValue(i);
                 }
                 else if (name == "ТипСообщения")
                 {
-                    type = input.GetString(i);
+                    type = input.GetValue(i) as string;
                 }
                 else if (name == "ТелоСообщения")
                 {
-                    body = input.GetString(i);
+                    body = input.GetValue(i) as string;
                 }
                 else if (name == "Получатель")
                 {
-                    topic = input.GetString(i);
+                    topic = input.GetValue(i) as string;
                 }
             }
 

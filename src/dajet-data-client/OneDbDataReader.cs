@@ -22,14 +22,8 @@ namespace DaJet.Data.Client
             _mapper = _mappers[_current]; //NOTE: current data reader mapper
         }
         public EntityMapper Mapper { get { return _mapper; } }
-        public new void Close() { _reader.Close(); }
-        protected override void Dispose(bool disposing) { if (disposing) { _reader.Dispose(); } }
-        public override object this[int ordinal] { get { return GetValue(ordinal); } }
-        public override object this[string name] { get { return this[GetOrdinal(name)]; } }
-        public override int Depth { get { return _reader.Depth; } }
-        public override bool HasRows { get { return _reader.HasRows; } }
-        public override bool IsClosed { get { return _reader.IsClosed; } }
-        public override int RecordsAffected { get { return _reader.RecordsAffected; } }
+
+        #region "DbDataReader IMPLEMENTATION"
         public override bool Read() { return _reader.Read(); }
         public override bool NextResult()
         {
@@ -42,11 +36,18 @@ namespace DaJet.Data.Client
 
             return moveNext;
         }
+        public override void Close() { _reader.Close(); }
+        protected override void Dispose(bool disposing) { if (disposing) { _reader.Dispose(); } }
+        public override object this[int ordinal] { get { return GetValue(ordinal); } }
+        public override object this[string name] { get { return this[GetOrdinal(name)]; } }
+        public override int Depth { get { return _reader.Depth; } }
+        public override bool HasRows { get { return _reader.HasRows; } }
+        public override bool IsClosed { get { return _reader.IsClosed; } }
+        public override int RecordsAffected { get { return _reader.RecordsAffected; } }
         public override int FieldCount { get { return _mapper.Properties.Count; } }
-        public override bool IsDBNull(int ordinal)
-        {
-            return GetValue(ordinal) is null;
-        }
+        public override bool IsDBNull(int ordinal) { return GetValue(ordinal) is null; }
+        public override string GetName(int ordinal) { return _mapper.Properties[ordinal].Name; }
+        public override object GetValue(int ordinal) { return _mapper.Properties[ordinal].GetValue(_reader); }
         public override int GetOrdinal(string name)
         {
             PropertyMapper property;
@@ -63,36 +64,25 @@ namespace DaJet.Data.Client
 
             throw new IndexOutOfRangeException(name);
         }
-        public override string GetName(int ordinal)
-        {
-            return _mapper.Properties[ordinal].Name;
-        }
-        public override object GetValue(int ordinal)
-        {
-            return _mapper.Properties[ordinal].GetValue(_reader);
-        }
-        
-        #region "FIELD METADATA"
-        public override Type GetFieldType(int ordinal)
-        {
-            return _mapper.Properties[ordinal].Type;
-        }
-        public override string GetDataTypeName(int ordinal)
-        {
-            return _mapper.Properties[ordinal].Type.Name;
-        }
         #endregion
 
-        #region "VALUE GETTERS - NOT IMPLEMENTED"
+        #region "FIELD METADATA"
+        public override Type GetFieldType(int ordinal) { return _mapper.Properties[ordinal].Type; }
+        public override string GetDataTypeName(int ordinal) { return _mapper.Properties[ordinal].Type.Name; }
+        #endregion
+
+        #region "TYPED VALUE GETTERS"
+        public override bool GetBoolean(int ordinal) { return (bool)GetValue(ordinal); }
+        public override decimal GetDecimal(int ordinal) { return (decimal)GetValue(ordinal); }
+        public override DateTime GetDateTime(int ordinal) { return (DateTime)GetValue(ordinal); }
+        public override string GetString(int ordinal) { return (string)GetValue(ordinal); }
+        public byte[] GetBinary(int ordinal) { return (byte[])GetValue(ordinal); }
+        public override Guid GetGuid(int ordinal) { return (Guid)GetValue(ordinal); }
+        public Entity GetEntity(int ordinal) { return (Entity)GetValue(ordinal); }
+        #endregion
+
+        #region "NOT IMPLEMENTED"
         public override IEnumerator GetEnumerator()
-        {
-            throw new NotImplementedException();
-        }
-        public override int GetValues(object[] values)
-        {
-            throw new NotImplementedException();
-        }
-        public override bool GetBoolean(int ordinal)
         {
             throw new NotImplementedException();
         }
@@ -112,14 +102,8 @@ namespace DaJet.Data.Client
         {
             throw new NotImplementedException();
         }
-        public override DateTime GetDateTime(int ordinal)
-        {
-            throw new NotImplementedException();
-        }
-        public override decimal GetDecimal(int ordinal)
-        {
-            throw new NotImplementedException();
-        }
+        
+        
         public override double GetDouble(int ordinal)
         {
             throw new NotImplementedException();
@@ -128,10 +112,7 @@ namespace DaJet.Data.Client
         {
             throw new NotImplementedException();
         }
-        public override Guid GetGuid(int ordinal)
-        {
-            throw new NotImplementedException();
-        }
+        
         public override short GetInt16(int ordinal)
         {
             throw new NotImplementedException();
@@ -144,7 +125,8 @@ namespace DaJet.Data.Client
         {
             throw new NotImplementedException();
         }
-        public override string GetString(int ordinal)
+        
+        public override int GetValues(object[] values)
         {
             throw new NotImplementedException();
         }

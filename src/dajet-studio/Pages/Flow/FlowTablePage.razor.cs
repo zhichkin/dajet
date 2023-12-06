@@ -92,7 +92,7 @@ namespace DaJet.Studio.Pages.Flow
 
             if (list is null || list.Count == 0) { return; }
 
-            Guid identity = list[0].GetGuid(0);
+            Guid identity = (Guid)list[0].GetValue(0);
 
             //NOTE: dynamic data = list[0]; Guid identity = data.uuid;
             //NOTE: IEnumerable<string> names = list[0].GetDynamicMemberNames();

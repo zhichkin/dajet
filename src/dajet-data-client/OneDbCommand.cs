@@ -9,12 +9,12 @@ namespace DaJet.Data.Client
 {
     public sealed class OneDbCommand : DbCommand
     {
-        private DbDataReader _reader;
         private readonly DbCommand _command;
         private readonly IMetadataProvider _context;
         private string _script;
         private readonly Dictionary<string, object> _parameters = new();
-        public OneDbCommand(IMetadataProvider context, DbConnection connection)
+        private readonly Func<string, object, DbParameter> AddWithValueDelegate;
+        internal OneDbCommand(IMetadataProvider context, DbConnection connection)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
 
@@ -25,14 +25,19 @@ namespace DaJet.Data.Client
             
             _command = connection.CreateCommand();
             _command.CommandType = CommandType.Text;
-        }
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
+
+            if (_command is SqlCommand ms)
             {
-                _command.Dispose();
+                AddWithValueDelegate = ms.Parameters.AddWithValue;
+            }
+            else if (_command is NpgsqlCommand pg)
+            {
+                AddWithValueDelegate = pg.Parameters.AddWithValue;
             }
         }
+        protected override void Dispose(bool disposing) { if (disposing) { _command.Dispose(); } }
+
+        #region "DbCommand IMPLEMENTATION"
         public override bool DesignTimeVisible { get; set; }
         public override UpdateRowSource UpdatedRowSource { get; set; } = UpdateRowSource.Both;
         public override CommandType CommandType { get; set; } = CommandType.Text;
@@ -53,20 +58,19 @@ namespace DaJet.Data.Client
         protected override DbParameter CreateDbParameter() { throw new NotImplementedException(); }
         public override void Cancel() { _command.Cancel(); }
         public override void Prepare() { throw new NotImplementedException(); }
+        #endregion
+
         public override int ExecuteNonQuery() { throw new NotImplementedException(); }
         public override object ExecuteScalar()
         {
-            ScriptDetails details = ConfigureCommand();
-
-            using (DbDataReader reader = _command.ExecuteReader())
+            using (OneDbDataReader reader = ExecuteReader())
             {
                 if (reader.Read())
                 {
-                    return details.Mappers[0].Properties[0].GetValue(reader);
+                    return reader.GetValue(0);
                 }
                 reader.Close();
             }
-
             return null;
         }
         public new OneDbDataReader ExecuteReader()
@@ -77,46 +81,26 @@ namespace DaJet.Data.Client
         {
             ScriptDetails details = ConfigureCommand();
 
-            _reader = _command.ExecuteReader(behavior);
+            DbDataReader reader = _command.ExecuteReader(behavior);
 
-            return new OneDbDataReader(_reader, details.Mappers);
-        }
-        public IEnumerable<T> StreamReader<T>() where T : class, new()
-        {
-            ScriptDetails details = ConfigureCommand();
-
-            EntityMapper mapper = details.Mappers[0];
-
-            using (IDataReader reader = _command.ExecuteReader())
-            {
-                T record = new(); // memory buffer
-
-                while (reader.Read())
-                {
-                    mapper.Map(in reader, in record);
-
-                    yield return record;
-                }
-
-                reader.Close();
-            }
+            return new OneDbDataReader(in reader, details.Mappers);
         }
         public IEnumerable<DataObject> StreamReader()
         {
-            ScriptDetails details = ConfigureCommand();
-
-            EntityMapper mapper = details.Mappers[0];
-
-            using (IDataReader reader = _command.ExecuteReader())
+            using (OneDbDataReader reader = ExecuteReader())
             {
-                DataObject record = new(mapper.Properties.Count); // memory buffer
-
-                while (reader.Read())
+                do
                 {
-                    mapper.Map(in reader, in record);
+                    DataObject record = new(reader.FieldCount); // memory buffer
 
-                    yield return record;
+                    while (reader.Read())
+                    {
+                        reader.Map(in record);
+
+                        yield return record;
+                    }
                 }
+                while (reader.NextResult());
 
                 reader.Close();
             }
@@ -125,6 +109,8 @@ namespace DaJet.Data.Client
         {
             // pass user-provided parameters to the transpiler
             // to override corresponding script-defined values
+
+            //TODO: !!! (OneDbCommand) cache transpilation results of the command
 
             if (!ScriptProcessor.TryTranspile(in _context, in _script, in _parameters, out ScriptDetails result, out string error))
             {
@@ -135,19 +121,9 @@ namespace DaJet.Data.Client
 
             _command.Parameters.Clear();
 
-            if (_command is SqlCommand ms)
+            foreach (var parameter in result.Parameters)
             {
-                foreach (var parameter in result.Parameters)
-                {
-                    ms.Parameters.AddWithValue(parameter.Key, parameter.Value);
-                }
-            }
-            else if (_command is NpgsqlCommand pg)
-            {
-                foreach (var parameter in result.Parameters)
-                {
-                    pg.Parameters.AddWithValue(parameter.Key, parameter.Value);
-                }
+                _ = AddWithValueDelegate(parameter.Key, parameter.Value);
             }
 
             return result;

@@ -76,11 +76,13 @@ namespace DaJet.Flow.Tutorial
                         {
                             while (reader.Read())
                             {
-                                DataObject record = new(reader.FieldCount); // memory buffer
+                                //DataObject record = new(reader.FieldCount); // memory buffer
 
-                                reader.Map(in record);
+                                //reader.Map(in record);
 
-                                Entity entity = record.GetEntity(0);
+                                //Entity entity = (Entity)record.GetValue(0);
+
+                                Entity entity = (Entity)reader.GetValue(0);
 
                                 DataObject order = _metadata.GetDataObject(entity);
 

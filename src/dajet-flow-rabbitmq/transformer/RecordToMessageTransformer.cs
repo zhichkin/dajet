@@ -16,13 +16,7 @@ namespace DaJet.Flow.RabbitMQ
             {
                 property = typeof(Message).GetProperty(input.GetName(i));
 
-                if (property is null) { continue; }
-
-                if (input.IsDBNull(i))
-                {
-                    property.SetValue(_message, null);
-                }
-                else
+                if (property is not null)
                 {
                     property.SetValue(_message, input.GetValue(i));
                 }

@@ -36,6 +36,7 @@ namespace DaJet.Data.Client
 
             throw new InvalidOperationException($"Unsupported database provider: {_provider}");
         }
+        public new OneDbCommand CreateCommand() { return new OneDbCommand(_context, _connection); }
 
         #region "ABSTRACT BASE CLASS IMPLEMENTATION"
         public override string ConnectionString
@@ -53,13 +54,7 @@ namespace DaJet.Data.Client
         }
         public override void Open() { _connection.Open(); }
         public override void Close() { _connection.Close(); }
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                _connection.Dispose();
-            }
-        }
+        protected override void Dispose(bool disposing) { if (disposing) { _connection.Dispose(); } }
         protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
         {
             return _connection.BeginTransaction(isolationLevel);
@@ -73,7 +68,6 @@ namespace DaJet.Data.Client
         //    return base.GetSchema();
         //}
         protected override DbCommand CreateDbCommand() { return CreateCommand(); }
-        public new OneDbCommand CreateCommand() { return new OneDbCommand(_context, _connection); }
         #endregion
     }
 }

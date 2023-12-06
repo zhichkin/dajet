@@ -58,8 +58,6 @@ namespace DaJet.Data
             return (column is not null);
         }
         public override string ToString() { return $"{Name} {DataType}"; }
-        
-        #region "GET VALUE FROM DATA READER"
 
         public object GetValue(in IDataReader reader)
         {
@@ -192,6 +190,10 @@ namespace DaJet.Data
 
             throw new InvalidOperationException($"Invalid union tag value: [{tag}]");
         }
+
+        //TODO: !!! (PropertyMapper) implement IsDbNull property + public non-nullable typed value getters
+
+        #region "TYPED VALUE GETTERS"
         private object GetBoolean(in IDataReader reader)
         {
             int ordinal = GetOrdinal(in reader, UnionTag.Boolean, out ColumnMapper column);
@@ -404,7 +406,6 @@ namespace DaJet.Data
                 return reader.GetInt32(ordinal);
             }
         }
-
         #endregion
     }
 }
