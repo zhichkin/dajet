@@ -16,51 +16,21 @@ namespace DaJet.Data.Client
 
             if (_mappers.Count == 0)
             {
-                throw new InvalidOperationException("Entity mapper is not provided.");
+                throw new InvalidOperationException("Data reader mappers are not provided.");
             }
 
             _mapper = _mappers[_current]; //NOTE: current data reader mapper
         }
+        public EntityMapper Mapper { get { return _mapper; } }
         public new void Close() { _reader.Close(); }
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                _reader.Dispose();
-            }
-        }
-
+        protected override void Dispose(bool disposing) { if (disposing) { _reader.Dispose(); } }
         public override object this[int ordinal] { get { return GetValue(ordinal); } }
-        public override object this[string name]
-        {
-            get
-            {
-                PropertyMapper property;
-
-                for (int ordinal = 0; ordinal < _mapper.Properties.Count; ordinal++)
-                {
-                    property = _mapper.Properties[ordinal];
-
-                    if (property.Name == name)
-                    {
-                        return property.GetValue(_reader)!;
-                    }
-                }
-
-                throw new IndexOutOfRangeException(name);
-            }
-        }
-
-        public override int FieldCount { get { return _mapper.Properties.Count; } }
+        public override object this[string name] { get { return this[GetOrdinal(name)]; } }
         public override int Depth { get { return _reader.Depth; } }
         public override bool HasRows { get { return _reader.HasRows; } }
         public override bool IsClosed { get { return _reader.IsClosed; } }
         public override int RecordsAffected { get { return _reader.RecordsAffected; } }
-
-        public override bool Read()
-        {
-            return _reader.Read();
-        }
+        public override bool Read() { return _reader.Read(); }
         public override bool NextResult()
         {
             bool moveNext = _reader.NextResult();
@@ -72,41 +42,10 @@ namespace DaJet.Data.Client
 
             return moveNext;
         }
-        public override IEnumerator GetEnumerator()
-        {
-            throw new NotImplementedException();
-        }
-
+        public override int FieldCount { get { return _mapper.Properties.Count; } }
         public override bool IsDBNull(int ordinal)
         {
             return GetValue(ordinal) is null;
-        }
-        public override string GetName(int ordinal)
-        {
-            return _mapper.Properties[ordinal].Name;
-        }
-        public override object GetValue(int ordinal)
-        {
-            return _mapper.Properties[ordinal].GetValue(_reader);
-        }
-        public void Map(in DataObject record)
-        {
-            _mapper.Map(_reader, in record);
-        }
-        public void Map<TEntity>(in TEntity entity) where TEntity : class
-        {
-            _mapper.Map(_reader, in entity);
-        }
-
-        #region "FIELD METADATA"
-
-        public override Type GetFieldType(int ordinal)
-        {
-            return _mapper.Properties[ordinal].Type;
-        }
-        public override string GetDataTypeName(int ordinal)
-        {
-            return _mapper.Properties[ordinal].Type.Name;
         }
         public override int GetOrdinal(string name)
         {
@@ -124,10 +63,31 @@ namespace DaJet.Data.Client
 
             throw new IndexOutOfRangeException(name);
         }
-
+        public override string GetName(int ordinal)
+        {
+            return _mapper.Properties[ordinal].Name;
+        }
+        public override object GetValue(int ordinal)
+        {
+            return _mapper.Properties[ordinal].GetValue(_reader);
+        }
+        
+        #region "FIELD METADATA"
+        public override Type GetFieldType(int ordinal)
+        {
+            return _mapper.Properties[ordinal].Type;
+        }
+        public override string GetDataTypeName(int ordinal)
+        {
+            return _mapper.Properties[ordinal].Type.Name;
+        }
         #endregion
 
-        #region "VALUE GETTERS"
+        #region "VALUE GETTERS - NOT IMPLEMENTED"
+        public override IEnumerator GetEnumerator()
+        {
+            throw new NotImplementedException();
+        }
         public override int GetValues(object[] values)
         {
             throw new NotImplementedException();
@@ -189,5 +149,14 @@ namespace DaJet.Data.Client
             throw new NotImplementedException();
         }
         #endregion
+
+        public void Map(in DataObject record)
+        {
+            _mapper.Map(_reader, in record);
+        }
+        public void Map<T>(in T entity) where T : class
+        {
+            _mapper.Map(_reader, in entity);
+        }
     }
 }

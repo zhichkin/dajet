@@ -9,32 +9,49 @@ namespace DaJet.Scripting
 {
     public static class ScriptProcessor
     {
-        public static bool TryTranspile(in IMetadataProvider context, in string script, out ScriptDetails result, out string error)
+        public static bool TryTranspile(in IMetadataProvider context,
+            in string script, in Dictionary<string, object> parameters,
+            out ScriptDetails result, out string error)
         {
-            result = null;
-
-            if (!TryTranspile(in context, in script, out ScriptModel model, out List<ScriptStatement> statements, out error))
+            if (context is null)
             {
-                return false;
+                throw new ArgumentNullException(nameof(context));
+            }
+
+            if (string.IsNullOrWhiteSpace(script))
+            {
+                throw new ArgumentNullException(nameof(script));
+            }
+
+            if (parameters is null)
+            {
+                throw new ArgumentNullException(nameof(parameters));
+            }
+
+            result = new ScriptDetails();
+
+            foreach (var item in parameters)
+            {
+                result.Parameters.Add(item.Key, item.Value);
+            }
+
+            if (!TryTranspile(in context, in script, result.Parameters, out List<ScriptStatement> statements, out error))
+            {
+                result = null; return false;
             }
 
             try
             {
-                ConfigureParameters(in context, in model, out Dictionary<string, object> parameters);
-
-                result = new ScriptDetails()
-                {
-                    Mappers = GetEntityMappers(in statements),
-                    SqlScript = AssembleSqlScript(in statements),
-                    Parameters = parameters
-                };
+                result.Mappers = GetEntityMappers(in statements);
+                result.SqlScript = AssembleSqlScript(in statements);
             }
             catch (Exception exception)
             {
+                result = null;
                 error = ExceptionHelper.GetErrorMessage(exception);
             }
 
-            return result is not null;
+            return (result is not null);
         }
         private static void ThrowImportStatementAreNotSupported(in ScriptModel model)
         {
@@ -46,9 +63,13 @@ namespace DaJet.Scripting
                 }
             }
         }
-        public static bool TryTranspile(in IMetadataProvider context, in string script, out ScriptModel model, out List<ScriptStatement> statements, out string error)
+        private static bool TryTranspile(in IMetadataProvider context,
+            in string script, in Dictionary<string, object> parameters,
+            out List<ScriptStatement> statements, out string error)
         {
             statements = null;
+
+            ScriptModel model;
 
             using (ScriptParser parser = new())
             {
@@ -59,6 +80,8 @@ namespace DaJet.Scripting
             }
 
             ThrowImportStatementAreNotSupported(in model);
+
+            OverrideEntityParameters(in model, in parameters);
 
             ScopeBuilder builder = new();
 
@@ -80,6 +103,8 @@ namespace DaJet.Scripting
             {
                  return false;
             }
+
+            ConfigureParameters(in context, in model, in parameters);
 
             ISqlGenerator generator;
 
@@ -104,194 +129,7 @@ namespace DaJet.Scripting
 
             return true;
         }
-        public static void ConfigureParameters(in IMetadataProvider context, in ScriptModel model, out Dictionary<string, object> parameters)
-        {
-            parameters = new Dictionary<string, object>();
-
-            // configure parameters for database provider
-            foreach (SyntaxNode node in model.Statements)
-            {
-                if (node is DeclareStatement declare)
-                {
-                    // 0. UDT parameter must (!) be provided by caller - it has no default value anyway
-
-                    if (declare.Type.Binding is EntityDefinition) { continue; }
-
-                    // 1. Set default value if parameter value is not initialized in script.
-
-                    if (declare.Initializer is not ScalarExpression scalar)
-                    {
-                        scalar = ScriptHelper.CreateDefaultScalar(in declare);
-                        declare.Initializer = scalar;
-                    }
-
-                    object value = null!;
-                    string name = declare.Name[1..]; // remove leading @
-                    string literal = scalar.Literal;
-
-                    // 2. Synchronize parameters defined by script and provided by caller.
-                    // -  Parameters defined by script must present anyway!
-                    // -  Parameter values provided by the caller overrides parameter values set by script.
-
-                    if (!parameters.TryGetValue(name, out _))
-                    {
-                        if (ScriptHelper.IsDataType(declare.Type.Identifier, out Type type))
-                        {
-                            if (type == typeof(bool))
-                            {
-                                if (literal.ToLowerInvariant() == "true")
-                                {
-                                    value = true;
-                                }
-                                else if (literal.ToLowerInvariant() == "false")
-                                {
-                                    value = false;
-                                }
-                            }
-                            else if (type == typeof(decimal))
-                            {
-                                if (literal.Contains('.'))
-                                {
-                                    value = decimal.Parse(literal, CultureInfo.InvariantCulture);
-                                }
-                                else
-                                {
-                                    value = int.Parse(literal, CultureInfo.InvariantCulture);
-                                }
-                            }
-                            else if (type == typeof(DateTime))
-                            {
-                                value = DateTime.Parse(literal);
-                            }
-                            else if (type == typeof(string))
-                            {
-                                value = literal;
-                            }
-                            else if (type == typeof(Guid))
-                            {
-                                value = new Guid(literal);
-                            }
-                            else if (type == typeof(byte[]))
-                            {
-                                value = DbUtilities.StringToByteArray(literal[2..]); // remove leading 0x
-                            }
-                            else if (type == typeof(Entity))
-                            {
-                                // Metadata object reference parameter:
-                                // DECLARE @product entity = {50:9a1984dc-3084-11ed-9cd7-408d5c93cc8e};
-                                value = Entity.Parse(scalar.Literal); // {50:9a1984dc-3084-11ed-9cd7-408d5c93cc8e}
-                            }
-                        }
-                        else
-                        {
-                            // Metadata object reference parameter:
-                            // DECLARE @product Справочник.Номенклатура = "9a1984dc-3084-11ed-9cd7-408d5c93cc8e";
-
-                            MetadataObject table = context.GetMetadataObject(declare.Type.Identifier);
-
-                            if (table is ApplicationObject entity)
-                            {
-                                if (Entity.TryParse(literal, out Entity initializer))
-                                {
-                                    if (initializer.TypeCode == entity.TypeCode)
-                                    {
-                                        value = initializer;
-                                    }
-                                }
-                                else
-                                {
-                                    value = new Entity(entity.TypeCode, new Guid(literal));
-                                }
-                            }
-                        }
-
-                        parameters.Add(name, value);
-                    }
-                }
-            }
-
-            // remove unnecessary parameters provided by caller
-            List<string> keys_to_remove = new();
-            foreach (var key in parameters.Keys)
-            {
-                if (!DeclareStatementExists(in model, key))
-                {
-                    keys_to_remove.Add(key);
-                }
-            }
-
-            foreach (string key in keys_to_remove)
-            {
-                parameters.Remove(key);
-            }
-
-            // format parameter values
-            foreach (var parameter in parameters)
-            {
-                if (parameter.Value is Guid uuid)
-                {
-                    parameters[parameter.Key] = uuid.ToByteArray();
-                }
-                else if (parameter.Value is bool boolean)
-                {
-                    if (context.DatabaseProvider == DatabaseProvider.SqlServer)
-                    {
-                        parameters[parameter.Key] = new byte[] { Convert.ToByte(boolean) };
-                    }
-                }
-                else if (parameter.Value is DateTime dateTime)
-                {
-                    parameters[parameter.Key] = dateTime.AddYears(context.YearOffset);
-                }
-                else if (parameter.Value is Entity entity)
-                {
-                    parameters[parameter.Key] = entity.Identity.ToByteArray();
-                }
-                else if (parameter.Value is List<Dictionary<string, object>> table)
-                {
-                    parameters[parameter.Key] = new TableValuedParameter()
-                    {
-                        Name = parameter.Key,
-                        Value = table,
-                        DbName = GetTypeIdentifier(in model, parameter.Key)
-                    };
-                }
-            }
-        }
-        private static string GetTypeIdentifier(in ScriptModel script, in string name)
-        {
-            foreach (SyntaxNode node in script.Statements)
-            {
-                if (node is not DeclareStatement declare)
-                {
-                    continue;
-                }
-
-                if (declare.Name[1..] == name) // remove leading @
-                {
-                    return declare.Type.Identifier;
-                }
-            }
-
-            return null;
-        }
-        private static bool DeclareStatementExists(in ScriptModel model, string name)
-        {
-            foreach (SyntaxNode statement in model.Statements)
-            {
-                if (statement is not DeclareStatement declare)
-                {
-                    continue;
-                }
-
-                if (declare.Name[1..] == name) // remove leading @ or &
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-        public static string AssembleSqlScript(in List<ScriptStatement> statements)
+        private static string AssembleSqlScript(in List<ScriptStatement> statements)
         {
             if (statements is null)
             {
@@ -314,7 +152,7 @@ namespace DaJet.Scripting
 
             return script.ToString();
         }
-        public static List<EntityMapper> GetEntityMappers(in List<ScriptStatement> statements)
+        private static List<EntityMapper> GetEntityMappers(in List<ScriptStatement> statements)
         {
             List<EntityMapper> mappers = new();
 
@@ -332,6 +170,195 @@ namespace DaJet.Scripting
             }
 
             return mappers;
+        }
+        private static DeclareStatement GetDeclareStatementByName(in ScriptModel model, in string name)
+        {
+            string fullName = "@" + name;
+
+            foreach (SyntaxNode node in model.Statements)
+            {
+                if (node is DeclareStatement declare && declare.Name == fullName)
+                {
+                    return declare;
+                }
+            }
+            return null;
+        }
+        private static void OverrideEntityParameters(in ScriptModel model, in Dictionary<string, object> parameters)
+        {
+            foreach (var item in parameters)
+            {
+                if (item.Value is not Entity entity) { continue; }
+                
+                DeclareStatement declare = GetDeclareStatementByName(in model, item.Key);
+
+                if (declare is null) { continue; }
+
+                // any entity type value specifies "entity" literal
+
+                declare.Type.Identifier = ScriptHelper.GetDataTypeLiteral(typeof(Entity));
+
+                // entity type code provided by user determines the data type for parameter
+
+                ScalarExpression scalar = new()
+                {
+                    Token = TokenType.Entity,
+                    Literal = entity.ToString()
+                };
+
+                declare.Initializer = scalar; 
+            }
+        }
+        private static void ConfigureParameters(in IMetadataProvider context, in ScriptModel model, in Dictionary<string, object> parameters)
+        {
+            // add script parameters to the dictionary if they are missing
+            foreach (SyntaxNode node in model.Statements)
+            {
+                if (node is not DeclareStatement declare) { continue; }
+
+                // 0. Database UDT parameter must be provided by the caller !!!
+
+                if (declare.Type.Binding is EntityDefinition) { continue; }
+
+                // 1. Set default value if parameter value is not initialized in script.
+
+                if (declare.Initializer is not ScalarExpression scalar)
+                {
+                    scalar = ScriptHelper.CreateDefaultScalar(in declare);
+                    declare.Initializer = scalar;
+                }
+
+                // 2. Synchronize parameters defined by script and provided by the caller.
+                // -  Parameters defined by script must present anyway!
+                // -  Parameter values provided by the caller overrides parameter values defined by script.
+
+                object value = null;
+                string name = declare.Name[1..]; // remove leading @
+                string literal = scalar.Literal;
+
+                if (!parameters.ContainsKey(name))
+                {
+                    if (ScriptHelper.IsDataType(declare.Type.Identifier, out Type type))
+                    {
+                        if (type == typeof(bool))
+                        {
+                            if (literal.ToLowerInvariant() == "true")
+                            {
+                                value = true;
+                            }
+                            else if (literal.ToLowerInvariant() == "false")
+                            {
+                                value = false;
+                            }
+                        }
+                        else if (type == typeof(decimal))
+                        {
+                            if (literal.Contains('.'))
+                            {
+                                value = decimal.Parse(literal, CultureInfo.InvariantCulture);
+                            }
+                            else
+                            {
+                                value = int.Parse(literal, CultureInfo.InvariantCulture);
+                            }
+                        }
+                        else if (type == typeof(DateTime))
+                        {
+                            value = DateTime.Parse(literal);
+                        }
+                        else if (type == typeof(string))
+                        {
+                            value = literal;
+                        }
+                        else if (type == typeof(Guid))
+                        {
+                            value = new Guid(literal);
+                        }
+                        else if (type == typeof(byte[]))
+                        {
+                            value = DbUtilities.StringToByteArray(literal[2..]); // remove leading 0x
+                        }
+                        else if (type == typeof(Entity))
+                        {
+                            // Metadata object reference parameter:
+                            // DECLARE @product entity = {50:9a1984dc-3084-11ed-9cd7-408d5c93cc8e};
+                            value = Entity.Parse(scalar.Literal);
+                        }
+                    }
+                    else
+                    {
+                        // Metadata object reference parameter:
+                        // DECLARE @product Справочник.Номенклатура = "9a1984dc-3084-11ed-9cd7-408d5c93cc8e";
+
+                        MetadataObject table = context.GetMetadataObject(declare.Type.Identifier);
+
+                        if (table is ApplicationObject entity)
+                        {
+                            if (Entity.TryParse(literal, out Entity initializer))
+                            {
+                                if (initializer.TypeCode == entity.TypeCode)
+                                {
+                                    value = initializer;
+                                }
+                            }
+                            else
+                            {
+                                value = new Entity(entity.TypeCode, new Guid(literal));
+                            }
+                        }
+                    }
+                    parameters.Add(name, value);
+                }
+            }
+
+            // remove unnecessary parameters provided by caller
+            List<string> keys_to_remove = new();
+            foreach (var key in parameters.Keys)
+            {
+                if (GetDeclareStatementByName(in model, key) is null)
+                {
+                    keys_to_remove.Add(key);
+                }
+            }
+            foreach (string key in keys_to_remove)
+            {
+                parameters.Remove(key);
+            }
+
+            // format parameter values for the .NET data provider
+            foreach (var parameter in parameters)
+            {
+                if (parameter.Value is Entity entity)
+                {
+                    parameters[parameter.Key] = entity.Identity.ToByteArray();
+                }
+                else if (parameter.Value is bool boolean)
+                {
+                    if (context.DatabaseProvider == DatabaseProvider.SqlServer)
+                    {
+                        parameters[parameter.Key] = new byte[] { Convert.ToByte(boolean) };
+                    }
+                }
+                else if (parameter.Value is DateTime dateTime)
+                {
+                    parameters[parameter.Key] = dateTime.AddYears(context.YearOffset);
+                }
+                else if (parameter.Value is Guid uuid)
+                {
+                    parameters[parameter.Key] = uuid.ToByteArray();
+                }
+                else if (parameter.Value is List<Dictionary<string, object>> table)
+                {
+                    DeclareStatement declare = GetDeclareStatementByName(in model, parameter.Key);
+
+                    parameters[parameter.Key] = new TableValuedParameter()
+                    {
+                        Name = parameter.Key,
+                        Value = table,
+                        DbName = declare is null ? string.Empty : declare.Type.Identifier
+                    };
+                }
+            }
         }
     }
 }

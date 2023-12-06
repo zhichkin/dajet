@@ -41,22 +41,55 @@ namespace DaJet.Flow.Tutorial
 
                 using (OneDbCommand command = connection.CreateCommand())
                 {
-                    command.CommandText = $"SELECT Ссылка FROM {_options.Metadata}";
+                    command.CommandText =
+                        $"DECLARE @Ссылка entity; " +  // "{40:08ec069d-a06b-a1b1-11ee-93c449ca47e3}"
+                        $"DECLARE @Наименование string; " + // "Товар 333"
+                        $"SELECT Ссылка FROM {_options.Metadata} WHERE Ссылка = @Ссылка " +
+                        $"SELECT Ссылка FROM Справочник.Номенклатура WHERE Наименование = @Наименование";
 
-                    foreach (DataObject record in command.Stream())
+                    Entity customerOrder = Entity.Parse("{40:08ec069d-a06b-a1b1-11ee-93c449ca47e3}");
+
+                    command.Parameters.Add("Ссылка", customerOrder);
+                    command.Parameters.Add("Наименование", "Товар 333");
+
+                    foreach (dynamic record in command.StreamReader())
                     {
-                        Entity entity = (Entity)record.GetValue(0);
-                        
-                        DataObject order = connection.GetDataObject(entity);
-                        
+                        Entity entity = record.Ссылка;
+
+                        DataObject order = _metadata.GetDataObject(entity);
+
                         _next?.Process(in order);
                     }
 
-                    foreach (dynamic record in command.Stream())
+                    foreach (DataObject record in command.StreamReader())
                     {
-                        DataObject order = connection.GetDataObject(record.Ссылка);
-
+                        Entity entity = (Entity)record.GetValue(0);
+                        
+                        DataObject order = _metadata.GetDataObject(entity);
+                        
                         _next?.Process(in order);
+                    }
+                    
+                    using (OneDbDataReader reader = command.ExecuteReader())
+                    {
+                        do
+                        {
+                            while (reader.Read())
+                            {
+                                DataObject record = new(reader.FieldCount); // memory buffer
+
+                                reader.Map(in record);
+
+                                Entity entity = record.GetEntity(0);
+
+                                DataObject order = _metadata.GetDataObject(entity);
+
+                                _next?.Process(in order);
+                            }
+                        }
+                        while (reader.NextResult());
+
+                        reader.Close();
                     }
                 }
             }

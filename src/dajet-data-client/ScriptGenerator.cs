@@ -1,14 +1,13 @@
 ﻿using DaJet.Metadata;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
-using DaJet.Scripting;
 using System.Text;
 
 namespace DaJet.Data.Client
 {
     internal static class ScriptGenerator
     {
-        internal static ScriptDetails GenerateSelectEntityScript(in IMetadataProvider context, Entity entity)
+        internal static string GenerateSelectEntityScript(in IMetadataProvider context, Entity entity)
         {
             MetadataItem item = context.GetMetadataItem(entity.TypeCode);
 
@@ -17,48 +16,30 @@ namespace DaJet.Data.Client
                 throw new InvalidOperationException();
             }
 
-            MetadataObject info = context.GetMetadataObject(item.Type, item.Uuid);
+            MetadataObject metadata = context.GetMetadataObject(item.Type, item.Uuid);
 
-            if (info is null)
+            if (metadata is null)
             {
-                throw new InvalidOperationException();
+                throw new InvalidOperationException($"Metadata object not found [{entity.TypeCode}]");
             }
 
-            string script = GenerateSelectEntityScript(in info);
+            string script = GenerateSelectEntityScript(in metadata);
 
-            if (string.IsNullOrEmpty(script))
-            {
-                throw new InvalidOperationException();
-            }
-
-            if (!ScriptProcessor.TryTranspile(in context, in script, out _, out List<ScriptStatement> statements, out string error))
-            {
-                throw new Exception(error);
-            }
-
-            return new ScriptDetails()
-            {
-                Mappers = ScriptProcessor.GetEntityMappers(in statements),
-                SqlScript = ScriptProcessor.AssembleSqlScript(in statements),
-                Parameters = new Dictionary<string, object>()
-                {
-                    { "Ссылка", entity.Identity.ToByteArray() }
-                }
-            };
+            return script;
         }
 
-        internal static string GenerateSelectEntityScript(in MetadataObject info)
+        internal static string GenerateSelectEntityScript(in MetadataObject metadata)
         {
-            if (info is Catalog catalog)
+            if (metadata is Catalog catalog)
             {
                 return GenerateSelectEntityScript(in catalog);
             }
-            else if (info is Document document)
+            else if (metadata is Document document)
             {
                 return GenerateSelectEntityScript(in document);
             }
             
-            throw new NotSupportedException(info.GetType().ToString());
+            throw new NotSupportedException(metadata.GetType().ToString());
         }
         internal static string GenerateSelectEntityScript(in Catalog catalog)
         {

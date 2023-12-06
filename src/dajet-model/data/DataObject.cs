@@ -103,6 +103,7 @@ namespace DaJet.Data
         public decimal GetDecimal(int i) { return (decimal)_values[i]; }
         public Guid GetGuid(int i) { return (Guid)_values[i]; }
         public DateTime GetDateTime(int i) { return (DateTime)_values[i]; }
+        public Entity GetEntity(int i) { return (Entity)_values[i]; }
         #endregion
     }
 }

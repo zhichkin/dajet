@@ -54,10 +54,7 @@ namespace DaJet
         public Entity Copy() { return new Entity(TypeCode, Identity); }
         [JsonIgnore] public bool IsEmpty { get { return Identity == Guid.Empty; } } // TypeCode > 0 && Identity == Guid.Empty
         [JsonIgnore] public bool IsUndefined { get { return this == Undefined; } } // TypeCode == 0 && Identity == Guid.Empty
-        public override string ToString()
-        {
-            return $"{{{TypeCode}:{Identity}}}";
-        }
+        public override string ToString() { return $"{{{TypeCode}:{Identity}}}"; }
 
         #region " Переопределение методов сравнения "
 
