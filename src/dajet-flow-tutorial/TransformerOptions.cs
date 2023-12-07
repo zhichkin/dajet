@@ -5,6 +5,6 @@ namespace DaJet.Flow.Tutorial
 {
     public sealed class TransformerOptions : OptionsBase
     {
-        [Required] public string MessageType { get; set; } = string.Empty;
+        [Required] public string ContentType { get; set; } = "application/json";
     }
 }

@@ -28,6 +28,7 @@ namespace DaJet.Data
         }
         public void ClearCodeAndName() { _code = 0; _name = string.Empty; }
         public int Count() { return _values.Count; }
+        public bool Contains(string name) { return _map.ContainsKey(name); }
         public void Clear() { _names.Clear(); _values.Clear(); _map.Clear(); }
         public void Remove(string name)
         {
@@ -59,7 +60,6 @@ namespace DaJet.Data
             {
                 value = _values[ordinal]; return true;
             }
-
             value = null;
             return false;
         }

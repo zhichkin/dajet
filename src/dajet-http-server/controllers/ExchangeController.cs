@@ -1301,7 +1301,7 @@ namespace DaJet.Http.Controllers
 
         private string GetDataTypeLiteral(in MetadataProperty property)
         {
-            string type = property.PropertyType.GetTypeLiteral();
+            string type = property.PropertyType.GetDataTypeLiteral();
 
             if (type == "entity" || type == "union")
             {

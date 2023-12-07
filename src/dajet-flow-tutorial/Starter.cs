@@ -12,9 +12,11 @@ namespace DaJet.Flow.Tutorial
         {
             _next = next;
         }
+        private int counter;
+        private readonly string _script;
         private readonly IPipeline _pipeline;
         private readonly StarterOptions _options;
-        private readonly IMetadataProvider _metadata;
+        private readonly IMetadataProvider _context;
         public Starter(StarterOptions options, IPipeline pipeline, IDataSource dajet, IMetadataService metadata)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -25,49 +27,54 @@ namespace DaJet.Flow.Tutorial
 
             InfoBaseRecord database = dajet.Select<InfoBaseRecord>(_options.Source)
                 ?? throw new InvalidOperationException($"Source database not found: {_options.Source}");
-            
+
+            string scriptPath = database.Name + "/" + _options.Script;
+
+            ScriptRecord script = dajet.Select<ScriptRecord>(scriptPath)
+                ?? throw new InvalidOperationException($"Script not found: {scriptPath}");
+
+            if (string.IsNullOrWhiteSpace(script.Script))
+            {
+                throw new InvalidOperationException($"Script is empty: {scriptPath}");
+            }
+
+            _script = script.Script;
+
             if (!metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider context, out string error))
             {
                 throw new InvalidOperationException(error);
             }
 
-            _metadata = context;
+            _context = context;
         }
         public void Execute()
         {
-            using (OneDbConnection connection = new(_metadata))
+            using (OneDbConnection connection = new(_context))
             {
                 connection.Open();
 
                 using (OneDbCommand command = connection.CreateCommand())
                 {
-                    command.CommandText =
-                        $"DECLARE @Ссылка entity; " +  // "{40:08ec069d-a06b-a1b1-11ee-93c449ca47e3}"
-                        $"DECLARE @Наименование string; " + // "Товар 333"
-                        $"SELECT Ссылка FROM {_options.Metadata} WHERE Ссылка = @Ссылка " +
-                        $"SELECT Ссылка FROM Справочник.Номенклатура WHERE Наименование = @Наименование";
+                    command.CommandText = _script;
 
-                    Entity customerOrder = Entity.Parse("{40:08ec069d-a06b-a1b1-11ee-93c449ca47e3}");
-
-                    command.Parameters.Add("Ссылка", customerOrder);
-                    command.Parameters.Add("Наименование", "Товар 333");
+                    //command.Parameters.Add("ИмяПараметра", "Значение");
 
                     foreach (dynamic record in command.StreamReader())
                     {
-                        Entity entity = record.Ссылка;
+                        Entity reference = record.Ссылка;
 
-                        DataObject order = _metadata.GetDataObject(entity);
+                        DataObject entity = _context.Select(reference);
 
-                        _next?.Process(in order);
+                        _next?.Process(in entity); counter++;
                     }
 
                     foreach (DataObject record in command.StreamReader())
                     {
-                        Entity entity = (Entity)record.GetValue(0);
+                        Entity reference = (Entity)record.GetValue(0);
                         
-                        DataObject order = _metadata.GetDataObject(entity);
+                        DataObject entity = _context.Select(reference);
                         
-                        _next?.Process(in order);
+                        _next?.Process(in entity); counter++;
                     }
                     
                     using (OneDbDataReader reader = command.ExecuteReader())
@@ -76,17 +83,11 @@ namespace DaJet.Flow.Tutorial
                         {
                             while (reader.Read())
                             {
-                                //DataObject record = new(reader.FieldCount); // memory buffer
+                                Entity reference = (Entity)reader.GetValue(0);
 
-                                //reader.Map(in record);
+                                DataObject entity = _context.Select(reference);
 
-                                //Entity entity = (Entity)record.GetValue(0);
-
-                                Entity entity = (Entity)reader.GetValue(0);
-
-                                DataObject order = _metadata.GetDataObject(entity);
-
-                                _next?.Process(in order);
+                                _next?.Process(in entity); counter++;
                             }
                         }
                         while (reader.NextResult());
@@ -98,7 +99,7 @@ namespace DaJet.Flow.Tutorial
         }
         public void Dispose()
         {
-            _pipeline.UpdateMonitorStatus("Starter stopped.");
+            _pipeline.UpdateMonitorStatus($"Processed {counter}");
         }
     }
 }

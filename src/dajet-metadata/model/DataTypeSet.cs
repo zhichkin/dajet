@@ -1,5 +1,4 @@
-﻿using DaJet.Data;
-using DaJet.Metadata.Core;
+﻿using DaJet.Metadata.Core;
 using System;
 using System.Collections.Generic;
 
@@ -465,7 +464,74 @@ namespace DaJet.Metadata.Model
             return union;
         }
 
-        public string GetTypeLiteral()
+        public bool IsUnionType(out bool canBeSimple, out bool canBeReference)
+        {
+            canBeSimple = false;
+            canBeReference = false;
+
+            if (IsUuid || IsValueStorage || IsBinary)
+            {
+                return false;
+            }
+
+            int count = 0;
+            if (CanBeBoolean) { count++; }
+            if (CanBeNumeric) { count++; }
+            if (CanBeDateTime) { count++; }
+            if (CanBeString) { count++; }
+            if (count > 0) { canBeSimple = true; }
+
+            if (CanBeReference)
+            {
+                count++; canBeReference = true;
+            }
+
+            if (count > 1) { return true; }
+
+            if (canBeReference && Reference == Guid.Empty)
+            {
+                return true;
+            }
+
+            return false;
+        }
+        public object GetDefaultValue()
+        {
+            if (IsUuid)
+            {
+                return Guid.Empty;
+            }
+            
+            if (IsValueStorage || IsBinary)
+            {
+                return Array.Empty<byte>();
+            }
+
+            if (IsUnionType(out bool canBeSimple, out bool canBeReference))
+            {
+                if (canBeSimple)
+                {
+                    return null;
+                }
+                else // multiple reference type
+                {
+                    return Entity.Undefined;
+                }
+            }
+
+            if (canBeReference)
+            {
+                return new Entity(TypeCode, Guid.Empty);
+            }
+
+            if (CanBeBoolean) { return false; }
+            if (CanBeNumeric) { return 0.00M; }
+            if (CanBeDateTime) { return new DateTime(1, 1, 1); }
+            if (CanBeString) { return string.Empty; }
+
+            return null;
+        }
+        public string GetDataTypeLiteral()
         {
             if (IsMultipleType) { return "union"; }
             else if (IsUuid) { return "uuid"; }

@@ -60,7 +60,12 @@ namespace DaJet.Data.Client
         public override void Prepare() { throw new NotImplementedException(); }
         #endregion
 
-        public override int ExecuteNonQuery() { throw new NotImplementedException(); }
+        public override int ExecuteNonQuery()
+        {
+            ScriptDetails _ = ConfigureCommand();
+
+            return _command.ExecuteNonQuery();
+        }
         public override object ExecuteScalar()
         {
             using (OneDbDataReader reader = ExecuteReader())

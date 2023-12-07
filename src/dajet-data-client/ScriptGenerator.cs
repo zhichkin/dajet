@@ -1,142 +1,10 @@
-﻿using DaJet.Metadata;
-using DaJet.Metadata.Core;
-using DaJet.Metadata.Model;
+﻿using DaJet.Metadata.Model;
 using System.Text;
 
 namespace DaJet.Data.Client
 {
     internal static class ScriptGenerator
     {
-        internal static string GenerateSelectEntityScript(in IMetadataProvider context, Entity entity)
-        {
-            MetadataItem item = context.GetMetadataItem(entity.TypeCode);
-
-            if (item == MetadataItem.Empty)
-            {
-                throw new InvalidOperationException();
-            }
-
-            MetadataObject metadata = context.GetMetadataObject(item.Type, item.Uuid);
-
-            if (metadata is null)
-            {
-                throw new InvalidOperationException($"Metadata object not found [{entity.TypeCode}]");
-            }
-
-            string script = GenerateSelectEntityScript(in metadata);
-
-            return script;
-        }
-
-        internal static string GenerateSelectEntityScript(in MetadataObject metadata)
-        {
-            if (metadata is Catalog catalog)
-            {
-                return GenerateSelectEntityScript(in catalog);
-            }
-            else if (metadata is Document document)
-            {
-                return GenerateSelectEntityScript(in document);
-            }
-            
-            throw new NotSupportedException(metadata.GetType().ToString());
-        }
-        internal static string GenerateSelectEntityScript(in Catalog catalog)
-        {
-            int line = 0;
-
-            StringBuilder script = new();
-            script.AppendLine($"DECLARE @Ссылка Справочник.{catalog.Name};");
-            script.AppendLine();
-            script.AppendLine("SELECT");
-            for (int i = 0; i < catalog.Properties.Count; i++)
-            {
-                MetadataProperty property = catalog.Properties[i];
-
-                if (property.Purpose == PropertyPurpose.System && property.Name != "Предопределённый")
-                {
-                    if (line > 0) { script.AppendLine(","); }
-
-                    script.Append(property.Name); line++;
-                }
-            }
-            script.AppendLine();
-            script.AppendLine($"FROM Справочник.{catalog.Name}");
-            script.AppendLine("WHERE Ссылка = @Ссылка");
-
-            foreach (TablePart table in catalog.TableParts)
-            {
-                line = 0;
-                script.AppendLine();
-                script.AppendLine("SELECT");
-                for (int i = 0; i < table.Properties.Count; i++)
-                {
-                    MetadataProperty property = table.Properties[i];
-
-                    if (property.Name == "KeyField")
-                    {
-                        continue;
-                    }
-
-                    if (line > 0) { script.AppendLine(","); }
-
-                    script.Append(property.Name); line++;
-                }
-                script.AppendLine();
-                script.AppendLine($"FROM Справочник.{catalog.Name}.{table.Name} AS {table.Name}");
-                script.AppendLine("WHERE Ссылка = @Ссылка");
-            }
-
-            return script.ToString();
-        }
-        internal static string GenerateSelectEntityScript(in Document document)
-        {
-            int line = 0;
-
-            StringBuilder script = new();
-            script.AppendLine($"DECLARE @Ссылка Документ.{document.Name};");
-            script.AppendLine();
-            script.AppendLine("SELECT");
-            for (int i = 0; i < document.Properties.Count; i++)
-            {
-                MetadataProperty property = document.Properties[i];
-
-                if (property.Purpose == PropertyPurpose.System)
-                {
-                    if (line > 0) { script.AppendLine(","); }
-
-                    script.Append(property.Name); line++;
-                }
-            }
-            script.AppendLine();
-            script.AppendLine($"FROM Документ.{document.Name}");
-            script.AppendLine("WHERE Ссылка = @Ссылка");
-
-            foreach (TablePart table in document.TableParts)
-            {
-                line = 0;
-                script.AppendLine();
-                script.AppendLine("SELECT");
-                for (int i = 0; i < table.Properties.Count; i++)
-                {
-                    MetadataProperty property = table.Properties[i];
-
-                    if (property.Name == "KeyField")
-                    {
-                        continue;
-                    }
-
-                    if (line > 0) { script.AppendLine(","); }
-
-                    script.Append(property.Name); line++;
-                }
-                script.AppendLine();
-                script.AppendLine($"FROM Документ.{document.Name}.{table.Name} AS {table.Name}");
-                script.AppendLine("WHERE Ссылка = @Ссылка");
-            }
-
-            return script.ToString();
-        }
         internal static string GenerateSelectEntityScript(in ChangeTrackingTable table)
         {
             if (table.Entity is not InformationRegister register) { return string.Empty; }
@@ -188,7 +56,7 @@ namespace DaJet.Data.Client
         }
         private static string GetDataTypeLiteral(in MetadataProperty property)
         {
-            string type = property.PropertyType.GetTypeLiteral();
+            string type = property.PropertyType.GetDataTypeLiteral();
 
             if (type == "entity" || type == "union")
             {
@@ -211,14 +79,14 @@ namespace DaJet.Data.Client
             script.AppendLine();
             script.AppendLine("CREATE COMPUTED TABLE source AS");
             script.AppendLine("(");
-            script.AppendLine("  SELECT VECTOR('so_incoming_queue')       AS МоментВремени,");
+            script.AppendLine("  SELECT VECTOR('so_incoming_queue')       AS НомерСообщения,");
             script.AppendLine("         @uuid AS Идентификатор,     @type AS ТипСообщения,");
-            script.AppendLine("         @time AS ДатаВремя,         @body AS ТелоСообщения");
+            script.AppendLine("         @time AS ОтметкаВремени,    @body AS ТелоСообщения");
             script.AppendLine(")");
             script.AppendLine("INSERT РегистрСведений.ВходящаяОчередь FROM source");
             script.AppendLine();
-            script.AppendLine("SELECT TOP 1 МоментВремени, ТипСообщения, ТелоСообщения, ДатаВремя");
-            script.AppendLine("  FROM РегистрСведений.ВходящаяОчередь ORDER BY МоментВремени DESC");
+            script.AppendLine("SELECT TOP 1 НомерСообщения, ТипСообщения, ТелоСообщения, ОтметкаВремени");
+            script.AppendLine("  FROM РегистрСведений.ВходящаяОчередь ORDER BY НомерСообщения DESC");
 
             return script.ToString();
         }

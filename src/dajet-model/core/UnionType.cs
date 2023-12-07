@@ -212,6 +212,7 @@ namespace DaJet
             else if (type == typeof(Entity)) { return Entity.Undefined; }
             else if (type == typeof(ulong)) { return 0UL; }
             else if (type == typeof(int)) { return 0; }
+            else if (type == typeof(Union)) { return null; }
 
             return null;
         }

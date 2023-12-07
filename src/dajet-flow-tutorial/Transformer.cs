@@ -25,14 +25,8 @@ namespace DaJet.Flow.Tutorial
         {
             DataObject message = new();
 
-            if (string.IsNullOrWhiteSpace(_options.MessageType))
-            {
-                message.SetValue("ТипСообщения", input.GetName());
-            }
-            else
-            {
-                message.SetValue("ТипСообщения", _options.MessageType);
-            }
+            message.SetValue("ТипСообщения", input.GetName());
+            message.SetValue("ФорматСообщения", _options.ContentType);
 
             using (MemoryStream memory = new())
             {
@@ -49,10 +43,6 @@ namespace DaJet.Flow.Tutorial
             }
             
             output = message;
-
-            //NOTE: dynamic msg = message;
-            //NOTE: msg.ТипСообщения = "test dynamic";
-            //NOTE: msg.ТелоСообщения = msg.ТипСообщения;
         }
     }
 }

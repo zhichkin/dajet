@@ -1,5 +1,7 @@
 ﻿using DaJet.Data;
+using DaJet.Data.Client;
 using DaJet.Flow;
+using DaJet.Metadata;
 using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
 using System.Text;
@@ -22,11 +24,13 @@ namespace DaJet.Http.Controllers
         private readonly IDataSource _source;
         private readonly IPipelineManager _manager;
         private readonly IAssemblyManager _resolver;
-        public FlowController(IDataSource source, IPipelineManager manager, IAssemblyManager resolver)
+        private readonly IMetadataService _metadata;
+        public FlowController(IDataSource source, IPipelineManager manager, IAssemblyManager resolver, IMetadataService metadata)
         {
             _source = source ?? throw new ArgumentNullException(nameof(source));
             _manager = manager ?? throw new ArgumentNullException(nameof(manager));
             _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
+            _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
         }
         [HttpGet("monitor")] public ActionResult GetPipelineInfo()
         {
@@ -204,6 +208,30 @@ namespace DaJet.Http.Controllers
         {
             await _manager.DeletePipeline(pipeline);
             
+            return Ok();
+        }
+
+        [HttpGet("test")] public ActionResult Test()
+        {
+            //InfoBaseRecord database = _source.Select<InfoBaseRecord>("ms-exchange");
+            
+            //if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider context, out string error))
+            //{
+            //    return BadRequest(error);
+            //}
+
+            //DataObject filter = new(1);
+            //filter.SetName("РегистрСведений.ВходящиеСообщения");
+            //filter.SetValue("ОтметкаВремени", new DateTime(2023, 12, 8, 1, 20, 7));
+            //DataObject values = new(1);
+            //values.SetValue("ТелоСообщения", "update timestamp");
+            //context.Update(in filter, in values);
+
+            //DataObject filter = new(1);
+            //filter.SetName("РегистрСведений.ВходящиеСообщения");
+            //filter.SetValue("НомерСообщения", 13M);
+            //context.Delete(in filter);
+
             return Ok();
         }
     }
