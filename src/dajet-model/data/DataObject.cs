@@ -3,6 +3,16 @@ using System.Dynamic;
 
 namespace DaJet.Data
 {
+    /// <summary>
+    /// Универсальный объект представления данных, имеющий произвольное количество свойств, создаваемых или удаляемых программно.
+    /// Экземпляры данного класса предназначены для представления данных запросов, объектов конфигураций баз данных, а также
+    /// любых иных динамически изменяемых структур данных и переноса этих данных между программными компонентами.
+    /// <br/>Класс <see cref="DataObject"/> наследует от класса <see cref="DynamicObject"/>, что даёт возможность использовать
+    /// позднее связывание (late binding) при обращении к свойствам его экземпляров под управлением DLR (Dynamic Language Runtime).
+    /// При этом следует иметь ввиду, что поведение оператора присваивания значения несуществующему свойству объекта в среде DLR
+    /// может вызвать исключение. Смотри примечания к методам <see cref="DataObject.SetValue(string, object)"/>
+    /// и <see cref="DataObject.TrySetValue(string, object)"/>.
+    /// </summary>
     public sealed class DataObject : DynamicObject
     {
         private int _code = 0;
@@ -10,6 +20,7 @@ namespace DaJet.Data
         private readonly List<string> _names;
         private readonly List<object> _values;
         private readonly Dictionary<string, int> _map;
+        //TODO: add a list of property data type tags - useful for JSON serialization
         public DataObject()
         {
             _names = new(); _values = new(); _map = new();
@@ -19,8 +30,16 @@ namespace DaJet.Data
             _names = new(capacity); _values = new(capacity); _map = new(capacity);
         }
         public int GetCode() { return _code; }
+        /// <summary>
+        /// <b>Служебное свойство</b>
+        /// <br/>Числовой код типа данных, который представляет данный объект.
+        /// </summary>
         public void SetCode(int code) { _code = code; }
         public string GetName() { return _name; }
+        /// <summary>
+        /// <b>Служебное свойство</b>
+        /// <br/>Имя типа данных или табличной части, например, "Справочник.Номенклатура".
+        /// </summary>
         public void SetName(string name) { _name = name is null ? string.Empty : name; }
         public void SetCodeAndName(int code, string name)
         {
@@ -84,7 +103,7 @@ namespace DaJet.Data
         
         /// <summary>
         /// Intended for use by TrySetMember, respecting DLR semantics.
-        /// <br/>An exception may be thrown if the property does not exist.
+        /// <br/>An exception may be thrown by DLR if the property does not exist.
         /// </summary>
         public bool TrySetValue(string name, object value)
         {
@@ -92,7 +111,6 @@ namespace DaJet.Data
             {
                 _values[ordinal] = value; return true;
             }
-
             return false;
         }
 

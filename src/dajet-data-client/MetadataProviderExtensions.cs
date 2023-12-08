@@ -7,6 +7,11 @@ namespace DaJet.Data.Client
 {
     public static class MetadataProviderExtensions
     {
+        /// <summary>
+        /// Метод создаёт новый экземпляр класса <see cref="DataObject"/> с такой же структурой,
+        /// <br/>как у объекта конфигурации, имя которого указано параметром <paramref name="metadataName"/>.
+        /// <br/><b>Например:</b> "Справочник.Номенклатура" или "Документ.Поступление.Товары".
+        /// </summary>
         public static DataObject Create(this IMetadataProvider context, in string metadataName)
         {
             MetadataObject metadata = context.GetMetadataObject(metadataName);
@@ -93,6 +98,13 @@ namespace DaJet.Data.Client
             return entity;
         }
 
+        /// <summary>
+        /// Метод получает данные объекта по ссылке, переданной в параметре <paramref name="entity"/>.
+        /// <br/>Полученные данные помещаются в новый экземпляр класса <see cref="DataObject"/> с такой же структурой,
+        /// <br/>как у объекта конфигурации, тип которого определяется по значениею свойства <see cref="Entity.TypeCode"/>.
+        /// <br/>Ссылку на объект конфигурации можно получить, например, запросом следующего вида:
+        /// <br/><c>SELECT Ссылка FROM Справочник.Номенклатура</c>
+        /// </summary>
         public static DataObject Select(this IMetadataProvider context, Entity entity)
         {
             int typeCode = entity.TypeCode;

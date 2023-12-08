@@ -5,6 +5,12 @@ using DaJet.Model;
 
 namespace DaJet.Flow.Tutorial
 {
+    /// <summary>
+    /// Блок <b>Producer</b> выполняет функцию записи нового сообщения во входящую очередь базы данных приёмника.
+    /// <br/>Псевдоним базы данных указывается в настройке <see cref="ProducerOptions.Target"/>.
+    /// <br/>Имя входящей очереди указывается в настройке <see cref="ProducerOptions.QueueName"/>.
+    /// <br/><b>Например:</b> "РегистрСведений.ВходящиеСообщения"
+    /// </summary>
     public sealed class Producer : IInputBlock<DataObject>
     {
         private readonly ProducerOptions _options;
@@ -28,9 +34,17 @@ namespace DaJet.Flow.Tutorial
         }
         public void Process(in DataObject input)
         {
+            // Создаём объект записи регистра сведений (входящей очереди),
+            // полное наименование которого указывается в настройке "QueueName"
+            // Например, "РегистрСведений.ВходящиеСообщения"
             DataObject record = _context.Create(_options.QueueName);
 
-            decimal sequence = 1M;
+            // Генерируем следующий номер сообщения на основании данных регистра сведений.
+            // Предлагаемый способ получения следующего номера сообщения носит демонстрационный характер.
+            // В производственной среде рекомендуется использовать какой-нибудь более надёжный метод,
+            // учитывающий конкуренцию со стороны других писателей во входящую очередь сообщений базы данных
+
+            decimal sequence = 1M; // M это литерал decimal, чтобы не выполнять неявного преобразования int в decimal
 
             using (OneDbConnection connection = new(_context))
             {
@@ -49,20 +63,25 @@ namespace DaJet.Flow.Tutorial
                 }
             }
 
+            // Заполняем объект записи регистра сведений (входящая очередь)
+            // Если в целевом регистре сведений есть какие-то ещё измерения, ресурсы или реквизиты,
+            // которые данным кодом не будут учтены, то провайдер данных DaJet вычислит их по метаданным
+            // и заполнит их значениями по умолчанию перед тем, как отправить в базу данных
             record.SetValue("НомерСообщения", sequence);
             record.SetValue("ОтметкаВремени", DateTime.Now);
             record.SetValue("ТипСообщения", input.GetValue("ТипСообщения"));
             record.SetValue("ТелоСообщения", input.GetValue("ТелоСообщения"));
 
+            // Записываем новое сообщение во входящую очередь базы данных
             _context.Insert(in record);
         }
         public void Synchronize()
         {
-            
+            // Ничего не делаем
         }
         public void Dispose()
         {
-            
+            // Ничего не делаем
         }
     }
 }
