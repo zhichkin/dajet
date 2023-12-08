@@ -197,7 +197,7 @@ namespace DaJet.Studio.Components
 
             ConfigureApiTreeViewNode(in node, in model);
 
-            ConfigureExchangeTreeViewNode(in node, in model);
+            //ConfigureExchangeTreeViewNode(in node, in model);
 
             ConfigureDbViewNode(in node, in model);
 

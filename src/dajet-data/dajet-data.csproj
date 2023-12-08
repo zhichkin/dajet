@@ -8,7 +8,7 @@
     <AssemblyName>DaJet.Data</AssemblyName>
     <Copyright>Zhichkin © 2022</Copyright>
     <Authors>Zhichkin</Authors>
-    <Version>1.0.1</Version>
+    <Version>1.1.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
