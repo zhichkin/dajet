@@ -1,6 +1,7 @@
 ## DaJet - платформа для разработки бэкенда и интеграции
 
-[Документация DaJet](https://zhichkin.github.io/)
+### [Документация DaJet](https://zhichkin.github.io/)
+### [Школа DaJet на YouTube](https://www.youtube.com/playlist?list=PLyBbhdsc7InutmVxyUszw-ZNJ5zKVBot2)
 
 ![dajet-studio](https://github.com/zhichkin/dajet/blob/main/doc/dajet-studio/dajet-architecture.png)
 
