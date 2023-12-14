@@ -2,6 +2,7 @@
 
 ### [Документация DaJet](https://zhichkin.github.io/)
 ### [Школа DaJet на YouTube](https://www.youtube.com/playlist?list=PLyBbhdsc7InutmVxyUszw-ZNJ5zKVBot2)
+### [Канал DaJet в Телеграм](https://t.me/dajet_studio)
 
 ![dajet-studio](https://github.com/zhichkin/dajet/blob/main/doc/dajet-studio/dajet-architecture.png)
 
@@ -29,5 +30,3 @@ DaJet Studio является средой разработки хранимых
 Исторически так сложилось, что платформа DaJet частично заимствовала и развивает структуру хранения
 пользовательских данных платформы 1С:Предприятие 8, а также её язык запросов. Таким образом,
 это обеспечивает некоторую совместимость DaJet и 1С.
-
-[Канал DaJet в Телеграм](https://t.me/dajet_studio)
