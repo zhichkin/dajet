@@ -228,13 +228,15 @@ namespace DaJet.Scripting
                 //NOTE: the function does not have any parameters
                 union.IsVersion = true; return;
             }
-            else if (name == "DATALENGTH" || name == "OCTET_LENGTH")
+            else if (name == "DATALENGTH" || name == "OCTET_LENGTH" || name == "CHARLENGTH")
             {
                 //TODO: IsInteger is int32 (int) hack
                 //NOTE: the function have one parameter, but we ignore it
                 union.IsInteger = true; return;
             }
-            else if (name == "SUBSTRING")
+            else if (name == "SUBSTRING" || name == "STRING_AGG"
+                || name == "CONCAT" || name == "CONCAT_WS" || name == "REPLACE"
+                || name == "LOWER" || name == "UPPER" || name == "LTRIM" || name == "RTRIM")
             {
                 union.IsString = true; return;
             }

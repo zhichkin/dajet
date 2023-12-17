@@ -183,7 +183,20 @@ namespace DaJet.Scripting
             { "NOW", TokenType.NOW },
             { "TYPEOF", TokenType.TYPEOF },
             { "UUIDOF", TokenType.UUIDOF },
-            { "VECTOR", TokenType.VECTOR }
+            { "VECTOR", TokenType.VECTOR },
+            { "STRING_AGG", TokenType.STRING_AGG },
+            { "CHARLENGTH", TokenType.CHARLENGTH },
+            { "CONCAT", TokenType.CONCAT },
+            { "CONCAT_WS", TokenType.CONCAT_WS },
+            { "REPLACE", TokenType.REPLACE },
+            { "LOWER", TokenType.LOWER },
+            { "UPPER", TokenType.UPPER },
+            { "LTRIM", TokenType.LTRIM },
+            { "RTRIM", TokenType.RTRIM },
+            { "LAG", TokenType.LAG },
+            { "LEAD", TokenType.LEAD },
+            { "FIRST_VALUE", TokenType.FIRST_VALUE },
+            { "LAST_VALUE", TokenType.LAST_VALUE }
         };
         private static Dictionary<string, TokenType> _function_ru = new()
         {

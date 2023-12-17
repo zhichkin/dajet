@@ -132,6 +132,12 @@ namespace DaJet.Scripting
                     script.Append("NEXT VALUE FOR ").Append(scalar.Literal);
                 }
             }
+            else if (name == "CHARLENGTH")
+            {
+                script.Append("LEN").Append('(');
+                Visit(node.Parameters[0], in script);
+                script.Append(')');
+            }
             else
             {
                 base.Visit(in node, in script);

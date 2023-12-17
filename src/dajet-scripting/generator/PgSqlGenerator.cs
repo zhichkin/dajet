@@ -248,6 +248,8 @@ namespace DaJet.Scripting
         {
             string name = node.Name.ToUpperInvariant();
 
+            string pg_name = null;
+
             if (name == "TYPEOF" || name == "UUIDOF")
             {
                 base.Visit(in node, in script); return;
@@ -279,9 +281,17 @@ namespace DaJet.Scripting
                 }
                 return;
             }
+            else if (name == "CHARLENGTH") { pg_name = "LENGTH"; }
 
-            script.Append(node.Name).Append("(");
-
+            if (pg_name is not null)
+            {
+                script.Append(pg_name).Append("(");
+            }
+            else
+            {
+                script.Append(node.Name).Append("(");
+            }
+            
             SyntaxNode expression;
 
             for (int i = 0; i < node.Parameters.Count; i++)
@@ -294,6 +304,15 @@ namespace DaJet.Scripting
                     script.Append("CAST(");
                     Visit(in expression, in script);
                     script.Append(" AS varchar)");
+                }
+                else if (name == "STRING_AGG" || name == "REPLACE"
+                    || name == "CONCAT" || name == "CONCAT_WS"
+                    || name == "LOWER" || name == "UPPER"
+                    || name == "LTRIM" || name == "RTRIM")
+                {
+                    script.Append("CAST(");
+                    Visit(in expression, in script);
+                    script.Append(" AS text)");
                 }
                 else
                 {

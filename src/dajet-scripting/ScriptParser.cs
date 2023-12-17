@@ -1,5 +1,4 @@
-﻿using DaJet.Metadata;
-using DaJet.Scripting.Model;
+﻿using DaJet.Scripting.Model;
 
 namespace DaJet.Scripting
 {
@@ -698,62 +697,6 @@ namespace DaJet.Scripting
         private OnClause on_clause() { return new OnClause() { Expression = predicate() }; }
         private WhereClause where_clause() { return new WhereClause() { Expression = predicate() }; }
         private HavingClause having_clause() { return new HavingClause() { Expression = predicate() }; }
-        private SyntaxNode predicate()
-        {
-            return or(); // TODO: IN
-        }
-        private SyntaxNode or()
-        {
-            SyntaxNode left = and();
-
-            while (Match(TokenType.OR))
-            {
-                SyntaxNode right = and();
-
-                left = new BinaryOperator()
-                {
-                    Token = TokenType.OR,
-                    Expression1 = left,
-                    Expression2 = right
-                };
-            }
-
-            return left;
-        }
-        private SyntaxNode and()
-        {
-            SyntaxNode left = not();
-
-            while (Match(TokenType.AND))
-            {
-                SyntaxNode right = not();
-
-                left = new BinaryOperator()
-                {
-                    Token = TokenType.AND,
-                    Expression1 = left,
-                    Expression2 = right
-                };
-            }
-
-            return left;
-        }
-        private SyntaxNode not()
-        {
-            if (Match(TokenType.NOT))
-            {
-                SyntaxNode unary = not();
-
-                return new UnaryOperator()
-                {
-                    Token = TokenType.NOT,
-                    Expression = unary
-                };
-            }
-
-            return expression();
-        }
-
         private GroupClause group_clause()
         {
             if (!Match(TokenType.BY))
@@ -852,6 +795,64 @@ namespace DaJet.Scripting
                 Token = sort_order,
                 Expression = column
             };
+        }
+        #endregion
+
+        #region "PREDICATE"
+        private SyntaxNode predicate()
+        {
+            return or();
+        }
+        private SyntaxNode or()
+        {
+            SyntaxNode left = and();
+
+            while (Match(TokenType.OR))
+            {
+                SyntaxNode right = and();
+
+                left = new BinaryOperator()
+                {
+                    Token = TokenType.OR,
+                    Expression1 = left,
+                    Expression2 = right
+                };
+            }
+
+            return left;
+        }
+        private SyntaxNode and()
+        {
+            SyntaxNode left = not();
+
+            while (Match(TokenType.AND))
+            {
+                SyntaxNode right = not();
+
+                left = new BinaryOperator()
+                {
+                    Token = TokenType.AND,
+                    Expression1 = left,
+                    Expression2 = right
+                };
+            }
+
+            return left;
+        }
+        private SyntaxNode not()
+        {
+            if (Match(TokenType.NOT))
+            {
+                SyntaxNode unary = not();
+
+                return new UnaryOperator()
+                {
+                    Token = TokenType.NOT,
+                    Expression = unary
+                };
+            }
+
+            return expression();
         }
         #endregion
 
@@ -998,6 +999,22 @@ namespace DaJet.Scripting
                 };
             }
 
+            return grouping();
+        }
+        private SyntaxNode grouping()
+        {
+            if (Match(TokenType.OpenRoundBracket))
+            {
+                SyntaxNode grouping = predicate();
+
+                if (!Match(TokenType.CloseRoundBracket))
+                {
+                    throw new FormatException("Close round bracket token expected.");
+                }
+
+                return new GroupOperator() { Expression = grouping };
+            }
+
             return terminal();
         }
         private SyntaxNode terminal()
@@ -1021,20 +1038,9 @@ namespace DaJet.Scripting
             {
                 return star();
             }
-            if (Match(TokenType.CASE))
+            else if (Match(TokenType.CASE))
             {
                 return case_expression();
-            }
-            else if (Match(TokenType.OpenRoundBracket))
-            {
-                SyntaxNode grouping = expression();
-
-                if (!Match(TokenType.CloseRoundBracket))
-                {
-                    throw new FormatException("Close round bracket token expected.");
-                }
-
-                return new GroupOperator() { Expression = grouping };
             }
 
             Ignore();
