@@ -543,7 +543,7 @@ namespace DaJet.Scripting
 
         public static string GetDbTypeName(in MetadataProperty property, ColumnPurpose purpose)
         {
-            DataTypeSet type = property.PropertyType;
+            DataTypeDescriptor type = property.PropertyType;
 
             if (purpose == ColumnPurpose.Default)
             {

@@ -10,7 +10,7 @@ namespace DaJet.Metadata.Parsers
     {
         private readonly MetadataCache _cache;
         private ConfigFileParser _parser;
-        private DataTypeSetParser _typeParser;
+        private DataTypeDescriptorParser _typeParser;
         private readonly MetadataObject _owner;
 
         private int _count; // количество свойств
@@ -20,7 +20,7 @@ namespace DaJet.Metadata.Parsers
         private ConfigFileConverter _converter;
         ///<summary>
         ///FIXME: если cache равен null, то обработка идентификаторов ссылочных типов не выполняется.
-        ///<br>Дополнительная информация: <see cref="DataTypeSetParser"/></br>
+        ///<br>Дополнительная информация: <see cref="DataTypeDescriptorParser"/></br>
         ///</summary>
         public MetadataPropertyCollectionParser(MetadataCache cache)
         {
@@ -28,7 +28,7 @@ namespace DaJet.Metadata.Parsers
         }
         ///<summary>
         ///FIXME: если cache равен null, то обработка идентификаторов ссылочных типов не выполняется.
-        ///<br>Дополнительная информация: <see cref="DataTypeSetParser"/></br>
+        ///<br>Дополнительная информация: <see cref="DataTypeDescriptorParser"/></br>
         ///</summary>
         ///<param name="owner">Используется для определения вида свойства: реквизит, ресурс или измерение.</param>
         public MetadataPropertyCollectionParser(MetadataCache cache, MetadataObject owner)
@@ -42,7 +42,7 @@ namespace DaJet.Metadata.Parsers
 
             _target = new List<MetadataProperty>();
 
-            _typeParser = new DataTypeSetParser(_cache);
+            _typeParser = new DataTypeDescriptorParser(_cache);
 
             _parser = new ConfigFileParser();
             _parser.Parse(in source, in _converter);
@@ -206,7 +206,7 @@ namespace DaJet.Metadata.Parsers
 
             if (source.Token == TokenType.StartObject)
             {
-                _typeParser.Parse(in source, out DataTypeSet type);
+                _typeParser.Parse(in source, out DataTypeDescriptor type);
 
                 _property.PropertyType = type;
             }
@@ -236,12 +236,12 @@ namespace DaJet.Metadata.Parsers
                 return;
             }
 
-            _typeParser.Parse(in source, out DataTypeSet type);
+            _typeParser.Parse(in source, out DataTypeDescriptor type);
 
             _property.ExtensionPropertyType = type;
 
             //FIXME: extension has higher priority
-            //_target.DataTypeSet.Merge(in type);
+            //_target.DataTypeDescriptor.Merge(in type);
         }
     }
 }

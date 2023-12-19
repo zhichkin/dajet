@@ -5,23 +5,23 @@ using System.ComponentModel;
 
 namespace DaJet.Metadata.Parsers
 {
-    public sealed class NamedDataTypeSetParser : IMetadataObjectParser
+    public sealed class NamedDataTypeDescriptorParser : IMetadataObjectParser
     {
         private readonly MetadataCache _cache;
         private ConfigFileParser _parser;
-        private DataTypeSetParser _typeParser;
+        private DataTypeDescriptorParser _typeParser;
 
         private MetadataInfo _entry;
-        private NamedDataTypeSet _target;
+        private NamedDataTypeDescriptor _target;
         private ConfigFileConverter _converter;
-        public NamedDataTypeSetParser() { }
-        public NamedDataTypeSetParser(MetadataCache cache) { _cache = cache; }
+        public NamedDataTypeDescriptorParser() { }
+        public NamedDataTypeDescriptorParser(MetadataCache cache) { _cache = cache; }
         public void Parse(in ConfigFileOptions options, out MetadataInfo info)
         {
             _entry = new MetadataInfo()
             {
                 MetadataUuid = options.MetadataUuid,
-                MetadataType = MetadataTypes.NamedDataTypeSet
+                MetadataType = MetadataTypes.NamedDataTypeDescriptor
             };
 
             _parser = new ConfigFileParser();
@@ -55,7 +55,7 @@ namespace DaJet.Metadata.Parsers
             _entry = new MetadataInfo()
             {
                 MetadataUuid = uuid,
-                MetadataType = MetadataTypes.NamedDataTypeSet
+                MetadataType = MetadataTypes.NamedDataTypeDescriptor
             };
 
             _parser = new ConfigFileParser();
@@ -77,11 +77,11 @@ namespace DaJet.Metadata.Parsers
         }
         public void Parse(in ConfigFileReader source, Guid uuid, out MetadataObject target)
         {
-            _target = new NamedDataTypeSet() { Uuid = uuid };
+            _target = new NamedDataTypeDescriptor() { Uuid = uuid };
             
             ConfigureConverter();
 
-            _typeParser = new DataTypeSetParser(_cache);
+            _typeParser = new DataTypeDescriptorParser(_cache);
 
             _parser = new ConfigFileParser();
             _parser.Parse(in source, in _converter);
@@ -107,15 +107,15 @@ namespace DaJet.Metadata.Parsers
                 // [1][3][15] - Объект описания дополнительных типов данных определяемого типа
                 // [1][3][15][0] = #
                 // [1][3][15][1] = f5c65050-3bbb-11d5-b988-0050bae0a95d (константа)
-                // [1][3][15][2] = {объект описания типов данных - Pattern} аналогично [1][4] += DataTypeSet
+                // [1][3][15][2] = {объект описания типов данных - Pattern} аналогично [1][4] += DataTypeDescriptor
 
-                _converter[1][3][15][2] += ExtensionDataTypeSet;
+                _converter[1][3][15][2] += ExtensionDataTypeDescriptor;
             }
 
             _converter[1][3][2] += Name;
             _converter[1][3][3][2] += Alias;
             _converter[1][3][4] += Comment;
-            _converter[1][4] += DataTypeSet;
+            _converter[1][4] += DataTypeDescriptor;
         }
         private void Cancel(in ConfigFileReader source, in CancelEventArgs args)
         {
@@ -150,19 +150,19 @@ namespace DaJet.Metadata.Parsers
         {
             _target.Comment = source.Value;
         }
-        private void DataTypeSet(in ConfigFileReader source, in CancelEventArgs args)
+        private void DataTypeDescriptor(in ConfigFileReader source, in CancelEventArgs args)
         {
             // Корневой узел объекта "ОписаниеТипов"
 
             if (source.Token == TokenType.StartObject)
             {
-                _typeParser.Parse(in source, out DataTypeSet type);
+                _typeParser.Parse(in source, out DataTypeDescriptor type);
 
-                _target.DataTypeSet = type;
+                _target.DataTypeDescriptor = type;
 
                 //FIXME: extension has higher priority
-                //type.Merge(_target.DataTypeSet);
-                //_target.DataTypeSet = type;
+                //type.Merge(_target.DataTypeDescriptor);
+                //_target.DataTypeDescriptor = type;
             }
         }
         private void Parent(in ConfigFileReader source, in CancelEventArgs args)
@@ -176,7 +176,7 @@ namespace DaJet.Metadata.Parsers
                 _target.Parent = source.GetUuid();
             }
         }
-        private void ExtensionDataTypeSet(in ConfigFileReader source, in CancelEventArgs args)
+        private void ExtensionDataTypeDescriptor(in ConfigFileReader source, in CancelEventArgs args)
         {
             // Корневой узел объекта "ОписаниеТипов"
 
@@ -185,12 +185,12 @@ namespace DaJet.Metadata.Parsers
                 return;
             }
 
-            _typeParser.Parse(in source, out DataTypeSet type);
+            _typeParser.Parse(in source, out DataTypeDescriptor type);
 
-            _target.ExtensionDataTypeSet = type;
+            _target.ExtensionDataTypeDescriptor = type;
 
             //FIXME: extension has higher priority
-            //_target.DataTypeSet.Merge(in type);
+            //_target.DataTypeDescriptor.Merge(in type);
         }
     }
 }

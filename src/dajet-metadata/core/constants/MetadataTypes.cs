@@ -8,7 +8,7 @@ namespace DaJet.Metadata.Core
         public static Guid InfoBase = Guid.Empty; // Корень конфигурации информационной базы 1С
         public static Guid Subsystem = new Guid("37f2fa9a-b276-11d4-9435-004095e12fc7"); // Подсистемы
         public static Guid SharedProperty = new Guid("15794563-ccec-41f6-a83c-ec5f7b9a5bc1"); // Общие реквизиты
-        public static Guid NamedDataTypeSet = new Guid("c045099e-13b9-4fb6-9d50-fca00202971e"); // Определяемые типы
+        public static Guid NamedDataTypeDescriptor = new Guid("c045099e-13b9-4fb6-9d50-fca00202971e"); // Определяемые типы
         public static Guid Catalog = new Guid("cf4abea6-37b2-11d4-940f-008048da11f9"); // Справочники
         public static Guid Constant = new Guid("0195e80c-b157-11d4-9435-004095e12fc7"); // Константы
         public static Guid Document = new Guid("061d872a-5787-460e-95ac-ed74ea3a3e84"); // Документы
@@ -25,7 +25,7 @@ namespace DaJet.Metadata.Core
                 return new List<Guid>()
                 {
                     SharedProperty,
-                    NamedDataTypeSet,
+                    NamedDataTypeDescriptor,
                     Catalog,
                     Document,
                     Enumeration,
@@ -104,7 +104,7 @@ namespace DaJet.Metadata.Core
         private const string RU_INFORMATION_REGISTER = "РегистрСведений";
         private const string RU_ACCUMULATION_REGISTER = "РегистрНакопления";
         private const string RU_SHARED_PROPERTY = "ОбщийРеквизит";
-        private const string RU_NAMED_DATA_TYPE_SET = "ОпределяемыйТип";
+        private const string RU_NAMED_DATA_TYPE = "ОпределяемыйТип";
 
         #endregion
 
@@ -119,8 +119,8 @@ namespace DaJet.Metadata.Core
         private const string EN_CHARACTERISTIC = "Characteristic";
         private const string EN_INFORMATION_REGISTER = "InformationRegister";
         private const string EN_ACCUMULATION_REGISTER = "AccumulationRegister";
-        private const string EN_SHARED_PROPERTY = "SharedProperty";
-        private const string EN_NAMED_DATA_TYPE_SET = "NamedDataTypeSet";
+        private const string EN_SHARED_PROPERTY = "CommonAttribute";
+        private const string EN_NAMED_DATA_TYPE = "DefinedType";
 
         #endregion
 
@@ -150,7 +150,7 @@ namespace DaJet.Metadata.Core
             if (name == RU_SUBSYSTEM) return Subsystem;
 
             if (name == RU_SHARED_PROPERTY) return SharedProperty;
-            if (name == RU_NAMED_DATA_TYPE_SET) return NamedDataTypeSet;
+            if (name == RU_NAMED_DATA_TYPE) return NamedDataTypeDescriptor;
 
             return Guid.Empty;
         }
@@ -169,7 +169,7 @@ namespace DaJet.Metadata.Core
             if (name == EN_SUBSYSTEM) return Subsystem;
 
             if (name == EN_SHARED_PROPERTY) return SharedProperty;
-            if (name == EN_NAMED_DATA_TYPE_SET) return NamedDataTypeSet;
+            if (name == EN_NAMED_DATA_TYPE) return NamedDataTypeDescriptor;
 
             return Guid.Empty;
         }
@@ -200,7 +200,7 @@ namespace DaJet.Metadata.Core
             if (uuid == Subsystem) return RU_SUBSYSTEM;
 
             if (uuid == SharedProperty) return RU_SHARED_PROPERTY;
-            if (uuid == NamedDataTypeSet) return RU_NAMED_DATA_TYPE_SET;
+            if (uuid == NamedDataTypeDescriptor) return RU_NAMED_DATA_TYPE;
 
             return string.Empty;
         }
@@ -219,7 +219,7 @@ namespace DaJet.Metadata.Core
             if (uuid == Subsystem) return EN_SUBSYSTEM;
 
             if (uuid == SharedProperty) return EN_SHARED_PROPERTY;
-            if (uuid == NamedDataTypeSet) return EN_NAMED_DATA_TYPE_SET;
+            if (uuid == NamedDataTypeDescriptor) return EN_NAMED_DATA_TYPE;
 
             return string.Empty;
         }

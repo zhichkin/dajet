@@ -103,7 +103,7 @@ namespace DaJet.Metadata.Core
                 table.Properties.Add(property);
             }
         }
-        internal static void ConfigureDataTypeSet(in MetadataCache cache, in DataTypeSet target, in List<Guid> identifiers)
+        internal static void ConfigureDataTypeDescriptor(in MetadataCache cache, in DataTypeDescriptor target, in List<Guid> identifiers)
         {
             if (identifiers == null || identifiers.Count == 0)
             {
@@ -148,7 +148,7 @@ namespace DaJet.Metadata.Core
                     /// и для этого типа данных пользователем в конфигруации создан только один конкретный тип, например,
                     /// ПланОбмена.МойПланОбмена, то свойства Reference и TypeCode переменной target заполняются пустыми значениями,
                     /// что соответствует множественному ссылочному типу данных, и это, как следствие, приводит к тому, что
-                    /// свойство IsMultipleType класса <see cref="DataTypeSet"/> возвращает некорректное значение true,
+                    /// свойство IsMultipleType класса <see cref="DataTypeDescriptor"/> возвращает некорректное значение true,
                     /// что в свою очередь приводит к некорректному формированию метаданных полей базы данных для такого свойства
                     /// объекта метаданных в процедуре <see cref="ConfigureDatabaseColumns"/>.
                     /// Таким образом в конфигураторе типом свойства объекта метаданных (или табличной части) является общий тип данных,
@@ -181,12 +181,12 @@ namespace DaJet.Metadata.Core
                 target.Reference = Guid.Empty;
             }
         }
-        private static int ResolveAndCountReferenceTypes(in MetadataCache cache, in DataTypeSet target, Guid reference)
+        private static int ResolveAndCountReferenceTypes(in MetadataCache cache, in DataTypeDescriptor target, Guid reference)
         {
             // RULES (правила разрешения ссылочных типов данных для объекта "ОписаниеТипов"):
-            // 1. DataTypeSet (property type) can have only one reference to NamedDataTypeSet or Characteristic
+            // 1. DataTypeDescriptor (property type) can have only one reference to NamedDataTypeDescriptor or Characteristic
             //    Additional references to another data types are not allowed in this case. (!)
-            // 2. NamedDataTypeSet and Characteristic can not reference them self or each other. (!)
+            // 2. NamedDataTypeDescriptor and Characteristic can not reference them self or each other. (!)
             // 3. Если ссылочный тип имеет значение, например, "СправочникСсылка", то есть любой справочник,
             //    в таком случае необходимо вычислить количество справочников в составе конфигурации:
             //    если возможным справочником будет только один, то это будет single reference type. (!)
@@ -202,7 +202,7 @@ namespace DaJet.Metadata.Core
                     return 0; // this should not happen
                 }
 
-                target.Apply(characteristic.DataTypeSet);
+                target.Apply(characteristic.DataTypeDescriptor);
 
                 if (!target.CanBeReference)
                 {
@@ -221,17 +221,17 @@ namespace DaJet.Metadata.Core
 
             if (cache.TryGetReferenceInfo(reference, out MetadataItem info))
             {
-                if (info.Type == MetadataTypes.NamedDataTypeSet)
+                if (info.Type == MetadataTypes.NamedDataTypeDescriptor)
                 {
-                    // NOTE: Lazy-load of NamedDataTypeSet: recursion is avoided because of rule #2.
+                    // NOTE: Lazy-load of NamedDataTypeDescriptor: recursion is avoided because of rule #2.
                     MetadataObject metadata = cache.GetMetadataObjectCached(info.Type, info.Uuid);
 
-                    if (metadata is not NamedDataTypeSet namedSet)
+                    if (metadata is not NamedDataTypeDescriptor named)
                     {
                         return 0; // this should not happen
                     }
 
-                    target.Apply(namedSet.DataTypeSet);
+                    target.Apply(named.DataTypeDescriptor);
 
                     if (!target.CanBeReference)
                     {

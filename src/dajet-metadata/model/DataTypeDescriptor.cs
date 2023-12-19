@@ -30,7 +30,7 @@ namespace DaJet.Metadata.Model
     ///"УникальныйИдентификатор", "ХранилищеЗначения", "ОпределяемыйТип", "Характеристика" и строка неограниченной длины.
     ///</br>
     ///</summary>
-    public sealed class DataTypeSet
+    public sealed class DataTypeDescriptor
     {
         private DataTypeFlags _flags = DataTypeFlags.None;
         public DataTypeFlags Flags { get { return _flags; } }
@@ -250,7 +250,7 @@ namespace DaJet.Metadata.Model
         ///<br>- ОпределяемыйТип <see cref="MetadataCache._references"/></br>
         ///<br>- Общие ссылочные типы, например, ЛюбаяСсылка или СправочникСсылка</br>
         ///<br>- Конкретные ссылочные типы, например, СправочникСсылка.Номенклатура</br>
-        ///<br>Функция для обработки идентификаторов: <see cref="Configurator.ConfigureDataTypeSet(in MetadataCache, in DataTypeSet, in List{Guid})"/></br>
+        ///<br>Функция для обработки идентификаторов: <see cref="Configurator.ConfigureDataTypeDescriptor(in MetadataCache, in DataTypeDescriptor, in List{Guid})"/></br>
         ///</summary>
         public List<Guid> Identifiers { get; set; } = new();
         
@@ -269,7 +269,7 @@ namespace DaJet.Metadata.Model
         ///<br>Используется методом <see cref="Configurator.ResolveAndCountReferenceTypes"/></br>
         ///</summary>
         ///<param name="source">Описание типов определяемого типа или характеристики.</param>
-        internal void Apply(in DataTypeSet source)
+        internal void Apply(in DataTypeDescriptor source)
         {
             _flags = source._flags;
 
@@ -371,7 +371,7 @@ namespace DaJet.Metadata.Model
         /// Объединяет два описания типов, отдавая приоритет входящему параметру <b>source</b>.
         /// </summary>
         /// <param name="source">Описание типов, определяемых расширением или объектом основной конфигурации</param>
-        internal void Merge(in DataTypeSet source)
+        internal void Merge(in DataTypeDescriptor source)
         {
             if (source == null)
             {

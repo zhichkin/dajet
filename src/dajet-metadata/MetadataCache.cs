@@ -115,7 +115,7 @@ namespace DaJet.Metadata
         ///<br> - Uuid = <see cref="Guid"/> объекта метаданных</br>
         ///<br> - Name = <see cref="string.Empty"/> (для экономии памяти кэша)</br>
         ///<br></br>
-        ///<br><b>Использование:</b> расшифровка <see cref="DataTypeSet"/> при чтении файлов конфигурации.</br>
+        ///<br><b>Использование:</b> расшифровка <see cref="DataTypeDescriptor"/> при чтении файлов конфигурации.</br>
         ///<br>NOTE: MetadataItem коллекции _references не содержит имени объекта метаданных!</br>
         ///</summary>
         private readonly ConcurrentDictionary<Guid, MetadataItem> _references = new();
@@ -127,7 +127,7 @@ namespace DaJet.Metadata
         ///<br></br>
         ///<br><b>Значение:</b> UUID объекта метаданных типа "ПланВидовХарактеристик" <see cref="MetadataTypes"/>.</br>
         ///<br></br>
-        ///<br><b>Использование:</b> расшифровка <see cref="DataTypeSet"/> при чтении файлов конфигурации.</br>
+        ///<br><b>Использование:</b> расшифровка <see cref="DataTypeDescriptor"/> при чтении файлов конфигурации.</br>
         ///</summary>
         private readonly ConcurrentDictionary<Guid, Guid> _characteristics = new();
 
@@ -375,7 +375,7 @@ namespace DaJet.Metadata
             {
                 //{ MetadataTypes.Constant,             new List<Guid>() }, // Константы
                 //{ MetadataTypes.Subsystem,            new List<Guid>() }, // Подсистемы
-                { MetadataTypes.NamedDataTypeSet,     new List<Guid>() }, // Определяемые типы
+                { MetadataTypes.NamedDataTypeDescriptor,     new List<Guid>() }, // Определяемые типы
                 { MetadataTypes.SharedProperty,       new List<Guid>() }, // Общие реквизиты
                 { MetadataTypes.Catalog,              new List<Guid>() }, // Справочники
                 { MetadataTypes.Document,             new List<Guid>() }, // Документы
@@ -614,7 +614,7 @@ namespace DaJet.Metadata
                 throw new InvalidOperationException($"Metadata type parser is under development \"{metadataType}\"");
             }
 
-            if (type == MetadataTypes.SharedProperty || type == MetadataTypes.NamedDataTypeSet)
+            if (type == MetadataTypes.SharedProperty || type == MetadataTypes.NamedDataTypeDescriptor)
             {
                 string tableName = GetConfigTableName(uuid);
                 string fileName = GetConfigFileName(uuid);
@@ -949,7 +949,7 @@ namespace DaJet.Metadata
             else if (reference == ReferenceTypes.AnyReference)
             {
                 /// TODO: очень редкий случай - во всей конфигурации только один ссылочный тип
-                /// Single reference type case <see cref="Configurator.ConfigureDataTypeSet"/>
+                /// Single reference type case <see cref="Configurator.ConfigureDataTypeDescriptor"/>
             }
             else
             {
@@ -1003,7 +1003,7 @@ namespace DaJet.Metadata
 
         /// <summary>
         /// Функция сопоставления ссылочных типов данных объекта "ОписаниеТипов" объектам метаданных.
-        /// <br>Список ссылочных типов объекта <see cref="DataTypeSet"/> получает парсер <see cref="DataTypeSetParser"/>.</br>
+        /// <br>Список ссылочных типов объекта <see cref="DataTypeDescriptor"/> получает парсер <see cref="DataTypeDescriptorParser"/>.</br>
         /// </summary>
         /// <param name="references">Список ссылочных типов данных объекта "ОписаниеТипов".</param>
         /// <returns></returns>
@@ -1030,7 +1030,7 @@ namespace DaJet.Metadata
         internal MetadataItem ResolveReferenceType(Guid reference)
         {
             // RULES (правила разрешения ссылочных типов данных для объекта "ОписаниеТипов"):
-            // 1. DataTypeSet (описание типа данных свойства объекта) может ссылаться только на
+            // 1. DataTypeDescriptor (описание типа данных свойства объекта) может ссылаться только на
             //    один экземпляр определяемого типа или плана видов характеристик (характеристику).
             //    В таком случае указание дополнительных типов данных для данного свойства невозможно.
             // 2. Определяемый тип или характеристика не могут ссылаться на другие определяемые типы или характеристики.
@@ -1041,7 +1041,7 @@ namespace DaJet.Metadata
             //    если в составе конфигурации имеется только один ссылочный тип данных, например,
             //    только один справочник или документ, то это будет single reference type.
             // 5. К специальным ссылочным типам данных относятся "УникальныйИдентификатор" и "ХранилищеЗначения".
-            //    Согласно алгоритму парсера DataTypeSetParser, они в качестве значения параметра reference отсутствуют.
+            //    Согласно алгоритму парсера DataTypeDescriptorParser, они в качестве значения параметра reference отсутствуют.
 
             if (reference == SingleTypes.ValueStorage)
             {
@@ -1542,7 +1542,7 @@ namespace DaJet.Metadata
             if (type == MetadataTypes.Publication) { return new PublicationParser(); }
             if (type == MetadataTypes.Characteristic) { return new CharacteristicParser(); }
             if (type == MetadataTypes.SharedProperty) { return new SharedPropertyParser(); } // since 1C:Enterprise 8.2.14 version
-            if (type == MetadataTypes.NamedDataTypeSet) { return new NamedDataTypeSetParser(); } // since 1C:Enterprise 8.3.3 version
+            if (type == MetadataTypes.NamedDataTypeDescriptor) { return new NamedDataTypeDescriptorParser(); } // since 1C:Enterprise 8.3.3 version
             if (type == MetadataTypes.InformationRegister) { return new InformationRegisterParser(); }
             if (type == MetadataTypes.AccumulationRegister) { return new AccumulationRegisterParser(); }
 
@@ -1596,7 +1596,7 @@ namespace DaJet.Metadata
 
                 if (parser is null) { continue; }
                 if (type.Key == MetadataTypes.SharedProperty) { continue; }
-                if (type.Key == MetadataTypes.NamedDataTypeSet) { continue; } //TODO: (!) заполнить коллекцию MetadataCache._references.
+                if (type.Key == MetadataTypes.NamedDataTypeDescriptor) { continue; } //TODO: (!) заполнить коллекцию MetadataCache._references.
                 
                 foreach (var uuid in type.Value)
                 {

@@ -22,7 +22,7 @@ namespace DaJet.Metadata.Parsers
                 { MetadataTypes.InformationRegister, CreateInformationRegisterParser },
                 { MetadataTypes.AccumulationRegister, CreateAccumulationRegisterParser },
                 { MetadataTypes.SharedProperty, CreateSharedPropertyParser }, // since 1C:Enterprise 8.2.14 version
-                { MetadataTypes.NamedDataTypeSet, CreateNamedDataTypeSetParser } // since 1C:Enterprise 8.3.3 version
+                { MetadataTypes.NamedDataTypeDescriptor, CreateNamedDataTypeDescriptorParser } // since 1C:Enterprise 8.3.3 version
             };
             // Включение режима совместимости с версией 8.2.13 и ниже несовместимо с наличием в конфигурации общих реквизитов
             // Использование определяемых типов в режиме совместимости 8.3.2 и ниже недопустимо
@@ -75,9 +75,9 @@ namespace DaJet.Metadata.Parsers
         {
             return new SharedPropertyParser(_cache);
         }
-        private IMetadataObjectParser CreateNamedDataTypeSetParser()
+        private IMetadataObjectParser CreateNamedDataTypeDescriptorParser()
         {
-            return new NamedDataTypeSetParser(_cache);
+            return new NamedDataTypeDescriptorParser(_cache);
         }
 
         #endregion

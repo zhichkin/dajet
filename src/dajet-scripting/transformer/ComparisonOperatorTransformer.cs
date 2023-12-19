@@ -215,7 +215,7 @@ namespace DaJet.Scripting
             
             int value = 0;
             int tag = (int)ColumnPurpose.Tag;
-            DataTypeSet type = property.PropertyType;
+            DataTypeDescriptor type = property.PropertyType;
             MetadataColumn field = property.Columns[0];
 
             if (type.IsUuid || type.IsBinary || type.IsValueStorage)

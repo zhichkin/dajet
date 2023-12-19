@@ -1,5 +1,4 @@
-﻿using DaJet.Data;
-using DaJet.Metadata.Model;
+﻿using DaJet.Metadata.Model;
 
 namespace DaJet.DbViewGenerator
 {

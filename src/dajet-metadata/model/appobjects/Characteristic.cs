@@ -6,7 +6,7 @@ namespace DaJet.Metadata.Model
         IEntityCode, IEntityDescription, IEntityHierarchy, IPredefinedValueOwner, ITablePartOwner
     {
         ///<summary>Описание типов значений характеристики, свойство "ТипЗначения".</summary>
-        public DataTypeSet DataTypeSet { get; set; }
+        public DataTypeDescriptor DataTypeDescriptor { get; set; }
         public int CodeLength { get; set; } = 9;
         public CodeType CodeType { get; set; } = CodeType.String;
         public int DescriptionLength { get; set; } = 25;
@@ -14,7 +14,7 @@ namespace DaJet.Metadata.Model
         public HierarchyType HierarchyType { get; set; } = HierarchyType.Groups;
         public List<TablePart> TableParts { get; set; } = new List<TablePart>();
         public List<PredefinedValue> PredefinedValues { get; set; } = new List<PredefinedValue>();
-        public DataTypeSet ExtensionDataTypeSet { get; set; }
+        public DataTypeDescriptor ExtensionDataTypeDescriptor { get; set; }
     }
     
     //PropertyNameLookup.Add("_idrref", "Ссылка");

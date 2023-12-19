@@ -9,7 +9,7 @@ namespace DaJet.Metadata.Parsers
     {
         private readonly MetadataCache _cache;
         private ConfigFileParser _parser;
-        private DataTypeSetParser _typeParser;
+        private DataTypeDescriptorParser _typeParser;
 
         int _count = 0;
         private MetadataInfo _entry;
@@ -75,7 +75,7 @@ namespace DaJet.Metadata.Parsers
 
             ConfigureConverter();
 
-            _typeParser = new DataTypeSetParser(_cache);
+            _typeParser = new DataTypeDescriptorParser(_cache);
 
             _parser = new ConfigFileParser();
             _parser.Parse(in source, in _converter);
@@ -179,7 +179,7 @@ namespace DaJet.Metadata.Parsers
                 return;
             }
 
-            _typeParser.Parse(in source, out DataTypeSet type);
+            _typeParser.Parse(in source, out DataTypeDescriptor type);
 
             _target.PropertyType = type;
         }

@@ -14,10 +14,10 @@ namespace DaJet.Metadata.Model
         public List<MetadataColumn> Columns { get; set; } = new List<MetadataColumn>();
         ///<summary>Логический смысл свойства. Подробнее смотри перечисление <see cref="PropertyPurpose"/>.</summary>
         public PropertyPurpose Purpose { get; set; } = PropertyPurpose.Property;
-        ///<summary>Описание типов данных <see cref="DataTypeSet"/>, которые могут использоваться для значений свойства.</summary>
-        public DataTypeSet PropertyType { get; set; } = new DataTypeSet();
+        ///<summary>Описание типов данных <see cref="DataTypeDescriptor"/>, которые могут использоваться для значений свойства.</summary>
+        public DataTypeDescriptor PropertyType { get; set; } = new DataTypeDescriptor();
         ///<summary>Описание типов данных свойства, определённых в расширении.</summary>
-        public DataTypeSet ExtensionPropertyType { get; set; } = new DataTypeSet();
+        public DataTypeDescriptor ExtensionPropertyType { get; set; } = new DataTypeDescriptor();
         /// <summary>Вариант использования реквизита для групп и элементов</summary>
         public PropertyUsage PropertyUsage { get; set; } = PropertyUsage.Item;
         /// <summary>Использование измерения периодического или непереодического регистра сведений,
