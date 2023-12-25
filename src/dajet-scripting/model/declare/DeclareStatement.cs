@@ -6,5 +6,9 @@
         public string Name { get; set; } = string.Empty;
         public TypeIdentifier Type { get; set; }
         public SyntaxNode Initializer { get; set; }
+        public override string ToString()
+        {
+            return $"[{Token}: {Name}]";
+        }
     }
 }

@@ -6,11 +6,11 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class MetadataObjectParserFactory
     {
-        private readonly MetadataCache _cache;
+        private readonly OneDbMetadataProvider _metadata;
         private readonly Dictionary<Guid, Func<IMetadataObjectParser>> _parsers;
-        public MetadataObjectParserFactory(MetadataCache cache)
+        public MetadataObjectParserFactory(OneDbMetadataProvider metadata)
         {
-            _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+            _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
 
             _parsers = new() // supported metadata object parsers
             {
@@ -45,39 +45,39 @@ namespace DaJet.Metadata.Parsers
 
         private IMetadataObjectParser CreateCatalogParser()
         {
-            return new CatalogParser(_cache);
+            return new CatalogParser(_metadata);
         }
         private IMetadataObjectParser CreateDocumentParser()
         {
-            return new DocumentParser(_cache);
+            return new DocumentParser(_metadata);
         }
         private IMetadataObjectParser CreateEnumerationParser()
         {
-            return new EnumerationParser(_cache);
+            return new EnumerationParser(_metadata);
         }
         private IMetadataObjectParser CreatePublicationParser()
         {
-            return new PublicationParser(_cache);
+            return new PublicationParser(_metadata);
         }
         private IMetadataObjectParser CreateCharacteristicParser()
         {
-            return new CharacteristicParser(_cache);
+            return new CharacteristicParser(_metadata);
         }
         private IMetadataObjectParser CreateInformationRegisterParser()
         {
-            return new InformationRegisterParser(_cache);
+            return new InformationRegisterParser(_metadata);
         }
         private IMetadataObjectParser CreateAccumulationRegisterParser()
         {
-            return new AccumulationRegisterParser(_cache);
+            return new AccumulationRegisterParser(_metadata);
         }
         private IMetadataObjectParser CreateSharedPropertyParser()
         {
-            return new SharedPropertyParser(_cache);
+            return new SharedPropertyParser(_metadata);
         }
         private IMetadataObjectParser CreateNamedDataTypeDescriptorParser()
         {
-            return new NamedDataTypeDescriptorParser(_cache);
+            return new NamedDataTypeDescriptorParser(_metadata);
         }
 
         #endregion

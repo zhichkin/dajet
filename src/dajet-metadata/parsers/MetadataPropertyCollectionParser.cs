@@ -8,7 +8,7 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class MetadataPropertyCollectionParser
     {
-        private readonly MetadataCache _cache;
+        private readonly OneDbMetadataProvider _cache;
         private ConfigFileParser _parser;
         private DataTypeDescriptorParser _typeParser;
         private readonly MetadataObject _owner;
@@ -22,7 +22,7 @@ namespace DaJet.Metadata.Parsers
         ///FIXME: если cache равен null, то обработка идентификаторов ссылочных типов не выполняется.
         ///<br>Дополнительная информация: <see cref="DataTypeDescriptorParser"/></br>
         ///</summary>
-        public MetadataPropertyCollectionParser(MetadataCache cache)
+        public MetadataPropertyCollectionParser(OneDbMetadataProvider cache)
         {
             _cache = cache;
         }
@@ -31,7 +31,7 @@ namespace DaJet.Metadata.Parsers
         ///<br>Дополнительная информация: <see cref="DataTypeDescriptorParser"/></br>
         ///</summary>
         ///<param name="owner">Используется для определения вида свойства: реквизит, ресурс или измерение.</param>
-        public MetadataPropertyCollectionParser(MetadataCache cache, MetadataObject owner)
+        public MetadataPropertyCollectionParser(OneDbMetadataProvider cache, MetadataObject owner)
         {
             _cache = cache;
             _owner = owner;

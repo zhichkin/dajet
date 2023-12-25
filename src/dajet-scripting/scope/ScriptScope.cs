@@ -16,19 +16,16 @@ namespace DaJet.Scripting
         public ScriptScope Parent { get; set; }
         public List<ScriptScope> Children { get; } = new();
         public List<SyntaxNode> Identifiers { get; } = new();
-        public ScriptScope Root
+        public ScriptScope GetRoot()
         {
-            get
+            ScriptScope root = this;
+
+            while (root.Parent is not null)
             {
-                ScriptScope root = this;
-
-                while (root.Parent != null)
-                {
-                    root = root.Parent;
-                }
-
-                return root;
+                root = root.Parent;
             }
+
+            return root;
         }
         public ScriptScope Ancestor<TOwner>() where TOwner : SyntaxNode
         {
@@ -37,9 +34,9 @@ namespace DaJet.Scripting
             ScriptScope scope = this;
             SyntaxNode owner = Owner;
 
-            while (scope != null)
+            while (scope is not null)
             {
-                if (owner != null && owner.GetType() == type)
+                if (owner is not null && owner.GetType() == type)
                 {
                     return scope;
                 }

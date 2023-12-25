@@ -8,7 +8,7 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class CharacteristicParser : IMetadataObjectParser
     {
-        private readonly MetadataCache _cache;
+        private readonly OneDbMetadataProvider _cache;
         private ConfigFileParser _parser;
         private DataTypeDescriptorParser _typeParser;
         private TablePartCollectionParser _tableParser;
@@ -18,7 +18,7 @@ namespace DaJet.Metadata.Parsers
         private Characteristic _target;
         private ConfigFileConverter _converter;
         public CharacteristicParser() { }
-        public CharacteristicParser(MetadataCache cache) { _cache = cache; }
+        public CharacteristicParser(OneDbMetadataProvider cache) { _cache = cache; }
         public void Parse(in ConfigFileOptions options, out MetadataInfo info)
         {
             _entry = new MetadataInfo()

@@ -17,10 +17,10 @@ namespace DaJet.Metadata.Services
         string GenerateEnumViewScript(in Enumeration enumeration, string viewName);
 
         bool TryScriptView(in ApplicationObject metadata, in StreamWriter writer, out string error);
-        bool TryScriptViews(in MetadataCache cache, in StreamWriter writer, out string error);
+        bool TryScriptViews(in OneDbMetadataProvider cache, in StreamWriter writer, out string error);
 
         bool TryCreateView(in ApplicationObject metadata, out string error);
-        bool TryCreateViews(in MetadataCache cache, out int result, out List<string> errors);
+        bool TryCreateViews(in OneDbMetadataProvider cache, out int result, out List<string> errors);
         
         int DropViews();
         void DropView(in ApplicationObject metadata);

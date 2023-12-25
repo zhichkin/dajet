@@ -8,38 +8,25 @@ namespace DaJet.Scripting
     //TODO: make SayHello and SayGoodbye cancelable
     public interface IScriptWalker
     {
-        void SayHello(SyntaxNode node);
-        void SayGoodbye(SyntaxNode node);
+        void SayHello(in SyntaxNode node);
+        void SayGoodbye(in SyntaxNode node);
     }
     public static class ScriptWalker
     {
         public static void Walk(in SyntaxNode node, in IScriptWalker walker)
         {
-            if (node == null || walker == null)
-            {
-                return;
-            }
+            if (node is null) { throw new ArgumentNullException(nameof(node)); }
+            if (walker is null) { throw new ArgumentNullException(nameof(walker)); }
 
             Visit(in node, in walker);
         }
-        private static bool IsSyntaxNode(Type type)
-        {
-            return type == typeof(SyntaxNode)
-                || type.IsSubclassOf(typeof(SyntaxNode));
-        }
-        private static bool IsSyntaxNodeList(Type type)
-        {
-            return type.IsGenericType
-                && type.GetGenericTypeDefinition() == typeof(List<>)
-                && IsSyntaxNode(type.GetGenericArguments()[0]);
-        }
         private static void Visit(in SyntaxNode node, in IScriptWalker walker)
         {
-            walker?.SayHello(node);
+            walker.SayHello(in node);
 
             VisitChildren(in node, in walker);
 
-            walker?.SayGoodbye(node);
+            walker.SayGoodbye(in node);
         }
         private static void VisitChildren(in SyntaxNode parent, in IScriptWalker walker)
         {
@@ -61,11 +48,11 @@ namespace DaJet.Scripting
                     continue;
                 }
 
-                if (IsSyntaxNode(propertyType))
+                if (propertyType.IsSyntaxNode())
                 {
                     Visit((value as SyntaxNode), in walker);
                 }
-                else if (IsSyntaxNodeList(propertyType))
+                else if (propertyType.IsListOfSyntaxNodes())
                 {
                     if (value is IList list)
                     {

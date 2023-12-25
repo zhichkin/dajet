@@ -1,5 +1,4 @@
-﻿using DaJet.Metadata;
-using DaJet.Scripting.Model;
+﻿using DaJet.Scripting.Model;
 
 namespace DaJet.Scripting
 {
@@ -26,7 +25,7 @@ namespace DaJet.Scripting
 
             return (scope != null);
         }
-        public void SayHello(SyntaxNode node)
+        public void SayHello(in SyntaxNode node)
         {
             if (node == null) { return; }
 
@@ -51,7 +50,7 @@ namespace DaJet.Scripting
             else if (node is VariableReference) { JoinGlobalScope(node); }
             else if (node is IntoClause into) { CreateVirtualTableExpression(in into); }
         }
-        public void SayGoodbye(SyntaxNode node)
+        public void SayGoodbye(in SyntaxNode node)
         {
             if (node == null) { return; }
             

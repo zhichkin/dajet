@@ -1,5 +1,4 @@
-﻿using DaJet.Data;
-using DaJet.Metadata;
+﻿using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 
@@ -33,7 +32,7 @@ namespace DaJet.Scripting
 
         private void BindScriptScope(in ScriptScope scope, in IMetadataProvider metadata)
         {
-            ScriptScope root = scope.Root;
+            ScriptScope root = scope.GetRoot();
 
             if (root.Owner is not ScriptModel)
             {
@@ -87,7 +86,7 @@ namespace DaJet.Scripting
         }
         private void BindTableVariables(in ScriptScope scope)
         {
-            ScriptScope root = scope.Root;
+            ScriptScope root = scope.GetRoot();
 
             if (root.Owner is not ScriptModel script)
             {
@@ -119,7 +118,7 @@ namespace DaJet.Scripting
         }
         private void BindVariable(in ScriptScope scope, in VariableReference variable, in IMetadataProvider metadata)
         {
-            ScriptScope root = scope.Root;
+            ScriptScope root = scope.GetRoot();
 
             if (root.Owner is not ScriptModel script)
             {
@@ -582,6 +581,15 @@ namespace DaJet.Scripting
                 {
                     return true; // success
                 }
+            }
+
+            // TODO: if this scope is lateral TableExpression then go to the scope of parent join operator !!!
+
+            ScriptScope join = scope.Ancestor<TableJoinOperator>();
+
+            if (join is not null)
+            {
+                // TODO: if this scope is lateral TableExpression then go to the scope of parent join operator !!!
             }
 
             // not found

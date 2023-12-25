@@ -14,8 +14,8 @@ namespace DaJet.Metadata.Services
             "SELECT _idrref, CAST(_code AS varchar), CAST(_description AS varchar), _marked, _predefinedid FROM {0};";
 
         private readonly object _lock = new();
-        private readonly MetadataCache _cache;
-        internal PublicationDataMapper(MetadataCache cache)
+        private readonly OneDbMetadataProvider _cache;
+        internal PublicationDataMapper(OneDbMetadataProvider cache)
         {
             _cache = cache;
         }

@@ -3,7 +3,7 @@ using DaJet.Metadata.Extensions;
 
 namespace DaJet.Metadata
 {
-    public sealed class MetadataCacheOptions
+    public sealed class OneDbMetadataProviderOptions
     {
         public bool UseExtensions { get; set; } = false;
         public ExtensionInfo Extension { get; set; } = null;

@@ -32,7 +32,7 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataCache(database.Identity.ToString(), out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetOneDbMetadataProvider(database.Identity.ToString(), out OneDbMetadataProvider cache, out string error))
             {
                 return NotFound(error);
             }
@@ -72,7 +72,7 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataCache(database.Identity.ToString(), out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetOneDbMetadataProvider(database.Identity.ToString(), out OneDbMetadataProvider cache, out string error))
             {
                 return NotFound(error);
             }
@@ -87,7 +87,7 @@ namespace DaJet.Http.Controllers
                 return NotFound($"{extension}: {ExceptionHelper.GetErrorMessage(exception)}");
             }
 
-            if (!cache.TryGetMetadata(in info, out MetadataCache metadata, out error))
+            if (!cache.TryGetMetadata(in info, out OneDbMetadataProvider metadata, out error))
             {
                 return NotFound($"{extension}: {error}");
             }
@@ -131,7 +131,7 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataCache(database.Identity.ToString(), out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetOneDbMetadataProvider(database.Identity.ToString(), out OneDbMetadataProvider cache, out string error))
             {
                 return NotFound(error);
             }
@@ -146,7 +146,7 @@ namespace DaJet.Http.Controllers
                 return NotFound($"{extension}: {ExceptionHelper.GetErrorMessage(exception)}");
             }
 
-            if (!cache.TryGetMetadata(in info, out MetadataCache metadata, out error))
+            if (!cache.TryGetMetadata(in info, out OneDbMetadataProvider metadata, out error))
             {
                 return NotFound($"{extension}: {error}");
             }

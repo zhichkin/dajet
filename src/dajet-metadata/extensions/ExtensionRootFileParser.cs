@@ -21,7 +21,7 @@ namespace DaJet.Metadata.Extensions
 
             return string.IsNullOrWhiteSpace(error);
         }
-        public static Guid Parse(in MetadataCache cache, in ExtensionInfo extension)
+        public static Guid Parse(in OneDbMetadataProvider cache, in ExtensionInfo extension)
         {
             ConfigFileOptions options = new()
             {

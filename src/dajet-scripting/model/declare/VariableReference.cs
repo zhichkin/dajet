@@ -7,7 +7,7 @@
         public object Binding { get; set; }
         public override string ToString()
         {
-            return $"[{Token}:{Identifier}]";
+            return $"[{Token}: {Identifier}]";
         }
     }
 }

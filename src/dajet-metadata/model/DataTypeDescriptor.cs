@@ -246,11 +246,11 @@ namespace DaJet.Metadata.Model
         ///<br><b>Возможные типы данных:</b></br>
         ///<br>- ХранилищеЗначения</br>
         ///<br>- УникальныйИдентификатор</br>
-        ///<br>- Характеристика <see cref="MetadataCache._characteristics"/></br>
-        ///<br>- ОпределяемыйТип <see cref="MetadataCache._references"/></br>
+        ///<br>- Характеристика <see cref="OneDbMetadataProvider._characteristics"/></br>
+        ///<br>- ОпределяемыйТип <see cref="OneDbMetadataProvider._references"/></br>
         ///<br>- Общие ссылочные типы, например, ЛюбаяСсылка или СправочникСсылка</br>
         ///<br>- Конкретные ссылочные типы, например, СправочникСсылка.Номенклатура</br>
-        ///<br>Функция для обработки идентификаторов: <see cref="Configurator.ConfigureDataTypeDescriptor(in MetadataCache, in DataTypeDescriptor, in List{Guid})"/></br>
+        ///<br>Функция для обработки идентификаторов: <see cref="Configurator.ConfigureDataTypeDescriptor(in OneDbMetadataProvider, in DataTypeDescriptor, in List{Guid})"/></br>
         ///</summary>
         public List<Guid> Identifiers { get; set; } = new();
         
@@ -259,7 +259,7 @@ namespace DaJet.Metadata.Model
         ///<br><b>Назначение использования:</b></br>
         ///<br>1. Отображение информации в интерфейсе пользователя.</br>
         ///<br>2. Анализ логических связей между объектами метаданных.</br>
-        ///<br>Список заполняется функцией <see cref="MetadataCache.ResolveReferences(in List{Guid})"/></br>
+        ///<br>Список заполняется функцией <see cref="OneDbMetadataProvider.ResolveReferences(in List{Guid})"/></br>
         ///</summary>
         //THINK !?
         //REFACTORING(29.01.2023) public List<MetadataItem> References { get; } = new();

@@ -6,6 +6,8 @@ using DaJet.Metadata.Extensions;
 using DaJet.Metadata.Model;
 using DaJet.Metadata.Parsers;
 using DaJet.Metadata.Services;
+using Microsoft.Data.SqlClient;
+using Npgsql;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -16,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace DaJet.Metadata
 {
-    public sealed class MetadataCache : IMetadataProvider
+    public sealed class OneDbMetadataProvider : IMetadataProvider
     {
         #region "CONSTANTS"
 
@@ -85,7 +87,7 @@ namespace DaJet.Metadata
         ///<br><b>Ключ:</b> идентификатор расширения _IDRRef в таблице _ExtensionsInfo</br>
         ///<br><b>Значение:</b> кэш объектов метаданных расширения</br>
         ///</summary>
-        private readonly ConcurrentDictionary<Guid, MetadataCache> _extensions = new();
+        private readonly ConcurrentDictionary<Guid, OneDbMetadataProvider> _extensions = new();
 
         ///<summary>
         ///<b>Имена объектов метаданных (первичный индекс для поиска имён):</b>
@@ -306,15 +308,38 @@ namespace DaJet.Metadata
 
         #endregion
 
+        public OneDbMetadataProvider(string connectionString)
+        {
+            _parsers = new MetadataObjectParserFactory(this);
+
+            _provider = connectionString.StartsWith("Host")
+                ? DatabaseProvider.PostgreSql
+                : DatabaseProvider.SqlServer;
+
+            if (_provider == DatabaseProvider.SqlServer)
+            {
+                _connectionString = new SqlConnectionStringBuilder(connectionString).ToString();
+            }
+            else if (_provider == DatabaseProvider.PostgreSql)
+            {
+                _connectionString = new NpgsqlConnectionStringBuilder(connectionString).ToString();
+            }
+            else
+            {
+                _connectionString = connectionString;
+            }
+            
+            Initialize();
+        }
         public void Configure(in Dictionary<string, string> options)
         {
             throw new NotImplementedException(); //TODO: IMetadataProvider.Configure(...)
         }
-        internal MetadataCache(MetadataCacheOptions options)
+        internal OneDbMetadataProvider(OneDbMetadataProviderOptions options)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
 
-            if (options.UseExtensions && options.Extension == null)
+            if (options.UseExtensions && options.Extension is null)
             {
                 UseExtensions = options.UseExtensions; // Only the main configuration is allowed to have extensions
             }
@@ -549,7 +574,7 @@ namespace DaJet.Metadata
         }
         private void ApplyExtensions()
         {
-            if (_extension != null) { return; } // Only the main configuration is allowed to have extensions
+            if (_extension is not null) { return; } // Only the main configuration is allowed to have extensions
 
             List<ExtensionInfo> extensions = GetExtensions();
 
@@ -564,9 +589,9 @@ namespace DaJet.Metadata
                 extension.FileName = null;
                 extension.FileMap.Clear();
 
-                if (TryGetMetadata(in extension, out MetadataCache cache, out _))
+                if (TryGetMetadata(in extension, out OneDbMetadataProvider metadata, out _))
                 {
-                    _ = _extensions.TryAdd(extension.Identity, cache); //FIXME: process errors loading extension
+                    _ = _extensions.TryAdd(extension.Identity, metadata); //FIXME: process errors loading extension
                 }
             }
         }
@@ -721,7 +746,7 @@ namespace DaJet.Metadata
 
             // Заимствованный объект основной конфигурации - требуется применение расширения
 
-            if (!_extensions.TryGetValue(item.Extension, out MetadataCache extension))
+            if (!_extensions.TryGetValue(item.Extension, out OneDbMetadataProvider extension))
             {
                 return; // This should not happen - extension is not found in the cache!
             }
@@ -1509,11 +1534,11 @@ namespace DaJet.Metadata
             }
         }
 
-        public bool TryGetMetadata(in ExtensionInfo extension, out MetadataCache metadata, out string error)
+        public bool TryGetMetadata(in ExtensionInfo extension, out OneDbMetadataProvider metadata, out string error)
         {
             error = string.Empty;
 
-            metadata = new MetadataCache(new MetadataCacheOptions()
+            metadata = new OneDbMetadataProvider(new OneDbMetadataProviderOptions()
             {
                 Extension = extension,
                 DatabaseProvider = _provider,
@@ -1596,7 +1621,7 @@ namespace DaJet.Metadata
 
                 if (parser is null) { continue; }
                 if (type.Key == MetadataTypes.SharedProperty) { continue; }
-                if (type.Key == MetadataTypes.NamedDataTypeDescriptor) { continue; } //TODO: (!) заполнить коллекцию MetadataCache._references.
+                if (type.Key == MetadataTypes.NamedDataTypeDescriptor) { continue; } //TODO: (!) заполнить коллекцию OneDbMetadataProvider._references.
                 
                 foreach (var uuid in type.Value)
                 {

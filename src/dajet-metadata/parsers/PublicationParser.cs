@@ -8,7 +8,7 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class PublicationParser : IMetadataObjectParser
     {
-        private readonly MetadataCache _cache;
+        private readonly OneDbMetadataProvider _cache;
         private ConfigFileParser _parser;
         private TablePartCollectionParser _tableParser;
         private MetadataPropertyCollectionParser _propertyParser;
@@ -17,7 +17,7 @@ namespace DaJet.Metadata.Parsers
         private MetadataInfo _entry;
         private ConfigFileConverter _converter;
         public PublicationParser() { }
-        public PublicationParser(MetadataCache cache) { _cache = cache; }
+        public PublicationParser(OneDbMetadataProvider cache) { _cache = cache; }
         public void Parse(in ConfigFileOptions options, out MetadataInfo info)
         {
             _entry = new MetadataInfo()

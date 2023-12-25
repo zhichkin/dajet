@@ -8,11 +8,11 @@ namespace DaJet.Metadata.Parsers
     ///<summary>Парсер для чтения объекта "ОписаниеТипов".</summary>
     public sealed class DataTypeDescriptorParser
     {
-        private readonly MetadataCache _cache;
+        private readonly OneDbMetadataProvider _cache;
         private int _pointer;
         private string[] _qualifiers = new string[3];
         ///<param name="cache">Если cache равен null, то обработка идентификаторов ссылочных типов не выполняется</param>
-        public DataTypeDescriptorParser(MetadataCache cache) { _cache = cache; }
+        public DataTypeDescriptorParser(OneDbMetadataProvider cache) { _cache = cache; }
         ///<summary>
         ///Объект чтения файла метаданных <see cref="ConfigFileReader"/> перед вызовом этого метода
         ///<br>
@@ -45,7 +45,7 @@ namespace DaJet.Metadata.Parsers
                 Configurator.ConfigureDataTypeDescriptor(in _cache, in target, in references);
 
                 //REFACTORING(29.01.2023)
-                //THINK: add setting to MetadataCache to resolve references optionally !?
+                //THINK: add setting to OneDbMetadataProvider to resolve references optionally !?
                 //List<MetadataItem> list = _cache.ResolveReferences(in references);
                 //target.References.AddRange(list);
             }

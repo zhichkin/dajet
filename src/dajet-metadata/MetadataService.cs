@@ -64,7 +64,7 @@ namespace DaJet.Metadata
                 return false;
             }
 
-            if (provider is not MetadataCache metadata)
+            if (provider is not OneDbMetadataProvider metadata)
             {
                 infoBase = null;
                 error = string.Format(ERROR_UNSUPPORTED_METADATA_PROVIDER, provider.GetType());
@@ -96,33 +96,33 @@ namespace DaJet.Metadata
 
             return (infoBase != null);
         }
-        public bool TryGetMetadataCache(string key, out MetadataCache cache, out string error)
+        public bool TryGetOneDbMetadataProvider(string key, out OneDbMetadataProvider metadata, out string error)
         {
             if (!_cache.TryGetValue(key, out CacheEntry entry))
             {
-                cache = null;
+                metadata = null;
                 error = string.Format(ERROR_CASH_ENTRY_KEY_IS_NOT_FOUND, key);
                 return false;
             }
 
             error = string.Empty;
-            cache = entry.Value as MetadataCache;
+            metadata = entry.Value as OneDbMetadataProvider;
 
-            if (cache != null && !entry.IsExpired)
+            if (metadata is not null && !entry.IsExpired)
             {
                 return true;
             }
 
             using (entry.UpdateLock())
             {
-                cache = entry.Value as MetadataCache;
+                metadata = entry.Value as OneDbMetadataProvider;
 
-                if (cache != null && !entry.IsExpired)
+                if (metadata is not null && !entry.IsExpired)
                 {
                     return true;
                 }
 
-                cache = new MetadataCache(new MetadataCacheOptions()
+                metadata = new OneDbMetadataProvider(new OneDbMetadataProviderOptions()
                 {
                     UseExtensions = entry.Options.UseExtensions,
                     DatabaseProvider = entry.Options.DatabaseProvider,
@@ -131,21 +131,21 @@ namespace DaJet.Metadata
 
                 try
                 {
-                    cache.Initialize();
+                    metadata.Initialize();
                 }
                 catch (Exception exception)
                 {
-                    cache = null;
+                    metadata = null;
                     error = ExceptionHelper.GetErrorMessage(exception);
                     return false;
                 }
 
                 // Assignment of the Value property internally refreshes the last update timestamp
 
-                entry.Value = cache;
+                entry.Value = metadata;
             }
 
-            return (cache != null);
+            return (metadata is not null);
         }
         public void Dispose()
         {
@@ -155,50 +155,50 @@ namespace DaJet.Metadata
             }
             _cache.Clear();
         }
-        public bool TryGetMetadataProvider(string key, out IMetadataProvider provider, out string error)
+        public bool TryGetMetadataProvider(string key, out IMetadataProvider metadata, out string error)
         {
             error = string.Empty;
 
             if (!_cache.TryGetValue(key, out CacheEntry entry))
             {
-                provider = null;
+                metadata = null;
                 error = string.Format(ERROR_CASH_ENTRY_KEY_IS_NOT_FOUND, key);
                 return false;
             }
 
-            provider = entry.Value; // pin weak reference to stack
+            metadata = entry.Value; // pin weak reference to stack
 
-            if (provider is not null && !entry.IsExpired)
+            if (metadata is not null && !entry.IsExpired)
             {
                 return true;
             }
 
             using (entry.UpdateLock())
             {
-                provider = entry.Value; // pin weak reference to stack
+                metadata = entry.Value; // pin weak reference to stack
 
-                if (provider is not null && !entry.IsExpired)
+                if (metadata is not null && !entry.IsExpired)
                 {
                     return true;
                 }
 
                 try
                 {
-                    provider = CreateMetadataProvider(entry.Options);
+                    metadata = CreateMetadataProvider(entry.Options);
                 }
                 catch (Exception exception)
                 {
-                    provider = null;
+                    metadata = null;
                     error = ExceptionHelper.GetErrorMessage(exception);
                     return false;
                 }
 
                 // assignment of the Value property internally refreshes the last update timestamp
 
-                entry.Value = provider;
+                entry.Value = metadata;
             }
 
-            return (provider is not null);
+            return (metadata is not null);
         }
         private IQueryExecutor CreateQueryExecutor(DatabaseProvider provider, string connectionString)
         {
@@ -221,24 +221,24 @@ namespace DaJet.Metadata
             
             return !(executor.ExecuteScalar<int>(in script, 10) == 1);
         }
-        private IMetadataProvider CreateMetadataCache(in InfoBaseOptions options)
+        private IMetadataProvider CreateOneDbMetadataProvider(in InfoBaseOptions options)
         {
-            MetadataCache cache = new(new MetadataCacheOptions()
+            OneDbMetadataProvider metadata = new(new OneDbMetadataProviderOptions()
             {
                 UseExtensions = options.UseExtensions,
                 DatabaseProvider = options.DatabaseProvider,
                 ConnectionString = options.ConnectionString
             });
 
-            cache.Initialize();
+            metadata.Initialize();
 
-            return cache;
+            return metadata;
         }
         private IMetadataProvider CreateMetadataProvider(in InfoBaseOptions options)
         {
             if (!IsRegularDatabase(options.DatabaseProvider, options.ConnectionString))
             {
-                return CreateMetadataCache(in options);
+                return CreateOneDbMetadataProvider(in options);
             }
 
             IMetadataProvider provider;

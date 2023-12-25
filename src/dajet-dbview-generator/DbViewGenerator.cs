@@ -189,7 +189,7 @@ namespace DaJet.Metadata.Services
 
             return string.IsNullOrEmpty(error);
         }
-        public bool TryCreateViews(in MetadataCache cache, out int result, out List<string> errors)
+        public bool TryCreateViews(in OneDbMetadataProvider cache, out int result, out List<string> errors)
         {
             result = 0;
             errors = new();
@@ -231,7 +231,7 @@ namespace DaJet.Metadata.Services
 
             return (errors.Count == 0);
         }
-        private bool TryCreateChangeTrackingTableView(in MetadataCache cache, in ApplicationObject entity, out string error)
+        private bool TryCreateChangeTrackingTableView(in OneDbMetadataProvider cache, in ApplicationObject entity, out string error)
         {
             error = string.Empty;
             List<string> scripts = new();
@@ -324,7 +324,7 @@ namespace DaJet.Metadata.Services
             _executor.TxExecuteNonQuery(scripts, 60);
         }
 
-        public bool TryScriptViews(in MetadataCache cache, in StreamWriter writer, out string error)
+        public bool TryScriptViews(in OneDbMetadataProvider cache, in StreamWriter writer, out string error)
         {
             error = string.Empty;
 

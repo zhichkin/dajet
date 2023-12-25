@@ -53,11 +53,11 @@ namespace DaJet.Scripting
                 _columns.Add(column);
             }
         }
-        public void SayHello(SyntaxNode node)
+        public void SayHello(in SyntaxNode node)
         {
             return; // not implemented
         }
-        public void SayGoodbye(SyntaxNode node)
+        public void SayGoodbye(in SyntaxNode node)
         {
             if (node is not null) { TransformInternal(in node); }
         }

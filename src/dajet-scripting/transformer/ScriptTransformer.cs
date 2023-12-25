@@ -1,5 +1,4 @@
-﻿using DaJet.Metadata;
-using DaJet.Scripting.Model;
+﻿using DaJet.Scripting.Model;
 
 namespace DaJet.Scripting
 {
@@ -36,11 +35,11 @@ namespace DaJet.Scripting
 
             return string.IsNullOrWhiteSpace(error);
         }
-        public void SayHello(SyntaxNode node)
+        public void SayHello(in SyntaxNode node)
         {
             return; // not implemented
         }
-        public void SayGoodbye(SyntaxNode node)
+        public void SayGoodbye(in SyntaxNode node)
         {
             if (node == null) { return; }
 

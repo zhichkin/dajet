@@ -7,7 +7,7 @@ namespace DaJet.Metadata.Core
 {
     internal static class Configurator
     {
-        internal static void ConfigureSystemProperties(in MetadataCache cache, in MetadataObject metadata)
+        internal static void ConfigureSystemProperties(in OneDbMetadataProvider cache, in MetadataObject metadata)
         {
             if (metadata is Catalog catalog)
             {
@@ -42,7 +42,7 @@ namespace DaJet.Metadata.Core
                 ConfigureChangeTrackingTable(in cache, in changeTable);
             }
         }
-        internal static void ConfigureSharedProperties(in MetadataCache cache, in MetadataObject metadata)
+        internal static void ConfigureSharedProperties(in OneDbMetadataProvider cache, in MetadataObject metadata)
         {
             if (metadata is Enumeration)
             {
@@ -103,7 +103,7 @@ namespace DaJet.Metadata.Core
                 table.Properties.Add(property);
             }
         }
-        internal static void ConfigureDataTypeDescriptor(in MetadataCache cache, in DataTypeDescriptor target, in List<Guid> identifiers)
+        internal static void ConfigureDataTypeDescriptor(in OneDbMetadataProvider cache, in DataTypeDescriptor target, in List<Guid> identifiers)
         {
             if (identifiers == null || identifiers.Count == 0)
             {
@@ -181,7 +181,7 @@ namespace DaJet.Metadata.Core
                 target.Reference = Guid.Empty;
             }
         }
-        private static int ResolveAndCountReferenceTypes(in MetadataCache cache, in DataTypeDescriptor target, Guid reference)
+        private static int ResolveAndCountReferenceTypes(in OneDbMetadataProvider cache, in DataTypeDescriptor target, Guid reference)
         {
             // RULES (правила разрешения ссылочных типов данных для объекта "ОписаниеТипов"):
             // 1. DataTypeDescriptor (property type) can have only one reference to NamedDataTypeDescriptor or Characteristic
@@ -300,7 +300,7 @@ namespace DaJet.Metadata.Core
 
         #region "TABLE PARTS"
 
-        internal static void ConfigureTableParts(in MetadataCache cache, in ApplicationObject owner)
+        internal static void ConfigureTableParts(in OneDbMetadataProvider cache, in ApplicationObject owner)
         {
             if (owner is not ITablePartOwner aggregate)
             {
@@ -382,7 +382,7 @@ namespace DaJet.Metadata.Core
 
             tablePart.Properties.Add(property);
         }
-        private static void ConfigurePropertyНомерСтроки(in MetadataCache cache, in TablePart tablePart)
+        private static void ConfigurePropertyНомерСтроки(in OneDbMetadataProvider cache, in TablePart tablePart)
         {
             if (!cache.TryGetLineNo(tablePart.Uuid, out DbName dbn))
             {
@@ -460,7 +460,7 @@ namespace DaJet.Metadata.Core
         // 7. Наименование     = Description        - string
         // 8. Предопределённый = PredefinedDataName - string
 
-        private static void ConfigureCatalog(in MetadataCache cache, in Catalog catalog)
+        private static void ConfigureCatalog(in OneDbMetadataProvider cache, in Catalog catalog)
         {
             if (catalog.IsHierarchical)
             {
@@ -566,7 +566,7 @@ namespace DaJet.Metadata.Core
 
             metadata.Properties.Add(property);
         }
-        private static void ConfigurePropertyПредопределённый(in MetadataCache cache, in ApplicationObject metadata)
+        private static void ConfigurePropertyПредопределённый(in OneDbMetadataProvider cache, in ApplicationObject metadata)
         {
             if (cache.InfoBase.CompatibilityVersion >= 80303)
             {
@@ -693,7 +693,7 @@ namespace DaJet.Metadata.Core
 
             metadata.Properties.Add(property);
         }
-        private static void ConfigurePropertyРодитель(in MetadataCache cache, in ApplicationObject metadata)
+        private static void ConfigurePropertyРодитель(in OneDbMetadataProvider cache, in ApplicationObject metadata)
         {
             // This hierarchy property always has the single reference type (adjacency list)
 
@@ -755,7 +755,7 @@ namespace DaJet.Metadata.Core
 
             metadata.Properties.Add(property);
         }
-        private static void ConfigurePropertyВладелец(in MetadataCache cache, in Catalog catalog, in List<Guid> owners)
+        private static void ConfigurePropertyВладелец(in OneDbMetadataProvider cache, in Catalog catalog, in List<Guid> owners)
         {
             MetadataProperty property = new()
             {
@@ -827,7 +827,7 @@ namespace DaJet.Metadata.Core
 
         #region "CHARACTERISTIC"
 
-        private static void ConfigureCharacteristic(in MetadataCache cache, in Characteristic characteristic)
+        private static void ConfigureCharacteristic(in OneDbMetadataProvider cache, in Characteristic characteristic)
         {
             if (characteristic.IsHierarchical)
             {
@@ -887,7 +887,7 @@ namespace DaJet.Metadata.Core
 
         #region "PUBLICATION"
 
-        private static void ConfigurePublication(in MetadataCache cache, in Publication publication)
+        private static void ConfigurePublication(in OneDbMetadataProvider cache, in Publication publication)
         {
             ConfigurePropertyСсылка(publication);
             ConfigurePropertyВерсияДанных(publication);
@@ -1089,7 +1089,7 @@ namespace DaJet.Metadata.Core
         // 4. "Активность"  = Active     - bool
         // 5. _SimpleKey    = binary(16) - версия платформы 8.2.х и ниже
 
-        private static void ConfigureInformationRegister(in MetadataCache cache, in InformationRegister register)
+        private static void ConfigureInformationRegister(in OneDbMetadataProvider cache, in InformationRegister register)
         {
             if (register.UseRecorder)
             {
@@ -1182,7 +1182,7 @@ namespace DaJet.Metadata.Core
 
             register.Properties.Add(property);
         }
-        private static void ConfigurePropertyРегистратор(in MetadataCache cache, in ApplicationObject register)
+        private static void ConfigurePropertyРегистратор(in OneDbMetadataProvider cache, in ApplicationObject register)
         {
             List<Guid> recorders = cache.GetRegisterRecorders(register.Uuid);
 
@@ -1255,7 +1255,7 @@ namespace DaJet.Metadata.Core
 
         #region "ACCUMULATION REGISTER"
 
-        private static void ConfigureAccumulationRegister(in MetadataCache cache, in AccumulationRegister register)
+        private static void ConfigureAccumulationRegister(in OneDbMetadataProvider cache, in AccumulationRegister register)
         {
             ConfigurePropertyРегистратор(in cache, register);
             ConfigurePropertyПериод(register);
@@ -1327,7 +1327,7 @@ namespace DaJet.Metadata.Core
 
         #region "PREDEFINED VALUES (catalogs and characteristics)"
 
-        public static void ConfigurePredefinedValues(in MetadataCache cache, in MetadataObject metadata)
+        public static void ConfigurePredefinedValues(in OneDbMetadataProvider cache, in MetadataObject metadata)
         {
             if (metadata is not IPredefinedValueOwner owner) return;
 
@@ -1460,7 +1460,7 @@ namespace DaJet.Metadata.Core
 
         #region "PUBLICATION ARTICLES"
 
-        public static void ConfigureArticles(in MetadataCache cache, in Publication publication)
+        public static void ConfigureArticles(in OneDbMetadataProvider cache, in Publication publication)
         {
             string fileName = publication.Uuid.ToString() + ".1"; // файл описания состава плана обмена
 
@@ -1510,7 +1510,7 @@ namespace DaJet.Metadata.Core
             //
             //return $"_{token}{code}".ToLowerInvariant();
         }
-        internal static void ConfigureDatabaseNames(in MetadataCache cache, in MetadataObject metadata)
+        internal static void ConfigureDatabaseNames(in OneDbMetadataProvider cache, in MetadataObject metadata)
         {
             if (metadata is SharedProperty property)
             {
@@ -1554,7 +1554,7 @@ namespace DaJet.Metadata.Core
             
             ConfigureDatabaseTableParts(in cache, in entity);
         }
-        private static void ConfigureDatabaseProperties(in MetadataCache cache, in ApplicationObject entity)
+        private static void ConfigureDatabaseProperties(in OneDbMetadataProvider cache, in ApplicationObject entity)
         {
             foreach (MetadataProperty property in entity.Properties)
             {
@@ -1578,7 +1578,7 @@ namespace DaJet.Metadata.Core
                 ConfigureDatabaseColumns(in cache, in property);
             }
         }
-        private static void ConfigureDatabaseTableParts(in MetadataCache cache, in ApplicationObject entity)
+        private static void ConfigureDatabaseTableParts(in OneDbMetadataProvider cache, in ApplicationObject entity)
         {
             if (entity is not ITablePartOwner aggregate)
             {
@@ -1612,7 +1612,7 @@ namespace DaJet.Metadata.Core
                 ConfigureDatabaseProperties(in cache, tablePart);
             }
         }
-        private static void ConfigureDatabaseColumns(in MetadataCache cache, in MetadataProperty property)
+        private static void ConfigureDatabaseColumns(in OneDbMetadataProvider cache, in MetadataProperty property)
         {
             if (property.PropertyType.IsMultipleType)
             {
@@ -1756,7 +1756,7 @@ namespace DaJet.Metadata.Core
 
         #region "CHANGE TRACKING TABLE"
 
-        internal static void ConfigureChangeTrackingTable(in MetadataCache cache, in ChangeTrackingTable table)
+        internal static void ConfigureChangeTrackingTable(in OneDbMetadataProvider cache, in ChangeTrackingTable table)
         {
             if (table.Entity is not ApplicationObject entity)
             {

@@ -43,7 +43,7 @@ namespace DaJet.Metadata.Core
             if (Type == ReferenceTypes.Publication) { return "ПланОбменаСсылка"; }
             if (Type == ReferenceTypes.Characteristic)
             {
-                ///NOTE: Небольшой хак ¯\_(ツ)_/¯ <see cref="MetadataCache.ResolveReferenceType"/>
+                ///NOTE: Небольшой хак ¯\_(ツ)_/¯ <see cref="OneDbMetadataProvider.ResolveReferenceType"/>
                 if (Uuid == Guid.Empty)
                 {
                     return "ПланВидовХарактеристикСсылка";

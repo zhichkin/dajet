@@ -39,7 +39,7 @@ namespace DaJet.Http.Controllers
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetMetadataCache(record.Identity.ToString(), out MetadataCache _, out string error))
+            if (!_metadataService.TryGetOneDbMetadataProvider(record.Identity.ToString(), out OneDbMetadataProvider _, out string error))
             {
                 return BadRequest(error);
             }
@@ -101,7 +101,7 @@ namespace DaJet.Http.Controllers
                 }
             }
 
-            if (!_metadataService.TryGetMetadataCache(record.Identity.ToString(), out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetOneDbMetadataProvider(record.Identity.ToString(), out OneDbMetadataProvider cache, out string error))
             {
                 return BadRequest(error);
             }
@@ -194,7 +194,7 @@ namespace DaJet.Http.Controllers
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetMetadataCache(record.Identity.ToString(), out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetOneDbMetadataProvider(record.Identity.ToString(), out OneDbMetadataProvider cache, out string error))
             {
                 return NotFound(error);
             }
@@ -316,7 +316,7 @@ namespace DaJet.Http.Controllers
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetMetadataCache(record.Identity.ToString(), out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetOneDbMetadataProvider(record.Identity.ToString(), out OneDbMetadataProvider cache, out string error))
             {
                 return BadRequest(error);
             }
@@ -376,7 +376,7 @@ namespace DaJet.Http.Controllers
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetMetadataCache(record.Identity.ToString(), out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetOneDbMetadataProvider(record.Identity.ToString(), out OneDbMetadataProvider cache, out string error))
             {
                 return NotFound(error);
             }
@@ -496,7 +496,7 @@ namespace DaJet.Http.Controllers
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetMetadataCache(record.Identity.ToString(), out MetadataCache cache, out string error))
+            if (!_metadataService.TryGetOneDbMetadataProvider(record.Identity.ToString(), out OneDbMetadataProvider cache, out string error))
             {
                 return NotFound(error);
             }

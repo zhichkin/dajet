@@ -7,8 +7,8 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class TemplateCollectionParser
     {
-        private readonly MetadataCache _cache;
-        public TemplateCollectionParser(MetadataCache cache)
+        private readonly OneDbMetadataProvider _cache;
+        public TemplateCollectionParser(OneDbMetadataProvider cache)
         {
             _cache = cache;
         }

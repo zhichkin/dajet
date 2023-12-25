@@ -7,7 +7,7 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class NamedDataTypeDescriptorParser : IMetadataObjectParser
     {
-        private readonly MetadataCache _cache;
+        private readonly OneDbMetadataProvider _cache;
         private ConfigFileParser _parser;
         private DataTypeDescriptorParser _typeParser;
 
@@ -15,7 +15,7 @@ namespace DaJet.Metadata.Parsers
         private NamedDataTypeDescriptor _target;
         private ConfigFileConverter _converter;
         public NamedDataTypeDescriptorParser() { }
-        public NamedDataTypeDescriptorParser(MetadataCache cache) { _cache = cache; }
+        public NamedDataTypeDescriptorParser(OneDbMetadataProvider cache) { _cache = cache; }
         public void Parse(in ConfigFileOptions options, out MetadataInfo info)
         {
             _entry = new MetadataInfo()

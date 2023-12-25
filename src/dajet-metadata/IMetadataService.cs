@@ -11,7 +11,7 @@ namespace DaJet.Metadata
         void Remove(string key);
 
         bool TryGetInfoBase(string key, out InfoBase infoBase, out string error);
-        bool TryGetMetadataCache(string key, out MetadataCache cache, out string error);
         bool TryGetMetadataProvider(string key, out IMetadataProvider metadata, out string error);
+        bool TryGetOneDbMetadataProvider(string key, out OneDbMetadataProvider metadata, out string error);
     }
 }

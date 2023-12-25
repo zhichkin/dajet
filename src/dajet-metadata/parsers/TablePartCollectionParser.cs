@@ -7,13 +7,13 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class TablePartCollectionParser
     {
-        private readonly MetadataCache _cache;
+        private readonly OneDbMetadataProvider _cache;
         private ConfigFileParser _parser;
         private ConfigFileConverter _converter;
         private MetadataPropertyCollectionParser _propertyParser;
         private TablePart _tablePart;
         private List<TablePart> _target;
-        public TablePartCollectionParser(MetadataCache cache) { _cache = cache; }
+        public TablePartCollectionParser(OneDbMetadataProvider cache) { _cache = cache; }
         public void Parse(in ConfigFileReader reader, out List<TablePart> target)
         {
             ConfigureCollectionConverter(in reader);

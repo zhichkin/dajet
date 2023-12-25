@@ -8,14 +8,14 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class InfoBaseParser
     {
-        private readonly MetadataCache _cache;
+        private readonly OneDbMetadataProvider _cache;
         private ConfigFileParser _parser;
         private ConfigFileConverter _converter;
         private readonly ConfigFileTokenHandler _metadataHandler; // cache delegate for re-use
 
         private InfoBase _infoBase;
         private Dictionary<Guid, List<Guid>> _metadata;
-        public InfoBaseParser(MetadataCache cache)
+        public InfoBaseParser(OneDbMetadataProvider cache)
         {
             _cache = cache;
             _metadataHandler = new ConfigFileTokenHandler(MetadataCollection);

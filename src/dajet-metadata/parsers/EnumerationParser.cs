@@ -7,7 +7,7 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class EnumerationParser : IMetadataObjectParser
     {
-        private readonly MetadataCache _cache;
+        private readonly OneDbMetadataProvider _cache;
         private ConfigFileParser _parser;
 
         private Enumeration _target;
@@ -16,7 +16,7 @@ namespace DaJet.Metadata.Parsers
         private int _count; // количество значений перечисления
         private EnumValue _value;
         public EnumerationParser() { }
-        public EnumerationParser(MetadataCache cache) { _cache = cache; }
+        public EnumerationParser(OneDbMetadataProvider cache) { _cache = cache; }
         public void Parse(in ConfigFileOptions options, out MetadataInfo info)
         {
             _entry = new MetadataInfo()
