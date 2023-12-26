@@ -583,15 +583,6 @@ namespace DaJet.Scripting
                 }
             }
 
-            // TODO: if this scope is lateral TableExpression then go to the scope of parent join operator !!!
-
-            ScriptScope join = scope.Ancestor<TableJoinOperator>();
-
-            if (join is not null)
-            {
-                // TODO: if this scope is lateral TableExpression then go to the scope of parent join operator !!!
-            }
-
             // not found
 
             return false;

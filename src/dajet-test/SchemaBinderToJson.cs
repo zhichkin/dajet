@@ -7,7 +7,7 @@ using System.Text.Unicode;
 
 namespace DaJet.Scripting.Test
 {
-    [TestClass] public class ScriptParsing
+    [TestClass] public class SchemaBinderToJson
     {
         private static readonly string MS_CONNECTION = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
         private static readonly string PG_CONNECTION = "Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;";
@@ -19,7 +19,7 @@ namespace DaJet.Scripting.Test
         {
             WriteIndented = true, Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
-        static ScriptParsing()
+        static SchemaBinderToJson()
         {
             JsonOptions.Converters.Add(new SyntaxNodeJsonConverter());
             JsonOptions.Converters.Add(new ScriptScopeJsonConverter());
