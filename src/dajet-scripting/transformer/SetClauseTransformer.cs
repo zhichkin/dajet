@@ -42,7 +42,7 @@ namespace DaJet.Scripting
         }
         private ColumnExpression GetColumnByName(in SelectExpression select, in string name)
         {
-            foreach (ColumnExpression column in select.Select)
+            foreach (ColumnExpression column in select.Columns)
             {
                 if (column.Alias == name)
                 {
@@ -80,7 +80,7 @@ namespace DaJet.Scripting
                     Alias = columnName,
                     Expression = set.Initializer
                 };
-                select.Select.Add(column);
+                select.Columns.Add(column);
 
                 ColumnReference initializer = new()
                 {

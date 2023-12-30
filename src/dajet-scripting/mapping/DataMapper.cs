@@ -406,7 +406,7 @@ namespace DaJet.Scripting
             PropertyMapper property;
             List<ColumnMapper> columns;
             ColumnExpression column;
-            List<ColumnExpression> select = source.Select;
+            List<ColumnExpression> select = source.Columns;
 
             for (int i = 0; i < select.Count; i++)
             {

@@ -23,7 +23,7 @@ namespace DaJet.Scripting
                 Visit(node.CommonTables, in script);
             }
 
-            Visit(node.Select, in script);
+            Visit(node.Expression, in script);
 
             script.Append(';');
         }
@@ -38,11 +38,11 @@ namespace DaJet.Scripting
 
             script.AppendLine();
 
-            for (int i = 0; i < node.Select.Count; i++)
+            for (int i = 0; i < node.Columns.Count; i++)
             {
                 if (i > 0) { script.AppendLine(","); }
 
-                Visit(node.Select[i], in script);
+                Visit(node.Columns[i], in script);
             }
 
             if (node.Into is not null) { Visit(node.Into, in script); }
@@ -552,7 +552,7 @@ namespace DaJet.Scripting
 
             foreach (IndexColumnInfo column in index.Columns)
             {
-                select.Select.Add(new ColumnExpression()
+                select.Columns.Add(new ColumnExpression()
                 {
                     Expression = new ColumnReference()
                     {
@@ -811,7 +811,7 @@ namespace DaJet.Scripting
                 }
             };
 
-            statement.Select = select;
+            statement.Expression = select;
 
             foreach (ColumnExpression property in consume.Columns)
             {
@@ -841,7 +841,7 @@ namespace DaJet.Scripting
 
                     expression.Expression = reference;
 
-                    select.Select.Add(expression);
+                    select.Columns.Add(expression);
                 }
                 else if (property.Expression is FunctionExpression function && function.Token == TokenType.DATALENGTH)
                 {
@@ -871,7 +871,7 @@ namespace DaJet.Scripting
 
                         expression.Expression = reference;
 
-                        select.Select.Add(expression);
+                        select.Columns.Add(expression);
                     }
                 }
             }
@@ -919,7 +919,7 @@ namespace DaJet.Scripting
         {
             GroupOperator group = new();
 
-            foreach (ColumnExpression expression in filter.Select)
+            foreach (ColumnExpression expression in filter.Columns)
             {
                 if (expression.Expression is not ColumnReference column) { continue; }
 
@@ -1040,7 +1040,7 @@ namespace DaJet.Scripting
                 };
 
                 filter.Add(filterColumn);
-                select.Select.Add(filterColumn);
+                select.Columns.Add(filterColumn);
             }
 
             CreateConsumeOrder(in consume, in select, in output);
@@ -1048,7 +1048,7 @@ namespace DaJet.Scripting
             foreach (ColumnExpression outputColumn in consume.Columns)
             {
                 output.Add(outputColumn);
-                select.Select.Add(outputColumn);
+                select.Columns.Add(outputColumn);
             }
 
             select.Top = consume.Top;
@@ -1112,7 +1112,7 @@ namespace DaJet.Scripting
                     }
 
                     output.Add(outputColumn);
-                    select.Select.Add(outputColumn);
+                    select.Columns.Add(outputColumn);
                 }
             }
         }
@@ -1304,7 +1304,7 @@ namespace DaJet.Scripting
                 }
             };
 
-            statement.Select = select;
+            statement.Expression = select;
 
             foreach (ColumnExpression property in consume.Columns)
             {
@@ -1334,7 +1334,7 @@ namespace DaJet.Scripting
 
                     expression.Expression = reference;
 
-                    select.Select.Add(expression);
+                    select.Columns.Add(expression);
                 }
                 else if (property.Expression is FunctionExpression function && function.Token == TokenType.DATALENGTH)
                 {
@@ -1364,7 +1364,7 @@ namespace DaJet.Scripting
 
                         expression.Expression = reference;
 
-                        select.Select.Add(expression);
+                        select.Columns.Add(expression);
                     }
                 }
             }

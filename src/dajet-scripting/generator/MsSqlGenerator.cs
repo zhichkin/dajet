@@ -310,7 +310,7 @@ namespace DaJet.Scripting
 
             SelectExpression select = new()
             {
-                Select = consume.Columns,
+                Columns = consume.Columns,
                 Top = consume.Top,
                 From = consume.From,
                 Where = consume.Where,
@@ -456,7 +456,7 @@ namespace DaJet.Scripting
                 };
 
                 filter.Add(filterColumn);
-                select.Select.Add(filterColumn);
+                select.Columns.Add(filterColumn);
             }
 
             //TODO: CreateConsumeOrder(in consume, in select, in output);
@@ -464,7 +464,7 @@ namespace DaJet.Scripting
             foreach (ColumnExpression outputColumn in consume.Columns)
             {
                 output.Add(outputColumn);
-                select.Select.Add(outputColumn);
+                select.Columns.Add(outputColumn);
             }
 
             select.Top = consume.Top;
@@ -528,7 +528,7 @@ namespace DaJet.Scripting
                     }
 
                     output.Add(outputColumn);
-                    select.Select.Add(outputColumn);
+                    select.Columns.Add(outputColumn);
                 }
             }
         }
@@ -736,7 +736,7 @@ namespace DaJet.Scripting
                 }
             };
 
-            statement.Select = select;
+            statement.Expression = select;
 
             foreach (ColumnExpression property in consume.Columns)
             {
@@ -766,7 +766,7 @@ namespace DaJet.Scripting
 
                     expression.Expression = reference;
 
-                    select.Select.Add(expression);
+                    select.Columns.Add(expression);
                 }
                 else if (property.Expression is FunctionExpression function && function.Token == TokenType.DATALENGTH)
                 {
@@ -796,7 +796,7 @@ namespace DaJet.Scripting
 
                         expression.Expression = reference;
 
-                        select.Select.Add(expression);
+                        select.Columns.Add(expression);
                     }
                 }
             }

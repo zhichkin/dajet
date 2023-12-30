@@ -41,7 +41,8 @@ namespace DaJet.Scripting
         }
         private void Bind(in SyntaxNode node)
         {
-            if (node is ScriptModel script) { Bind(in script); }
+            if (node is null) { return; }
+            else if (node is ScriptModel script) { Bind(in script); }
             else if (node is CommentStatement comment) { Bind(in comment); }
             else if (node is OutputClause output) { Bind(in output); }
             else if (node is InsertStatement insert) { Bind(in insert); }
@@ -192,7 +193,7 @@ namespace DaJet.Scripting
                 Bind(node.CommonTables);
             }
 
-            Bind(node.Select); //NOTE: SelectExpression
+            Bind(node.Expression); //NOTE: SelectExpression
 
             _scope = _scope.CloseScope();
         }
@@ -215,9 +216,9 @@ namespace DaJet.Scripting
 
             if (node.From is not null) { Bind(node.From); }
             
-            for (int i = 0; i < node.Select.Count; i++)
+            for (int i = 0; i < node.Columns.Count; i++)
             {
-                Bind(node.Select[i]);
+                Bind(node.Columns[i]);
             }
 
             if (node.Top is not null) { Bind(node.Top); }
@@ -267,69 +268,46 @@ namespace DaJet.Scripting
         }
         private void Bind(in TableReference node)
         {
-            //TODO: join table to the current scope by alias !!!
-
-            // try bind common table expression, temporary table or table variable
+            // 1. try bind common table expression, temporary table or table variable
             node.Binding = _scope.GetTableBinding(node.Identifier);
 
-            // try bind table user-defined type (table-valued parameter)
+            // 2. try bind user-defined type (table-valued parameter)
             // see DeclareStatement binding and EntityDefinition
-            node.Binding ??= _scope.GetVariableBinding(node.Identifier);
-
-            if (node.Binding is not null)
+            if (node.Binding is null)
             {
-                _scope.Tables.Add(node.Alias, node.Binding); // join current SelectExpression scope
-
-                return; // successful binding
+                node.Binding = _scope.GetVariableBinding(node.Identifier);
             }
 
-            // try bind database schema table
-
-            MetadataObject schema = null;
-
-            try
+            // 3. try bind database schema table
+            if (node.Binding is null)
             {
-                schema = _schema.GetMetadataObject(node.Identifier);
+                MetadataObject schema = _schema.GetMetadataObject(node.Identifier);
+
+                if (schema is ApplicationObject entity)
+                {
+                    node.Binding = entity; // successful binding
+                }
             }
-            catch
+
+            if (node.Binding is null)
             {
                 RegisterBindingError(node.Token, node.Identifier);
             }
-
-            if (schema is ApplicationObject entity)
+            else // successful binding
             {
-                node.Binding = entity; // successful binding
-
                 _scope.Tables.Add(node.Alias, node.Binding); // join current SelectExpression scope
-            }
-            else
-            {
-                RegisterBindingError(node.Token, node.Identifier);
             }
         }
 
         private void Bind(in StarExpression node) { }
-        private void Bind(in ColumnReference node)
-        {
-            if (node.Binding is MetadataProperty source)
-            {
-                Bind(in source);
-            }
-            else if (node.Binding is MetadataColumn column)
-            {
-                Bind(in column);
-            }
-            else if (node.Binding is ColumnExpression parent)
-            {
-                Bind(in parent);
-            }
-        }
         private void Bind(in ColumnExpression node)
         {
             Bind(node.Expression);
         }
-        
-        
+        private void Bind(in ColumnReference node)
+        {
+            
+        }
         
         private void Bind(in TopClause node)
         {
@@ -473,54 +451,128 @@ namespace DaJet.Scripting
                 Bind(node.Columns[i]);
             }
         }
+
         private void Bind(in ConsumeStatement node)
         {
-            if (node.Top is not null) { Bind(node.Top); }
+            _scope = _scope.OpenScope(node);
+
+            if (node.From is not null) { Bind(node.From); }
 
             for (int i = 0; i < node.Columns.Count; i++)
             {
                 Bind(node.Columns[i]);
             }
 
-            if (node.From is not null) { Bind(node.From); }
+            if (node.Top is not null) { Bind(node.Top); }
             if (node.Where is not null) { Bind(node.Where); }
             if (node.Order is not null) { Bind(node.Order); }
+
+            _scope = _scope.CloseScope();
         }
         private void Bind(in ImportStatement node)
         {
-            throw new NotImplementedException();
+            _scope = _scope.OpenScope(node);
+
+            foreach (VariableReference variable in node.Target)
+            {
+                Bind(in variable);
+            }
+
+            _scope = _scope.CloseScope();
         }
         private void Bind(in OutputClause node)
         {
-            throw new NotImplementedException();
+            if (node is null) { return; }
+
+            for (int i = 0; i < node.Columns.Count; i++)
+            {
+                Bind(node.Columns[i]); //NOTE: use of special key words inserted and deleted
+            }
+
+            if (node.Into is not null) { Bind(node.Into); }
         }
         private void Bind(in DeleteStatement node)
         {
-            throw new NotImplementedException();
+            _scope = _scope.OpenScope(node);
+
+            if (node.CommonTables is not null)
+            {
+                Bind(node.CommonTables);
+            }
+
+            if (node.From is not null) { Bind(node.From); }
+            if (node.Target is not null) { Bind(node.Target); }
+            if (node.Output is not null) { Bind(node.Output); }
+            if (node.Where is not null) { Bind(node.Where); }
+
+            _scope = _scope.CloseScope();
         }
         private void Bind(in InsertStatement node)
         {
-            throw new NotImplementedException();
-        }
-        private void Bind(in SetClause node)
-        {
-            throw new NotImplementedException();
-        }
-        private void Bind(in SetExpression node)
-        {
-            throw new NotImplementedException();
+            _scope = _scope.OpenScope(node);
+
+            if (node.CommonTables is not null)
+            {
+                Bind(node.CommonTables);
+            }
+
+            if (node.Source is not null) { Bind(node.Source); }
+            if (node.Target is not null) { Bind(node.Target); }
+            if (node.Output is not null) { Bind(node.Output); }
+
+            _scope = _scope.CloseScope();
         }
         private void Bind(in UpdateStatement node)
         {
-            throw new NotImplementedException();
+            _scope = _scope.OpenScope(node);
+
+            if (node.CommonTables is not null)
+            {
+                Bind(node.CommonTables);
+            }
+
+            if (node.Source is not null) { Bind(node.Source); }
+            if (node.Target is not null) { Bind(node.Target); }
+            if (node.Output is not null) { Bind(node.Output); }
+            if (node.Set is not null) { Bind(node.Set); }
+            if (node.Where is not null) { Bind(node.Where); }
+
+            _scope = _scope.CloseScope();
         }
         private void Bind(in UpsertStatement node)
         {
-            throw new NotImplementedException();
+            _scope = _scope.OpenScope(node);
+
+            if (node.CommonTables is not null)
+            {
+                Bind(node.CommonTables);
+            }
+
+            if (node.Source is not null) { Bind(node.Source); }
+            if (node.Target is not null) { Bind(node.Target); }
+            if (node.Set is not null) { Bind(node.Set); }
+            if (node.Where is not null) { Bind(node.Where); }
+
+            _scope = _scope.CloseScope();
+        }
+        private void Bind(in SetClause node)
+        {
+            foreach (SetExpression expression in node.Expressions)
+            {
+                Bind(in expression);
+            }
+        }
+        private void Bind(in SetExpression node)
+        {
+            if (node.Column is not null) { Bind(node.Column); }
+            if (node.Initializer is not null) { Bind(node.Initializer); }
         }
         private void Bind(in ValuesExpression node)
         {
-            throw new NotImplementedException();
+            foreach (SyntaxNode value in node.Values)
+            {
+                Bind(in value);
+            }
         }
     }
 }

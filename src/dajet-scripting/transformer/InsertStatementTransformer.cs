@@ -20,7 +20,7 @@ namespace DaJet.Scripting
             
             insert.Source = TransformColumnSource(in select, in sourceName);
 
-            select.Select.Remove(vectorColumn);
+            select.Columns.Remove(vectorColumn);
         }
         public string GetVectorColumnName(in InsertStatement insert)
         {
@@ -33,7 +33,7 @@ namespace DaJet.Scripting
             if (vectorColumn is null) { return null; }
 
             ColumnExpression column;
-            List<ColumnExpression> columns = select.Select;
+            List<ColumnExpression> columns = select.Columns;
 
             for (int i = 0; i < columns.Count; i++)
             {
@@ -61,7 +61,7 @@ namespace DaJet.Scripting
             if (vectorColumn is null) { return null; }
 
             ColumnExpression column;
-            List<ColumnExpression> columns = select.Select;
+            List<ColumnExpression> columns = select.Columns;
 
             for (int i = 0; i < columns.Count; i++)
             {
@@ -81,7 +81,7 @@ namespace DaJet.Scripting
         private ColumnExpression GetVectorColumn(in SelectExpression select)
         {
             ColumnExpression column;
-            List<ColumnExpression> columns = select.Select;
+            List<ColumnExpression> columns = select.Columns;
 
             for (int i = 0; i < columns.Count; i++)
             {
@@ -113,13 +113,13 @@ namespace DaJet.Scripting
             };
 
             ColumnExpression column;
-            List<ColumnExpression> columns = select.Select;
+            List<ColumnExpression> columns = select.Columns;
 
             for (int i = 0; i < columns.Count; i++)
             {
                 column = columns[i];
 
-                columnSource.Select.Add(column);
+                columnSource.Columns.Add(column);
             }
 
             return table;

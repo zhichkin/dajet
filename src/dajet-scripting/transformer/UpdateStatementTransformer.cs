@@ -46,7 +46,7 @@ namespace DaJet.Scripting
         {
             _columns.Clear();
 
-            foreach (ColumnExpression column in source.Select)
+            foreach (ColumnExpression column in source.Columns)
             {
                 column.Alias = $"_{column.Alias}";
 

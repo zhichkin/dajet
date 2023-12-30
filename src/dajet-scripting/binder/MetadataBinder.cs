@@ -686,7 +686,7 @@ namespace DaJet.Scripting
         {
             string columnName = string.Empty;
 
-            foreach (ColumnExpression expression in table.Select)
+            foreach (ColumnExpression expression in table.Columns)
             {
                 if (!string.IsNullOrEmpty(expression.Alias))
                 {

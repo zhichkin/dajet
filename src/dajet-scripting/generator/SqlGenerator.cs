@@ -247,9 +247,9 @@ namespace DaJet.Scripting
         }
         private void ConfigureDataMapper(in SelectStatement statement, in EntityMapper mapper)
         {
-            if (statement.Select is not SelectExpression select)
+            if (statement.Expression is not SelectExpression select)
             {
-                if (statement.Select is not TableUnionOperator union)
+                if (statement.Expression is not TableUnionOperator union)
                 {
                     throw new InvalidOperationException("UNION operator is not found.");
                 }
@@ -274,7 +274,7 @@ namespace DaJet.Scripting
                 return; // SELECT ... INTO ... statement does not return any records
             }
 
-            foreach (ColumnExpression column in select.Select)
+            foreach (ColumnExpression column in select.Columns)
             {
                 DataMapper.Map(in column, in mapper);
             }
@@ -346,7 +346,7 @@ namespace DaJet.Scripting
 
             script.AppendLine();
 
-            Visit(node.Select, in script);
+            Visit(node.Expression, in script);
         }
         protected virtual void Visit(in SelectExpression node, in StringBuilder script)
         {
@@ -363,11 +363,11 @@ namespace DaJet.Scripting
             }
             script.AppendLine();
 
-            for (int i = 0; i < node.Select.Count; i++)
+            for (int i = 0; i < node.Columns.Count; i++)
             {
                 if (i > 0) { script.AppendLine(","); }
 
-                Visit(node.Select[i], in script);
+                Visit(node.Columns[i], in script);
             }
 
             if (node.Into is not null) { Visit(node.Into, in script); }
@@ -1431,7 +1431,7 @@ namespace DaJet.Scripting
 
             if (node is SelectStatement statement)
             {
-                return TryGetFromTable(statement.Select, out table);
+                return TryGetFromTable(statement.Expression, out table);
             }
             else if (node is SelectExpression select)
             {

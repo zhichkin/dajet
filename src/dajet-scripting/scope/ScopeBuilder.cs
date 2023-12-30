@@ -115,7 +115,7 @@ namespace DaJet.Scripting
                     Name = target.Table.Identifier,
                     Expression = new SelectExpression()
                     {
-                        Select = target.Columns,
+                        Columns = target.Columns,
                         From = new FromClause()
                         {
                             Expression = target.Table
@@ -130,7 +130,7 @@ namespace DaJet.Scripting
                     Name = target.Table.Identifier,
                     Expression = new SelectExpression()
                     {
-                        Select = target.Columns,
+                        Columns = target.Columns,
                         From = new FromClause()
                         {
                             Expression = target.Table

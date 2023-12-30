@@ -347,7 +347,7 @@ namespace DaJet.Scripting
             {
                 return new SelectStatement()
                 {
-                    Select = union(),
+                    Expression = union(),
                     CommonTables = root
                 };
             }
@@ -430,7 +430,7 @@ namespace DaJet.Scripting
         {
             return new SelectStatement()
             {
-                Select = union()
+                Expression = union()
             };
         }
         private SyntaxNode union()
@@ -520,7 +520,7 @@ namespace DaJet.Scripting
             Skip(TokenType.Comment);
             select_clause(in select);
             Skip(TokenType.Comment);
-            if (Match(TokenType.INTO)) { select.Into = into_clause(select.Select); }
+            if (Match(TokenType.INTO)) { select.Into = into_clause(select.Columns); }
             Skip(TokenType.Comment);
             if (Match(TokenType.FROM)) { select.From = from_clause(); }
             Skip(TokenType.Comment);
@@ -645,7 +645,7 @@ namespace DaJet.Scripting
             select.Top = top_clause();
             Skip(TokenType.Comment);
 
-            select.Select.Add(column());
+            select.Columns.Add(column());
 
             Skip(TokenType.Comment);
 
@@ -653,7 +653,7 @@ namespace DaJet.Scripting
             {
                 Skip(TokenType.Comment);
 
-                select.Select.Add(column());
+                select.Columns.Add(column());
 
                 Skip(TokenType.Comment);
             }
