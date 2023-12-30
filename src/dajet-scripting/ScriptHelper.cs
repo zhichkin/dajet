@@ -4,6 +4,43 @@ namespace DaJet.Scripting
 {
     public static class ScriptHelper
     {
+        private static Dictionary<string, Type> _datatype = new()
+        {
+            { "boolean", typeof(bool) }, // L
+            { "number", typeof(decimal) }, // N
+            { "datetime", typeof(DateTime) }, // T
+            { "string", typeof(string) }, // S
+            { "binary", typeof(byte[]) }, // B
+            { "uuid", typeof(Guid) }, // U
+            { "entity", typeof(Entity) }, // #
+            { "union", typeof(Union) }
+        };
+        private static Dictionary<Type, string> _datatype_literal = new()
+        {
+            { typeof(bool), "boolean" },
+            { typeof(int), "number" },
+            { typeof(decimal), "number" },
+            { typeof(DateTime), "datetime" },
+            { typeof(string), "string" },
+            { typeof(byte[]), "binary" },
+            { typeof(Guid), "uuid" },
+            { typeof(Entity), "entity" },
+            { typeof(Union), "union" }
+        };
+        private static Dictionary<Type, TokenType> _datatype_token = new()
+        {
+            { typeof(bool), TokenType.Boolean },
+            { typeof(int), TokenType.Number },
+            { typeof(ulong), TokenType.Number },
+            { typeof(decimal), TokenType.Number },
+            { typeof(DateTime), TokenType.DateTime },
+            { typeof(string), TokenType.String },
+            { typeof(byte[]), TokenType.Binary },
+            { typeof(Guid), TokenType.Uuid },
+            { typeof(Entity), TokenType.Entity },
+            { typeof(Union), TokenType.Union }
+        };
+        
         private static Dictionary<string, TokenType> _keywords_en = new()
         {
             { "WITH", TokenType.WITH },
@@ -124,51 +161,7 @@ namespace DaJet.Scripting
             { "ВСЕ", TokenType.ALL },
             { "ЕСТЬ", TokenType.IS }
         };
-        private static Dictionary<string, Type> _datatype_en = new()
-        {
-            { "boolean", typeof(bool) }, // L
-            { "number", typeof(decimal) }, // N
-            { "datetime", typeof(DateTime) }, // T
-            { "string", typeof(string) }, // S
-            { "binary", typeof(byte[]) }, // B
-            { "uuid", typeof(Guid) }, // U
-            { "entity", typeof(Entity) }, // C + R
-            { "undefined", typeof(Union) } // D
-        };
-        private static Dictionary<string, Type> _datatype_ru = new()
-        {
-            { "УникальныйИдентификатор", typeof(Guid) },
-            { "Булево", typeof(bool) },
-            { "Число", typeof(decimal) },
-            { "ДатаВремя", typeof(DateTime) },
-            { "Строка", typeof(string) },
-            { "ДвоичныеДанные", typeof(byte[]) },
-            { "Ссылка", typeof(Entity) },
-            { "Неопределено", typeof(Union) }
-        };
-        private static Dictionary<Type, TokenType> _datatype_token = new()
-        {
-            { typeof(bool), TokenType.Boolean },
-            { typeof(int), TokenType.Number },
-            { typeof(decimal), TokenType.Number },
-            { typeof(DateTime), TokenType.DateTime },
-            { typeof(string), TokenType.String },
-            { typeof(byte[]), TokenType.Binary },
-            { typeof(Entity), TokenType.Entity },
-            { typeof(Guid), TokenType.Uuid },
-            { typeof(ulong), TokenType.Number }
-        };
-        private static Dictionary<Type, string> _datatype_literal = new()
-        {
-            { typeof(bool), "boolean" },
-            { typeof(int), "number" },
-            { typeof(decimal), "number" },
-            { typeof(DateTime), "datetime" },
-            { typeof(string), "string" },
-            { typeof(byte[]), "binary" },
-            { typeof(Guid), "uuid" },
-            { typeof(Entity), "entity" }
-        };
+        
         private static Dictionary<string, TokenType> _function_en = new()
         {
             { "SUM", TokenType.SUM },
@@ -206,6 +199,7 @@ namespace DaJet.Scripting
             { "СРЕДНЕЕ", TokenType.AVG },
             { "КОЛИЧЕСТВО", TokenType.COUNT }
         };
+        
         internal static bool IsKeyword(string identifier, out TokenType token)
         {
             if (_keywords_ru.TryGetValue(identifier.ToUpperInvariant(), out token))
@@ -216,11 +210,7 @@ namespace DaJet.Scripting
         }
         internal static bool IsDataType(string identifier, out Type type)
         {
-            if (_datatype_ru.TryGetValue(identifier, out type))
-            {
-                return true;
-            }
-            return _datatype_en.TryGetValue(identifier.ToLowerInvariant(), out type);
+            return _datatype.TryGetValue(identifier.ToLowerInvariant(), out type);
         }
         public static TokenType GetDataTypeToken(Type type)
         {

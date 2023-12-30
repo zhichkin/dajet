@@ -288,7 +288,7 @@ namespace DaJet.Scripting
                 throw new FormatException("AS keyword expected.");
             }
 
-            bool expect_close = Match(TokenType.CloseRoundBracket);
+            bool expect_close = Match(TokenType.OpenRoundBracket);
 
             TableVariableExpression table = new()
             {
@@ -317,7 +317,7 @@ namespace DaJet.Scripting
                 throw new FormatException("AS keyword expected.");
             }
 
-            bool expect_close = Match(TokenType.CloseRoundBracket);
+            bool expect_close = Match(TokenType.OpenRoundBracket);
 
             TemporaryTableExpression table = new()
             {

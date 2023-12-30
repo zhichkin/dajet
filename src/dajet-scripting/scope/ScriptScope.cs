@@ -16,6 +16,56 @@ namespace DaJet.Scripting
         public ScriptScope Parent { get; set; }
         public List<ScriptScope> Children { get; } = new();
         public List<SyntaxNode> Identifiers { get; } = new();
+
+        public Dictionary<string, object> Tables { get; } = new();
+        public Dictionary<string, object> Columns { get; } = new();
+        public Dictionary<string, object> Variables { get; } = new();
+
+        public object GetVariableBinding(in string name)
+        {
+            ScriptScope scope = this;
+
+            while (scope is not null)
+            {
+                if (scope.Variables.TryGetValue(name, out object binding))
+                {
+                    return binding;
+                }
+
+                scope = scope.Parent;
+            }
+
+            return null;
+        }
+        public object GetTableBinding(in string name)
+        {
+            ScriptScope scope = this;
+
+            while (scope is not null)
+            {
+                if (scope.Tables.TryGetValue(name, out object binding))
+                {
+                    return binding;
+                }
+
+                scope = scope.Parent;
+            }
+
+            return null;
+        }
+
+        public ScriptScope OpenScope(in SyntaxNode owner)
+        {
+            ScriptScope scope = new(ScopeType.Node, owner, this);
+            
+            this.Children.Add(scope);
+
+            return scope;
+        }
+        public ScriptScope CloseScope()
+        {
+            return this.Parent;
+        }
         public ScriptScope GetRoot()
         {
             ScriptScope root = this;

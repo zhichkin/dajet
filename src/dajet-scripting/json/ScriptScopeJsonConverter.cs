@@ -1,6 +1,7 @@
 ﻿using DaJet.Scripting.Model;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Xml.Linq;
 
 namespace DaJet.Scripting
 {
@@ -14,7 +15,7 @@ namespace DaJet.Scripting
         {
             writer.WriteStartObject();
 
-            writer.WriteString("Type", Enum.GetName(scope.Type));
+            //writer.WriteString("Type", Enum.GetName(scope.Type));
             writer.WriteString("Owner", scope.Owner.GetType().FullName);
 
             writer.WritePropertyName("Identifiers");
@@ -30,6 +31,29 @@ namespace DaJet.Scripting
             foreach (ScriptScope node in scope.Children)
             {
                 Write(writer, node, options);
+            }
+            writer.WriteEndArray();
+
+            writer.WritePropertyName("Variables");
+            writer.WriteStartArray();
+            foreach (var item in scope.Variables)
+            {
+                writer.WriteStringValue($"[{item.Key}] = {item.Value}");
+            }
+            writer.WriteEndArray();
+
+            writer.WritePropertyName("Tables");
+            writer.WriteStartArray();
+            foreach (var item in scope.Tables)
+            {
+                if (item.Value is CommonTableExpression cte)
+                {
+                    writer.WriteStringValue($"[{cte.Name}] = {item.Value}");
+                }
+                else
+                {
+                    writer.WriteStringValue($"[{item.Key}] = {item.Value}");
+                }
             }
             writer.WriteEndArray();
 

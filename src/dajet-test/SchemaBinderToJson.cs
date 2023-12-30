@@ -13,7 +13,8 @@ namespace DaJet.Scripting.Test
         private static readonly string PG_CONNECTION = "Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;";
         private static readonly List<string> scripts = new()
         {
-            "C:\\temp\\scripting-test\\script-lateral-join.txt"
+            "C:\\temp\\scripting-test\\script-lateral-join.txt",
+            "C:\\temp\\scripting-test\\test-new-schema-binder.txt"
         };
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
@@ -96,6 +97,41 @@ namespace DaJet.Scripting.Test
             {
                 Console.WriteLine(ExceptionHelper.GetErrorMessage(error));
             }
+        }
+
+        [TestMethod] public void TestNewSchemaBinder()
+        {
+            string script;
+            using (StreamReader reader = new(scripts[1], Encoding.UTF8))
+            {
+                script = reader.ReadToEnd();
+            }
+
+            IMetadataProvider metadata = new OneDbMetadataProvider(MS_CONNECTION);
+            //IMetadataProvider metadata = new OneDbMetadataProvider(PG_CONNECTION);
+
+            if (!new ScriptParser().TryParse(in script, out ScriptModel model, out string error))
+            {
+                Console.WriteLine(error);
+            }
+
+            if (!new SchemaBinder().TryBind(model, in metadata, out ScriptScope scope, out List<string> errors))
+            {
+                foreach (string text in errors)
+                {
+                    Console.WriteLine(text);
+                }
+            }
+
+            //if (!new ScriptTransformer().TryTransform(model, out error))
+            //{
+            //    Console.WriteLine(error);
+            //}
+
+            WriteScriptScope(in scope);
+            WriteScriptModel(in model);
+
+            Console.WriteLine("Success");
         }
     }
 }

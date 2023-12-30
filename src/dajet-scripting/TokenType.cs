@@ -19,7 +19,7 @@
 
         Identifier, Type, Table, Column, Variable, Enumeration, Star,
 
-        IS, NULL, ISNULL, Boolean, Number, DateTime, String, Binary, Uuid, Entity, Version, Integer,
+        IS, NULL, ISNULL, Boolean, Number, DateTime, String, Binary, Uuid, Entity, Union, Version, Integer,
 
         Equals, NotEquals, Less, Greater, LessOrEquals, GreaterOrEquals,
 
