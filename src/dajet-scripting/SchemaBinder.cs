@@ -574,5 +574,43 @@ namespace DaJet.Scripting
                 Bind(in value);
             }
         }
+
+        private void CreateVirtualTableExpression(in IntoClause target)
+        {
+            SyntaxNode table;
+
+            if (_scope is not null && _scope.Owner is ConsumeStatement)
+            {
+                table = new TableVariableExpression() // MS SQL Server feature
+                {
+                    Name = target.Table.Identifier,
+                    Expression = new SelectExpression()
+                    {
+                        Columns = target.Columns,
+                        From = new FromClause()
+                        {
+                            Expression = target.Table
+                        }
+                    }
+                };
+            }
+            else
+            {
+                table = new TemporaryTableExpression()
+                {
+                    Name = target.Table.Identifier,
+                    Expression = new SelectExpression()
+                    {
+                        Columns = target.Columns,
+                        From = new FromClause()
+                        {
+                            Expression = target.Table
+                        }
+                    }
+                };
+            }
+
+            _scope.Children.Add(new ScriptScope(ScopeType.Node, table, _scope));
+        }
     }
 }
