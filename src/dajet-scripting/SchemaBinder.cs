@@ -148,7 +148,7 @@ namespace DaJet.Scripting
 
                 if (table is EntityDefinition definition)
                 {
-                    node.Binding = definition;
+                    node.Binding = definition; // UDT (user-defined type)
                 }
                 else if (table is ApplicationObject entity)
                 {
@@ -237,7 +237,7 @@ namespace DaJet.Scripting
 
             if (!string.IsNullOrWhiteSpace(node.Alias))
             {
-                _scope.Tables.Add(node.Alias, node); // join current SelectExpression scope
+                _scope.Aliases.Add(node.Alias, node); // join current SelectExpression scope
             }
         }
         private void Bind(in TableJoinOperator node)
@@ -272,7 +272,7 @@ namespace DaJet.Scripting
             node.Binding = _scope.GetTableBinding(node.Identifier);
 
             // 2. try bind user-defined type (table-valued parameter)
-            // see DeclareStatement binding and EntityDefinition
+            // see DeclareStatement binding to EntityDefinition
             if (node.Binding is null)
             {
                 node.Binding = _scope.GetVariableBinding(node.Identifier);
@@ -295,8 +295,52 @@ namespace DaJet.Scripting
             }
             else // successful binding
             {
-                _scope.Tables.Add(node.Alias, node.Binding); // join current SelectExpression scope
+                if (!string.IsNullOrWhiteSpace(node.Alias))
+                {
+                    _scope.Aliases.Add(node.Alias, node.Binding); // join current SelectExpression scope
+                }
+                else
+                {
+                    _scope.Aliases.Add(node.Identifier, node.Binding);
+                }
             }
+        }
+        private void CreateVirtualTableExpression(in IntoClause target)
+        {
+            SyntaxNode table;
+
+            if (_scope is not null && _scope.Owner is ConsumeStatement)
+            {
+                table = new TableVariableExpression() // MS SQL Server feature
+                {
+                    Name = target.Table.Identifier,
+                    Expression = new SelectExpression()
+                    {
+                        Columns = target.Columns,
+                        From = new FromClause()
+                        {
+                            Expression = target.Table
+                        }
+                    }
+                };
+            }
+            else
+            {
+                table = new TemporaryTableExpression()
+                {
+                    Name = target.Table.Identifier,
+                    Expression = new SelectExpression()
+                    {
+                        Columns = target.Columns,
+                        From = new FromClause()
+                        {
+                            Expression = target.Table
+                        }
+                    }
+                };
+            }
+
+            _scope.Children.Add(new ScriptScope(ScopeType.Node, table, _scope));
         }
 
         private void Bind(in StarExpression node) { }
@@ -306,9 +350,211 @@ namespace DaJet.Scripting
         }
         private void Bind(in ColumnReference node)
         {
-            
+            if (!TryBindEnumValue(in node))
+            {
+                BindColumn(in node);
+            }
+
+            if (node.Binding is null)
+            {
+                RegisterBindingError(node.Token, node.Identifier);
+            }
+            else // successful binding
+            {
+                _ = _scope.Columns.TryAdd(node.Identifier, node.Binding);
+            }
         }
-        
+        private bool TryBindEnumValue(in ColumnReference column)
+        {
+            string[] identifiers = column.Identifier.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            if (identifiers is null || identifiers.Length != 3) { return false; }
+
+            if (_schema.TryGetEnumValue(column.Identifier, out EnumValue value) && value is not null)
+            {
+                column.Binding = value;
+                column.Token = TokenType.Enumeration;
+
+                return true;
+            }
+
+            return false;
+        }
+        private void BindColumn(in ColumnReference column)
+        {
+            ScriptHelper.GetColumnIdentifiers(column.Identifier, out string tableAlias, out string columnName);
+
+            if (_scope.TryGetTableByAlias(in tableAlias, out object table))
+            {
+                BindColumn(in table, in columnName, in column);
+            }
+            
+            if (column.Binding is null)
+            {
+                RegisterBindingError(column.Token, column.Identifier);
+            }
+        }
+        private void BindColumn(in object source, in string identifier, in ColumnReference column)
+        {
+            if (source is CommonTableExpression common)
+            {
+                BindColumn(in common, in identifier, in column);
+            }
+            else if (source is ApplicationObject entity)
+            {
+                BindColumn(in entity, in identifier, in column);
+            }
+            else if (source is TableExpression derived)
+            {
+                BindColumn(in derived, in identifier, in column);
+            }
+            else if (source is TableVariableExpression variable)
+            {
+                BindColumn(in variable, in identifier, in column);
+            }
+            else if (source is TemporaryTableExpression temporary)
+            {
+                BindColumn(in temporary, in identifier, in column);
+            }
+            else if (source is TableUnionOperator union) // ORDER clause column of the UNION operator 
+            {
+                BindColumn(in union, in identifier, in column);
+            }
+        }
+        private void BindColumn(in TableExpression table, in string identifier, in ColumnReference column)
+        {
+            if (table.Expression is SelectExpression select)
+            {
+                BindColumn(in select, in identifier, in column);
+            }
+            else if (table.Expression is TableUnionOperator union)
+            {
+                BindColumn(in union, in identifier, in column);
+            }
+        }
+        private void BindColumn(in TableUnionOperator union, in string identifier, in ColumnReference column)
+        {
+            if (union.Expression1 is SelectExpression select1)
+            {
+                BindColumn(in select1, in identifier, in column);
+            }
+            else if (union.Expression2 is SelectExpression select2)
+            {
+                BindColumn(in select2, in identifier, in column);
+            }
+        }
+        private void BindColumn(in CommonTableExpression table, in string identifier, in ColumnReference column)
+        {
+            if (table.Expression is SelectExpression select)
+            {
+                BindColumn(in select, in identifier, in column);
+            }
+            else if (table.Expression is TableUnionOperator union)
+            {
+                BindColumn(in union, in identifier, in column);
+            }
+            else if (table.Expression is InsertStatement insert)
+            {
+                BindColumn(in insert, in identifier, in column);
+            }
+            else if (table.Expression is UpdateStatement update)
+            {
+                BindColumn(in update, in identifier, in column);
+            }
+            else if (table.Expression is DeleteStatement delete)
+            {
+                BindColumn(in delete, in identifier, in column);
+            }
+        }
+        private void BindColumn(in TableVariableExpression table, in string identifier, in ColumnReference column)
+        {
+            if (table.Expression is SelectExpression select)
+            {
+                BindColumn(in select, in identifier, in column);
+            }
+            else if (table.Expression is TableUnionOperator union)
+            {
+                BindColumn(in union, in identifier, in column);
+            }
+        }
+        private void BindColumn(in TemporaryTableExpression table, in string identifier, in ColumnReference column)
+        {
+            if (table.Expression is SelectExpression select)
+            {
+                BindColumn(in select, in identifier, in column);
+            }
+            else if (table.Expression is TableUnionOperator union)
+            {
+                BindColumn(in union, in identifier, in column);
+            }
+        }
+        private void BindColumn(in SelectExpression table, in string identifier, in ColumnReference column)
+        {
+            string columnName = string.Empty;
+
+            foreach (ColumnExpression expression in table.Columns)
+            {
+                if (!string.IsNullOrEmpty(expression.Alias))
+                {
+                    columnName = expression.Alias;
+                }
+                else if (expression.Expression is ColumnReference reference)
+                {
+                    ScriptHelper.GetColumnIdentifiers(reference.Identifier, out string _, out columnName);
+                }
+
+                if (columnName == identifier)
+                {
+                    column.Binding = expression; return;
+                }
+            }
+        }
+        private void BindColumn(in ApplicationObject entity, in string identifier, in ColumnReference column)
+        {
+            foreach (MetadataProperty property in entity.Properties)
+            {
+                if (property.Name == identifier)
+                {
+                    column.Binding = property; return;
+                }
+            }
+        }
+        private void BindColumn(in OutputClause output, in string identifier, in ColumnReference column)
+        {
+            if (output is null) { return; }
+
+            string columnName = string.Empty;
+
+            foreach (ColumnExpression expression in output.Columns)
+            {
+                if (!string.IsNullOrEmpty(expression.Alias))
+                {
+                    columnName = expression.Alias;
+                }
+                else if (expression.Expression is ColumnReference reference)
+                {
+                    ScriptHelper.GetColumnIdentifiers(reference.Identifier, out string _, out columnName);
+                }
+
+                if (columnName == identifier)
+                {
+                    column.Binding = expression; return; // success
+                }
+            }
+        }
+        private void BindColumn(in InsertStatement table, in string identifier, in ColumnReference column)
+        {
+            if (table.Output is not null) { BindColumn(table.Output, in identifier, in column); }
+        }
+        private void BindColumn(in UpdateStatement table, in string identifier, in ColumnReference column)
+        {
+            if (table.Output is not null) { BindColumn(table.Output, in identifier, in column); }
+        }
+        private void BindColumn(in DeleteStatement table, in string identifier, in ColumnReference column)
+        {
+            if (table.Output is not null) { BindColumn(table.Output, in identifier, in column); }
+        }
+
         private void Bind(in TopClause node)
         {
             Bind(node.Expression);
@@ -573,44 +819,6 @@ namespace DaJet.Scripting
             {
                 Bind(in value);
             }
-        }
-
-        private void CreateVirtualTableExpression(in IntoClause target)
-        {
-            SyntaxNode table;
-
-            if (_scope is not null && _scope.Owner is ConsumeStatement)
-            {
-                table = new TableVariableExpression() // MS SQL Server feature
-                {
-                    Name = target.Table.Identifier,
-                    Expression = new SelectExpression()
-                    {
-                        Columns = target.Columns,
-                        From = new FromClause()
-                        {
-                            Expression = target.Table
-                        }
-                    }
-                };
-            }
-            else
-            {
-                table = new TemporaryTableExpression()
-                {
-                    Name = target.Table.Identifier,
-                    Expression = new SelectExpression()
-                    {
-                        Columns = target.Columns,
-                        From = new FromClause()
-                        {
-                            Expression = target.Table
-                        }
-                    }
-                };
-            }
-
-            _scope.Children.Add(new ScriptScope(ScopeType.Node, table, _scope));
         }
     }
 }

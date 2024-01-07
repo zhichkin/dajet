@@ -1,7 +1,6 @@
 ﻿using DaJet.Scripting.Model;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Xml.Linq;
 
 namespace DaJet.Scripting
 {
@@ -18,13 +17,13 @@ namespace DaJet.Scripting
             //writer.WriteString("Type", Enum.GetName(scope.Type));
             writer.WriteString("Owner", scope.Owner.GetType().FullName);
 
-            writer.WritePropertyName("Identifiers");
-            writer.WriteStartArray();
-            foreach (SyntaxNode node in scope.Identifiers)
-            {
-                writer.WriteStringValue(node.ToString());
-            }
-            writer.WriteEndArray();
+            //writer.WritePropertyName("Identifiers");
+            //writer.WriteStartArray();
+            //foreach (SyntaxNode node in scope.Identifiers)
+            //{
+            //    writer.WriteStringValue(node.ToString());
+            //}
+            //writer.WriteEndArray();
 
             writer.WritePropertyName("Children");
             writer.WriteStartArray();
@@ -54,6 +53,22 @@ namespace DaJet.Scripting
                 {
                     writer.WriteStringValue($"[{item.Key}] = {item.Value}");
                 }
+            }
+            writer.WriteEndArray();
+
+            writer.WritePropertyName("Aliases");
+            writer.WriteStartArray();
+            foreach (var item in scope.Aliases)
+            {
+                writer.WriteStringValue($"[{item.Key}] = {item.Value}");
+            }
+            writer.WriteEndArray();
+
+            writer.WritePropertyName("Columns");
+            writer.WriteStartArray();
+            foreach (var item in scope.Columns)
+            {
+                writer.WriteStringValue($"[{item.Key}] = {item.Value}");
             }
             writer.WriteEndArray();
 

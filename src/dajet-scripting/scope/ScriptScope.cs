@@ -17,9 +17,10 @@ namespace DaJet.Scripting
         public List<ScriptScope> Children { get; } = new();
         public List<SyntaxNode> Identifiers { get; } = new();
 
-        public Dictionary<string, object> Tables { get; } = new();
+        public Dictionary<string, object> Tables { get; } = new(); // CTE (common table expression) or temporary tables
+        public Dictionary<string, object> Aliases { get; } = new(); // table expression (subquery) or schema tables
         public Dictionary<string, object> Columns { get; } = new();
-        public Dictionary<string, object> Variables { get; } = new();
+        public Dictionary<string, object> Variables { get; } = new(); // table variables or UDT (user-defined type)
 
         public object GetVariableBinding(in string name)
         {
@@ -52,6 +53,51 @@ namespace DaJet.Scripting
             }
 
             return null;
+        }
+        public bool TryGetTableByAlias(in string alias, out object table)
+        {
+            if (string.IsNullOrEmpty(alias) ||
+                alias.ToLowerInvariant() == "deleted" ||
+                alias.ToLowerInvariant() == "inserted")
+            {
+                // TODO: find all candidate tables and warn ambiguous names
+
+                // take first available table
+                table = Aliases.Values.FirstOrDefault();
+                return (table is not null);
+            }
+
+            // 1. Lookup current scope
+
+            ScriptScope scope = Ancestor<SelectExpression>();
+
+            if (scope is not null && scope.Aliases.TryGetValue(alias, out table))
+            {
+                return true;
+            }
+
+            // 2. Lookup correlated scope
+
+            while (scope is not null)
+            {
+                if (scope.Owner is SelectExpression select)
+                {
+                    if (select.IsCorrelated && scope.Parent is not null)
+                    {
+                        scope = scope.Parent.Ancestor<SelectExpression>();
+
+                        if (scope is not null && scope.Aliases.TryGetValue(alias, out table))
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                scope = scope.Parent;
+            }
+
+            table = null;
+            return false;
         }
 
         public ScriptScope OpenScope(in SyntaxNode owner)
