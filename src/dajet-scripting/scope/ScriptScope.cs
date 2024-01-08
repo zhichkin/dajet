@@ -5,13 +5,11 @@ namespace DaJet.Scripting
     public sealed class ScriptScope
     {
         public ScriptScope() { }
-        public ScriptScope(ScopeType type, SyntaxNode owner, ScriptScope parent)
+        public ScriptScope(SyntaxNode owner, ScriptScope parent)
         {
-            Type = type;
             Owner = owner;
             Parent = parent;
         }
-        public ScopeType Type { get; set; } = ScopeType.Global;
         public SyntaxNode Owner { get; set; }
         public ScriptScope Parent { get; set; }
         public List<ScriptScope> Children { get; } = new();
@@ -21,6 +19,61 @@ namespace DaJet.Scripting
         public Dictionary<string, object> Aliases { get; } = new(); // table expression (subquery) or schema tables
         public Dictionary<string, object> Columns { get; } = new();
         public Dictionary<string, object> Variables { get; } = new(); // table variables or UDT (user-defined type)
+
+        public ScriptScope GetRoot()
+        {
+            ScriptScope root = this;
+
+            while (root.Parent is not null)
+            {
+                root = root.Parent;
+            }
+
+            return root;
+        }
+        public ScriptScope Ancestor<TOwner>() where TOwner : SyntaxNode
+        {
+            Type type = typeof(TOwner);
+
+            ScriptScope scope = this;
+            SyntaxNode owner = Owner;
+
+            while (scope is not null)
+            {
+                if (owner is not null && owner.GetType() == type)
+                {
+                    return scope;
+                }
+
+                scope = scope.Parent;
+                owner = scope?.Owner;
+            }
+
+            return null;
+        }
+        public ScriptScope Descendant<TOwner>() where TOwner : SyntaxNode
+        {
+            return null; //TODO: getting descendant scope
+        }
+        public override string ToString()
+        {
+            return $"Owner: {Owner}";
+        }
+
+
+
+        public ScriptScope OpenScope(in SyntaxNode owner)
+        {
+            ScriptScope scope = new(owner, this);
+
+            this.Children.Add(scope);
+
+            return scope;
+        }
+        public ScriptScope CloseScope()
+        {
+            return this.Parent;
+        }
 
         public object GetVariableBinding(in string name)
         {
@@ -98,58 +151,6 @@ namespace DaJet.Scripting
 
             table = null;
             return false;
-        }
-
-        public ScriptScope OpenScope(in SyntaxNode owner)
-        {
-            ScriptScope scope = new(ScopeType.Node, owner, this);
-            
-            this.Children.Add(scope);
-
-            return scope;
-        }
-        public ScriptScope CloseScope()
-        {
-            return this.Parent;
-        }
-        public ScriptScope GetRoot()
-        {
-            ScriptScope root = this;
-
-            while (root.Parent is not null)
-            {
-                root = root.Parent;
-            }
-
-            return root;
-        }
-        public ScriptScope Ancestor<TOwner>() where TOwner : SyntaxNode
-        {
-            Type type = typeof(TOwner);
-
-            ScriptScope scope = this;
-            SyntaxNode owner = Owner;
-
-            while (scope is not null)
-            {
-                if (owner is not null && owner.GetType() == type)
-                {
-                    return scope;
-                }
-
-                scope = scope.Parent;
-                owner = scope?.Owner;
-            }
-
-            return null;
-        }
-        public ScriptScope Descendant<TOwner>() where TOwner : SyntaxNode
-        {
-            return null; //TODO: getting descendant scope
-        }
-        public override string ToString()
-        {
-            return $"{Type}: {Owner}";
         }
     }
 }

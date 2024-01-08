@@ -340,7 +340,7 @@ namespace DaJet.Scripting
                 };
             }
 
-            _scope.Children.Add(new ScriptScope(ScopeType.Node, table, _scope));
+            _scope.Children.Add(new ScriptScope(table, _scope));
         }
 
         private void Bind(in StarExpression node) { }

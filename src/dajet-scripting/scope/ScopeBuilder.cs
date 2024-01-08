@@ -29,21 +29,21 @@ namespace DaJet.Scripting
         {
             if (node == null) { return; }
 
-            if (node is ScriptModel) { OpenScope(ScopeType.Global, node); }
+            if (node is ScriptModel) { OpenScope(node); }
             else if (node is DeclareStatement) { JoinScope(node); }
-            else if (node is TableVariableExpression) { OpenScope(ScopeType.Node, node); }
-            else if (node is TemporaryTableExpression) { OpenScope(ScopeType.Node, node); }
-            else if (node is SelectStatement) { OpenScope(ScopeType.Root, node); }
-            else if (node is InsertStatement) { OpenScope(ScopeType.Root, node); }
-            else if (node is UpdateStatement) { OpenScope(ScopeType.Root, node); }
-            else if (node is DeleteStatement) { OpenScope(ScopeType.Root, node); }
-            else if (node is UpsertStatement) { OpenScope(ScopeType.Root, node); }
-            else if (node is ConsumeStatement) { OpenScope(ScopeType.Root, node); }
-            else if (node is CommonTableExpression) { OpenScope(ScopeType.Node, node); }
-            else if (node is TableExpression) { OpenScope(ScopeType.Node, node); }
-            else if (node is SelectExpression) { OpenScope(ScopeType.Node, node); }
-            else if (node is TableJoinOperator) { OpenScope(ScopeType.Node, node); }
-            else if (node is TableUnionOperator) { OpenScope(ScopeType.Node, node); }
+            else if (node is TableVariableExpression) { OpenScope(node); }
+            else if (node is TemporaryTableExpression) { OpenScope(node); }
+            else if (node is SelectStatement) { OpenScope(node); }
+            else if (node is InsertStatement) { OpenScope(node); }
+            else if (node is UpdateStatement) { OpenScope(node); }
+            else if (node is DeleteStatement) { OpenScope(node); }
+            else if (node is UpsertStatement) { OpenScope(node); }
+            else if (node is ConsumeStatement) { OpenScope(node); }
+            else if (node is CommonTableExpression) { OpenScope(node); }
+            else if (node is TableExpression) { OpenScope(node); }
+            else if (node is SelectExpression) { OpenScope(node); }
+            else if (node is TableJoinOperator) { OpenScope(node); }
+            else if (node is TableUnionOperator) { OpenScope(node); }
             else if (node is TableReference) { JoinScope(node); }
             else if (node is ColumnReference) { JoinScope(node); }
             else if (node is TypeIdentifier) { JoinGlobalScope(node); }
@@ -69,16 +69,16 @@ namespace DaJet.Scripting
             else if (node is TableVariableExpression) { CloseScope(); }
             else if (node is TemporaryTableExpression) { CloseScope(); }
         }
-        private void OpenScope(ScopeType type, SyntaxNode owner)
+        private void OpenScope(SyntaxNode owner)
         {
             if (_scope == null)
             {
-                _scope = new ScriptScope(type, owner, null);
+                _scope = new ScriptScope(owner, null);
                 _current = _scope;
             }
             else
             {
-                ScriptScope scope = new(type, owner, _current);
+                ScriptScope scope = new(owner, _current);
                 _current.Children.Add(scope);
                 _current = scope;
             }
@@ -139,7 +139,7 @@ namespace DaJet.Scripting
                 };
             }
 
-            _scope?.Children.Add(new ScriptScope(ScopeType.Node, table, _scope));
+            _scope?.Children.Add(new ScriptScope(table, _scope));
         }
     }
 }
