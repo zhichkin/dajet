@@ -64,6 +64,8 @@ namespace DaJet.Scripting
             { "FULL", TokenType.FULL },
             { "INNER", TokenType.INNER },
             { "CROSS", TokenType.CROSS },
+            { "OUTER", TokenType.OUTER },
+            { "APPLY", TokenType.APPLY },
             { "ON", TokenType.ON },
             { "DECLARE", TokenType.DECLARE },
             { "NOLOCK", TokenType.NOLOCK },

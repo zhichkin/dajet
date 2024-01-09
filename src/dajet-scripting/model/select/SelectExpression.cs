@@ -4,8 +4,9 @@
     {
         public SelectExpression() { Token = TokenType.SELECT; }
         public FromClause From { get; set; }
-        // false = FROM first TableExpression or right JOIN operand
-        // true = all other cases (correlated subquery)
+        /// <summary>
+        /// Correlation flag: true if select expression is correlated subquery.
+        /// </summary>
         public bool IsCorrelated { get; set; } = true;
         public List<ColumnExpression> Columns { get; set; } = new();
         public bool Distinct { get; set; }

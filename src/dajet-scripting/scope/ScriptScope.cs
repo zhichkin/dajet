@@ -4,11 +4,13 @@ namespace DaJet.Scripting
 {
     public sealed class ScriptScope
     {
+        private readonly ScriptScope _ancestor;
         public ScriptScope() { }
         public ScriptScope(SyntaxNode owner, ScriptScope parent)
         {
             Owner = owner;
-            Parent = parent;
+            Parent = parent; //NOTE: can be overriden in OpenScope method !!!
+            _ancestor = parent; //NOTE: is used by CloseScope method
         }
         public SyntaxNode Owner { get; set; }
         public ScriptScope Parent { get; set; }
@@ -60,25 +62,40 @@ namespace DaJet.Scripting
             return $"Owner: {Owner}";
         }
 
-
-
         public ScriptScope OpenScope(in SyntaxNode owner)
         {
             ScriptScope scope = new(owner, this);
 
-            if (owner is SelectExpression select && select.IsCorrelated)
+            if (owner is not SelectExpression select || select.IsCorrelated)
             {
-                //TODO: find parent scope using correlation logic
+                Children.Add(scope); return scope;
             }
 
-            Children.Add(scope);
-            
-            return scope;
+            ScriptScope parent = this;
+
+            while (parent is not null)
+            {
+                select = parent.Owner as SelectExpression;
+
+                if (select is null)
+                {
+                    scope.Parent = parent;
+                    parent.Children.Add(scope);
+                    return scope;
+                }
+                else if (select.IsCorrelated)
+                {
+                    scope.Parent = parent.Parent;
+                    parent.Parent.Children.Add(scope);
+                    return scope;
+                }
+
+                parent = parent.Parent;
+            }
+
+            throw new InvalidOperationException($"Failed to open scope [{owner}]");
         }
-        public ScriptScope CloseScope()
-        {
-            return Parent;
-        }
+        public ScriptScope CloseScope() { return _ancestor; }
 
         public object GetVariableBinding(in string name)
         {
@@ -114,45 +131,33 @@ namespace DaJet.Scripting
         }
         public bool TryGetTableByAlias(in string alias, out object table)
         {
+            // TODO: find all candidate tables and warn ambiguous names
+
             if (string.IsNullOrEmpty(alias) ||
                 alias.ToLowerInvariant() == "deleted" ||
                 alias.ToLowerInvariant() == "inserted")
             {
-                // TODO: find all candidate tables and warn ambiguous names
-
                 // take first available table
                 table = Aliases.Values.FirstOrDefault();
+                
                 return (table is not null);
             }
 
-            // 1. Lookup current scope
+            // lookup current and upper scopes
 
-            ScriptScope scope = Ancestor<SelectExpression>();
-
-            if (scope is not null && scope.Aliases.TryGetValue(alias, out table))
-            {
-                return true;
-            }
-
-            // 2. Lookup correlated scope
+            ScriptScope scope = this;
 
             while (scope is not null)
             {
-                if (scope.Owner is SelectExpression select)
+                if (scope.Aliases.TryGetValue(alias, out table))
                 {
-                    if (select.IsCorrelated && scope.Parent is not null)
-                    {
-                        scope = scope.Parent.Ancestor<SelectExpression>();
-
-                        if (scope is not null && scope.Aliases.TryGetValue(alias, out table))
-                        {
-                            return true;
-                        }
-                    }
+                    return true;
                 }
 
                 scope = scope.Parent;
             }
+
+            // failed to bind table by alias
 
             table = null;
             return false;

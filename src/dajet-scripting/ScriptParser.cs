@@ -1,4 +1,6 @@
 ﻿using DaJet.Scripting.Model;
+using System.Text;
+using System.Xml.Linq;
 
 namespace DaJet.Scripting
 {
@@ -426,13 +428,8 @@ namespace DaJet.Scripting
         #endregion
 
         #region "SELECT STATEMENT"
-        private SyntaxNode select_statement()
-        {
-            return new SelectStatement()
-            {
-                Expression = union()
-            };
-        }
+        private SyntaxNode select_statement() { return new SelectStatement() { Expression = union() }; }
+        ///<returns>SelectExpression or TableUnionOperator</returns>
         private SyntaxNode union()
         {
             SyntaxNode node = union_operator();
@@ -467,6 +464,7 @@ namespace DaJet.Scripting
             
             return _union;
         }
+        ///<returns>SelectExpression or TableUnionOperator</returns>
         private SyntaxNode union_operator()
         {
             SyntaxNode node;
@@ -535,6 +533,7 @@ namespace DaJet.Scripting
 
             return select;
         }
+        ///<returns>TableReference or TableExpression</returns>
         private SyntaxNode table()
         {
             if (Match(TokenType.Identifier, TokenType.Variable))
@@ -567,9 +566,15 @@ namespace DaJet.Scripting
 
             return table;
         }
+        ///<returns>TableReference or TableExpression or TableJoinOperator</returns>
         private SyntaxNode join()
         {
             SyntaxNode left = table();
+
+            if (left is TableExpression expression)
+            {
+                disable_correlation_flag(in expression);
+            }
 
             Skip(TokenType.Comment);
 
@@ -590,7 +595,7 @@ namespace DaJet.Scripting
 
                 bool parse_on_clause = false;
 
-                SyntaxNode right = table(); //NOTE: returns { TableReference | TableExpression }
+                SyntaxNode right = table();
 
                 TableExpression subquery = right as TableExpression;
 
@@ -608,15 +613,19 @@ namespace DaJet.Scripting
                 }
                 else if (_operator == TokenType.CROSS) //NOTE: CROSS JOIN operator does not use ON clause
                 {
-                    //TODO: see from_clause() function implementation !!!
-                    //TODO: set SelectExpression property IsCorrelated to false !!!
+                    if (subquery is not null)
+                    {
+                        disable_correlation_flag(in subquery);
+                    }
                 }
                 else if (Match(TokenType.ON)) // { LEFT | RIGHT | INNER | FULL } JOIN
                 {
                     parse_on_clause = true;
 
-                    //TODO: see from_clause() function implementation !!!
-                    //TODO: set SelectExpression property IsCorrelated to false !!!
+                    if (subquery is not null)
+                    {
+                        disable_correlation_flag(in subquery);
+                    }
                 }
                 else
                 {
@@ -639,38 +648,31 @@ namespace DaJet.Scripting
 
             return left;
         }
-        private FromClause from_clause()
+        private void disable_correlation_flag(in SyntaxNode node)
         {
-            //TODO: set SelectExpression property IsCorrelated to false !!!
-
-            SyntaxNode expression = join(); //NOTE: returns { TableReference | TableExpression | TableJoinOperator }
-
-            if (expression is TableExpression table)
+            if (node is SelectExpression select)
             {
-                if (table.Expression is TableUnionOperator union)
-                {
-                    //TODO: !!!
-                }
-                else if (table.Expression is SelectExpression select)
-                {
-                    select.IsCorrelated = false;
-                }
+                select.IsCorrelated = false;
             }
-            else if (expression is TableJoinOperator join)
+            else if (node is TableExpression table)
             {
-                if (join.Expression1 is TableExpression left) //NOTE: the left operand is evaluated first !
-                {
-                    //TODO: while left operand is TableJoinOperator
-                    //go down the tree to find the first table in FROM clause !!!
-                }
-                else if (join.Expression2 is TableExpression right)
-                {
-                    //TODO: do nothing !?
-                }
+                disable_correlation_flag(in table);
             }
-
-            return new FromClause() { Expression = expression };
+            else if (node is TableUnionOperator union)
+            {
+                disable_correlation_flag(in union);
+            }
         }
+        private void disable_correlation_flag(in TableExpression table)
+        {
+            disable_correlation_flag(table.Expression);
+        }
+        private void disable_correlation_flag(in TableUnionOperator union)
+        {
+            disable_correlation_flag(union.Expression1);
+            disable_correlation_flag(union.Expression2);
+        }
+        private FromClause from_clause() { return new FromClause() { Expression = join() }; }
         private IntoClause into_clause(in List<ColumnExpression> columns)
         {
             if (!Match(TokenType.Identifier))

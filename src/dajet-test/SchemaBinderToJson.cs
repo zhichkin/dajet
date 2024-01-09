@@ -28,43 +28,6 @@ namespace DaJet.Scripting.Test
             JsonOptions.Converters.Add(new SyntaxNodeJsonConverter());
             JsonOptions.Converters.Add(new ScriptScopeJsonConverter());
         }
-        
-        [TestMethod] public void ParseScriptAndWriteToJsonFile()
-        {
-            string script;
-            using (StreamReader reader = new(scripts[0], Encoding.UTF8))
-            {
-                script = reader.ReadToEnd();
-            }
-            
-            IMetadataProvider metadata = new OneDbMetadataProvider(MS_CONNECTION);
-            //IMetadataProvider metadata = new OneDbMetadataProvider(PG_CONNECTION);
-
-            if (!new ScriptParser().TryParse(in script, out ScriptModel model, out string error))
-            {
-                Console.WriteLine(error);
-            }
-            
-            if (!new ScopeBuilder().TryBuild(in model, out ScriptScope scope, out error))
-            {
-                Console.WriteLine(error);
-            }
-            
-            if (!new MetadataBinder().TryBind(in scope, in metadata, out error))
-            {
-                Console.WriteLine(error);
-            }
-            
-            if (!new ScriptTransformer().TryTransform(model, out error))
-            {
-                Console.WriteLine(error);
-            }
-
-            WriteScriptScope(in scope);
-            WriteScriptModel(in model);
-
-            Console.WriteLine("Success");
-        }
         private void WriteScriptScope(in ScriptScope scope)
         {
             string outputFile = "C:\\temp\\scripting-test\\script-scope-output.json";
@@ -101,8 +64,41 @@ namespace DaJet.Scripting.Test
                 Console.WriteLine(ExceptionHelper.GetErrorMessage(error));
             }
         }
+        [TestMethod] public void Bind_Correlated_Subquery()
+        {
+            string script;
+            using (StreamReader reader = new(scripts[0], Encoding.UTF8))
+            {
+                script = reader.ReadToEnd();
+            }
+            
+            IMetadataProvider metadata = new OneDbMetadataProvider(MS_CONNECTION);
+            //IMetadataProvider metadata = new OneDbMetadataProvider(PG_CONNECTION);
 
-        [TestMethod] public void TestNewSchemaBinder()
+            if (!new ScriptParser().TryParse(in script, out ScriptModel model, out string error))
+            {
+                Console.WriteLine(error);
+            }
+
+            if (!new SchemaBinder().TryBind(model, in metadata, out ScriptScope scope, out List<string> errors))
+            {
+                foreach (string text in errors)
+                {
+                    Console.WriteLine(text);
+                }
+            }
+
+            if (!new ScriptTransformer().TryTransform(model, out error))
+            {
+                Console.WriteLine(error);
+            }
+
+            WriteScriptScope(in scope);
+            WriteScriptModel(in model);
+
+            Console.WriteLine("Success");
+        }
+        [TestMethod] public void Bind_No_Correlated_Subquery()
         {
             string script;
             using (StreamReader reader = new(scripts[1], Encoding.UTF8))
@@ -126,10 +122,10 @@ namespace DaJet.Scripting.Test
                 }
             }
 
-            //if (!new ScriptTransformer().TryTransform(model, out error))
-            //{
-            //    Console.WriteLine(error);
-            //}
+            if (!new ScriptTransformer().TryTransform(model, out error))
+            {
+                Console.WriteLine(error);
+            }
 
             WriteScriptScope(in scope);
             WriteScriptModel(in model);

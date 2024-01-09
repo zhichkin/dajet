@@ -422,7 +422,7 @@ namespace DaJet.Scripting
         }
         protected virtual void Visit(in StarExpression node, in StringBuilder script)
         {
-            script.Append("*");
+            script.Append('*');
         }
         protected virtual void Visit(in ColumnReference node, in StringBuilder script)
         {

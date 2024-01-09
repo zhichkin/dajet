@@ -16,6 +16,17 @@ namespace DaJet.Scripting
 
             writer.WriteString(nameof(ScriptScope.Owner), scope.Owner.GetType().FullName);
 
+            ScriptScope ancestor = scope.CloseScope();
+
+            if (ancestor is null)
+            {
+                writer.WriteNull(nameof(ScriptScope.Ancestor));
+            }
+            else
+            {
+                writer.WriteString(nameof(ScriptScope.Ancestor), ancestor.Owner.GetType().FullName);
+            }
+
             //writer.WritePropertyName("Identifiers");
             //writer.WriteStartArray();
             //foreach (SyntaxNode node in scope.Identifiers)

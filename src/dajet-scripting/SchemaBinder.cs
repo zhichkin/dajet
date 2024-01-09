@@ -43,7 +43,6 @@ namespace DaJet.Scripting
         {
             if (node is null) { return; }
             else if (node is ScriptModel script) { Bind(in script); }
-            else if (node is CommentStatement comment) { Bind(in comment); }
             else if (node is OutputClause output) { Bind(in output); }
             else if (node is InsertStatement insert) { Bind(in insert); }
             else if (node is UpdateStatement update) { Bind(in update); }
@@ -54,7 +53,6 @@ namespace DaJet.Scripting
             else if (node is SetExpression set_expression) { Bind(in set_expression); }
             else if (node is DeclareStatement declare) { Bind(in declare); }
             else if (node is TypeIdentifier type) { Bind(in type); }
-            else if (node is ScalarExpression scalar) { Bind(in scalar); }
             else if (node is VariableReference variable) { Bind(in variable); }
             else if (node is GroupOperator group) { Bind(in group); }
             else if (node is UnaryOperator unary) { Bind(in unary); }
@@ -104,10 +102,8 @@ namespace DaJet.Scripting
                 Bind(in statement);
             }
         }
-        private void Bind(in ApplicationObject entity) { }
-        private void Bind(in MetadataProperty property) { }
-        private void Bind(in MetadataColumn column) { }
         private void Bind(in CommentStatement node) { }
+        private void Bind(in ScalarExpression node) { }
         private void Bind(in DeclareStatement node)
         {
             //TODO: DeclareStatement.Initializer ... resolve TableExpression
@@ -170,7 +166,6 @@ namespace DaJet.Scripting
                 RegisterBindingError(node.Token, node.Identifier);
             }
         }
-        private void Bind(in ScalarExpression node) { }
         private void Bind(in TableVariableExpression node)
         {
             Bind(node.Expression);
@@ -244,7 +239,7 @@ namespace DaJet.Scripting
         {
             Bind(node.Expression1); //NOTE: { TableReference | TableExpression | TableJoinOperator }
             Bind(node.Expression2);
-            Bind(node.On);
+            if (node.On is not null) { Bind(node.On); }
         }
         private void Bind(in TableUnionOperator node)
         {
