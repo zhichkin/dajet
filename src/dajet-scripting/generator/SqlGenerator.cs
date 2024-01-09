@@ -486,14 +486,15 @@ namespace DaJet.Scripting
         {
             script.Append("(");
             Visit(node.Expression, in script);
-            script.Append(") AS " + node.Alias);
+            script.Append(") AS " + node.Alias); //TODO: alias can be empty string !!!
         }
         protected virtual void Visit(in TableJoinOperator node, in StringBuilder script)
         {
             Visit(node.Expression1, in script);
+            //TODO: { CROSS | OUTER } APPLY !!!
             script.AppendLine().Append(node.Token.ToString()).Append(" JOIN ");
             Visit(node.Expression2, in script);
-            Visit(node.On, in script);
+            Visit(node.On, in script); //TODO: ON clause can be null for APPLY !!!
         }
         protected virtual void Visit(in TableUnionOperator node, in StringBuilder script)
         {

@@ -14,8 +14,7 @@ namespace DaJet.Scripting
         {
             writer.WriteStartObject();
 
-            //writer.WriteString("Type", Enum.GetName(scope.Type));
-            writer.WriteString("Owner", scope.Owner.GetType().FullName);
+            writer.WriteString(nameof(ScriptScope.Owner), scope.Owner.GetType().FullName);
 
             //writer.WritePropertyName("Identifiers");
             //writer.WriteStartArray();
@@ -24,14 +23,6 @@ namespace DaJet.Scripting
             //    writer.WriteStringValue(node.ToString());
             //}
             //writer.WriteEndArray();
-
-            writer.WritePropertyName("Children");
-            writer.WriteStartArray();
-            foreach (ScriptScope node in scope.Children)
-            {
-                Write(writer, node, options);
-            }
-            writer.WriteEndArray();
 
             writer.WritePropertyName("Variables");
             writer.WriteStartArray();
@@ -69,6 +60,14 @@ namespace DaJet.Scripting
             foreach (var item in scope.Columns)
             {
                 writer.WriteStringValue($"[{item.Key}] = {item.Value}");
+            }
+            writer.WriteEndArray();
+
+            writer.WritePropertyName("Children");
+            writer.WriteStartArray();
+            foreach (ScriptScope node in scope.Children)
+            {
+                Write(writer, node, options);
             }
             writer.WriteEndArray();
 

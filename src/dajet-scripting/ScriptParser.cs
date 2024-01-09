@@ -560,9 +560,10 @@ namespace DaJet.Scripting
                 throw new FormatException("Close round bracket expected.");
             }
 
-            if (!Check(TokenType.AS)) { throw new FormatException("Alias expected."); }
+            //NOTE: table expression alias, used by column expressions, is not required
+            //if (!Check(TokenType.AS)) { throw new FormatException("Alias expected."); }
 
-            table.Alias = alias();
+            table.Alias = alias(); //NOTE: the function can return an empty string
 
             return table;
         }
@@ -570,20 +571,61 @@ namespace DaJet.Scripting
         {
             SyntaxNode left = table();
 
-            while (Match(TokenType.LEFT, TokenType.RIGHT, TokenType.INNER, TokenType.FULL, TokenType.CROSS))
+            Skip(TokenType.Comment);
+
+            while (Match(TokenType.LEFT, TokenType.RIGHT, TokenType.INNER, TokenType.FULL, TokenType.CROSS, TokenType.OUTER))
             {
                 TokenType _operator = Previous().Type;
 
-                if (!Match(TokenType.JOIN))
+                if (Match(TokenType.APPLY))
+                {
+                    if (_operator == TokenType.CROSS) { _operator = TokenType.CROSS_APPLY; }
+                    else if (_operator == TokenType.OUTER) { _operator = TokenType.OUTER_APPLY; }
+                    else { throw new FormatException("APPLY keyword expected."); }
+                }
+                else if (!Match(TokenType.JOIN))
                 {
                     throw new FormatException("JOIN keyword expected.");
                 }
 
-                SyntaxNode right = table();
+                bool parse_on_clause = false;
 
-                if (!Match(TokenType.ON))
+                SyntaxNode right = table(); //NOTE: returns { TableReference | TableExpression }
+
+                TableExpression subquery = right as TableExpression;
+
+                if (subquery is not null && string.IsNullOrEmpty(subquery.Alias))
+                {
+                    throw new FormatException($"[{_operator}] Table expression alias expected.");
+                }
+
+                if (_operator == TokenType.CROSS_APPLY || _operator == TokenType.OUTER_APPLY)
+                {
+                    if (subquery is null)
+                    {
+                        throw new FormatException($"[{_operator}] Table expression expected.");
+                    }
+                }
+                else if (_operator == TokenType.CROSS) //NOTE: CROSS JOIN operator does not use ON clause
+                {
+                    //TODO: see from_clause() function implementation !!!
+                    //TODO: set SelectExpression property IsCorrelated to false !!!
+                }
+                else if (Match(TokenType.ON)) // { LEFT | RIGHT | INNER | FULL } JOIN
+                {
+                    parse_on_clause = true;
+
+                    //TODO: see from_clause() function implementation !!!
+                    //TODO: set SelectExpression property IsCorrelated to false !!!
+                }
+                else
                 {
                     throw new FormatException("ON keyword expected.");
+                }
+
+                if (parse_on_clause)
+                {
+                    Skip(TokenType.Comment);
                 }
 
                 left = new TableJoinOperator()
@@ -591,13 +633,60 @@ namespace DaJet.Scripting
                     Token = _operator,
                     Expression1 = left,
                     Expression2 = right,
-                    On = on_clause()
+                    On = parse_on_clause ? on_clause() : null
                 };
             }
 
             return left;
         }
+        private FromClause from_clause()
+        {
+            //TODO: set SelectExpression property IsCorrelated to false !!!
 
+            SyntaxNode expression = join(); //NOTE: returns { TableReference | TableExpression | TableJoinOperator }
+
+            if (expression is TableExpression table)
+            {
+                if (table.Expression is TableUnionOperator union)
+                {
+                    //TODO: !!!
+                }
+                else if (table.Expression is SelectExpression select)
+                {
+                    select.IsCorrelated = false;
+                }
+            }
+            else if (expression is TableJoinOperator join)
+            {
+                if (join.Expression1 is TableExpression left) //NOTE: the left operand is evaluated first !
+                {
+                    //TODO: while left operand is TableJoinOperator
+                    //go down the tree to find the first table in FROM clause !!!
+                }
+                else if (join.Expression2 is TableExpression right)
+                {
+                    //TODO: do nothing !?
+                }
+            }
+
+            return new FromClause() { Expression = expression };
+        }
+        private IntoClause into_clause(in List<ColumnExpression> columns)
+        {
+            if (!Match(TokenType.Identifier))
+            {
+                throw new FormatException("INTO: table identifier expected.");
+            }
+
+            return new IntoClause()
+            {
+                Table = new TableReference()
+                {
+                    Identifier = Previous().Lexeme
+                },
+                Columns = columns
+            };
+        }
         private string alias()
         {
             if (Match(TokenType.AS))
@@ -676,24 +765,6 @@ namespace DaJet.Scripting
 
             return clause;
         }
-
-        private IntoClause into_clause(in List<ColumnExpression> columns)
-        {
-            if (!Match(TokenType.Identifier))
-            {
-                throw new FormatException("INTO: table identifier expected.");
-            }
-            
-            return new IntoClause()
-            {
-                Table = new TableReference()
-                {
-                    Identifier = Previous().Lexeme
-                },
-                Columns = columns
-            };
-        }
-        private FromClause from_clause() { return new FromClause() { Expression = join() }; }
         private OnClause on_clause() { return new OnClause() { Expression = predicate() }; }
         private WhereClause where_clause() { return new WhereClause() { Expression = predicate() }; }
         private HavingClause having_clause() { return new HavingClause() { Expression = predicate() }; }

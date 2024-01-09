@@ -13,8 +13,8 @@ namespace DaJet.Scripting
         public SyntaxNode Owner { get; set; }
         public ScriptScope Parent { get; set; }
         public List<ScriptScope> Children { get; } = new();
-        public List<SyntaxNode> Identifiers { get; } = new();
 
+        public List<SyntaxNode> Identifiers { get; } = new(); //TODO: remove deprecated algorithm
         public Dictionary<string, object> Tables { get; } = new(); // CTE (common table expression) or temporary tables
         public Dictionary<string, object> Aliases { get; } = new(); // table expression (subquery) or schema tables
         public Dictionary<string, object> Columns { get; } = new();
@@ -66,13 +66,18 @@ namespace DaJet.Scripting
         {
             ScriptScope scope = new(owner, this);
 
-            this.Children.Add(scope);
+            if (owner is SelectExpression select && select.IsCorrelated)
+            {
+                //TODO: find parent scope using correlation logic
+            }
 
+            Children.Add(scope);
+            
             return scope;
         }
         public ScriptScope CloseScope()
         {
-            return this.Parent;
+            return Parent;
         }
 
         public object GetVariableBinding(in string name)
