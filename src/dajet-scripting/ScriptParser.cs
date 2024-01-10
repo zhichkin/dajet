@@ -1,6 +1,4 @@
 ﻿using DaJet.Scripting.Model;
-using System.Text;
-using System.Xml.Linq;
 
 namespace DaJet.Scripting
 {
@@ -560,9 +558,17 @@ namespace DaJet.Scripting
             }
 
             //NOTE: table expression alias, used by column expressions, is not required
-            //if (!Check(TokenType.AS)) { throw new FormatException("Alias expected."); }
+            if (!Check(TokenType.AS))
+            {
+                throw new FormatException("Table expression alias expected.");
+            }
 
             table.Alias = alias(); //NOTE: the function can return an empty string
+
+            if (string.IsNullOrEmpty(table.Alias))
+            {
+                throw new FormatException("Table expression alias expected.");
+            }
 
             return table;
         }

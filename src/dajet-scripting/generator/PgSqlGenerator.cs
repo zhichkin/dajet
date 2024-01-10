@@ -110,6 +110,35 @@ namespace DaJet.Scripting
             }
         }
 
+        protected override void Visit(in TableJoinOperator node, in StringBuilder script)
+        {
+            Visit(node.Expression1, in script); // left operand
+
+            if (node.Token == TokenType.CROSS_APPLY)
+            {
+                script.AppendLine().Append("INNER JOIN LATERAL ");
+            }
+            else if (node.Token == TokenType.OUTER_APPLY)
+            {
+                script.AppendLine().Append("LEFT JOIN LATERAL ");
+            }
+            else
+            {
+                script.AppendLine().Append(node.Token.ToString()).Append(" JOIN ");
+            }
+
+            Visit(node.Expression2, in script); // right operand
+
+            if (node.Token == TokenType.CROSS_APPLY || node.Token == TokenType.OUTER_APPLY)
+            {
+                script.Append(" ON TRUE");
+            }
+            else if (node.On is not null) //NOTE: null if CROSS JOIN
+            {
+                Visit(node.On, in script);
+            }
+        }
+
         private bool IsRecursive(in CommonTableExpression cte)
         {
             if (IsRecursive(in cte, cte.Expression))

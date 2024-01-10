@@ -210,7 +210,7 @@ namespace DaJet.Scripting
             }
             return _keywords_en.TryGetValue(identifier.ToUpperInvariant(), out token);
         }
-        internal static bool IsDataType(string identifier, out Type type)
+        public static bool IsDataType(string identifier, out Type type)
         {
             return _datatype.TryGetValue(identifier.ToLowerInvariant(), out type);
         }
@@ -354,7 +354,7 @@ namespace DaJet.Scripting
             // PostgreSql return $"CAST(E'\\\\x{value}' AS bytea)";
         }
 
-        internal static ScalarExpression CreateDefaultScalar(in DeclareStatement declare)
+        public static ScalarExpression CreateDefaultScalar(in DeclareStatement declare)
         {
             if (!IsDataType(declare.Type.Identifier, out Type type))
             {

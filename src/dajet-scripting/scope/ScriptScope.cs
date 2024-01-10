@@ -4,7 +4,7 @@ namespace DaJet.Scripting
 {
     public sealed class ScriptScope
     {
-        private readonly ScriptScope _ancestor;
+        private readonly ScriptScope _ancestor; //TODO: encapsulate logic in OpenScope method, use stack and using { ... }
         public ScriptScope() { }
         public ScriptScope(SyntaxNode owner, ScriptScope parent)
         {

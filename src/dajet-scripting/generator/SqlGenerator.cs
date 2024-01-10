@@ -484,17 +484,30 @@ namespace DaJet.Scripting
         
         protected virtual void Visit(in TableExpression node, in StringBuilder script)
         {
-            script.Append("(");
+            script.Append('(');
             Visit(node.Expression, in script);
-            script.Append(") AS " + node.Alias); //TODO: alias can be empty string !!!
+            script.Append(") AS " + node.Alias);
         }
         protected virtual void Visit(in TableJoinOperator node, in StringBuilder script)
         {
-            Visit(node.Expression1, in script);
-            //TODO: { CROSS | OUTER } APPLY !!!
-            script.AppendLine().Append(node.Token.ToString()).Append(" JOIN ");
-            Visit(node.Expression2, in script);
-            Visit(node.On, in script); //TODO: ON clause can be null for APPLY !!!
+            Visit(node.Expression1, in script); // left operand
+
+            if (node.Token == TokenType.CROSS_APPLY)
+            {
+                script.AppendLine().Append("CROSS APPLY ");
+            }
+            else if (node.Token == TokenType.OUTER_APPLY)
+            {
+                script.AppendLine().Append("OUTER APPLY ");
+            }
+            else
+            {
+                script.AppendLine().Append(node.Token.ToString()).Append(" JOIN ");
+            }
+
+            Visit(node.Expression2, in script); // right operand
+
+            if (node.On is not null) { Visit(node.On, in script); } //NOTE: null if CROSS JOIN
         }
         protected virtual void Visit(in TableUnionOperator node, in StringBuilder script)
         {

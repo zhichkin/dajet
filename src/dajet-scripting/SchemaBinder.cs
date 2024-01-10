@@ -93,6 +93,8 @@ namespace DaJet.Scripting
         {
             _errors.Add($"Failed to bind [{token}: {identifier}]");
         }
+
+        #region "GLOBAL SCOPE BINDING"
         private void Bind(in ScriptModel node)
         {
             _scope ??= new ScriptScope() { Owner = node };
@@ -102,8 +104,6 @@ namespace DaJet.Scripting
                 Bind(in statement);
             }
         }
-        private void Bind(in CommentStatement node) { }
-        private void Bind(in ScalarExpression node) { }
         private void Bind(in DeclareStatement node)
         {
             //TODO: DeclareStatement.Initializer ... resolve TableExpression
@@ -178,7 +178,64 @@ namespace DaJet.Scripting
 
             _scope.Tables.Add(node.Name, node); // join script global scope
         }
+        private void Bind(in OutputClause node)
+        {
+            if (node is null) { return; }
 
+            for (int i = 0; i < node.Columns.Count; i++)
+            {
+                Bind(node.Columns[i]); //NOTE: use of special key words inserted and deleted
+            }
+
+            if (node.Into is not null) { Bind(node.Into); }
+        }
+        private void Bind(in IntoClause node)
+        {
+            //NOTE: INTO columns are derived from the host SELECT expression
+            //NOTE: INTO columns are bound already !!!
+
+            SyntaxNode table;
+
+            if (_scope.Ancestor<ConsumeStatement>() is not null)
+            {
+                table = new TableVariableExpression() // MS SQL Server feature
+                {
+                    Name = node.Table.Identifier,
+                    Expression = new SelectExpression()
+                    {
+                        Columns = node.Columns,
+                        From = new FromClause()
+                        {
+                            Expression = node.Table
+                        }
+                    }
+                };
+            }
+            else
+            {
+                table = new TemporaryTableExpression()
+                {
+                    Name = node.Table.Identifier,
+                    Expression = new SelectExpression()
+                    {
+                        Columns = node.Columns,
+                        From = new FromClause()
+                        {
+                            Expression = node.Table
+                        }
+                    }
+                };
+            }
+
+            node.Table.Binding = table;
+
+            ScriptScope root = _scope.GetRoot();
+
+            root.Tables.Add(node.Table.Identifier, table);
+        }
+        #endregion
+
+        #region "SELECT AND TABLE BINDING"
         private void Bind(in SelectStatement node)
         {
             _scope = _scope.OpenScope(node);
@@ -205,6 +262,7 @@ namespace DaJet.Scripting
 
             Bind(node.Expression); //NOTE: { SelectExpression | INSERT | UPDATE | DELETE }
         }
+        private void Bind(in FromClause node) { Bind(node.Expression); }
         private void Bind(in SelectExpression node)
         {
             _scope = _scope.OpenScope(node);
@@ -300,45 +358,10 @@ namespace DaJet.Scripting
                 }
             }
         }
-        private void CreateVirtualTableExpression(in IntoClause target)
-        {
-            SyntaxNode table;
+        #endregion
 
-            if (_scope is not null && _scope.Owner is ConsumeStatement)
-            {
-                table = new TableVariableExpression() // MS SQL Server feature
-                {
-                    Name = target.Table.Identifier,
-                    Expression = new SelectExpression()
-                    {
-                        Columns = target.Columns,
-                        From = new FromClause()
-                        {
-                            Expression = target.Table
-                        }
-                    }
-                };
-            }
-            else
-            {
-                table = new TemporaryTableExpression()
-                {
-                    Name = target.Table.Identifier,
-                    Expression = new SelectExpression()
-                    {
-                        Columns = target.Columns,
-                        From = new FromClause()
-                        {
-                            Expression = target.Table
-                        }
-                    }
-                };
-            }
-
-            _scope.Children.Add(new ScriptScope(table, _scope));
-        }
-
-        private void Bind(in StarExpression node) { }
+        #region "COLUMN BINDING"
+        private void Bind(in StarExpression node) { /* TODO: implement transformer into column expressions */ }
         private void Bind(in ColumnExpression node)
         {
             Bind(node.Expression);
@@ -549,24 +572,12 @@ namespace DaJet.Scripting
         {
             if (table.Output is not null) { BindColumn(table.Output, in identifier, in column); }
         }
+        #endregion
 
+        #region "CLAUSE AND OPERATOR BINDING"
         private void Bind(in TopClause node)
         {
             Bind(node.Expression);
-        }
-        private void Bind(in FromClause node)
-        {
-            Bind(node.Expression);
-        }
-        private void Bind(in IntoClause node)
-        {
-            Bind(node.Table);
-
-            //NOTE: columns are derived from SELECT expression
-            //foreach (ColumnExpression column in node.Columns)
-            //{
-            //    Bind(in column);
-            //}
         }
         private void Bind(in WhereClause node)
         {
@@ -692,7 +703,9 @@ namespace DaJet.Scripting
                 Bind(node.Columns[i]);
             }
         }
+        #endregion
 
+        #region "DML STATEMENT BINDING"
         private void Bind(in ConsumeStatement node)
         {
             _scope = _scope.OpenScope(node);
@@ -720,17 +733,6 @@ namespace DaJet.Scripting
             }
 
             _scope = _scope.CloseScope();
-        }
-        private void Bind(in OutputClause node)
-        {
-            if (node is null) { return; }
-
-            for (int i = 0; i < node.Columns.Count; i++)
-            {
-                Bind(node.Columns[i]); //NOTE: use of special key words inserted and deleted
-            }
-
-            if (node.Into is not null) { Bind(node.Into); }
         }
         private void Bind(in DeleteStatement node)
         {
@@ -815,5 +817,6 @@ namespace DaJet.Scripting
                 Bind(in value);
             }
         }
+        #endregion
     }
 }

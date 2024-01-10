@@ -1,115 +1,109 @@
 ﻿using DaJet.Data;
+using DaJet.Data.Client;
+using DaJet.Json;
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
+using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using System.Globalization;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Unicode;
 
-namespace DaJet.Scripting
+namespace DaJet
 {
-    public static class ScriptProcessor
+    public static class ScriptEngine
     {
-        public static bool TryTranspile(in IMetadataProvider context,
-            in string script, in Dictionary<string, object> parameters,
-            out ScriptDetails result, out string error)
+        private static readonly string MS_CONNECTION = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
+        private static readonly string PG_CONNECTION = "Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;";
+
+        private static readonly JsonWriterOptions JsonOptions = new()
         {
-            if (context is null)
-            {
-                throw new ArgumentNullException(nameof(context));
-            }
-
-            if (string.IsNullOrWhiteSpace(script))
-            {
-                throw new ArgumentNullException(nameof(script));
-            }
-
-            if (parameters is null)
-            {
-                throw new ArgumentNullException(nameof(parameters));
-            }
-
-            result = new ScriptDetails();
-
-            foreach (var item in parameters)
-            {
-                result.Parameters.Add(item.Key, item.Value);
-            }
-
-            if (!TryTranspile(in context, in script, result.Parameters, out List<ScriptStatement> statements, out error))
-            {
-                result = null; return false;
-            }
-
-            try
-            {
-                result.Mappers = GetEntityMappers(in statements);
-                result.SqlScript = AssembleSqlScript(in statements);
-            }
-            catch (Exception exception)
-            {
-                result = null;
-                error = ExceptionHelper.GetErrorMessage(exception);
-            }
-
-            return (result is not null);
-        }
-        private static void ThrowImportStatementAreNotSupported(in ScriptModel model)
+            Indented = true,
+            Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+        };
+        private static readonly DataObjectJsonConverter _converter = new();
+        private static void WriteResultToFile(in DataObject input)
         {
-            foreach (SyntaxNode node in model.Statements)
+            using (MemoryStream memory = new())
             {
-                if (node is ImportStatement import)
+                using (Utf8JsonWriter writer = new(memory, JsonOptions))
                 {
-                    throw new NotSupportedException(import.GetType().ToString());
+                    _converter.Write(writer, input, null);
+
+                    writer.Flush();
+
+                    string json = Encoding.UTF8.GetString(memory.ToArray());
+
+                    Console.WriteLine(json);
+
+                    FileLogger.Default.Write(json);
                 }
             }
         }
-        private static bool TryTranspile(in IMetadataProvider context,
-            in string script, in Dictionary<string, object> parameters,
-            out List<ScriptStatement> statements, out string error)
+        public static void Execute(in string filePath)
         {
-            statements = null;
+            string script;
 
-            ScriptModel model;
-
-            using (ScriptParser parser = new())
+            using (StreamReader reader = new(filePath, Encoding.UTF8))
             {
-                if (!parser.TryParse(in script, out model, out error))
-                {
-                    return false;
-                }
+                script = reader.ReadToEnd();
             }
 
-            ThrowImportStatementAreNotSupported(in model);
+            //IMetadataProvider context = new OneDbMetadataProvider(MS_CONNECTION);
+            IMetadataProvider context = new OneDbMetadataProvider(PG_CONNECTION);
+
+            using (OneDbConnection connection = new(context))
+            {
+                connection.Open();
+
+                using (OneDbCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = script;
+                    //command.Parameters.Add("ИмяПараметра", "Значение");
+
+                    foreach (DataObject record in command.StreamReader())
+                    {
+                        //for (int i = 0; i < record.Count(); i++)
+                        //{
+                        //    string name = record.GetName(i);
+                        //    object value = record.GetValue(i);
+                        //}
+
+                        WriteResultToFile(in record);
+                    }
+                }
+            }
+        }
+        #region "NEW SCRIPT PROCESSOR ENGINE"
+        private static void TODO_ExecuteScript(in string script, in IMetadataProvider context)
+        {
+            Dictionary<string, object> parameters = new();
+
+            if (!new ScriptParser().TryParse(in script, out ScriptModel model, out string error))
+            {
+                Console.WriteLine(error);
+            }
 
             OverrideEntityParameters(in model, in parameters);
 
-            if (UseNewBinder(in model))
+            if (!new SchemaBinder().TryBind(model, in context, out _, out List<string> errors))
             {
-                if (!new SchemaBinder().TryBind(model, in context, out _, out List<string> errors))
+                foreach (string text in errors)
                 {
-                    error = (errors.Count > 0 ? errors[0] : string.Empty); return false;
-                }
-            }
-            else //TODO: remove old version in the future
-            {
-                if (!new ScopeBuilder().TryBuild(in model, out ScriptScope scope, out error))
-                {
-                    return false;
-                }
-                if (!new MetadataBinder().TryBind(in scope, in context, out error))
-                {
-                    return false;
+                    Console.WriteLine(text);
                 }
             }
 
-            ScriptTransformer transformer = new();
-
-            if (!transformer.TryTransform(model, out error))
+            if (!new ScriptTransformer().TryTransform(model, out error))
             {
-                 return false;
+                Console.WriteLine(error);
             }
 
             ConfigureParameters(in context, in model, in parameters);
+
+            ///TODO: ExecuteImportStatements(in model); <see cref="DaJet.Scripting.ScriptExecutor"/>
 
             ISqlGenerator generator;
 
@@ -124,27 +118,28 @@ namespace DaJet.Scripting
             else
             {
                 error = $"Unsupported database provider: {context.DatabaseProvider}";
-                return false;
+                return;
             }
 
-            if (!generator.TryGenerate(in model, in context, out statements, out error))
+            if (!generator.TryGenerate(in model, in context, out List<ScriptStatement> statements, out error))
             {
-                return false;
+                return;
             }
 
-            return true;
-        }
-        private static bool UseNewBinder(in ScriptModel model)
-        {
-            foreach (SyntaxNode node in model.Statements)
+            ScriptDetails details = new()
             {
-                if (node is CommentStatement comment && comment.Text.Contains("#binder 1.5.0"))
-                {
-                    return true;
-                }
-            }
+                Parameters = parameters
+            };
 
-            return false;
+            try
+            {
+                details.Mappers = GetEntityMappers(in statements);
+                details.SqlScript = AssembleSqlScript(in statements);
+            }
+            catch (Exception exception)
+            {
+                error = ExceptionHelper.GetErrorMessage(exception);
+            }
         }
         private static string AssembleSqlScript(in List<ScriptStatement> statements)
         {
@@ -206,7 +201,7 @@ namespace DaJet.Scripting
             foreach (var item in parameters)
             {
                 if (item.Value is not Entity entity) { continue; }
-                
+
                 DeclareStatement declare = GetDeclareStatementByName(in model, item.Key);
 
                 if (declare is null) { continue; }
@@ -223,7 +218,7 @@ namespace DaJet.Scripting
                     Literal = entity.ToString()
                 };
 
-                declare.Initializer = scalar; 
+                declare.Initializer = scalar;
             }
         }
         private static void ConfigureParameters(in IMetadataProvider context, in ScriptModel model, in Dictionary<string, object> parameters)
@@ -377,5 +372,6 @@ namespace DaJet.Scripting
                 }
             }
         }
+        #endregion
     }
 }
