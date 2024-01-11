@@ -59,30 +59,12 @@ namespace DaJet.Scripting
         }
         public static void Visit(in SyntaxNode node, in UnionType union)
         {
-            if (node is ColumnExpression column)
-            {
-                Visit(in column, in union);
-            }
-            else if (node is ColumnReference identifier)
-            {
-                Visit(in identifier, in union);
-            }
-            else if (node is ScalarExpression scalar)
-            {
-                Visit(in scalar, in union);
-            }
-            else if (node is VariableReference variable)
-            {
-                Visit(in variable, in union);
-            }
-            else if (node is CaseExpression _case)
-            {
-                Visit(in _case, in union);
-            }
-            else if (node is FunctionExpression function)
-            {
-                Visit(in function, in union);
-            }
+            if (node is ColumnExpression column) { Visit(in column, in union); }
+            else if (node is ColumnReference identifier) { Visit(in identifier, in union); }
+            else if (node is ScalarExpression scalar) { Visit(in scalar, in union); }
+            else if (node is VariableReference variable) { Visit(in variable, in union); }
+            else if (node is CaseExpression _case) { Visit(in _case, in union); }
+            else if (node is FunctionExpression function) { Visit(in function, in union); }
         }
         private static void Visit(in ColumnExpression column, in UnionType union)
         {

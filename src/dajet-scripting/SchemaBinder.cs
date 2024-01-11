@@ -72,6 +72,7 @@ namespace DaJet.Scripting
             else if (node is IntoClause into) { Bind(in into); }
             else if (node is OnClause join_on) { Bind(in join_on); }
             else if (node is OrderClause order_by) { Bind(in order_by); }
+            else if (node is OrderExpression order_expression) { Bind(in order_expression); }
             else if (node is TopClause top) { Bind(in top); }
             else if (node is WhereClause where) { Bind(in where); }
             else if (node is ColumnExpression column) { Bind(in column); }
@@ -245,7 +246,7 @@ namespace DaJet.Scripting
                 Bind(node.CommonTables);
             }
 
-            Bind(node.Expression); //NOTE: SelectExpression
+            Bind(node.Expression); //NOTE: SelectExpression | TableUnionOperator
 
             _scope = _scope.CloseScope();
         }
@@ -317,6 +318,34 @@ namespace DaJet.Scripting
             else if (node.Expression2 is TableUnionOperator union2)
             {
                 Bind(in union2);
+            }
+
+            if (node.Order is OrderClause order) // root union operator
+            {
+                for (int i = 0; i < order.Expressions.Count; i++)
+                {
+                    if (order.Expressions[i].Expression is ColumnReference column)
+                    {
+                        ScriptHelper.GetColumnIdentifiers(column.Identifier, out _, out string columnName);
+
+                        BindColumn(in node, in columnName, in column);
+
+                        if (column.Binding is null)
+                        {
+                            RegisterBindingError(column.Token, column.Identifier);
+                        }
+                    }
+                }
+
+                if (order.Offset is not null)
+                {
+                    Bind(order.Offset);
+
+                    if (order.Fetch is not null)
+                    {
+                        Bind(order.Fetch);
+                    }
+                }
             }
         }
         private void Bind(in TableReference node)
@@ -615,6 +644,10 @@ namespace DaJet.Scripting
                 }
             }
         }
+        private void Bind(in OrderExpression node)
+        {
+            Bind(node.Expression);
+        }
         private void Bind(in GroupOperator node)
         {
             Bind(node.Expression);
@@ -743,7 +776,6 @@ namespace DaJet.Scripting
                 Bind(node.CommonTables);
             }
 
-            if (node.From is not null) { Bind(node.From); }
             if (node.Target is not null) { Bind(node.Target); }
             if (node.Output is not null) { Bind(node.Output); }
             if (node.Where is not null) { Bind(node.Where); }
@@ -759,9 +791,8 @@ namespace DaJet.Scripting
                 Bind(node.CommonTables);
             }
 
-            if (node.Source is not null) { Bind(node.Source); }
             if (node.Target is not null) { Bind(node.Target); }
-            if (node.Output is not null) { Bind(node.Output); }
+            if (node.Source is not null) { Bind(node.Source); }
 
             _scope = _scope.CloseScope();
         }
@@ -774,9 +805,8 @@ namespace DaJet.Scripting
                 Bind(node.CommonTables);
             }
 
-            if (node.Source is not null) { Bind(node.Source); }
             if (node.Target is not null) { Bind(node.Target); }
-            if (node.Output is not null) { Bind(node.Output); }
+            if (node.Source is not null) { Bind(node.Source); }
             if (node.Set is not null) { Bind(node.Set); }
             if (node.Where is not null) { Bind(node.Where); }
 
@@ -791,8 +821,8 @@ namespace DaJet.Scripting
                 Bind(node.CommonTables);
             }
 
-            if (node.Source is not null) { Bind(node.Source); }
             if (node.Target is not null) { Bind(node.Target); }
+            if (node.Source is not null) { Bind(node.Source); }
             if (node.Set is not null) { Bind(node.Set); }
             if (node.Where is not null) { Bind(node.Where); }
 

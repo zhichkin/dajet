@@ -7,9 +7,4 @@
         public SyntaxNode Offset { get; set; }
         public SyntaxNode Fetch { get; set; }
     }
-    public sealed class OrderExpression : SyntaxNode
-    {
-        public OrderExpression() { Token = TokenType.ASC; }
-        public SyntaxNode Expression { get; set; }
-    }
 }

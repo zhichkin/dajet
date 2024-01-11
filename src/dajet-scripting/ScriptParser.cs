@@ -434,7 +434,7 @@ namespace DaJet.Scripting
 
             if (node is not TableUnionOperator _union)
             {
-                return node;
+                return node; // SelectExpression
             }
 
             SyntaxNode bottom = _union.Expression2;

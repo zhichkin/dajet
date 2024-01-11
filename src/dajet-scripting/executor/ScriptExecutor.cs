@@ -33,19 +33,27 @@ namespace DaJet.Scripting
                 }
             }
 
-            ScopeBuilder builder = new();
-
-            if (!builder.TryBuild(in model, out ScriptScope scope, out error))
+            if (!new SchemaBinder().TryBind(model, in _context, out _, out List<string> errors))
             {
-                throw new Exception(error);
+                if (errors is not null && errors.Count > 0)
+                {
+                    throw new Exception(errors[0]);
+                }
+                else
+                {
+                    throw new Exception("Unknown binding error");
+                }
             }
 
-            MetadataBinder binder = new();
-
-            if (!binder.TryBind(in scope, in _context, out error))
-            {
-                throw new Exception(error);
-            }
+            //TODO: remove deprecated code
+            //if (!new ScopeBuilder().TryBuild(in model, out ScriptScope scope, out error))
+            //{
+            //    throw new Exception(error);
+            //}
+            //if (!new MetadataBinder().TryBind(in scope, in _context, out error))
+            //{
+            //    throw new Exception(error);
+            //}
 
             ScriptTransformer transformer = new();
 
@@ -427,19 +435,27 @@ namespace DaJet.Scripting
                 }
             }
 
-            ScopeBuilder builder = new();
-
-            if (!builder.TryBuild(in model, out ScriptScope scope, out error))
+            if (!new SchemaBinder().TryBind(model, in _context, out _, out List<string> errors))
             {
-                throw new Exception(error);
+                if (errors is not null && errors.Count > 0)
+                {
+                    throw new Exception(errors[0]);
+                }
+                else
+                {
+                    throw new Exception("Unknown binding error");
+                }
             }
 
-            MetadataBinder binder = new();
-
-            if (!binder.TryBind(in scope, in _context, out error))
-            {
-                throw new Exception(error);
-            }
+            //TODO: remove deprecated code
+            //if (!new ScopeBuilder().TryBuild(in model, out ScriptScope scope, out error))
+            //{
+            //    throw new Exception(error);
+            //}
+            //if (!new MetadataBinder().TryBind(in scope, in _context, out error))
+            //{
+            //    throw new Exception(error);
+            //}
 
             ScriptTransformer transformer = new();
 

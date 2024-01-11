@@ -9,6 +9,7 @@
         public WhereClause Where { get; set; }
         public SetClause Set { get; set; }
         public List<string> Hints { get; set; }
+        ///<summary>OUTPUT clause is not implemented (parser and sql generator)</summary>
         public OutputClause Output { get; set; }
     }
 }
