@@ -308,7 +308,8 @@ namespace DaJet.Metadata
 
         #endregion
 
-        public OneDbMetadataProvider(string connectionString)
+        public OneDbMetadataProvider(string connectionString) : this(connectionString, false) { }
+        public OneDbMetadataProvider(string connectionString, bool useExtensions)
         {
             _parsers = new MetadataObjectParserFactory(this);
 
@@ -328,7 +329,9 @@ namespace DaJet.Metadata
             {
                 _connectionString = connectionString;
             }
-            
+
+            UseExtensions = useExtensions;
+
             Initialize();
         }
         public void Configure(in Dictionary<string, string> options)

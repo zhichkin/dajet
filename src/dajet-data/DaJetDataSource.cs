@@ -9,22 +9,53 @@ namespace DaJet.Data
         private readonly IDomainModel _domain;
         private readonly string _connectionString;
         private readonly DataSourceOptions _options;
+        private readonly string DATABASE_FILE_NAME = "dajet.db";
         private readonly Dictionary<Type, IDataMapper> _mappers = new();
+        public DaJetDataSource()
+        {
+            _domain = new DomainModel();
+
+            string databaseFileFullPath = Path.Combine(AppContext.BaseDirectory, DATABASE_FILE_NAME);
+
+            _connectionString = new SqliteConnectionStringBuilder()
+            {
+                DataSource = databaseFileFullPath,
+                Mode = SqliteOpenMode.ReadWriteCreate
+            }
+            .ToString();
+
+            ConfigureMappers();
+
+            ConfigureDatabase();
+        }
+        public DaJetDataSource(string connectionString)
+            : this(connectionString, new DomainModel()) { }
+        public DaJetDataSource(string connectionString, IDomainModel domain)
+            : this(new DataSourceOptions() { ConnectionString = connectionString }, domain) { }
         public DaJetDataSource(DataSourceOptions options, IDomainModel domain)
         {
             _domain = domain ?? throw new ArgumentNullException(nameof(domain));
             _options = options ?? throw new ArgumentNullException(nameof(options));
 
+            if (string.IsNullOrWhiteSpace(_options.ConnectionString))
+            {
+                throw new ArgumentNullException(nameof(DataSourceOptions.ConnectionString));
+            }
+
             _connectionString = _options.ConnectionString;
 
+            ConfigureMappers();
+
+            ConfigureDatabase();
+        }
+        private void ConfigureMappers()
+        {
             _mappers.Add(typeof(TreeNodeRecord), new TreeNodeDataMapper(this));
             _mappers.Add(typeof(PipelineRecord), new PipelineDataMapper(this));
             _mappers.Add(typeof(HandlerRecord), new HandlerDataMapper(this));
             _mappers.Add(typeof(OptionRecord), new OptionDataMapper(this));
             _mappers.Add(typeof(InfoBaseRecord), new InfoBaseDataMapper(this));
             _mappers.Add(typeof(ScriptRecord), new ScriptDataMapper(this));
-
-            ConfigureDatabase();
         }
         private void ConfigureDatabase()
         {

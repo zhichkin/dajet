@@ -31,10 +31,32 @@ namespace DaJet.Data.Client
             }
             else if (_provider == DatabaseProvider.PostgreSql)
             {
-                return new NpgsqlConnection(_connectionString);
+                return CreateNpgsqlConnection();
             }
 
             throw new InvalidOperationException($"Unsupported database provider: {_provider}");
+        }
+        private NpgsqlConnection CreateNpgsqlConnection()
+        {
+            PgDbConfigurator.InitializeUserDefinedTypes(in _connectionString);
+
+            NpgsqlDataSourceBuilder builder = new(_connectionString);
+
+            string database = new NpgsqlConnectionStringBuilder(_connectionString).Database;
+
+            Dictionary<string, Type> types = PgDbConfigurator.GetUserDefinedTypes(in database);
+
+            if (types is not null)
+            {
+                foreach (var item in types)
+                {
+                    builder.MapComposite(item.Value, item.Key);
+                }
+            }
+
+            NpgsqlDataSource source = builder.Build();
+
+            return source.CreateConnection();
         }
         public new OneDbCommand CreateCommand() { return new OneDbCommand(_context, _connection); }
 

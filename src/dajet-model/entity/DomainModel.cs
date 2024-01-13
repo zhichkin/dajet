@@ -9,20 +9,21 @@ namespace DaJet.Model
 {
     public interface IDomainModel
     {
-        T New<T>() where T : EntityObject; // New
-        T New<T>(Guid identity) where T : EntityObject; // Original
+        T New<T>() where T : EntityObject, new(); // New
+        T New<T>(Guid identity) where T : EntityObject, new(); // Original
         EntityObject New(Type type); // New
         EntityObject New(Type type, Guid identity); // Original
-        void Entity<T>(int typeCode);
+        void Entity<T>(int typeCode) where T : EntityObject;
         int GetTypeCode(Type entityType);
         Type GetEntityType(int typeCode);
-        Entity GetEntity<T>(Guid identity);
+        Entity GetEntity<T>(Guid identity) where T : EntityObject;
     }
     public sealed class DomainModel : IDomainModel
     {
+        private readonly IServiceProvider _services;
         private readonly Dictionary<int, Type> _types = new();
         private readonly Dictionary<Type, int> _codes = new();
-        private readonly IServiceProvider _services;
+        public DomainModel() : this(null) { }
         public DomainModel(IServiceProvider services)
         {
             _services = services;
@@ -37,7 +38,7 @@ namespace DaJet.Model
             Entity<InfoBaseRecord>(50);
             Entity<ScriptRecord>(60);
         }
-        public void Entity<T>(int typeCode)
+        public void Entity<T>(int typeCode) where T : EntityObject
         {
             _ = _codes.TryAdd(typeof(T), typeCode);
             _ = _types.TryAdd(typeCode, typeof(T));
@@ -58,7 +59,7 @@ namespace DaJet.Model
             }
             return null;
         }
-        public Entity GetEntity<T>(Guid identity)
+        public Entity GetEntity<T>(Guid identity) where T : EntityObject
         {
             int typeCode = GetTypeCode(typeof(T));
 
@@ -69,28 +70,28 @@ namespace DaJet.Model
 
             return new Entity(typeCode, identity);
         }
-        public T New<T>() where T : EntityObject
+        public T New<T>() where T : EntityObject, new()
         {
             if (!_codes.TryGetValue(typeof(T), out int typeCode))
             {
                 throw new InvalidOperationException();
             }
 
-            T entity = ActivatorUtilities.CreateInstance<T>(_services);
+            T entity = _services is null ? new T() : ActivatorUtilities.CreateInstance<T>(_services);
 
             typeof(T).GetProperty(nameof(EntityObject.TypeCode)).SetValue(entity, typeCode);
             typeof(T).GetProperty(nameof(EntityObject.Identity)).SetValue(entity, Guid.NewGuid());
 
             return entity;
         }
-        public T New<T>(Guid identity) where T : EntityObject
+        public T New<T>(Guid identity) where T : EntityObject, new()
         {
             if (!_codes.TryGetValue(typeof(T), out int typeCode))
             {
                 throw new InvalidOperationException();
             }
 
-            T entity = ActivatorUtilities.CreateInstance<T>(_services);
+            T entity = _services is null ? new T() : ActivatorUtilities.CreateInstance<T>(_services);
 
             typeof(T).GetProperty(nameof(EntityObject.TypeCode)).SetValue(entity, typeCode);
             typeof(T).GetProperty(nameof(EntityObject.Identity)).SetValue(entity, identity);
@@ -111,7 +112,10 @@ namespace DaJet.Model
                 throw new InvalidOperationException();
             }
 
-            EntityObject entity = ActivatorUtilities.CreateInstance(_services, type) as EntityObject;
+            EntityObject entity = (_services is null
+                ? Activator.CreateInstance(type)
+                : ActivatorUtilities.CreateInstance(_services, type))
+                as EntityObject;
 
             type.GetProperty(nameof(EntityObject.TypeCode)).SetValue(entity, typeCode);
             type.GetProperty(nameof(EntityObject.Identity)).SetValue(entity, Guid.NewGuid());
@@ -130,7 +134,10 @@ namespace DaJet.Model
                 throw new InvalidOperationException();
             }
 
-            EntityObject entity = ActivatorUtilities.CreateInstance(_services, type) as EntityObject;
+            EntityObject entity = (_services is null
+                ? Activator.CreateInstance(type)
+                : ActivatorUtilities.CreateInstance(_services, type))
+                as EntityObject;
 
             type.GetProperty(nameof(EntityObject.TypeCode)).SetValue(entity, typeCode);
             type.GetProperty(nameof(EntityObject.Identity)).SetValue(entity, identity);

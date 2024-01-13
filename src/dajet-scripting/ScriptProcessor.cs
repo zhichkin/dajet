@@ -1,6 +1,7 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
+using DaJet.Model;
 using DaJet.Scripting.Model;
 using System.Data;
 using System.Globalization;
@@ -10,6 +11,10 @@ namespace DaJet.Scripting
 {
     public static class ScriptProcessor
     {
+        private static IMetadataProvider CreateOneDbMetadataProvider(in InfoBaseRecord options)
+        {
+            return new OneDbMetadataProvider(options.ConnectionString, options.UseExtensions);
+        }
         public static bool TryTranspile(in IMetadataProvider context,
             in string script, in Dictionary<string, object> parameters,
             out ScriptDetails result, out string error)
@@ -54,16 +59,6 @@ namespace DaJet.Scripting
 
             return (result is not null);
         }
-        private static void ThrowImportStatementAreNotSupported(in ScriptModel model)
-        {
-            foreach (SyntaxNode node in model.Statements)
-            {
-                if (node is ImportStatement import)
-                {
-                    throw new NotSupportedException(import.GetType().ToString());
-                }
-            }
-        }
         private static bool TryTranspile(in IMetadataProvider context,
             in string script, in Dictionary<string, object> parameters,
             out List<ScriptStatement> statements, out string error)
@@ -79,9 +74,7 @@ namespace DaJet.Scripting
                     return false;
                 }
             }
-
-            ThrowImportStatementAreNotSupported(in model);
-
+            
             OverrideEntityParameters(in model, in parameters);
 
             if (!new MetadataBinder().TryBind(model, in context, out _, out List<string> errors))
@@ -113,6 +106,8 @@ namespace DaJet.Scripting
             ConfigureParameters(in context, in model, in parameters);
 
             ConfigureEntityParameters(in model, in context, in parameters);
+
+            ExecuteImportStatements(in model, in context, in parameters);
 
             ISqlGenerator generator;
 
@@ -179,6 +174,7 @@ namespace DaJet.Scripting
 
             return mappers;
         }
+        
         private static DeclareStatement GetDeclareStatementByName(in ScriptModel model, in string name)
         {
             string fullName = "@" + name;
@@ -370,7 +366,6 @@ namespace DaJet.Scripting
                 }
             }
         }
-
         private static void ConfigureEntityParameters(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)
         {
             foreach (SyntaxNode node in model.Statements)
@@ -466,6 +461,119 @@ namespace DaJet.Scripting
             }
 
             return Entity.Undefined;
+        }
+
+        private static void ExecuteImportStatements(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)
+        {
+            List<SyntaxNode> items_to_remove = new();
+
+            foreach (SyntaxNode node in model.Statements)
+            {
+                if (node is ImportStatement import)
+                {
+                    items_to_remove.Add(node);
+                    
+                    ExecuteImportStatement(in import, in context, in parameters);
+                }
+            }
+
+            foreach (SyntaxNode node in items_to_remove)
+            {
+                model.Statements.Remove(node);
+            }
+        }
+        private static void ExecuteImportStatement(in ImportStatement import, in IMetadataProvider context, in Dictionary<string, object> parameters)
+        {
+            DaJetDataSource dajet = new();
+
+            Uri uri = new(import.Source);
+
+            if (uri.Scheme != "dajet")
+            {
+                throw new InvalidOperationException($"Unknown data source scheme: {uri.Scheme}");
+            }
+
+            string target = uri.Host;
+            string script = uri.AbsolutePath;
+            string scriptPath = target + "/" + script;
+
+            ConfigureImportStatementParameters(in uri, in parameters, out Dictionary<string, object> importParameters);
+
+            InfoBaseRecord database = dajet.Select<InfoBaseRecord>(target) ?? throw new ArgumentException($"Target not found: {target}");
+            ScriptRecord record = dajet.Select<ScriptRecord>(scriptPath) ?? throw new ArgumentException($"Script not found: {script}");
+
+            IMetadataProvider importContext = CreateOneDbMetadataProvider(in database);
+
+            if (!TryTranspile(in importContext, record.Script, in importParameters, out List<ScriptStatement> statements, out string error))
+            {
+                throw new Exception(error);
+            }
+
+            List<Dictionary<string, object>> result = new();
+
+            ScriptStatement statement = statements
+                .Where(s => !string.IsNullOrEmpty(s.Script))
+                .FirstOrDefault(); //TODO: process multiple results
+
+            if (statement is not null)
+            {
+                IQueryExecutor executor = importContext.CreateQueryExecutor();
+
+                foreach (IDataReader reader in executor.ExecuteReader(statement.Script, 10, importParameters))
+                {
+                    Dictionary<string, object> entity = new();
+
+                    foreach (PropertyMapper property in statement.Mapper.Properties)
+                    {
+                        entity.Add(property.Name, property.GetValue(in reader));
+                    }
+
+                    result.Add(entity);
+                }
+            }
+
+            if (import.Target is not null && import.Target.Count > 0)
+            {
+                VariableReference variable = import.Target[0];
+
+                string key = variable.Identifier[1..];
+
+                if (variable.Binding is EntityDefinition type)
+                {
+                    parameters[key] = new TableValuedParameter()
+                    {
+                        Name = key,
+                        Value = result,
+                        DbName = type.Name
+                    };
+                }
+            }
+        }
+        private static void ConfigureImportStatementParameters(in Uri scriptUri, in Dictionary<string, object> parameters, out Dictionary<string, object> importParameters)
+        {
+            importParameters = new Dictionary<string, object>();
+
+            string query = scriptUri.Query;
+
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                query = query.TrimStart('?');
+
+                string[] queryParameters = query.Split('&', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (string parameter in queryParameters)
+                {
+                    string[] replace = parameter.Split('=', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+                    string parameterName = replace[0];
+                    string variableName = (replace.Length > 1) ? replace[1] : parameterName;
+
+                    if (parameters.TryGetValue(variableName, out object value))
+                    {
+                        importParameters.Add(parameterName, value);
+                    }
+                }
+            }
         }
     }
 }
