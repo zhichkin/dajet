@@ -8,7 +8,7 @@ namespace DaJet
         {
             args = new string[]
             {
-                "script", "--file", "./test/apply.txt"
+                "script", "--file", "./test/test-declare-select.txt" //"./test/apply.txt"
             };
 
             var root = new RootCommand("dajet");

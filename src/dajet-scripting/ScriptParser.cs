@@ -154,20 +154,23 @@ namespace DaJet.Scripting
 
             if (Match(TokenType.Equals))
             {
-                if (!Match(TokenType.Boolean, TokenType.Number, TokenType.String, TokenType.Binary, TokenType.Entity))
-                {
-                    throw new FormatException("Scalar initializer expression expected.");
-                }
-                else
+                if (Match(TokenType.Boolean, TokenType.Number, TokenType.String, TokenType.Binary, TokenType.Entity))
                 {
                     declare.Initializer = scalar();
                 }
+                else if (Check(TokenType.SELECT))
+                {
+                    declare.Initializer = select();
+                }
+                else
+                {
+                    throw new FormatException("Variable initializer expression expected.");
+                }
             }
 
-            if (!Match(TokenType.EndOfStatement))
-            {
-                throw new FormatException("End of DECLARE statement expected.");
-            }
+            if (Match(TokenType.EndOfStatement)) { /* IGNORE */ }
+
+            Skip(TokenType.Comment);
 
             return declare;
         }
@@ -726,10 +729,30 @@ namespace DaJet.Scripting
                 };
             }
 
-            return new ColumnExpression()
+            SyntaxNode node = expression();
+
+            if (node is ComparisonOperator assignment) //NOTE: Summa = SUM(t1.Value)
             {
-                Expression = expression(),
-                Alias = alias()
+                if (assignment.Token != TokenType.Equals)
+                {
+                    throw new FormatException("Column definition error: assignment expected");
+                }
+
+                if (assignment.Expression1 is not ColumnReference column) // left operand
+                {
+                    throw new FormatException("Column definition error: identifier expected");
+                }
+
+                return new ColumnExpression() //THINK: multi-part identifier assignment
+                {
+                    Alias = column.Identifier,          // left  operand (column name)
+                    Expression = assignment.Expression2 // right operand (initializer)
+                };
+            }
+
+            return new ColumnExpression() //NOTE: SUM(t1.Value) AS Summa
+            {
+                Expression = node, Alias = alias()
             };
         }
         private void select_clause(in SelectExpression select)
@@ -768,7 +791,7 @@ namespace DaJet.Scripting
 
             if (expect_close && !Match(TokenType.CloseRoundBracket))
             {
-                throw new FormatException($"TOP clause: close round bracket expected.");
+                throw new FormatException("TOP clause: close round bracket expected.");
             }
 
             return clause;
@@ -1132,12 +1155,7 @@ namespace DaJet.Scripting
             {
                 Identifier = Previous().Lexeme
             };
-
-            if (Check(TokenType.EndOfStatement))
-            {
-                return type;
-            }
-
+            
             if (Match(TokenType.OpenRoundBracket))
             {
                 if (!Match(TokenType.Number)) { throw new FormatException("Number literal expected."); }
@@ -1894,6 +1912,8 @@ namespace DaJet.Scripting
             Skip(TokenType.Comment);
 
             if (Match(TokenType.EndOfStatement)) { /* IGNORE */ }
+
+            Skip(TokenType.Comment);
 
             return statement;
         }

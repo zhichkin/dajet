@@ -51,8 +51,8 @@ namespace DaJet
                 script = reader.ReadToEnd();
             }
 
-            //IMetadataProvider context = new OneDbMetadataProvider(MS_CONNECTION);
-            IMetadataProvider context = new OneDbMetadataProvider(PG_CONNECTION);
+            IMetadataProvider context = new OneDbMetadataProvider(MS_CONNECTION);
+            //IMetadataProvider context = new OneDbMetadataProvider(PG_CONNECTION);
 
             using (OneDbConnection connection = new(context))
             {
@@ -61,7 +61,9 @@ namespace DaJet
                 using (OneDbCommand command = connection.CreateCommand())
                 {
                     command.CommandText = script;
-                    //command.Parameters.Add("ИмяПараметра", "Значение");
+                    command.Parameters.Add("КодВалюты", "840");
+                    //command.Parameters.Add("Валюта", new Entity(60, Guid.Empty));
+                    //command.Parameters.Add("Номенклатура", new Entity(50, Guid.Empty));
 
                     foreach (DataObject record in command.StreamReader())
                     {
@@ -88,7 +90,7 @@ namespace DaJet
 
             OverrideEntityParameters(in model, in parameters);
 
-            if (!new SchemaBinder().TryBind(model, in context, out _, out List<string> errors))
+            if (!new MetadataBinder().TryBind(model, in context, out _, out List<string> errors))
             {
                 foreach (string text in errors)
                 {

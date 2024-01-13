@@ -4,7 +4,7 @@ namespace DaJet.Scripting
 {
     public sealed class ScriptScope
     {
-        private readonly ScriptScope _ancestor; //TODO: encapsulate logic in OpenScope method, use stack and using { ... }
+        private readonly ScriptScope _ancestor; //TODO: encapsulate logic in OpenScope method or class
         public ScriptScope() { }
         public ScriptScope(SyntaxNode owner, ScriptScope parent)
         {
@@ -16,11 +16,15 @@ namespace DaJet.Scripting
         public ScriptScope Parent { get; set; }
         public List<ScriptScope> Children { get; } = new();
 
-        public List<SyntaxNode> Identifiers { get; } = new(); //TODO: remove deprecated algorithm
         public Dictionary<string, object> Tables { get; } = new(); // CTE (common table expression) or temporary tables
         public Dictionary<string, object> Aliases { get; } = new(); // table expression (subquery) or schema tables
-        public Dictionary<string, object> Columns { get; } = new();
+        public Dictionary<string, object> Columns { get; } = new(); //NOTE: used for diagnosic purposes
         public Dictionary<string, object> Variables { get; } = new(); // table variables or UDT (user-defined type)
+
+        public override string ToString()
+        {
+            return $"Owner: {Owner}";
+        }
 
         public ScriptScope GetRoot()
         {
@@ -53,15 +57,6 @@ namespace DaJet.Scripting
 
             return null;
         }
-        public ScriptScope Descendant<TOwner>() where TOwner : SyntaxNode
-        {
-            return null; //TODO: getting descendant scope
-        }
-        public override string ToString()
-        {
-            return $"Owner: {Owner}";
-        }
-
         public ScriptScope OpenScope(in SyntaxNode owner)
         {
             ScriptScope scope = new(owner, this);

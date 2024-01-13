@@ -5,13 +5,14 @@ using DaJet.Model;
 using DaJet.Scripting.Model;
 using System.Data;
 using System.Globalization;
+using System.Text;
 
 namespace DaJet.Scripting
 {
     public sealed class ScriptExecutor
     {
-        private readonly IDataSource _source;
-        private readonly IMetadataService _metadata;
+        private readonly IDataSource _source; // used to execute IMPORT statement
+        private readonly IMetadataService _metadata; // database context providers
         private readonly IMetadataProvider _context; // execution context database
         public ScriptExecutor(IMetadataProvider context, IMetadataService metadata, IDataSource source)
         {
@@ -20,6 +21,24 @@ namespace DaJet.Scripting
             _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
         }
         public Dictionary<string, object> Parameters { get; } = new();
+        private string FormatBindingErrors(in List<string> errors)
+        {
+            if (errors is null || errors.Count == 0)
+            {
+                return "Unknown binding error";
+            }
+
+            StringBuilder error = new();
+
+            for (int i = 0; i < errors.Count; i++)
+            {
+                if (i > 0) { error.AppendLine(); }
+
+                error.Append(errors[i]);
+            }
+
+            return error.ToString();
+        }
         public GeneratorResult PrepareScript(in string script)
         {
             string error;
@@ -33,31 +52,12 @@ namespace DaJet.Scripting
                 }
             }
 
-            if (!new SchemaBinder().TryBind(model, in _context, out _, out List<string> errors))
+            if (!new MetadataBinder().TryBind(model, in _context, out _, out List<string> errors))
             {
-                if (errors is not null && errors.Count > 0)
-                {
-                    throw new Exception(errors[0]);
-                }
-                else
-                {
-                    throw new Exception("Unknown binding error");
-                }
+                throw new Exception(FormatBindingErrors(in errors));
             }
 
-            //TODO: remove deprecated code
-            //if (!new ScopeBuilder().TryBuild(in model, out ScriptScope scope, out error))
-            //{
-            //    throw new Exception(error);
-            //}
-            //if (!new MetadataBinder().TryBind(in scope, in _context, out error))
-            //{
-            //    throw new Exception(error);
-            //}
-
-            ScriptTransformer transformer = new();
-
-            if (!transformer.TryTransform(model, out error))
+            if (!new ScriptTransformer().TryTransform(model, out error))
             {
                 throw new Exception(error);
             }
@@ -435,31 +435,12 @@ namespace DaJet.Scripting
                 }
             }
 
-            if (!new SchemaBinder().TryBind(model, in _context, out _, out List<string> errors))
+            if (!new MetadataBinder().TryBind(model, in _context, out _, out List<string> errors))
             {
-                if (errors is not null && errors.Count > 0)
-                {
-                    throw new Exception(errors[0]);
-                }
-                else
-                {
-                    throw new Exception("Unknown binding error");
-                }
+                throw new Exception(FormatBindingErrors(in errors));
             }
 
-            //TODO: remove deprecated code
-            //if (!new ScopeBuilder().TryBuild(in model, out ScriptScope scope, out error))
-            //{
-            //    throw new Exception(error);
-            //}
-            //if (!new MetadataBinder().TryBind(in scope, in _context, out error))
-            //{
-            //    throw new Exception(error);
-            //}
-
-            ScriptTransformer transformer = new();
-
-            if (!transformer.TryTransform(model, out error))
+            if (!new ScriptTransformer().TryTransform(model, out error))
             {
                 throw new Exception(error);
             }

@@ -2,6 +2,7 @@
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
+using System.Data;
 using System.Globalization;
 using System.Text;
 
@@ -83,33 +84,35 @@ namespace DaJet.Scripting
 
             OverrideEntityParameters(in model, in parameters);
 
-            if (UseNewBinder(in model))
+            if (!new MetadataBinder().TryBind(model, in context, out _, out List<string> errors))
             {
-                if (!new SchemaBinder().TryBind(model, in context, out _, out List<string> errors))
-                {
-                    error = (errors.Count > 0 ? errors[0] : string.Empty); return false;
-                }
-            }
-            else //TODO: remove old version in the future
-            {
-                if (!new ScopeBuilder().TryBuild(in model, out ScriptScope scope, out error))
-                {
-                    return false;
-                }
-                if (!new MetadataBinder().TryBind(in scope, in context, out error))
-                {
-                    return false;
-                }
-            }
+                StringBuilder message = new();
 
-            ScriptTransformer transformer = new();
+                for (int i = 0; i < errors.Count; i++)
+                {
+                    if (i > 0) { message.AppendLine(); }
 
-            if (!transformer.TryTransform(model, out error))
+                    message.Append(errors[i]);
+                }
+
+                error = message.ToString();
+
+                if (string.IsNullOrEmpty(error))
+                {
+                    error = "Unknown binding error";
+                }
+
+                return false;
+            }
+            
+            if (!new ScriptTransformer().TryTransform(model, out error))
             {
                  return false;
             }
 
             ConfigureParameters(in context, in model, in parameters);
+
+            ConfigureEntityParameters(in model, in context, in parameters);
 
             ISqlGenerator generator;
 
@@ -133,18 +136,6 @@ namespace DaJet.Scripting
             }
 
             return true;
-        }
-        private static bool UseNewBinder(in ScriptModel model)
-        {
-            foreach (SyntaxNode node in model.Statements)
-            {
-                if (node is CommentStatement comment && comment.Text.Contains("#binder 1.5.0"))
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
         private static string AssembleSqlScript(in List<ScriptStatement> statements)
         {
@@ -233,8 +224,10 @@ namespace DaJet.Scripting
             {
                 if (node is not DeclareStatement declare) { continue; }
 
+                if (declare.Initializer is SelectExpression) { continue; }
+                
                 // 0. Database UDT parameter must be provided by the caller !!!
-
+                
                 if (declare.Type.Binding is EntityDefinition) { continue; }
 
                 // 1. Set default value if parameter value is not initialized in script.
@@ -376,6 +369,103 @@ namespace DaJet.Scripting
                     };
                 }
             }
+        }
+
+        private static void ConfigureEntityParameters(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)
+        {
+            foreach (SyntaxNode node in model.Statements)
+            {
+                if (node is not DeclareStatement declare) { continue; }
+
+                if (declare.Initializer is SelectExpression select)
+                {
+                    ScriptStatement statement = CreateScriptStatement(in context, in select);
+
+                    List<string> variables = new VariablesExtractor().GetVariables(select);
+
+                    Dictionary<string, object> select_parameters = new();
+
+                    foreach (string name in variables)
+                    {
+                        if (parameters.TryGetValue(name, out object value))
+                        {
+                            select_parameters.Add(name, value);
+                        }
+                    }
+
+                    Entity entity = SelectEntityValue(in context, in statement, in select_parameters);
+
+                    if (entity.IsUndefined)
+                    {
+                        if (declare.Type.Binding is Entity value)
+                        {
+                            entity = value;
+                        }
+                    }
+
+                    declare.Initializer = new ScalarExpression()
+                    {
+                        Token = TokenType.Entity,
+                        Literal = entity.ToString()
+                    };
+
+                    parameters.Add(declare.Name[1..], entity.Identity.ToByteArray());
+                }
+            }
+        }
+        private static ScriptStatement CreateScriptStatement(in IMetadataProvider context, in SelectExpression select)
+        {
+            ScriptModel model = new();
+
+            model.Statements.Add(new SelectStatement()
+            {
+                Expression = select
+            });
+
+            ISqlGenerator generator;
+
+            if (context.DatabaseProvider == DatabaseProvider.SqlServer)
+            {
+                generator = new MsSqlGenerator() { YearOffset = context.YearOffset };
+            }
+            else if (context.DatabaseProvider == DatabaseProvider.PostgreSql)
+            {
+                generator = new PgSqlGenerator() { YearOffset = context.YearOffset };
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unsupported database provider: {context.DatabaseProvider}");
+            }
+
+            if (!generator.TryGenerate(in model, in context, out List<ScriptStatement> statements, out string error))
+            {
+                throw new Exception(error);
+            }
+
+            if (statements is not null && statements.Count > 0)
+            {
+                return statements[0];
+            }
+
+            throw new InvalidOperationException("Entity parameters configuration error");
+        }
+        private static Entity SelectEntityValue(in IMetadataProvider context, in ScriptStatement statement, in Dictionary<string, object> parameters)
+        {
+            object value = null;
+
+            IQueryExecutor executor = context.CreateQueryExecutor();
+
+            foreach (IDataReader reader in executor.ExecuteReader(statement.Script, 10, parameters))
+            {
+                value = statement.Mapper.Properties[0].GetValue(in reader); break;
+            }
+
+            if (value is Entity entity)
+            {
+                return entity;
+            }
+
+            return Entity.Undefined;
         }
     }
 }

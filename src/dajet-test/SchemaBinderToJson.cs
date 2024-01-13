@@ -80,7 +80,7 @@ namespace DaJet.Scripting.Test
                 Console.WriteLine(error);
             }
 
-            if (!new SchemaBinder().TryBind(model, in metadata, out ScriptScope scope, out List<string> errors))
+            if (!new MetadataBinder().TryBind(model, in metadata, out ScriptScope scope, out List<string> errors))
             {
                 foreach (string text in errors)
                 {
@@ -114,7 +114,7 @@ namespace DaJet.Scripting.Test
                 Console.WriteLine(error);
             }
 
-            if (!new SchemaBinder().TryBind(model, in metadata, out ScriptScope scope, out List<string> errors))
+            if (!new MetadataBinder().TryBind(model, in metadata, out ScriptScope scope, out List<string> errors))
             {
                 foreach (string text in errors)
                 {

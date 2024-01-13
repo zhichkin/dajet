@@ -171,14 +171,12 @@ namespace DaJet.Scripting
 
             ConfigureDataMapper(in select, in mapper);
 
-            if (!TryGetFromTable(select, out TableReference table))
+            if (TryGetFromTable(select, out TableReference table))
             {
-                throw new InvalidOperationException();
+                ScriptHelper.GetColumnIdentifiers(table.Identifier, out _, out string tableName);
+
+                mapper.Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias);
             }
-
-            ScriptHelper.GetColumnIdentifiers(table.Identifier, out _, out string tableName);
-
-            mapper.Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias);
 
             return new ScriptStatement()
             {
@@ -200,14 +198,12 @@ namespace DaJet.Scripting
 
             ConfigureDataMapper(in consume, in mapper);
 
-            if (!TryGetFromTable(consume, out TableReference table))
+            if (TryGetFromTable(consume, out TableReference table))
             {
-                throw new InvalidOperationException();
+                ScriptHelper.GetColumnIdentifiers(table.Identifier, out _, out string tableName);
+
+                mapper.Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias);
             }
-
-            ScriptHelper.GetColumnIdentifiers(table.Identifier, out _, out string tableName);
-
-            mapper.Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias);
 
             return new ScriptStatement()
             {
@@ -1386,8 +1382,20 @@ namespace DaJet.Scripting
             {
                 throw new FormatException($"Function {node.Name}: missing parameter.");
             }
+
+            SyntaxNode parameter = node.Parameters[0];
+
+            if (parameter is VariableReference variable && variable.Binding is Entity entity)
+            {
+                ScalarExpression scalar = new()
+                {
+                    Token = TokenType.Number,
+                    Literal = entity.TypeCode.ToString()
+                };
+                Visit(in scalar, in script); return;
+            }
             
-            if (node.Parameters[0] is not ColumnReference column)
+            if (parameter is not ColumnReference column)
             {
                 throw new FormatException($"Function {node.Name}: invalid parameter.");
             }
@@ -1460,6 +1468,12 @@ namespace DaJet.Scripting
         }
         protected bool TryGetFromTable(in FromClause from, out TableReference table)
         {
+            if (from is null)
+            {
+                table = null;
+                return false;
+            }
+
             return TryGetFromTableRecursively(from.Expression, out table);
         }
         protected bool TryGetFromTableRecursively(in SyntaxNode node, out TableReference table)
