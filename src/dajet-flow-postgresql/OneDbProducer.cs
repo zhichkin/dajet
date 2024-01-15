@@ -47,7 +47,7 @@ namespace DaJet.Flow.PostgreSql
             ConnectionString = database.ConnectionString;
 
             ScriptExecutor executor = new(provider, _metadata, _source);
-            executor.PrepareScript(script.Script, out ScriptModel _, out List<ScriptStatement> statements);
+            executor.PrepareScript(script.Script, out ScriptModel _, out List<SqlStatement> statements);
             ScriptParameters = executor.Parameters;
             CommandText = GetInsertStatementScript(in statements);
 
@@ -59,13 +59,13 @@ namespace DaJet.Flow.PostgreSql
                 }
             }
         }
-        private string GetInsertStatementScript(in List<ScriptStatement> statements)
+        private string GetInsertStatementScript(in List<SqlStatement> statements)
         {
             StringBuilder script = new();
 
             for (int i = 0; i < statements.Count; i++)
             {
-                ScriptStatement command = statements[i];
+                SqlStatement command = statements[i];
 
                 if (string.IsNullOrEmpty(command.Script))
                 {

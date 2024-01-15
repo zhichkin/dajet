@@ -39,7 +39,7 @@ namespace DaJet.Scripting
 
             return error.ToString();
         }
-        public GeneratorResult PrepareScript(in string script)
+        public TranspilerResult PrepareScript(in string script)
         {
             string error;
             ScriptModel model;
@@ -68,24 +68,24 @@ namespace DaJet.Scripting
 
             // execute main context script
 
-            ISqlGenerator generator;
+            ISqlTranspiler transpiler;
 
             if (_context.DatabaseProvider == DatabaseProvider.SqlServer)
             {
-                generator = new MsSqlGenerator() { YearOffset = _context.YearOffset };
+                transpiler = new MsSqlTranspiler() { YearOffset = _context.YearOffset };
             }
             else if (_context.DatabaseProvider == DatabaseProvider.PostgreSql)
             {
-                generator = new PgSqlGenerator() { YearOffset = _context.YearOffset };
+                transpiler = new PgSqlTranspiler() { YearOffset = _context.YearOffset };
             }
             else
             {
                 throw new InvalidOperationException($"Unsupported database provider: {_context.DatabaseProvider}");
             }
             
-            if (!generator.TryGenerate(in model, in _context, out GeneratorResult result))
+            if (!transpiler.TryTranspile(in model, in _context, out TranspilerResult result, out error))
             {
-                throw new Exception(result.Error);
+                throw new Exception(error);
             }
 
             return result;
@@ -105,7 +105,7 @@ namespace DaJet.Scripting
 
                     if (declare.Initializer is not ScalarExpression scalar)
                     {
-                        scalar = ScriptHelper.CreateDefaultScalar(in declare);
+                        scalar = ParserHelper.CreateDefaultScalar(in declare);
                         declare.Initializer = scalar;
                     }
 
@@ -119,7 +119,7 @@ namespace DaJet.Scripting
 
                     if (!Parameters.TryGetValue(name, out _))
                     {
-                        if (ScriptHelper.IsDataType(declare.Type.Identifier, out Type type))
+                        if (ParserHelper.IsDataType(declare.Type.Identifier, out Type type))
                         {
                             if (type == typeof(bool))
                             {
@@ -367,28 +367,24 @@ namespace DaJet.Scripting
 
         public IEnumerable<Dictionary<string, object>> ExecuteReader(string script)
         {
-            GeneratorResult result = PrepareScript(in script);
-
-            if (!result.Success) { throw new Exception(result.Error); }
+            TranspilerResult result = PrepareScript(in script);
 
             IQueryExecutor executor = _context.CreateQueryExecutor();
 
-            foreach (IDataReader reader in executor.ExecuteReader(result.Script, 10, Parameters))
+            foreach (IDataReader reader in executor.ExecuteReader(result.SqlScript, 10, Parameters))
             {
-                yield return result.Mapper.Map(in reader);
+                yield return result.Mappers[0].Map(in reader);
             }
         }
         public IEnumerable<TEntity> ExecuteReader<TEntity>(string script) where TEntity : class, new()
         {
-            GeneratorResult result = PrepareScript(in script);
-
-            if (!result.Success) { throw new Exception(result.Error); }
+            TranspilerResult result = PrepareScript(in script);
 
             IQueryExecutor executor = _context.CreateQueryExecutor();
 
-            foreach (IDataReader reader in executor.ExecuteReader(result.Script, 10, Parameters))
+            foreach (IDataReader reader in executor.ExecuteReader(result.SqlScript, 10, Parameters))
             {
-                yield return result.Mapper.Map<TEntity>(in reader);
+                yield return result.Mappers[0].Map<TEntity>(in reader);
             }
         }
 
@@ -396,34 +392,32 @@ namespace DaJet.Scripting
         {
             List<List<Dictionary<string, object>>> batch = new();
 
-            GeneratorResult generator = PrepareScript(in script);
-
-            if (!generator.Success) { throw new Exception(generator.Error); }
+            TranspilerResult result = PrepareScript(in script);
 
             IQueryExecutor executor = _context.CreateQueryExecutor();
 
             int next = 0;
             EntityMapper mapper = null;
-            List<Dictionary<string, object>> result = null;
+            List<Dictionary<string, object>> table = null;
 
-            foreach (IDataReader reader in executor.ExecuteBatch(generator.Script, 10, Parameters))
+            foreach (IDataReader reader in executor.ExecuteBatch(result.SqlScript, 10, Parameters))
             {
                 if (reader is null) // new result
                 {
-                    result = new List<Dictionary<string, object>>();
-                    mapper = generator.Statements[next++].Mapper;
-                    batch.Add(result);
+                    table = new List<Dictionary<string, object>>();
+                    mapper = result.Statements[next++].Mapper;
+                    batch.Add(table);
                 }
                 else
                 {
-                    result.Add(mapper.Map(in reader));
+                    table.Add(mapper.Map(in reader));
                 }
             }
 
             return batch;
         }
 
-        public void PrepareScript(in string script, out ScriptModel model, out List<ScriptStatement> statements)
+        public void PrepareScript(in string script, out ScriptModel model, out List<SqlStatement> statements)
         {
             string error;
             
@@ -451,94 +445,27 @@ namespace DaJet.Scripting
 
             // execute main context script
 
-            ISqlGenerator generator;
+            ISqlTranspiler transpiler;
 
             if (_context.DatabaseProvider == DatabaseProvider.SqlServer)
             {
-                generator = new MsSqlGenerator() { YearOffset = _context.YearOffset };
+                transpiler = new MsSqlTranspiler() { YearOffset = _context.YearOffset };
             }
             else if (_context.DatabaseProvider == DatabaseProvider.PostgreSql)
             {
-                generator = new PgSqlGenerator() { YearOffset = _context.YearOffset };
+                transpiler = new PgSqlTranspiler() { YearOffset = _context.YearOffset };
             }
             else
             {
                 throw new InvalidOperationException($"Unsupported database provider: {_context.DatabaseProvider}");
             }
 
-            if (!generator.TryGenerate(in model, in _context, out statements, out error))
+            if (!transpiler.TryTranspile(in model, in _context, out TranspilerResult result, out error))
             {
                 throw new Exception(error);
             }
+
+            statements = result.Statements;
         }
-
-        #region "DaJet DDL"
-        public void ExecuteNonQuery(in string script)
-        {
-            string error;
-            ScriptModel model;
-
-            using (ScriptParser parser = new())
-            {
-                if (!parser.TryParse(in script, out model, out error))
-                {
-                    throw new Exception(error);
-                }
-            }
-
-            ProcessStatements(in model);
-        }
-        private void ProcessStatements(in ScriptModel script)
-        {
-            foreach (SyntaxNode statement in script.Statements)
-            {
-                if (statement is CreateTypeStatement createType)
-                {
-                    ProcessStatement(in createType);
-                }
-                else if (statement is CreateTableStatement createTable)
-                {
-                    ProcessStatement(in createTable);
-                }
-            }
-        }
-        private void ProcessStatement(in CreateTypeStatement statement)
-        {
-            //MetadataBinder binder = new();
-
-            EntityDefinition definition = new()
-            {
-                Name = statement.Identifier
-            };
-
-            foreach (ColumnDefinition column in statement.Columns)
-            {
-                //binder.TryBind(column.Type, in _context);
-
-                MetadataProperty property = new()
-                {
-                    Name = column.Name
-                };
-
-                if (column.Type.Binding is Type type)
-                {
-
-                }
-
-                property.Columns.Add(new MetadataColumn()
-                {
-                    Name = column.Name
-                });
-
-                definition.Properties.Add(property);
-            }
-        }
-        private void ProcessStatement(in CreateTableStatement statement)
-        {
-            throw new NotImplementedException();
-
-            //TODO: _context.GetDbConfigurator().CreateTableOfType(statement.Type, statement.Name);
-        }
-        #endregion
     }
 }

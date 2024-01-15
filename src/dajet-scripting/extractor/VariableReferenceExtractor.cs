@@ -2,10 +2,10 @@
 
 namespace DaJet.Scripting
 {
-    internal sealed class VariablesExtractor : IScriptWalker
+    public sealed class VariableReferenceExtractor : IScriptWalker
     {
         private readonly List<string> _variables = new();
-        internal List<string> GetVariables(in SyntaxNode node)
+        public List<string> Extract(in SyntaxNode node)
         {
             ScriptWalker.Walk(in node, this);
 

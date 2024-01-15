@@ -72,7 +72,7 @@ namespace DaJet.Scripting
 
             foreach (ColumnMapper map in column.Mapping)
             {
-                ScriptHelper.GetColumnIdentifiers(map.Name, out string tableAlias, out string columnName);
+                ParserHelper.GetColumnIdentifiers(map.Name, out string tableAlias, out string columnName);
 
                 if (string.IsNullOrEmpty(tableAlias))
                 {

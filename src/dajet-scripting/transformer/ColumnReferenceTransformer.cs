@@ -31,7 +31,7 @@ namespace DaJet.Scripting
         }
         private void TransformSourceColumnReference(in ColumnExpression parent, in ColumnReference column, in MetadataProperty property)
         {
-            ScriptHelper.GetColumnIdentifiers(column.Identifier, out string tableAlias, out string columnAlias);
+            ParserHelper.GetColumnIdentifiers(column.Identifier, out string tableAlias, out string columnAlias);
 
             List<MetadataColumn> columns = property.Columns
                 .OrderBy((column) => { return column.Purpose; })
@@ -111,7 +111,7 @@ namespace DaJet.Scripting
         }
         private void TransformSourceColumnReference(in ColumnReference column, in MetadataProperty property)
         {
-            ScriptHelper.GetColumnIdentifiers(column.Identifier, out string tableAlias, out string columnAlias);
+            ParserHelper.GetColumnIdentifiers(column.Identifier, out string tableAlias, out string columnAlias);
 
             List<MetadataColumn> columns = property.Columns
                 .OrderBy((column) => { return column.Purpose; })

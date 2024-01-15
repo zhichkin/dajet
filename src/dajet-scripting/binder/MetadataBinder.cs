@@ -150,7 +150,7 @@ namespace DaJet.Scripting
         {
             //TODO: bind "union" type identifier
 
-            if (ScriptHelper.IsDataType(node.Identifier, out Type type))
+            if (ParserHelper.IsDataType(node.Identifier, out Type type))
             {
                 // bool, decimal, DateTime, string, byte[], Guid, Entity, Union
                 node.Binding = type;
@@ -342,7 +342,7 @@ namespace DaJet.Scripting
                 {
                     if (order.Expressions[i].Expression is ColumnReference column)
                     {
-                        ScriptHelper.GetColumnIdentifiers(column.Identifier, out _, out string columnName);
+                        ParserHelper.GetColumnIdentifiers(column.Identifier, out _, out string columnName);
 
                         BindColumn(in node, in columnName, in column);
 
@@ -446,7 +446,7 @@ namespace DaJet.Scripting
         }
         private void BindColumn(in ColumnReference column)
         {
-            ScriptHelper.GetColumnIdentifiers(column.Identifier, out string tableAlias, out string columnName);
+            ParserHelper.GetColumnIdentifiers(column.Identifier, out string tableAlias, out string columnName);
 
             if (_scope.TryGetTableByAlias(in tableAlias, out object table))
             {
@@ -564,7 +564,7 @@ namespace DaJet.Scripting
                 }
                 else if (expression.Expression is ColumnReference reference)
                 {
-                    ScriptHelper.GetColumnIdentifiers(reference.Identifier, out string _, out columnName);
+                    ParserHelper.GetColumnIdentifiers(reference.Identifier, out string _, out columnName);
                 }
 
                 if (columnName == identifier)
@@ -597,7 +597,7 @@ namespace DaJet.Scripting
                 }
                 else if (expression.Expression is ColumnReference reference)
                 {
-                    ScriptHelper.GetColumnIdentifiers(reference.Identifier, out string _, out columnName);
+                    ParserHelper.GetColumnIdentifiers(reference.Identifier, out string _, out columnName);
                 }
 
                 if (columnName == identifier)

@@ -420,7 +420,7 @@ namespace DaJet.Scripting
                     Identifier = property.Identifier
                 };
 
-                ScriptHelper.GetColumnIdentifiers(property.Identifier, out string tableAlias, out string _);
+                ParserHelper.GetColumnIdentifiers(property.Identifier, out string tableAlias, out string _);
 
                 if (column.Binding is MetadataColumn source)
                 {
@@ -606,7 +606,7 @@ namespace DaJet.Scripting
 
             ScalarExpression scalar = new()
             {
-                Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
+                Token = ParserHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
                 Literal = UnionType.GetHexString(type)
             };
 
@@ -640,7 +640,7 @@ namespace DaJet.Scripting
 
             ScalarExpression scalar = new()
             {
-                Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.TypeCode)),
+                Token = ParserHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.TypeCode)),
                 Literal = $"0x{Convert.ToHexString(DbUtilities.GetByteArray(target.TypeCode))}"
             };
 

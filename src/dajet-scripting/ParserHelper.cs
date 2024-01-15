@@ -2,7 +2,7 @@
 
 namespace DaJet.Scripting
 {
-    public static class ScriptHelper
+    public static class ParserHelper
     {
         private static Dictionary<string, Type> _datatype = new()
         {

@@ -7,108 +7,15 @@ using System.Text;
 
 namespace DaJet.Scripting
 {
-    public abstract class SqlGenerator : ISqlGenerator
+    public abstract class SqlTranspiler : ISqlTranspiler
     {
         protected IMetadataProvider Metadata { get; private set; }
         public int YearOffset { get; set; } = 0;
-        public bool TryGenerate(in ScriptModel model, in IMetadataProvider metadata, out GeneratorResult result)
-        {
-            Metadata = metadata;
-
-            result = new GeneratorResult();
-
-            result.Mapper.YearOffset = YearOffset;
-
-            try
-            {
-                StringBuilder script = new();
-
-                foreach (SyntaxNode node in model.Statements)
-                {
-                    if (!(node is DeclareStatement || node is CommentStatement))
-                    {
-                        script.AppendLine();
-                    }
-
-                    if (node is SelectStatement select)
-                    {
-                        Visit(in select, in script);
-                        
-                        //TODO: implement outside of this class !!!
-                        ConfigureDataMapper(in select, result.Mapper);
-
-                        EntityMapper mapper = new();
-                        ConfigureDataMapper(in select, mapper);
-                        if (mapper.Properties.Count > 0)
-                        {
-                            result.Statements.Add(new ScriptStatement()
-                            {
-                                Mapper = mapper
-                            });
-                        }
-                    }
-                    else if (node is ConsumeStatement consume)
-                    {
-                        Visit(in consume, in script);
-
-                        EntityMapper mapper = new();
-                        ConfigureDataMapper(in consume, mapper);
-                        result.Mapper = mapper;
-
-                        if (mapper.Properties.Count > 0)
-                        {
-                            ScriptStatement command = new()
-                            {
-                                Mapper = mapper
-                            };
-                            result.Statements.Add(command);
-                        }
-                    }
-                    else if (node is DeleteStatement delete)
-                    {
-                        Visit(in delete, in script);
-
-                        if (delete.Output is not null)
-                        {
-                            //TODO: implement outside of this class !!!
-                            ConfigureDataMapper(delete.Output, result.Mapper);
-
-                            EntityMapper mapper = new();
-                            ConfigureDataMapper(delete.Output, mapper);
-                            if (mapper.Properties.Count > 0)
-                            {
-                                result.Statements.Add(new ScriptStatement()
-                                {
-                                    Mapper = mapper
-                                });
-                            }
-                        }
-                    }
-                    else if (node is InsertStatement insert) { Visit(in insert, in script); }
-                    else if (node is UpdateStatement update) { Visit(in update, in script); }
-                    else if (node is UpsertStatement upsert) { Visit(in upsert, in script); }
-                    else
-                    {
-                        Visit(in node, in script); // non query commands !?
-                    }
-                }
-
-                result.Script = script.ToString();
-            }
-            catch (Exception exception)
-            {
-                result.Error = ExceptionHelper.GetErrorMessage(exception);
-            }
-
-            result.Success = string.IsNullOrWhiteSpace(result.Error);
-
-            return result.Success;
-        }
-        public bool TryGenerate(in ScriptModel model, in IMetadataProvider metadata, out List<ScriptStatement> statements, out string error)
+        public bool TryTranspile(in ScriptModel model, in IMetadataProvider metadata, out TranspilerResult result, out string error)
         {
             Metadata = metadata;
             error = string.Empty;
-            statements = new List<ScriptStatement>();
+            result = new TranspilerResult();
 
             try
             {
@@ -116,21 +23,24 @@ namespace DaJet.Scripting
                 {
                     if (node is SelectStatement select)
                     {
-                        statements.Add(GenerateScriptStatement(in select));
+                        result.Statements.Add(TranspileScriptStatement(in select));
                     }
                     else if (node is ConsumeStatement consume)
                     {
-                        statements.Add(GenerateScriptStatement(in consume));
+                        result.Statements.Add(TranspileScriptStatement(in consume));
                     }
                     else if (node is DeleteStatement delete)
                     {
-                        statements.Add(GenerateScriptStatement(in delete));
+                        result.Statements.Add(TranspileScriptStatement(in delete));
                     }
                     else
                     {
-                        statements.Add(GenerateScriptStatement(in node));
+                        result.Statements.Add(TranspileScriptStatement(in node));
                     }
                 }
+
+                result.Mappers = GetEntityMappers(result.Statements);
+                result.SqlScript = AssembleSqlScript(result.Statements);
             }
             catch (Exception exception)
             {
@@ -139,7 +49,43 @@ namespace DaJet.Scripting
 
             return string.IsNullOrEmpty(error);
         }
-        private ScriptStatement GenerateScriptStatement(in SyntaxNode node)
+        private string AssembleSqlScript(in List<SqlStatement> statements)
+        {
+            if (statements is null) { return string.Empty; }
+
+            StringBuilder script = new();
+
+            for (int i = 0; i < statements.Count; i++)
+            {
+                SqlStatement statement = statements[i];
+
+                if (string.IsNullOrEmpty(statement.Script))
+                {
+                    continue; //NOTE: declaration of parameters
+                }
+
+                script.AppendLine(statement.Script);
+            }
+
+            return script.ToString();
+        }
+        private List<EntityMapper> GetEntityMappers(in List<SqlStatement> statements)
+        {
+            List<EntityMapper> mappers = new();
+
+            if (statements is null) { return mappers; }
+
+            foreach (SqlStatement command in statements)
+            {
+                if (command.Mapper.Properties.Count > 0)
+                {
+                    mappers.Add(command.Mapper);
+                }
+            }
+
+            return mappers;
+        }
+        private SqlStatement TranspileScriptStatement(in SyntaxNode node)
         {
             StringBuilder script = new();
             
@@ -151,14 +97,14 @@ namespace DaJet.Scripting
                 YearOffset = Metadata.YearOffset
             };
 
-            return new ScriptStatement()
+            return new SqlStatement()
             {
                 Node = node,
                 Mapper = mapper,
                 Script = script.ToString()
             };
         }
-        private ScriptStatement GenerateScriptStatement(in SelectStatement select)
+        private SqlStatement TranspileScriptStatement(in SelectStatement select)
         {
             StringBuilder script = new();
 
@@ -173,19 +119,19 @@ namespace DaJet.Scripting
 
             if (TryGetFromTable(select, out TableReference table))
             {
-                ScriptHelper.GetColumnIdentifiers(table.Identifier, out _, out string tableName);
+                ParserHelper.GetColumnIdentifiers(table.Identifier, out _, out string tableName);
 
                 mapper.Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias);
             }
 
-            return new ScriptStatement()
+            return new SqlStatement()
             {
                 Node = select,
                 Mapper = mapper,
                 Script = script.ToString()
             };
         }
-        private ScriptStatement GenerateScriptStatement(in ConsumeStatement consume)
+        private SqlStatement TranspileScriptStatement(in ConsumeStatement consume)
         {
             StringBuilder script = new();
 
@@ -200,19 +146,19 @@ namespace DaJet.Scripting
 
             if (TryGetFromTable(consume, out TableReference table))
             {
-                ScriptHelper.GetColumnIdentifiers(table.Identifier, out _, out string tableName);
+                ParserHelper.GetColumnIdentifiers(table.Identifier, out _, out string tableName);
 
                 mapper.Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias);
             }
 
-            return new ScriptStatement()
+            return new SqlStatement()
             {
                 Node = consume,
                 Mapper = mapper,
                 Script = script.ToString()
             };
         }
-        private ScriptStatement GenerateScriptStatement(in DeleteStatement delete)
+        private SqlStatement TranspileScriptStatement(in DeleteStatement delete)
         {
             StringBuilder script = new();
 
@@ -230,11 +176,11 @@ namespace DaJet.Scripting
 
             TableReference table = delete.Target;
 
-            ScriptHelper.GetColumnIdentifiers(table.Identifier, out _, out string tableName);
+            ParserHelper.GetColumnIdentifiers(table.Identifier, out _, out string tableName);
 
             mapper.Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias);
 
-            return new ScriptStatement()
+            return new SqlStatement()
             {
                 Node = delete,
                 Mapper = mapper,
@@ -722,7 +668,7 @@ namespace DaJet.Scripting
         protected virtual void Visit(in ComparisonOperator node, in StringBuilder script)
         {
             Visit(node.Expression1, in script);
-            script.Append(" ").Append(ScriptHelper.GetComparisonLiteral(node.Token)).Append(" ");
+            script.Append(" ").Append(ParserHelper.GetComparisonLiteral(node.Token)).Append(" ");
             Visit(node.Expression2, in script);
         }
         protected virtual void Visit(in CaseExpression node, in StringBuilder script)
@@ -747,7 +693,7 @@ namespace DaJet.Scripting
         {
             if (node.Token == TokenType.Boolean)
             {
-                if (ScriptHelper.IsTrueLiteral(node.Literal))
+                if (ParserHelper.IsTrueLiteral(node.Literal))
                 {
                     script.Append("0x01");
                 }
@@ -773,7 +719,7 @@ namespace DaJet.Scripting
             }
             else if (node.Token == TokenType.Uuid)
             {
-                script.Append($"0x{ScriptHelper.GetUuidHexLiteral(new Guid(node.Literal))}");
+                script.Append($"0x{ParserHelper.GetUuidHexLiteral(new Guid(node.Literal))}");
             }
             else // Number | Binary
             {
@@ -786,7 +732,7 @@ namespace DaJet.Scripting
         }
         protected virtual void Visit(in EnumValue node, in StringBuilder script)
         {
-            script.Append($"0x{ScriptHelper.GetUuidHexLiteral(node.Uuid)}");
+            script.Append($"0x{ParserHelper.GetUuidHexLiteral(node.Uuid)}");
         }
 
         protected virtual void Visit(in FunctionExpression node, in StringBuilder script)

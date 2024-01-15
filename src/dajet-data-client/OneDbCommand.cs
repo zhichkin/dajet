@@ -1,5 +1,6 @@
 ﻿using DaJet.Metadata;
 using DaJet.Scripting;
+using DaJet.Scripting.Engine;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.SqlClient.Server;
 using Npgsql;
@@ -65,7 +66,7 @@ namespace DaJet.Data.Client
 
         public override int ExecuteNonQuery()
         {
-            ScriptDetails _ = ConfigureCommand();
+            _ = ConfigureCommand();
 
             return _command.ExecuteNonQuery();
         }
@@ -87,11 +88,11 @@ namespace DaJet.Data.Client
         }
         protected override OneDbDataReader ExecuteDbDataReader(CommandBehavior behavior)
         {
-            ScriptDetails details = ConfigureCommand();
+            TranspilerResult result = ConfigureCommand();
 
             DbDataReader reader = _command.ExecuteReader(behavior);
 
-            return new OneDbDataReader(in reader, details.Mappers);
+            return new OneDbDataReader(in reader, result.Mappers);
         }
         public IEnumerable<DataObject> StreamReader()
         {
@@ -113,14 +114,14 @@ namespace DaJet.Data.Client
                 reader.Close();
             }
         }
-        private ScriptDetails ConfigureCommand()
+        private TranspilerResult ConfigureCommand()
         {
             // pass user-provided parameters to the transpiler
             // to override corresponding script-defined values
 
             //TODO: !!! (OneDbCommand) cache transpilation results of the command
 
-            if (!ScriptProcessor.TryTranspile(in _context, in _script, in _parameters, out ScriptDetails result, out string error))
+            if (!ScriptProcessor.TryProcess(in _context, in _script, in _parameters, out TranspilerResult result, out string error))
             {
                 throw new InvalidOperationException(error);
             }

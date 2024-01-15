@@ -5,7 +5,7 @@ using System.Text;
 
 namespace DaJet.Scripting
 {
-    public sealed class MsSqlGenerator : SqlGenerator
+    public sealed class MsSqlTranspiler : SqlTranspiler
     {
         private string GetCreateTableColumnList(in SelectExpression select)
         {
@@ -174,7 +174,7 @@ namespace DaJet.Scripting
                 {
                     if (column.Expression is ColumnReference reference)
                     {
-                        ScriptHelper.GetColumnIdentifiers(reference.Identifier, out string tableAlias, out _);
+                        ParserHelper.GetColumnIdentifiers(reference.Identifier, out string tableAlias, out _);
 
                         if (string.IsNullOrEmpty(tableAlias))
                         {
@@ -341,7 +341,7 @@ namespace DaJet.Scripting
                 {
                     ColumnExpression expression = new() { Alias = output.Alias };
 
-                    ScriptHelper.GetColumnIdentifiers(column.Identifier, out _, out string columnName);
+                    ParserHelper.GetColumnIdentifiers(column.Identifier, out _, out string columnName);
 
                     ColumnReference reference = new()
                     {
@@ -497,7 +497,7 @@ namespace DaJet.Scripting
 
                     if (found) { continue; }
 
-                    ScriptHelper.GetColumnIdentifiers(orderColumn.Identifier, out _, out string columnName);
+                    ParserHelper.GetColumnIdentifiers(orderColumn.Identifier, out _, out string columnName);
 
                     ColumnReference reference = new()
                     {
@@ -578,7 +578,7 @@ namespace DaJet.Scripting
                     // 2. Изменения.Ссылка           => changes.Ссылка
                     // 3. Изменения.Ссылка AS Ссылка => changes.Ссылка
 
-                    ScriptHelper.GetColumnIdentifiers(column.Identifier, out _, out string columnName);
+                    ParserHelper.GetColumnIdentifiers(column.Identifier, out _, out string columnName);
                     if (!string.IsNullOrEmpty(outputColumn.Alias)) { columnName = outputColumn.Alias; }
 
                     ColumnReference reference = new()
@@ -593,7 +593,7 @@ namespace DaJet.Scripting
 
                         foreach (ColumnMapper map in column.Mapping)
                         {
-                            ScriptHelper.GetColumnIdentifiers(map.Name, out _, out columnName);
+                            ParserHelper.GetColumnIdentifiers(map.Name, out _, out columnName);
                             if (!string.IsNullOrEmpty(map.Alias)) { columnName = map.Alias; }
 
                             reference.Mapping.Add(new ColumnMapper()
@@ -676,7 +676,7 @@ namespace DaJet.Scripting
         }
         private ComparisonOperator CreateDeletionFilterOperator(in ColumnExpression property, in ColumnReference column)
         {
-            ScriptHelper.GetColumnIdentifiers(column.Identifier, out _, out string columnName);
+            ParserHelper.GetColumnIdentifiers(column.Identifier, out _, out string columnName);
 
             ColumnReference column1 = new()
             {
@@ -809,7 +809,7 @@ namespace DaJet.Scripting
                 {
                     if (expression.Expression is ColumnReference column)
                     {
-                        ScriptHelper.GetColumnIdentifiers(column.Identifier, out _, out string columnName);
+                        ParserHelper.GetColumnIdentifiers(column.Identifier, out _, out string columnName);
 
                         ColumnReference reference = new()
                         {

@@ -1210,7 +1210,7 @@ namespace DaJet.Scripting
         {
             string identifier = Previous().Lexeme;
 
-            if (ScriptHelper.IsFunction(identifier, out TokenType token))
+            if (ParserHelper.IsFunction(identifier, out TokenType token))
             {
                 return function(token, identifier);
             }

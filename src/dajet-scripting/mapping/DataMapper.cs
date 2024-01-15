@@ -485,7 +485,7 @@ namespace DaJet.Scripting
             {
                 if (string.IsNullOrEmpty(map.Name))
                 {
-                    ScriptHelper.GetColumnIdentifiers(node.Identifier, out string _, out string columnAlias);
+                    ParserHelper.GetColumnIdentifiers(node.Identifier, out string _, out string columnAlias);
 
                     map.Name = string.IsNullOrEmpty(column.Alias) ? columnAlias : column.Alias;
                 }
@@ -649,7 +649,7 @@ namespace DaJet.Scripting
                         Target = column,
                         Source = new ScalarExpression()
                         {
-                            Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(column.Type)),
+                            Token = ParserHelper.GetDataTypeToken(UnionType.GetDataType(column.Type)),
                             Literal = UnionType.GetDefaultValueLiteral(column.Type)
                         }
                     });
@@ -676,7 +676,7 @@ namespace DaJet.Scripting
                         {
                             rule.Source = new ScalarExpression() // map _TYPE column to default value 0x08 - Entity
                             {
-                                Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
+                                Token = ParserHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
                                 Literal = UnionType.GetHexString(UnionTag.Entity)
                             };
                         }
@@ -684,7 +684,7 @@ namespace DaJet.Scripting
                         {
                             rule.Source = new ScalarExpression() // map _TYPE column to default value 0x01 - Undefined
                             {
-                                Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
+                                Token = ParserHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
                                 Literal = UnionType.GetHexString(UnionTag.Tag)
                             };
                         }
@@ -698,7 +698,7 @@ namespace DaJet.Scripting
 
                             rule.Source = new ScalarExpression() // map _TYPE column to default value 0x02...0x05
                             {
-                                Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
+                                Token = ParserHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
                                 Literal = UnionType.GetHexString(source_type)
                             };
                         }
@@ -706,7 +706,7 @@ namespace DaJet.Scripting
                         {
                             rule.Source = new ScalarExpression() // map _TYPE column to default value 0x01 - Undefined
                             {
-                                Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
+                                Token = ParserHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
                                 Literal = UnionType.GetHexString(UnionTag.Tag)
                             };
                         }
@@ -718,7 +718,7 @@ namespace DaJet.Scripting
                     {
                         rule.Source = new ScalarExpression() // map _TRef column to type code constant value
                         {
-                            Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.TypeCode)),
+                            Token = ParserHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.TypeCode)),
                             Literal = $"0x{Convert.ToHexString(DbUtilities.GetByteArray(mapping.Source.DataType.TypeCode))}"
                         };
                     }
@@ -726,7 +726,7 @@ namespace DaJet.Scripting
                     {
                         rule.Source = new ScalarExpression() // map _TRef column to type code default value
                         {
-                            Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.TypeCode)),
+                            Token = ParserHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.TypeCode)),
                             Literal = UnionType.GetHexString(UnionTag.Undefined)
                         };
                     }
@@ -735,7 +735,7 @@ namespace DaJet.Scripting
                 {
                     rule.Source = new ScalarExpression() // map column to default value
                     {
-                        Token = ScriptHelper.GetDataTypeToken(UnionType.GetDataType(target_column.Type)),
+                        Token = ParserHelper.GetDataTypeToken(UnionType.GetDataType(target_column.Type)),
                         Literal = UnionType.GetDefaultValueLiteral(target_column.Type)
                     };
                 }

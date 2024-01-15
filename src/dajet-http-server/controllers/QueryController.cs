@@ -42,7 +42,7 @@ namespace DaJet.Http.Controllers
 
             ScriptExecutor executor = new(provider, _metadataService, _source);
 
-            GeneratorResult result;
+            TranspilerResult result;
 
             try
             {
@@ -100,52 +100,6 @@ namespace DaJet.Http.Controllers
 
                     result.Add(entity);
                 }
-            }
-            catch (Exception exception)
-            {
-                return BadRequest(ExceptionHelper.GetErrorMessage(exception));
-            }
-
-            JsonSerializerOptions options = new()
-            {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-            };
-
-            string json = JsonSerializer.Serialize(result, options);
-
-            return Content(json);
-        }
-
-        [HttpPost("ddl")][Authorize]public ActionResult ExecuteNonQuery([FromBody] QueryModel query)
-        {
-            if (string.IsNullOrWhiteSpace(query.DbName) || string.IsNullOrWhiteSpace(query.Script))
-            {
-                return BadRequest();
-            }
-
-            InfoBaseRecord record = _source.Select<InfoBaseRecord>(query.DbName);
-
-            if (record is null)
-            {
-                return NotFound();
-            }
-
-            if (!_metadataService.TryGetMetadataProvider(record.Identity.ToString(), out IMetadataProvider provider, out string error))
-            {
-                return BadRequest(error);
-            }
-
-            ScriptExecutor executor = new(provider, _metadataService, _source);
-
-            GeneratorResult result = new()
-            {
-                Success = true
-            };
-
-            try
-            {
-                executor.ExecuteNonQuery(query.Script);
             }
             catch (Exception exception)
             {

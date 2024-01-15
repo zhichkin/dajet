@@ -1,10 +1,11 @@
-﻿using DaJet.Scripting.Model;
+﻿using DaJet.Scripting;
+using DaJet.Scripting.Model;
 using System.Collections;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace DaJet.Scripting
+namespace DaJet.Json
 {
     public sealed class SyntaxNodeJsonConverter : JsonConverter<SyntaxNode>
     {

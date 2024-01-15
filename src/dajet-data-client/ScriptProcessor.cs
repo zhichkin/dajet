@@ -7,7 +7,7 @@ using System.Data;
 using System.Globalization;
 using System.Text;
 
-namespace DaJet.Scripting
+namespace DaJet.Scripting.Engine
 {
     public static class ScriptProcessor
     {
@@ -15,55 +15,15 @@ namespace DaJet.Scripting
         {
             return new OneDbMetadataProvider(options.ConnectionString, options.UseExtensions);
         }
-        public static bool TryTranspile(in IMetadataProvider context,
+        public static bool TryProcess(in IMetadataProvider context,
             in string script, in Dictionary<string, object> parameters,
-            out ScriptDetails result, out string error)
+            out TranspilerResult result, out string error)
         {
-            if (context is null)
-            {
-                throw new ArgumentNullException(nameof(context));
-            }
+            if (context is null) { throw new ArgumentNullException(nameof(context)); }
+            if (string.IsNullOrWhiteSpace(script)) { throw new ArgumentNullException(nameof(script)); }
+            if (parameters is null) { throw new ArgumentNullException(nameof(parameters)); }
 
-            if (string.IsNullOrWhiteSpace(script))
-            {
-                throw new ArgumentNullException(nameof(script));
-            }
-
-            if (parameters is null)
-            {
-                throw new ArgumentNullException(nameof(parameters));
-            }
-
-            result = new ScriptDetails();
-
-            foreach (var item in parameters)
-            {
-                result.Parameters.Add(item.Key, item.Value);
-            }
-
-            if (!TryTranspile(in context, in script, result.Parameters, out List<ScriptStatement> statements, out error))
-            {
-                result = null; return false;
-            }
-
-            try
-            {
-                result.Mappers = GetEntityMappers(in statements);
-                result.SqlScript = AssembleSqlScript(in statements);
-            }
-            catch (Exception exception)
-            {
-                result = null;
-                error = ExceptionHelper.GetErrorMessage(exception);
-            }
-
-            return (result is not null);
-        }
-        private static bool TryTranspile(in IMetadataProvider context,
-            in string script, in Dictionary<string, object> parameters,
-            out List<ScriptStatement> statements, out string error)
-        {
-            statements = null;
+            result = null;
 
             ScriptModel model;
 
@@ -74,50 +34,32 @@ namespace DaJet.Scripting
                     return false;
                 }
             }
-            
-            OverrideEntityParameters(in model, in parameters);
+
+            Dictionary<string, object> sql_parameters = new();
+
+            foreach (var item in parameters)
+            {
+                sql_parameters.Add(item.Key, item.Value);
+            }
+
+            OverrideEntityParameters(in model, in sql_parameters); // set entity type codes for binding and transformation
 
             if (!new MetadataBinder().TryBind(model, in context, out _, out List<string> errors))
             {
-                StringBuilder message = new();
-
-                for (int i = 0; i < errors.Count; i++)
-                {
-                    if (i > 0) { message.AppendLine(); }
-
-                    message.Append(errors[i]);
-                }
-
-                error = message.ToString();
-
-                if (string.IsNullOrEmpty(error))
-                {
-                    error = "Unknown binding error";
-                }
-
-                return false;
-            }
-            
-            if (!new ScriptTransformer().TryTransform(model, out error))
-            {
-                 return false;
+                error = FormatErrorMessage(in errors); return false;
             }
 
-            ConfigureParameters(in context, in model, in parameters);
+            if (!new ScriptTransformer().TryTransform(model, out error)) { return false; }
 
-            ConfigureEntityParameters(in model, in context, in parameters);
-
-            ExecuteImportStatements(in model, in context, in parameters);
-
-            ISqlGenerator generator;
+            ISqlTranspiler transpiler;
 
             if (context.DatabaseProvider == DatabaseProvider.SqlServer)
             {
-                generator = new MsSqlGenerator() { YearOffset = context.YearOffset };
+                transpiler = new MsSqlTranspiler() { YearOffset = context.YearOffset };
             }
             else if (context.DatabaseProvider == DatabaseProvider.PostgreSql)
             {
-                generator = new PgSqlGenerator() { YearOffset = context.YearOffset };
+                transpiler = new PgSqlTranspiler() { YearOffset = context.YearOffset };
             }
             else
             {
@@ -125,56 +67,41 @@ namespace DaJet.Scripting
                 return false;
             }
 
-            if (!generator.TryGenerate(in model, in context, out statements, out error))
+            if (!transpiler.TryTranspile(in model, in context, out result, out error))
             {
                 return false;
             }
 
+            ConfigureParameters(in model, in context, in sql_parameters); // prepare parameters for sql commands
+
+            ConfigureEntityParameters(in model, in context, in sql_parameters); // execute: DECLARE @name entity = SELECT...
+
+            ExecuteImportStatements(in model, in context, in sql_parameters); // execute: IMPORT script INTO @tvp
+
+            result.Parameters = sql_parameters;
+
             return true;
         }
-        private static string AssembleSqlScript(in List<ScriptStatement> statements)
+
+        private static string FormatErrorMessage(in List<string> errors)
         {
-            if (statements is null)
+            if (errors is null || errors.Count == 0)
             {
-                return string.Empty;
+                return "Unknown binding error";
             }
 
-            StringBuilder script = new();
+            StringBuilder error = new();
 
-            for (int i = 0; i < statements.Count; i++)
+            for (int i = 0; i < errors.Count; i++)
             {
-                ScriptStatement statement = statements[i];
+                if (i > 0) { error.AppendLine(); }
 
-                if (string.IsNullOrEmpty(statement.Script))
-                {
-                    continue; //NOTE: declaration of parameters
-                }
-
-                script.AppendLine(statement.Script);
+                error.Append(errors[i]);
             }
 
-            return script.ToString();
+            return error.ToString();
         }
-        private static List<EntityMapper> GetEntityMappers(in List<ScriptStatement> statements)
-        {
-            List<EntityMapper> mappers = new();
 
-            if (statements is null)
-            {
-                return mappers;
-            }
-
-            foreach (ScriptStatement command in statements)
-            {
-                if (command.Mapper.Properties.Count > 0)
-                {
-                    mappers.Add(command.Mapper);
-                }
-            }
-
-            return mappers;
-        }
-        
         private static DeclareStatement GetDeclareStatementByName(in ScriptModel model, in string name)
         {
             string fullName = "@" + name;
@@ -200,7 +127,7 @@ namespace DaJet.Scripting
 
                 // any entity type value specifies "entity" literal
 
-                declare.Type.Identifier = ScriptHelper.GetDataTypeLiteral(typeof(Entity));
+                declare.Type.Identifier = ParserHelper.GetDataTypeLiteral(typeof(Entity));
 
                 // entity type code provided by user determines the data type for parameter
 
@@ -213,7 +140,7 @@ namespace DaJet.Scripting
                 declare.Initializer = scalar; 
             }
         }
-        private static void ConfigureParameters(in IMetadataProvider context, in ScriptModel model, in Dictionary<string, object> parameters)
+        private static void ConfigureParameters(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)
         {
             // add script parameters to the dictionary if they are missing
             foreach (SyntaxNode node in model.Statements)
@@ -230,7 +157,7 @@ namespace DaJet.Scripting
 
                 if (declare.Initializer is not ScalarExpression scalar)
                 {
-                    scalar = ScriptHelper.CreateDefaultScalar(in declare);
+                    scalar = ParserHelper.CreateDefaultScalar(in declare);
                     declare.Initializer = scalar;
                 }
 
@@ -244,7 +171,7 @@ namespace DaJet.Scripting
 
                 if (!parameters.ContainsKey(name))
                 {
-                    if (ScriptHelper.IsDataType(declare.Type.Identifier, out Type type))
+                    if (ParserHelper.IsDataType(declare.Type.Identifier, out Type type))
                     {
                         if (type == typeof(bool))
                         {
@@ -366,6 +293,7 @@ namespace DaJet.Scripting
                 }
             }
         }
+        
         private static void ConfigureEntityParameters(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)
         {
             foreach (SyntaxNode node in model.Statements)
@@ -374,9 +302,9 @@ namespace DaJet.Scripting
 
                 if (declare.Initializer is SelectExpression select)
                 {
-                    ScriptStatement statement = CreateScriptStatement(in context, in select);
+                    SqlStatement statement = CreateScriptStatement(in context, in select);
 
-                    List<string> variables = new VariablesExtractor().GetVariables(select);
+                    List<string> variables = new VariableReferenceExtractor().Extract(select);
 
                     Dictionary<string, object> select_parameters = new();
 
@@ -408,7 +336,7 @@ namespace DaJet.Scripting
                 }
             }
         }
-        private static ScriptStatement CreateScriptStatement(in IMetadataProvider context, in SelectExpression select)
+        private static SqlStatement CreateScriptStatement(in IMetadataProvider context, in SelectExpression select)
         {
             ScriptModel model = new();
 
@@ -417,34 +345,34 @@ namespace DaJet.Scripting
                 Expression = select
             });
 
-            ISqlGenerator generator;
+            ISqlTranspiler transpiler;
 
             if (context.DatabaseProvider == DatabaseProvider.SqlServer)
             {
-                generator = new MsSqlGenerator() { YearOffset = context.YearOffset };
+                transpiler = new MsSqlTranspiler() { YearOffset = context.YearOffset };
             }
             else if (context.DatabaseProvider == DatabaseProvider.PostgreSql)
             {
-                generator = new PgSqlGenerator() { YearOffset = context.YearOffset };
+                transpiler = new PgSqlTranspiler() { YearOffset = context.YearOffset };
             }
             else
             {
                 throw new InvalidOperationException($"Unsupported database provider: {context.DatabaseProvider}");
             }
 
-            if (!generator.TryGenerate(in model, in context, out List<ScriptStatement> statements, out string error))
+            if (!transpiler.TryTranspile(in model, in context, out TranspilerResult result, out string error))
             {
                 throw new Exception(error);
             }
 
-            if (statements is not null && statements.Count > 0)
+            if (result is not null && result.Statements is not null && result.Statements.Count > 0)
             {
-                return statements[0];
+                return result.Statements[0];
             }
 
             throw new InvalidOperationException("Entity parameters configuration error");
         }
-        private static Entity SelectEntityValue(in IMetadataProvider context, in ScriptStatement statement, in Dictionary<string, object> parameters)
+        private static Entity SelectEntityValue(in IMetadataProvider context, in SqlStatement statement, in Dictionary<string, object> parameters)
         {
             object value = null;
 
@@ -504,14 +432,14 @@ namespace DaJet.Scripting
 
             IMetadataProvider importContext = CreateOneDbMetadataProvider(in database);
 
-            if (!TryTranspile(in importContext, record.Script, in importParameters, out List<ScriptStatement> statements, out string error))
+            if (!TryProcess(in importContext, record.Script, in importParameters, out TranspilerResult result, out string error))
             {
                 throw new Exception(error);
             }
 
-            List<Dictionary<string, object>> result = new();
+            List<Dictionary<string, object>> table = new();
 
-            ScriptStatement statement = statements
+            SqlStatement statement = result.Statements
                 .Where(s => !string.IsNullOrEmpty(s.Script))
                 .FirstOrDefault(); //TODO: process multiple results
 
@@ -528,7 +456,7 @@ namespace DaJet.Scripting
                         entity.Add(property.Name, property.GetValue(in reader));
                     }
 
-                    result.Add(entity);
+                    table.Add(entity);
                 }
             }
 
@@ -543,7 +471,7 @@ namespace DaJet.Scripting
                     parameters[key] = new TableValuedParameter()
                     {
                         Name = key,
-                        Value = result,
+                        Value = table,
                         DbName = type.Name
                     };
                 }

@@ -7,7 +7,7 @@
         public TableReference Target { get; set; }
         public WhereClause Where { get; set; }
         public OutputClause Output { get; set; }
-        ///<summary>MS SQL Server (sql generator) and CONSUME statement context only</summary>
+        ///<summary>MS SQL Server (sql transpiler) and CONSUME statement context only</summary>
         public FromClause From { get; set; }
     }
 }

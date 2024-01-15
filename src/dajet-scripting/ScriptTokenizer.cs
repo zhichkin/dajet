@@ -219,7 +219,7 @@ namespace DaJet.Scripting
                 {
                     DoubleQuotedString();
                 }
-                else if (ScriptHelper.IsNumeric(_char))
+                else if (ParserHelper.IsNumeric(_char))
                 {
                     if (_char == '0' && CheckNext('x'))
                     {
@@ -234,7 +234,7 @@ namespace DaJet.Scripting
                 {
                     Variable();
                 }
-                else if (ScriptHelper.IsAlphaNumeric(_char))
+                else if (ParserHelper.IsAlphaNumeric(_char))
                 {
                     Identifier();
                 }
@@ -427,7 +427,7 @@ namespace DaJet.Scripting
             _start = _position;
             _lexeme.Append(_char);
 
-            while (ScriptHelper.IsNumeric(PeekNext()) && Consume())
+            while (ParserHelper.IsNumeric(PeekNext()) && Consume())
             {
                 // read number literal
                 _lexeme.Append(_char);
@@ -435,14 +435,14 @@ namespace DaJet.Scripting
 
             if (Consume('.'))
             {
-                if (!ScriptHelper.IsNumeric(PeekNext()))
+                if (!ParserHelper.IsNumeric(PeekNext()))
                 {
                     throw new Exception(GetErrorText("Unexpected character"));
                 }
 
                 _lexeme.Append(_char);
 
-                while (ScriptHelper.IsNumeric(PeekNext()) && Consume())
+                while (ParserHelper.IsNumeric(PeekNext()) && Consume())
                 {
                     // consume digits - fractional part
                     _lexeme.Append(_char);
@@ -463,7 +463,7 @@ namespace DaJet.Scripting
 
             _lexeme.Append(_char);
 
-            while (ScriptHelper.IsHexadecimal(PeekNext()) && Consume())
+            while (ParserHelper.IsHexadecimal(PeekNext()) && Consume())
             {
                 // read hex literal
                 _lexeme.Append(_char);
@@ -504,7 +504,7 @@ namespace DaJet.Scripting
 
             char next = PeekNext();
 
-            while (ScriptHelper.IsAlphaNumeric(next) && Consume())
+            while (ParserHelper.IsAlphaNumeric(next) && Consume())
             {
                 // read identifier
                 _lexeme.Append(_char);
@@ -513,15 +513,15 @@ namespace DaJet.Scripting
 
             string test = _lexeme.ToString();
 
-            if (ScriptHelper.IsNullLiteral(test))
+            if (ParserHelper.IsNullLiteral(test))
             {
                 AddToken(TokenType.NULL);
             }
-            else if (ScriptHelper.IsBooleanLiteral(test))
+            else if (ParserHelper.IsBooleanLiteral(test))
             {
                 AddToken(TokenType.Boolean);
             }
-            else if (ScriptHelper.IsKeyword(test, out TokenType token))
+            else if (ParserHelper.IsKeyword(test, out TokenType token))
             {
                 AddToken(token);
             }
@@ -542,7 +542,7 @@ namespace DaJet.Scripting
 
             char next = PeekNext();
 
-            while (ScriptHelper.IsAlphaNumeric(next) && Consume())
+            while (ParserHelper.IsAlphaNumeric(next) && Consume())
             {
                 // read identifier
                 _lexeme.Append(_char);

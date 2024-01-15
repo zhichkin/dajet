@@ -25,7 +25,7 @@ namespace DaJet.Flow.SqlServer
         private readonly IMetadataService _metadata;
         private string CommandText { get; set; }
         private string ConnectionString { get; set; }
-        private GeneratorResult ScriptGenerator { get; set; }
+        private TranspilerResult ScriptInfo { get; set; }
         private Dictionary<string, object> ScriptParameters { get; set; }
         #endregion
         
@@ -74,15 +74,10 @@ namespace DaJet.Flow.SqlServer
             }
 
             ScriptExecutor executor = new(provider, _metadata, _source);
-            ScriptGenerator = executor.PrepareScript(script.Script);
+            ScriptInfo = executor.PrepareScript(script.Script);
             ScriptParameters = executor.Parameters;
 
-            if (!ScriptGenerator.Success)
-            {
-                throw new Exception(ScriptGenerator.Error);
-            }
-
-            CommandText = ScriptGenerator.Script;
+            CommandText = ScriptInfo.SqlScript;
             ConnectionString = database.ConnectionString;
 
             if (_options.Timeout < 0) { _options.Timeout = 10; }
@@ -120,11 +115,11 @@ namespace DaJet.Flow.SqlServer
                     {
                         using (SqlDataReader reader = command.ExecuteReader())
                         {
-                            DataObject record = new(ScriptGenerator.Mapper.Properties.Count);
+                            DataObject record = new(ScriptInfo.Mappers[0].Properties.Count);
 
                             while (reader.Read())
                             {
-                                ScriptGenerator.Mapper.Map(reader, in record);
+                                ScriptInfo.Mappers[0].Map(reader, in record);
 
                                 _next?.Process(in record);
 
