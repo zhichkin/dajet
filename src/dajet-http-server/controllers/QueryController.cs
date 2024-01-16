@@ -1,8 +1,11 @@
 ﻿using DaJet.Data;
+using DaJet.Data.Client;
 using DaJet.Http.Model;
+using DaJet.Json;
 using DaJet.Metadata;
 using DaJet.Model;
 using DaJet.Scripting;
+using DaJet.Scripting.Engine;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Encodings.Web;
@@ -40,26 +43,26 @@ namespace DaJet.Http.Controllers
                 return BadRequest(error);
             }
 
-            ScriptExecutor executor = new(provider, _metadataService, _source);
+            Dictionary<string, object> parameters = new();
 
-            TranspilerResult result;
+            if (!ScriptProcessor.TryProcess(in provider, query.Script, in parameters, out TranspilerResult result, out error))
+            {
+                return BadRequest(error);
+            }
 
-            try
-            {
-                result = executor.PrepareScript(query.Script);
-            }
-            catch (Exception exception)
-            {
-                return BadRequest(ExceptionHelper.GetErrorMessage(exception));
-            }
+            DataObject response = new();
+            response.SetValue("Success", true);
+            response.SetValue("Error", string.Empty);
+            response.SetValue("Script", result.SqlScript);
 
             JsonSerializerOptions options = new()
             {
                 WriteIndented = true,
                 Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
             };
+            options.Converters.Add(new DataObjectJsonConverter());
 
-            string json = JsonSerializer.Serialize(result, options);
+            string json = JsonSerializer.Serialize(response, options);
 
             return Content(json);
         }
@@ -70,35 +73,46 @@ namespace DaJet.Http.Controllers
                 return BadRequest();
             }
 
-            InfoBaseRecord record = _source.Select<InfoBaseRecord>(query.DbName);
+            InfoBaseRecord database = _source.Select<InfoBaseRecord>(query.DbName);
 
-            if (record is null)
+            if (database is null)
             {
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataProvider(record.Identity.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadataService.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
 
-            ScriptExecutor executor = new(provider, _metadataService, _source);
-
-            List<Dictionary<string, object>> result = new();
+            List<Dictionary<string, object>> table = new();
 
             try
             {
-                foreach (var entity in executor.ExecuteReader(query.Script))
+                using (OneDbConnection connection = new(provider))
                 {
-                    foreach (var item in entity)
+                    connection.Open();
+
+                    using (OneDbCommand command = connection.CreateCommand())
                     {
-                        if (item.Value is Entity value)
+                        command.CommandText = query.Script;
+
+                        using (OneDbDataReader reader = command.ExecuteReader())
                         {
-                            entity[item.Key] = value.ToString();
+                            //do
+                            //{
+                            while (reader.Read())
+                            {
+                                Dictionary<string, object> record = reader.Map();
+
+                                table.Add(record);
+                            }
+                            //}
+                            //while (reader.NextResult()); //TODO: multiple results
+
+                            reader.Close();
                         }
                     }
-
-                    result.Add(entity);
                 }
             }
             catch (Exception exception)
@@ -111,8 +125,9 @@ namespace DaJet.Http.Controllers
                 WriteIndented = true,
                 Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
             };
+            options.Converters.Add(new DictionaryJsonConverter());
 
-            string json = JsonSerializer.Serialize(result, options);
+            string json = JsonSerializer.Serialize(table, options);
 
             return Content(json);
         }

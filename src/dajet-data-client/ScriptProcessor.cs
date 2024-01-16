@@ -376,7 +376,7 @@ namespace DaJet.Scripting.Engine
         {
             object value = null;
 
-            IQueryExecutor executor = context.CreateQueryExecutor();
+            IQueryExecutor executor = context.CreateQueryExecutor(); //TODO: use OneDbConnection ?
 
             foreach (IDataReader reader in executor.ExecuteReader(statement.Script, 10, parameters))
             {
@@ -445,7 +445,7 @@ namespace DaJet.Scripting.Engine
 
             if (statement is not null)
             {
-                IQueryExecutor executor = importContext.CreateQueryExecutor();
+                IQueryExecutor executor = importContext.CreateQueryExecutor(); //TODO: use OneDbConnection ?
 
                 foreach (IDataReader reader in executor.ExecuteReader(statement.Script, 10, importParameters))
                 {

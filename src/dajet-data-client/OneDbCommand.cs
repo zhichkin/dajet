@@ -134,6 +134,8 @@ namespace DaJet.Data.Client
             {
                 if (parameter.Value is TableValuedParameter tvp)
                 {
+                    //TODO: move the tvp code to ScriptProcessor !?
+
                     if (_context.DatabaseProvider == DatabaseProvider.PostgreSql)
                     {
                         object records = CreatePgTableParameter(in tvp);

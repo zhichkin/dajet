@@ -21,7 +21,7 @@ namespace DaJet.Json
 
                 if (value is null)
                 {
-                    writer.WriteNullValue();
+                    writer.WriteNull(name);
                 }
                 else if (value is string text)
                 {

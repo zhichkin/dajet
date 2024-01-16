@@ -136,6 +136,10 @@ namespace DaJet.Data.Client
         {
             _mapper.Map(_reader, in record);
         }
+        public Dictionary<string, object> Map()
+        {
+            return _mapper.Map(_reader);
+        }
         public void Map<T>(in T entity) where T : class
         {
             _mapper.Map(_reader, in entity);

@@ -1,4 +1,5 @@
 ﻿using DaJet.Data;
+using DaJet.Data.Client;
 using DaJet.Metadata;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
@@ -6,6 +7,7 @@ using DaJet.Model;
 using DaJet.RabbitMQ.HttpApi;
 using DaJet.Scripting;
 using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics.Metrics;
 using System.Net;
 using System.Reflection;
 using System.Runtime.Loader;
@@ -351,25 +353,27 @@ namespace DaJet.Http.Controllers
             script.AppendLine($"DECLARE @EmptyUuid uuid;");
             script.AppendLine($"SELECT Код FROM ПланОбмена.{publication} WHERE Предопределённый = @EmptyUuid ORDER BY Код ASC");
 
-            ScriptExecutor executor = new(provider, _metadata, _source);
-            executor.Parameters.Add("ThisNode", Guid.Empty);
-
-            try
+            using (OneDbConnection connection = new(provider))
             {
-                foreach (var record in executor.ExecuteReader(script.ToString()))
+                connection.Open();
+
+                using (OneDbCommand command = connection.CreateCommand())
                 {
-                    foreach (var column in record)
+                    command.CommandText = script.ToString();
+                    command.Parameters.Add("ThisNode", Guid.Empty);
+
+                    using (OneDbDataReader reader = command.ExecuteReader())
                     {
-                        if (column.Value is string value)
+                        while (reader.Read())
                         {
+                            string value = reader.GetString(0);
+
                             subscribers.Add(value);
                         }
+
+                        reader.Close();
                     }
                 }
-            }
-            catch
-            {
-                throw;
             }
 
             return subscribers;

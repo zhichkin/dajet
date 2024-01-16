@@ -54,14 +54,14 @@ namespace DaJet.Data
         }
         public Dictionary<string, object> Map(in IDataReader reader)
         {
-            Dictionary<string, object> entity = new();
+            Dictionary<string, object> record = new();
 
             foreach (PropertyMapper property in Properties)
             {
-                entity.Add(property.Name, property.GetValue(in reader));
+                record.Add(property.Name, property.GetValue(in reader));
             }
 
-            return entity;
+            return record;
         }
         public TEntity Map<TEntity>(in IDataReader reader) where TEntity : class, new()
         {

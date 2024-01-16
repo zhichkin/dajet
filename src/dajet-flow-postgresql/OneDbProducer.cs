@@ -2,6 +2,7 @@
 using DaJet.Metadata;
 using DaJet.Model;
 using DaJet.Scripting;
+using DaJet.Scripting.Engine;
 using DaJet.Scripting.Model;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -46,16 +47,21 @@ namespace DaJet.Flow.PostgreSql
 
             ConnectionString = database.ConnectionString;
 
-            ScriptExecutor executor = new(provider, _metadata, _source);
-            executor.PrepareScript(script.Script, out ScriptModel _, out List<SqlStatement> statements);
-            ScriptParameters = executor.Parameters;
-            CommandText = GetInsertStatementScript(in statements);
+            Dictionary<string, object> parameters = new();
 
-            for (int i = 0; i < statements.Count; i++)
+            if (!ScriptProcessor.TryProcess(in provider, script.Script, in parameters, out TranspilerResult result, out error))
             {
-                if (statements[i].Node is CreateSequenceStatement) // configure sequence database object
+                throw new Exception(error);
+            }
+
+            ScriptParameters = result.Parameters;
+            CommandText = GetInsertStatementScript(result.Statements);
+
+            for (int i = 0; i < result.Statements.Count; i++)
+            {
+                if (result.Statements[i].Node is CreateSequenceStatement) // configure sequence database object
                 {
-                    provider.CreateQueryExecutor().ExecuteNonQuery(statements[i].Script, 10); break;
+                    provider.CreateQueryExecutor().ExecuteNonQuery(result.Statements[i].Script, 10); break;
                 }
             }
         }

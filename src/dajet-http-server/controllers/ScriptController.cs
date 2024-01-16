@@ -1,8 +1,8 @@
 ﻿using DaJet.Data;
+using DaJet.Data.Client;
 using DaJet.Json;
 using DaJet.Metadata;
 using DaJet.Model;
-using DaJet.Scripting;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -23,6 +23,8 @@ namespace DaJet.Http.Controllers
         {
             _source = source ?? throw new ArgumentNullException(nameof(source));
             _metadataService = metadataService ?? throw new ArgumentNullException(nameof(metadataService));
+
+            JsonOptions.Converters.Add(new DictionaryJsonConverter());
         }
         [HttpGet("select/{infobase}")] public ActionResult Select([FromRoute] string infobase)
         {
@@ -134,47 +136,45 @@ namespace DaJet.Http.Controllers
                 return BadRequest(error);
             }
 
-            ScriptExecutor executor = new(provider, _metadataService, _source);
-
             Dictionary<string, object> parameters = await ParseScriptParametersFromBody();
 
-            if (parameters != null)
+            List<Dictionary<string, object>> table = new();
+
+            using (OneDbConnection connection = new(provider))
             {
-                foreach (var parameter in parameters)
+                connection.Open();
+
+                using (OneDbCommand command = connection.CreateCommand())
                 {
-                    executor.Parameters.Add(parameter.Key, parameter.Value);
-                }
-            }
+                    command.CommandText = script.Script;
 
-            List<Dictionary<string, object>> result = new();
-            try
-            {
-                List<List<Dictionary<string, object>>> batch = executor.Execute(script.Script);
-
-                if (batch.Count > 0)
-                {
-                    List<Dictionary<string, object>> table = batch[0];
-
-                    foreach (Dictionary<string, object> record in table)
+                    if (parameters is not null)
                     {
-                        foreach (var column in record)
+                        foreach (var parameter in parameters)
                         {
-                            if (column.Value is Entity value)
-                            {
-                                record[column.Key] = value.ToString();
-                            }
+                            command.Parameters.Add(parameter.Key, parameter.Value);
                         }
                     }
 
-                    result = table;
+                    using (OneDbDataReader reader = command.ExecuteReader())
+                    {
+                        //do
+                        //{
+                        while (reader.Read())
+                        {
+                            Dictionary<string, object> record = reader.Map();
+
+                            table.Add(record);
+                        }
+                        //}
+                        //while (reader.NextResult()); //TODO: multiple results
+
+                        reader.Close();
+                    }
                 }
             }
-            catch (Exception exception)
-            {
-                return BadRequest(ExceptionHelper.GetErrorMessage(exception));
-            }
 
-            string json = JsonSerializer.Serialize(result, JsonOptions);
+            string json = JsonSerializer.Serialize(table, JsonOptions);
 
             return Content(json);
         }
