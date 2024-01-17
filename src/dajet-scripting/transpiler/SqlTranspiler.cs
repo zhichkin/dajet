@@ -213,7 +213,7 @@ namespace DaJet.Scripting
 
             if (select.Into is not null)
             {
-                return; // SELECT ... INTO ... statement does not return any records
+                return; //NOTE: SELECT ... INTO ... statement does not return any records
             }
 
             foreach (ColumnExpression column in select.Columns)
@@ -225,7 +225,7 @@ namespace DaJet.Scripting
         {
             if (statement.Into is not null)
             {
-                return; // CONSUME ... INTO ... statement returns data into temporary table
+                return; //NOTE: CONSUME ... INTO ... statement returns data into temporary table
             }
 
             foreach (ColumnExpression column in statement.Columns)
@@ -237,7 +237,7 @@ namespace DaJet.Scripting
         {
             if (output.Into is not null)
             {
-                return; // OUTPUT ... INTO ... statement does not return any records
+                return; //NOTE: OUTPUT ... INTO ... statement does not return any records
             }
 
             foreach (ColumnExpression column in output.Columns)
@@ -428,7 +428,12 @@ namespace DaJet.Scripting
         {
             script.Append('(');
             Visit(node.Expression, in script);
-            script.Append(") AS " + node.Alias);
+            script.Append(')');
+
+            if (!string.IsNullOrEmpty(node.Alias))
+            {
+                script.Append(" AS " + node.Alias);
+            }
         }
         protected virtual void Visit(in TableJoinOperator node, in StringBuilder script)
         {
@@ -749,7 +754,13 @@ namespace DaJet.Scripting
             }
             else
             {
-                script.Append(node.Name).Append("(");
+                script.Append(node.Name).Append('(');
+
+                if (node.Token == TokenType.COUNT &&
+                    node.Modifier == TokenType.DISTINCT)
+                {
+                    script.Append("DISTINCT ");
+                }
 
                 SyntaxNode expression;
 
@@ -760,11 +771,11 @@ namespace DaJet.Scripting
                     Visit(in expression, in script);
                 }
 
-                script.Append(")");
+                script.Append(')');
 
                 if (node.Over is not null)
                 {
-                    script.Append(" ");
+                    script.Append(' ');
                     Visit(node.Over, in script);
                 }
             }

@@ -35,16 +35,7 @@ namespace DaJet.Scripting
             return union;
         }
         private static string _name = string.Empty; // TODO: убрать костыль !
-        public static void Map(in ColumnExpression node, in EntityMapper mapper)
-        {
-            UnionType type = new();
-
-            Visit(in node, in type);
-
-            mapper.AddPropertyMapper(in _name, in type);
-
-            _name = string.Empty;
-        }
+        
         public static UnionType Infer(in SyntaxNode node)
         {
             UnionType union = new();
@@ -57,6 +48,18 @@ namespace DaJet.Scripting
             Visit(in node, in union);
             return !union.IsUndefined;
         }
+
+        #region "INFER RETURN DATA TYPE AND MAP COLUMN EXPRESSION FOR USE BY DATA MAPPER"
+        public static void Map(in ColumnExpression node, in EntityMapper mapper)
+        {
+            UnionType type = new();
+
+            Visit(in node, in type);
+
+            mapper.AddPropertyMapper(in _name, in type);
+
+            _name = string.Empty;
+        }
         public static void Visit(in SyntaxNode node, in UnionType union)
         {
             if (node is ColumnExpression column) { Visit(in column, in union); }
@@ -65,6 +68,7 @@ namespace DaJet.Scripting
             else if (node is VariableReference variable) { Visit(in variable, in union); }
             else if (node is CaseExpression _case) { Visit(in _case, in union); }
             else if (node is FunctionExpression function) { Visit(in function, in union); }
+            else if (node is TableExpression table) { Visit(in table, in union); }
         }
         private static void Visit(in ColumnExpression column, in UnionType union)
         {
@@ -251,6 +255,47 @@ namespace DaJet.Scripting
             _name = property.Name;
             union.Merge(GetUnionType(in property));
         }
+        private static void Visit(in TableExpression table, in UnionType union)
+        {
+            ColumnExpression column = GetFirstColumnExpression(in table);
+
+            if (column is not null)
+            {
+                Visit(in column, in union);
+            }
+        }
+        private static ColumnExpression GetFirstColumnExpression(in SyntaxNode node)
+        {
+            if (node is SelectExpression select)
+            {
+                return GetFirstColumnExpression(in select);
+            }
+            else if (node is TableExpression table)
+            {
+                return GetFirstColumnExpression(in table);
+            }
+            else if (node is TableUnionOperator union)
+            {
+                return GetFirstColumnExpression(in union);
+            }
+            else
+            {
+                return null;
+            }
+        }
+        private static ColumnExpression GetFirstColumnExpression(in TableExpression table)
+        {
+            return GetFirstColumnExpression(table.Expression);
+        }
+        private static ColumnExpression GetFirstColumnExpression(in SelectExpression select)
+        {
+            return select.Columns.FirstOrDefault();
+        }
+        private static ColumnExpression GetFirstColumnExpression(in TableUnionOperator union)
+        {
+            return GetFirstColumnExpression(union.Expression1);
+        }
+        #endregion
 
         public static object GetColumnSource(in SyntaxNode node)
         {

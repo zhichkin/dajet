@@ -5,5 +5,6 @@
         public string Name { get; set; } = string.Empty;
         public List<SyntaxNode> Parameters { get; set; } = new();
         public OverClause Over { get; set; }
+        public TokenType Modifier { get; set; } = TokenType.Ignore;
     }
 }

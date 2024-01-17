@@ -560,18 +560,7 @@ namespace DaJet.Scripting
                 throw new FormatException("Close round bracket expected.");
             }
 
-            //NOTE: table expression alias, used by column expressions, is not required
-            if (!Check(TokenType.AS))
-            {
-                throw new FormatException("Table expression alias expected.");
-            }
-
-            table.Alias = alias(); //NOTE: the function can return an empty string
-
-            if (string.IsNullOrEmpty(table.Alias))
-            {
-                throw new FormatException("Table expression alias expected.");
-            }
+            table.Alias = alias(); //NOTE: the function can return an empty string alias
 
             return table;
         }
@@ -979,6 +968,8 @@ namespace DaJet.Scripting
 
                 TokenType _operator = Previous().Type;
 
+                //TODO: ALL, ANY, IN, LIKE, BETWEEN <expression> AND <expression>
+
                 if (_operator == TokenType.IS)
                 {
                     return new ComparisonOperator()
@@ -1103,18 +1094,25 @@ namespace DaJet.Scripting
 
             return grouping();
         }
+        ///<returns>GroupOperator (round brackets) or TableExpression without alias</returns>
         private SyntaxNode grouping()
         {
             if (Match(TokenType.OpenRoundBracket))
             {
-                SyntaxNode grouping = predicate();
+                TokenType token = Current().Type;
+
+                SyntaxNode expression = (token == TokenType.SELECT)
+                    ? union() //NOTE: SelectExpression | TableUnionOperator
+                    : predicate(); //NOTE: recursion
 
                 if (!Match(TokenType.CloseRoundBracket))
                 {
                     throw new FormatException("Close round bracket token expected.");
                 }
 
-                return new GroupOperator() { Expression = grouping };
+                return (token == TokenType.SELECT)
+                    ? new TableExpression() { Expression = expression }
+                    : new GroupOperator() { Expression = expression };
             }
 
             return terminal();
@@ -1144,6 +1142,8 @@ namespace DaJet.Scripting
             {
                 return case_expression();
             }
+
+            //TODO: EXISTS exists_function
 
             Ignore();
 
@@ -1270,6 +1270,11 @@ namespace DaJet.Scripting
                 Name = identifier
             };
 
+            if (token == TokenType.COUNT && Match(TokenType.DISTINCT))
+            {
+                function.Modifier = TokenType.DISTINCT;
+            }
+
             if (Match(TokenType.CloseRoundBracket))
             {
                 // the function does not have any parameters
@@ -1294,7 +1299,7 @@ namespace DaJet.Scripting
                 function.Over = over_clause();
             }
 
-            //TODO: implement function parameters validation
+            //THINK: implement function parameters validation
             if (function.Name.ToUpperInvariant() == "VECTOR")
             {
                 if (function.Parameters is null)

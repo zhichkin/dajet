@@ -314,13 +314,19 @@ namespace DaJet.Scripting
 
             if (pg_name is not null)
             {
-                script.Append(pg_name).Append("(");
+                script.Append(pg_name).Append('(');
             }
             else
             {
-                script.Append(node.Name).Append("(");
+                script.Append(node.Name).Append('(');
             }
-            
+
+            if (node.Token == TokenType.COUNT &&
+                node.Modifier == TokenType.DISTINCT)
+            {
+                script.Append("DISTINCT ");
+            }
+
             SyntaxNode expression;
 
             for (int i = 0; i < node.Parameters.Count; i++)
@@ -349,11 +355,11 @@ namespace DaJet.Scripting
                 }
             }
 
-            script.Append(")");
+            script.Append(')');
 
             if (node.Over is not null)
             {
-                script.Append(" ");
+                script.Append(' ');
                 Visit(node.Over, in script);
             }
         }
