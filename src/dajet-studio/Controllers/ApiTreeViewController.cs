@@ -239,12 +239,17 @@ namespace DaJet.Studio.Controllers
 
             bool success = true;
 
-            string originalName = script.Name;
-
             try
             {
+                //TODO: update name only command !? Script property may be changed by script editor !!!
+
+                script = await DataSource.SelectAsync<ScriptRecord>(script.Identity);
+
                 script.Name = node.Title;
+
                 await DataSource.UpdateAsync(script);
+                
+                node.Tag = script; // commit transaction =)
             }
             catch
             {
@@ -253,8 +258,6 @@ namespace DaJet.Studio.Controllers
 
             if (success)
             {
-                //script.Name = node.Title;
-
                 if (node.Parent is not null)
                 {
                     if (node.Parent.Tag is InfoBaseRecord infobase)
@@ -269,9 +272,7 @@ namespace DaJet.Studio.Controllers
             }
             else
             {
-                script.Name = originalName;
-                script.MarkAsOriginal();
-                args.Cancel = true;
+                args.Cancel = true; // rollback edit title operation
             }
         }
         private async Task DeleteFolderScript(TreeNodeModel node)
