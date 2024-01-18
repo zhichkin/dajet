@@ -956,19 +956,29 @@ namespace DaJet.Scripting
         {
             SyntaxNode left = addition();
 
-            while (Match(TokenType.Comment, TokenType.IS,
+            Skip(TokenType.Comment);
+
+            while (Match(TokenType.IS,
                 TokenType.Equals, TokenType.NotEquals,
                 TokenType.Greater, TokenType.GreaterOrEquals,
-                TokenType.Less, TokenType.LessOrEquals))
+                TokenType.Less, TokenType.LessOrEquals,
+                TokenType.NOT, TokenType.IN, TokenType.LIKE, TokenType.BETWEEN))
             {
-                if (Previous().Type == TokenType.Comment)
-                {
-                    continue; // ignore
-                }
-
                 TokenType _operator = Previous().Type;
 
-                //TODO: ALL, ANY, IN, LIKE, BETWEEN <expression> AND <expression>
+                bool negate = (_operator == TokenType.NOT);
+
+                if (negate)
+                {
+                    if (Match(TokenType.IN, TokenType.LIKE, TokenType.BETWEEN))
+                    {
+                        _operator = Previous().Type;
+                    }
+                    else
+                    {
+                        throw new FormatException("IN, LIKE or BETWEEN keyword expected");
+                    }
+                }
 
                 if (_operator == TokenType.IS)
                 {
@@ -978,6 +988,80 @@ namespace DaJet.Scripting
                         Expression1 = left,
                         Expression2 = is_right_operand()
                     };
+                }
+                else if (_operator == TokenType.IN)
+                {
+                    ComparisonOperator expression = new()
+                    {
+                        Token = _operator,
+                        Expression1 = left,
+                        Expression2 = table()
+                    };
+
+                    if (expression.Expression2 is not TableExpression)
+                    {
+                        throw new FormatException("[IN] table expression expected");
+                    }
+
+                    if (negate) { expression.Modifier = TokenType.NOT; }
+
+                    return expression;
+                }
+                else if (_operator == TokenType.LIKE)
+                {
+                    ComparisonOperator expression = new()
+                    {
+                        Token = _operator,
+                        Expression1 = left,
+                        Expression2 = terminal()
+                    };
+
+                    if (!(expression.Expression2 is ScalarExpression
+                        || expression.Expression2 is VariableReference))
+                    {
+                        throw new FormatException("[LIKE] string pattern or variable reference expected");
+                    }
+
+                    if (negate) { expression.Modifier = TokenType.NOT; }
+
+                    return expression;
+                }
+                else if (_operator == TokenType.BETWEEN)
+                {
+                    ComparisonOperator expression = new()
+                    {
+                        Token = _operator,
+                        Expression1 = left,
+                        Expression2 = and()
+                    };
+
+                    if (expression.Expression2 is not BinaryOperator)
+                    {
+                        throw new FormatException("[BETWEEN] AND operator expected");
+                    }
+
+                    if (negate) { expression.Modifier = TokenType.NOT; }
+
+                    return expression;
+                }
+                else if (Match(TokenType.ALL, TokenType.ANY))
+                {
+                    TokenType modifier = Previous().Type;
+
+                    ComparisonOperator expression = new()
+                    {
+                        Token = _operator,
+                        Modifier = modifier,
+                        Expression1 = left,
+                        Expression2 = table()
+                    };
+
+                    if (expression.Expression2 is not TableExpression)
+                    {
+                        throw new FormatException($"[{modifier}] table expression expected");
+                    }
+
+                    return expression;
                 }
                 else
                 {
@@ -1142,8 +1226,10 @@ namespace DaJet.Scripting
             {
                 return case_expression();
             }
-
-            //TODO: EXISTS exists_function
+            else if (Match(TokenType.EXISTS))
+            {
+                return exists_function();
+            }
 
             Ignore();
 
@@ -1253,6 +1339,25 @@ namespace DaJet.Scripting
             node.THEN = expression();
 
             return node;
+        }
+        private FunctionExpression exists_function()
+        {
+            SyntaxNode parameter = table();
+
+            if (parameter is not TableExpression)
+            {
+                throw new FormatException("[EXISTS] table expression expected");
+            }
+
+            FunctionExpression function = new()
+            {
+                Name = "EXISTS",
+                Token = TokenType.EXISTS
+            };
+
+            function.Parameters.Add(parameter);
+
+            return function;
         }
         #endregion
 

@@ -2,7 +2,7 @@
 {
     public enum TokenType
     {
-        Script, Ignore, Comment, Comma, EndOfStatement,
+        Ignore, Script, Comment, Comma, EndOfStatement,
 
         SELECT, INTO, DISTINCT, TOP, FROM, WHERE, GROUP, HAVING, ORDER, BY, ASC, DESC,
         AND, OR, AS, NOT,
@@ -13,7 +13,7 @@
         ROW, ROWS, ONLY, OFFSET, FETCH, FIRST, NEXT,
         SUM, MAX, MIN, AVG, COUNT, STRING_AGG, ROW_NUMBER, LAG, LEAD, FIRST_VALUE, LAST_VALUE,
         OVER, PARTITION, RANGE, BETWEEN, UNBOUNDED, PRECEDING, CURRENT, FOLLOWING,
-        CASE, WHEN, THEN, ELSE, END,
+        CASE, WHEN, THEN, ELSE, END, EXISTS,
         SUBSTRING,
         NOW,
 
@@ -21,7 +21,7 @@
 
         IS, NULL, ISNULL, Boolean, Number, DateTime, String, Binary, Uuid, Entity, Union, Version, Integer,
 
-        Equals, NotEquals, Less, Greater, LessOrEquals, GreaterOrEquals,
+        Equals, NotEquals, Less, Greater, LessOrEquals, GreaterOrEquals, ANY, IN, LIKE,
 
         OpenRoundBracket, CloseRoundBracket, OpenCurlyBracket, CloseCurlyBracket, OpenSquareBracket, CloseSquareBracket,
         

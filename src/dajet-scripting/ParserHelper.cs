@@ -102,8 +102,12 @@ namespace DaJet.Scripting
             { "THEN", TokenType.THEN },
             { "ELSE", TokenType.ELSE },
             { "END", TokenType.END },
+            { "EXISTS", TokenType.EXISTS },
             { "UNION", TokenType.UNION },
             { "ALL", TokenType.ALL },
+            { "ANY", TokenType.ANY },
+            { "IN", TokenType.IN },
+            { "LIKE", TokenType.LIKE },
             { "IS", TokenType.IS },
             { "NULL", TokenType.NULL },
             { "CREATE", TokenType.CREATE },
@@ -329,6 +333,9 @@ namespace DaJet.Scripting
         internal static string GetComparisonLiteral(TokenType token)
         {
             if (token == TokenType.IS) { return "IS"; }
+            else if (token == TokenType.IN) { return "IN"; }
+            else if (token == TokenType.LIKE) { return "LIKE"; }
+            else if (token == TokenType.BETWEEN) { return "BETWEEN"; }
             else if (token == TokenType.Equals) { return "="; }
             else if (token == TokenType.NotEquals) { return "<>"; }
             else if (token == TokenType.Less) { return "<"; }

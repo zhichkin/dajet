@@ -88,7 +88,7 @@ namespace DaJet.Scripting
         private SqlStatement TranspileScriptStatement(in SyntaxNode node)
         {
             StringBuilder script = new();
-            
+
             Visit(in node, in script);
 
             EntityMapper mapper = new()
@@ -423,7 +423,7 @@ namespace DaJet.Scripting
                 Visit(in column, in script, in tableAlias);
             }
         }
-        
+
         protected virtual void Visit(in TableExpression node, in StringBuilder script)
         {
             script.Append('(');
@@ -532,7 +532,7 @@ namespace DaJet.Scripting
             script.AppendLine().AppendLine("GROUP BY");
 
             string separator = "," + Environment.NewLine;
-            
+
             for (int i = 0; i < node.Expressions.Count; i++)
             {
                 if (i > 0) { script.Append(separator); }
@@ -622,7 +622,7 @@ namespace DaJet.Scripting
                 }
             }
         }
-        
+
         protected virtual void Visit(in GroupOperator node, in StringBuilder script)
         {
             script.Append("(");
@@ -673,7 +673,29 @@ namespace DaJet.Scripting
         protected virtual void Visit(in ComparisonOperator node, in StringBuilder script)
         {
             Visit(node.Expression1, in script);
-            script.Append(" ").Append(ParserHelper.GetComparisonLiteral(node.Token)).Append(" ");
+
+            if (node.Modifier == TokenType.NOT)
+            {
+                script.Append(" NOT ");
+            }
+            else
+            {
+                script.Append(' ');
+            }
+
+            script.Append(ParserHelper.GetComparisonLiteral(node.Token));
+
+            script.Append(' ');
+
+            if (node.Modifier == TokenType.ALL)
+            {
+                script.Append("ALL ");
+            }
+            else if (node.Modifier == TokenType.ANY)
+            {
+                script.Append("ANY ");
+            }
+
             Visit(node.Expression2, in script);
         }
         protected virtual void Visit(in CaseExpression node, in StringBuilder script)
@@ -754,7 +776,12 @@ namespace DaJet.Scripting
             }
             else
             {
-                script.Append(node.Name).Append('(');
+                script.Append(node.Name);
+
+                if (node.Token != TokenType.EXISTS)
+                {
+                    script.Append('('); //NOTE: EXISTS function has one parameter - TableExpression
+                }
 
                 if (node.Token == TokenType.COUNT &&
                     node.Modifier == TokenType.DISTINCT)
@@ -771,7 +798,10 @@ namespace DaJet.Scripting
                     Visit(in expression, in script);
                 }
 
-                script.Append(')');
+                if (node.Token != TokenType.EXISTS)
+                {
+                    script.Append(')'); //NOTE: EXISTS function has one parameter - TableExpression
+                }
 
                 if (node.Over is not null)
                 {

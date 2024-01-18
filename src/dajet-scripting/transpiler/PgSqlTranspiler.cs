@@ -314,11 +314,16 @@ namespace DaJet.Scripting
 
             if (pg_name is not null)
             {
-                script.Append(pg_name).Append('(');
+                script.Append(pg_name);
             }
             else
             {
-                script.Append(node.Name).Append('(');
+                script.Append(node.Name);
+            }
+
+            if (node.Token != TokenType.EXISTS) 
+            {
+                script.Append('('); //NOTE: EXISTS function has one parameter - TableExpression
             }
 
             if (node.Token == TokenType.COUNT &&
@@ -355,7 +360,10 @@ namespace DaJet.Scripting
                 }
             }
 
-            script.Append(')');
+            if (node.Token != TokenType.EXISTS)
+            {
+                script.Append(')'); //NOTE: EXISTS function has one parameter - TableExpression
+            }
 
             if (node.Over is not null)
             {
