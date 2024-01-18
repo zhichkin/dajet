@@ -991,21 +991,13 @@ namespace DaJet.Scripting
                 }
                 else if (_operator == TokenType.IN)
                 {
-                    ComparisonOperator expression = new()
+                    return new ComparisonOperator()
                     {
                         Token = _operator,
+                        Modifier = negate ? TokenType.NOT : TokenType.Ignore,
                         Expression1 = left,
-                        Expression2 = table()
+                        Expression2 = in_right_operand()
                     };
-
-                    if (expression.Expression2 is not TableExpression)
-                    {
-                        throw new FormatException("[IN] table expression expected");
-                    }
-
-                    if (negate) { expression.Modifier = TokenType.NOT; }
-
-                    return expression;
                 }
                 else if (_operator == TokenType.LIKE)
                 {
@@ -1075,6 +1067,27 @@ namespace DaJet.Scripting
             }
 
             return left;
+        }
+        ///<returns>TableExpression or ValuesExpression</returns>
+        private SyntaxNode in_right_operand()
+        {
+            if (!Match(TokenType.OpenRoundBracket))
+            {
+                throw new FormatException("[IN] Open round bracket expected.");
+            }
+
+            TokenType token = Current().Type;
+
+            SyntaxNode expression = (token == TokenType.SELECT)
+                ? new TableExpression() { Expression = union() }
+                : new ValuesExpression() { Values = array_of_values() };
+
+            if (!Match(TokenType.CloseRoundBracket))
+            {
+                throw new FormatException("[IN] Close round bracket expected.");
+            }
+
+            return expression;
         }
         private SyntaxNode is_right_operand()
         {
@@ -1358,6 +1371,20 @@ namespace DaJet.Scripting
             function.Parameters.Add(parameter);
 
             return function;
+        }
+        private List<SyntaxNode> array_of_values()
+        {
+            List<SyntaxNode> values = new()
+            {
+                terminal()
+            };
+
+            while (Match(TokenType.Comma))
+            {
+                values.Add(terminal());
+            }
+
+            return values;
         }
         #endregion
 

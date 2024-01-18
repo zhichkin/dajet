@@ -696,7 +696,27 @@ namespace DaJet.Scripting
                 script.Append("ANY ");
             }
 
-            Visit(node.Expression2, in script);
+            if (node.Token == TokenType.IN && node.Expression2 is ValuesExpression values)
+            {
+                script.Append('(');
+
+                SyntaxNode value;
+
+                for (int i = 0; i < values.Values.Count; i++)
+                {
+                    value = values.Values[i];
+
+                    if (i > 0) { script.Append(", "); }
+
+                    Visit(in value, in script);
+                }
+
+                script.Append(')');
+            }
+            else
+            {
+                Visit(node.Expression2, in script);
+            }
         }
         protected virtual void Visit(in CaseExpression node, in StringBuilder script)
         {
