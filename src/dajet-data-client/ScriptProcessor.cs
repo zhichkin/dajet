@@ -74,7 +74,7 @@ namespace DaJet.Scripting.Engine
 
             ConfigureParameters(in model, in context, in sql_parameters); // prepare parameters for sql commands
 
-            ConfigureEntityParameters(in model, in context, in sql_parameters); // execute: DECLARE @name entity = SELECT...
+            ConfigureSelectParameters(in model, in context, in sql_parameters); // execute: DECLARE @name entity = SELECT...
 
             ExecuteImportStatements(in model, in context, in sql_parameters); // execute: IMPORT script INTO @tvp
 
@@ -294,7 +294,7 @@ namespace DaJet.Scripting.Engine
             }
         }
         
-        private static void ConfigureEntityParameters(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)
+        private static void ConfigureSelectParameters(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)
         {
             foreach (SyntaxNode node in model.Statements)
             {
@@ -316,23 +316,32 @@ namespace DaJet.Scripting.Engine
                         }
                     }
 
-                    Entity entity = SelectEntityValue(in context, in statement, in select_parameters);
-
-                    if (entity.IsUndefined)
+                    if (declare.Type.Binding is Entity)
                     {
-                        if (declare.Type.Binding is Entity value)
+                        Entity entity = SelectEntityValue(in context, in statement, in select_parameters);
+
+                        if (entity.IsUndefined)
                         {
-                            entity = value;
+                            if (declare.Type.Binding is Entity value)
+                            {
+                                entity = value;
+                            }
                         }
+
+                        declare.Initializer = new ScalarExpression()
+                        {
+                            Token = TokenType.Entity,
+                            Literal = entity.ToString()
+                        };
+
+                        parameters.Add(declare.Name[1..], entity.Identity.ToByteArray());
                     }
-
-                    declare.Initializer = new ScalarExpression()
+                    else
                     {
-                        Token = TokenType.Entity,
-                        Literal = entity.ToString()
-                    };
+                        object value = SelectParameterValue(in context, in statement, in select_parameters);
 
-                    parameters.Add(declare.Name[1..], entity.Identity.ToByteArray());
+                        parameters.Add(declare.Name[1..], value);
+                    }
                 }
             }
         }
@@ -389,6 +398,19 @@ namespace DaJet.Scripting.Engine
             }
 
             return Entity.Undefined;
+        }
+        private static object SelectParameterValue(in IMetadataProvider context, in SqlStatement statement, in Dictionary<string, object> parameters)
+        {
+            object value = null;
+
+            IQueryExecutor executor = context.CreateQueryExecutor(); //TODO: use OneDbConnection ?
+
+            foreach (IDataReader reader in executor.ExecuteReader(statement.Script, 10, parameters))
+            {
+                value = statement.Mapper.Properties[0].GetValue(in reader); break;
+            }
+
+            return value;
         }
 
         private static void ExecuteImportStatements(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)

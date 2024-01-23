@@ -105,47 +105,6 @@ namespace DaJet.Scripting
                 Bind(in statement);
             }
         }
-        private void Bind(in DeclareStatement node)
-        {
-            if (node.Type is null) { return; }
-
-            Bind(node.Type);
-
-            if (node.Type.Binding is EntityDefinition definition)
-            {
-                definition.TableName = node.Name; // user-defined type (table-valued parameter)
-            }
-            else if (node.Type.Binding is Type type && type == typeof(Entity)) // DECLARE @Ссылка entity;
-            {
-                if (node.Initializer is ScalarExpression scalar) // DECLARE @Ссылка entity = {code:guid};
-                {
-                    if (Entity.TryParse(scalar.Literal, out Entity entity))
-                    {
-                        node.Type.Binding = entity;
-                    }
-                }
-                else if (node.Initializer is SelectExpression select) // DECLARE @Ссылка entity = SELECT Ссылка FROM ... WHERE ...;
-                {
-                    Bind(in select);
-
-                    if (select.Columns.Count > 0 &&
-                        select.Columns[0].Expression is ColumnReference column &&
-                        column.Binding is MetadataProperty property &&
-                        !property.PropertyType.IsMultipleType &&
-                        property.PropertyType.CanBeReference &&
-                        property.PropertyType.TypeCode > 0)
-                    {
-                        node.Type.Binding = new Entity(property.PropertyType.TypeCode, Guid.Empty);
-                    }
-                    else
-                    {
-                        RegisterBindingError(node.Token, node.Name);
-                    }
-                }
-            }
-
-            _scope.Variables.Add(node.Name, node.Type.Binding); // join current scope
-        }
         private void Bind(in TypeIdentifier node)
         {
             //TODO: bind "union" type identifier
@@ -173,6 +132,54 @@ namespace DaJet.Scripting
             {
                 RegisterBindingError(node.Token, node.Identifier);
             }
+        }
+        private void Bind(in DeclareStatement node)
+        {
+            if (node.Type is null) { return; }
+
+            Bind(node.Type);
+
+            if (node.Type.Binding is EntityDefinition definition)
+            {
+                definition.TableName = node.Name; // user-defined type (table-valued parameter)
+            }
+            else if (node.Type.Binding is Type type)
+            {
+                if (type == typeof(Entity)) // DECLARE @Ссылка entity
+                {
+                    if (node.Initializer is ScalarExpression scalar) // DECLARE @Ссылка entity = {code:guid}
+                    {
+                        if (Entity.TryParse(scalar.Literal, out Entity entity))
+                        {
+                            node.Type.Binding = entity;
+                        }
+                    }
+                    else if (node.Initializer is SelectExpression select) // DECLARE @Ссылка entity = SELECT Ссылка FROM ... WHERE ...
+                    {
+                        Bind(in select);
+
+                        if (select.Columns.Count > 0 &&
+                            select.Columns[0].Expression is ColumnReference column &&
+                            column.Binding is MetadataProperty property &&
+                            !property.PropertyType.IsMultipleType &&
+                            property.PropertyType.CanBeReference &&
+                            property.PropertyType.TypeCode > 0)
+                        {
+                            node.Type.Binding = new Entity(property.PropertyType.TypeCode, Guid.Empty);
+                        }
+                        else
+                        {
+                            RegisterBindingError(node.Token, node.Name);
+                        }
+                    }
+                }
+                else if (node.Initializer is SelectExpression select) // all other types of variables
+                {
+                    Bind(in select);
+                }
+            }
+
+            _scope.Variables.Add(node.Name, node.Type.Binding); // join current scope
         }
         private void Bind(in VariableReference node)
         {
