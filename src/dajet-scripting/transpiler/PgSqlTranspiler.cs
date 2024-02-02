@@ -65,8 +65,11 @@ namespace DaJet.Scripting
         }
         protected override void Visit(in IntoClause node, in StringBuilder script)
         {
-            script.AppendLine().Append("INTO TEMPORARY TABLE ");
-            Visit(node.Table, in script);
+            if (node.Table is not null)
+            {
+                script.AppendLine().Append("INTO TEMPORARY TABLE ");
+                Visit(node.Table, in script);
+            }
         }
         protected override void Visit(in TableReference node, in StringBuilder script)
         {
@@ -271,6 +274,19 @@ namespace DaJet.Scripting
             else
             {
                 script.Append(node.Identifier);
+            }
+        }
+        protected override void Visit(in MemberAccessExpression node, in StringBuilder script)
+        {
+            string identifier = node.Identifier.Replace('.', '_');
+
+            if (node.Binding is Type type && type == typeof(string))
+            {
+                script.Append($"CAST({identifier} AS mvarchar)");
+            }
+            else
+            {
+                script.Append(identifier);
             }
         }
         protected override void Visit(in FunctionExpression node, in StringBuilder script)

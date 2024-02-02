@@ -2,7 +2,6 @@
 using DaJet.Metadata;
 using DaJet.Model;
 using DaJet.Scripting;
-using DaJet.Scripting.Engine;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using System.Data;

@@ -29,7 +29,7 @@ namespace DaJet.Scripting
                     
                     break;
                 }
-                //TODO: исключения !!!
+                //TODO: исключения (смотри описание выше) !!!
             }
 
             return union;
@@ -69,6 +69,7 @@ namespace DaJet.Scripting
             else if (node is CaseExpression _case) { Visit(in _case, in union); }
             else if (node is FunctionExpression function) { Visit(in function, in union); }
             else if (node is TableExpression table) { Visit(in table, in union); }
+            else if (node is MemberAccessExpression member) { Visit(in member, in union); }
         }
         private static void Visit(in ColumnExpression column, in UnionType union)
         {
@@ -262,6 +263,13 @@ namespace DaJet.Scripting
             if (column is not null)
             {
                 Visit(in column, in union);
+            }
+        }
+        private static void Visit(in MemberAccessExpression member, in UnionType union)
+        {
+            if (member.Binding is Type type)
+            {
+                union.Add(in type);
             }
         }
         private static ColumnExpression GetFirstColumnExpression(in SyntaxNode node)

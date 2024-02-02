@@ -5,6 +5,7 @@ using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Metadata.Parsers;
 using DaJet.Metadata.SqlServer;
+using DaJet.Model;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -264,6 +265,11 @@ namespace DaJet.Metadata
             provider.Configure(settings);
 
             return provider;
+        }
+
+        public static IMetadataProvider CreateOneDbMetadataProvider(in InfoBaseRecord options)
+        {
+            return new OneDbMetadataProvider(options.ConnectionString, options.UseExtensions);
         }
     }
 }

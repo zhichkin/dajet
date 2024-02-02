@@ -1,6 +1,5 @@
 ﻿using DaJet.Metadata;
 using DaJet.Scripting;
-using DaJet.Scripting.Engine;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.SqlClient.Server;
 using Npgsql;
@@ -28,6 +27,7 @@ namespace DaJet.Data.Client
             }
             
             _command = connection.CreateCommand();
+            _command.Connection = connection;
             _command.CommandType = CommandType.Text;
 
             if (_command is SqlCommand ms)
@@ -281,6 +281,42 @@ namespace DaJet.Data.Client
             }
 
             return records;
+        }
+
+        public IEnumerable<IDataReader> ExecuteNoMagic()
+        {
+            _command.Parameters.Clear();
+
+            foreach (var parameter in Parameters)
+            {
+                _ = AddWithValueDelegate(parameter.Key, parameter.Value);
+            }
+
+            _command.CommandText = _script;
+            _command.CommandType = CommandType.Text;
+
+            using (IDataReader reader = _command.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    yield return reader;
+                }
+                reader.Close();
+            }
+        }
+        public int ExecuteNonMagic()
+        {
+            _command.Parameters.Clear();
+
+            foreach (var parameter in Parameters)
+            {
+                _ = AddWithValueDelegate(parameter.Key, parameter.Value);
+            }
+
+            _command.CommandText = _script;
+            _command.CommandType = CommandType.Text;
+
+            return _command.ExecuteNonQuery();
         }
     }
 }

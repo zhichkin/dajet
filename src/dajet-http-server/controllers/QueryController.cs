@@ -5,7 +5,6 @@ using DaJet.Json;
 using DaJet.Metadata;
 using DaJet.Model;
 using DaJet.Scripting;
-using DaJet.Scripting.Engine;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Encodings.Web;

@@ -39,7 +39,7 @@ namespace DaJet.Scripting
                 {
                     node = statement();
 
-                    if (node != null)
+                    if (node is not null)
                     {
                         tree.Statements.Add(node);
                     }
@@ -673,19 +673,26 @@ namespace DaJet.Scripting
         private FromClause from_clause() { return new FromClause() { Expression = join() }; }
         private IntoClause into_clause(in List<ColumnExpression> columns)
         {
-            if (!Match(TokenType.Identifier))
-            {
-                throw new FormatException("INTO: table identifier expected.");
-            }
+            IntoClause clause = new() { Columns = columns };
 
-            return new IntoClause()
+            if (Match(TokenType.Identifier))
             {
-                Table = new TableReference()
+                clause.Table = new TableReference()
                 {
                     Identifier = Previous().Lexeme
-                },
-                Columns = columns
-            };
+                };
+                return clause;
+            }
+            else if (Match(TokenType.Variable))
+            {
+                clause.Value = new VariableReference()
+                {
+                    Identifier = Previous().Lexeme
+                };
+                return clause;
+            }
+
+            throw new FormatException("INTO: table or variable identifier expected.");
         }
         private string alias()
         {
@@ -1303,7 +1310,22 @@ namespace DaJet.Scripting
         }
         private SyntaxNode variable()
         {
-            return new VariableReference() { Identifier = Previous().Lexeme };
+            string identifier = Previous().Lexeme;
+
+            if (identifier.Contains('.')) //NOTE: multi-part identifier
+            {
+                return new MemberAccessExpression()
+                {
+                    Identifier = identifier
+                };
+            }
+            else
+            {
+                return new VariableReference()
+                {
+                    Identifier = identifier
+                };
+            }
         }
         private SyntaxNode identifier()
         {

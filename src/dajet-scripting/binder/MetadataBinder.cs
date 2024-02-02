@@ -54,6 +54,7 @@ namespace DaJet.Scripting
             else if (node is DeclareStatement declare) { Bind(in declare); }
             else if (node is TypeIdentifier type) { Bind(in type); }
             else if (node is VariableReference variable) { Bind(in variable); }
+            else if (node is MemberAccessExpression member) { Bind(in member); }
             else if (node is GroupOperator group) { Bind(in group); }
             else if (node is UnaryOperator unary) { Bind(in unary); }
             else if (node is BinaryOperator binary) { Bind(in binary); }
@@ -111,7 +112,17 @@ namespace DaJet.Scripting
 
             if (ParserHelper.IsDataType(node.Identifier, out Type type))
             {
-                // bool, decimal, DateTime, string, byte[], Guid, Entity, Union
+                //NOTE: bool, decimal, DateTime, string, byte[], Guid, Entity, Union, Array, object
+
+                if (type == typeof(Array))
+                {
+                    node.Token = TokenType.Array;
+                }
+                else if (type == typeof(object))
+                {
+                    node.Token = TokenType.Object;
+                }
+
                 node.Binding = type;
             }
             else // EntityDefinition (table)
@@ -179,11 +190,49 @@ namespace DaJet.Scripting
                 }
             }
 
-            _scope.Variables.Add(node.Name, node.Type.Binding); // join current scope
+            // join current scope
+
+            if (node.Type.Token == TokenType.Array || node.Type.Token == TokenType.Object)
+            {
+                _scope.Variables.Add(node.Name, node.Type);
+            }
+            else
+            {
+                _scope.Variables.Add(node.Name, node.Type.Binding);
+            }
         }
         private void Bind(in VariableReference node)
         {
             node.Binding = _scope.GetVariableBinding(node.Identifier);
+
+            if (node.Binding is null)
+            {
+                RegisterBindingError(node.Token, node.Identifier);
+            }
+        }
+        private void Bind(in MemberAccessExpression node)
+        {
+            string[] identifier = node.Identifier.Split('.');
+            
+            string target = identifier[0];
+            string member = identifier[1];
+
+            object binding = _scope.GetVariableBinding(target);
+
+            if (binding is TypeIdentifier type && type.Binding is List<ColumnExpression> columns)
+            {
+                for (int i = 0; i < columns.Count; i++)
+                {
+                    if (columns[i].Alias == member)
+                    {
+                        if (DataMapper.TryInfer(columns[i], out UnionType union))
+                        {
+                            node.Binding = UnionType.MapToType(in union);
+                        }
+                        break;
+                    }
+                }
+            }
 
             if (node.Binding is null)
             {
@@ -218,6 +267,22 @@ namespace DaJet.Scripting
             //NOTE: INTO columns are derived from the host SELECT expression
             //NOTE: INTO columns are bound already !!!
 
+            if (node.Table is not null)
+            {
+                CreateTableVariable(in node);
+            }
+            else
+            {
+                Bind(node.Value); //NOTE: bind variable data type: Array or object
+
+                if (node.Value.Binding is TypeIdentifier type) // see DeclareStatement binding
+                {
+                    type.Binding = node.Columns; //NOTE: schema definition
+                }
+            }
+        }
+        private void CreateTableVariable(in IntoClause node)
+        {
             SyntaxNode table;
 
             if (_scope.Ancestor<ConsumeStatement>() is not null)
@@ -777,6 +842,8 @@ namespace DaJet.Scripting
             if (node.Top is not null) { Bind(node.Top); }
             if (node.Where is not null) { Bind(node.Where); }
             if (node.Order is not null) { Bind(node.Order); }
+
+            if (node.Into is not null) { Bind(node.Into); }
 
             _scope = _scope.CloseScope();
         }

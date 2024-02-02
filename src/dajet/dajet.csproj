@@ -18,8 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\dajet-data-client\dajet-data-client.csproj" />
-    <ProjectReference Include="..\dajet-file-logger\dajet-file-logger.csproj" />
+    <ProjectReference Include="..\dajet-stream\dajet-stream.csproj" />
   </ItemGroup>
 
 </Project>

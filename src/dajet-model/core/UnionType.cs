@@ -44,6 +44,19 @@ namespace DaJet
                 SetBit((int)type, true);
             }
         }
+        public void Add(in Type type)
+        {
+            if (type == typeof(bool)) { IsBoolean = true; }
+            else if (type == typeof(decimal)) { IsNumeric = true; }
+            else if (type == typeof(DateTime)) { IsDateTime = true; }
+            else if (type == typeof(string)) { IsString = true; }
+            else if (type == typeof(byte[])) { IsBinary = true; }
+            else if (type == typeof(Guid)) { IsUuid = true; }
+            else if (type == typeof(Entity)) { IsEntity = true; }
+            else if (type == typeof(ulong)) { IsVersion = true; }
+            else if (type == typeof(int)) { IsInteger = true; }
+            else if (type == typeof(Union)) { Clear(); } //TODO: ?
+        }
         public bool ApplySystemType(in string literal, out UnionTag tag)
         {
             if (!_literals.TryGetValue(literal, out tag))

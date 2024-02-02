@@ -7,14 +7,10 @@ using System.Data;
 using System.Globalization;
 using System.Text;
 
-namespace DaJet.Scripting.Engine
+namespace DaJet.Scripting
 {
     public static class ScriptProcessor
     {
-        private static IMetadataProvider CreateOneDbMetadataProvider(in InfoBaseRecord options)
-        {
-            return new OneDbMetadataProvider(options.ConnectionString, options.UseExtensions);
-        }
         public static bool TryProcess(in IMetadataProvider context,
             in string script, in Dictionary<string, object> parameters,
             out TranspilerResult result, out string error)
@@ -148,7 +144,10 @@ namespace DaJet.Scripting.Engine
                 if (node is not DeclareStatement declare) { continue; }
 
                 if (declare.Initializer is SelectExpression) { continue; }
-                
+
+                if (declare.Type.Token == TokenType.Array ||
+                    declare.Type.Token == TokenType.Object) { continue; }
+
                 // 0. Database UDT parameter must be provided by the caller !!!
                 
                 if (declare.Type.Binding is EntityDefinition) { continue; }
@@ -304,12 +303,14 @@ namespace DaJet.Scripting.Engine
                 {
                     SqlStatement statement = CreateScriptStatement(in context, in select);
 
-                    List<string> variables = new VariableReferenceExtractor().Extract(select);
+                    List<VariableReference> variables = new VariableReferenceExtractor().Extract(select);
 
                     Dictionary<string, object> select_parameters = new();
 
-                    foreach (string name in variables)
+                    foreach (VariableReference variable in variables)
                     {
+                        string name = variable.Identifier[1..];
+
                         if (parameters.TryGetValue(name, out object value))
                         {
                             select_parameters.Add(name, value);
@@ -452,7 +453,7 @@ namespace DaJet.Scripting.Engine
             InfoBaseRecord database = dajet.Select<InfoBaseRecord>(target) ?? throw new ArgumentException($"Target not found: {target}");
             ScriptRecord record = dajet.Select<ScriptRecord>(scriptPath) ?? throw new ArgumentException($"Script not found: {script}");
 
-            IMetadataProvider importContext = CreateOneDbMetadataProvider(in database);
+            IMetadataProvider importContext = MetadataService.CreateOneDbMetadataProvider(in database);
 
             if (!TryProcess(in importContext, record.Script, in importParameters, out TranspilerResult result, out string error))
             {

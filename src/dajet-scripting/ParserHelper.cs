@@ -13,7 +13,9 @@ namespace DaJet.Scripting
             { "binary", typeof(byte[]) }, // B
             { "uuid", typeof(Guid) }, // U
             { "entity", typeof(Entity) }, // #
-            { "union", typeof(Union) }
+            { "union", typeof(Union) },
+            { "array", typeof(Array) },
+            { "object", typeof(object) }
         };
         private static Dictionary<Type, string> _datatype_literal = new()
         {
@@ -25,7 +27,9 @@ namespace DaJet.Scripting
             { typeof(byte[]), "binary" },
             { typeof(Guid), "uuid" },
             { typeof(Entity), "entity" },
-            { typeof(Union), "union" }
+            { typeof(Union), "union" },
+            { typeof(Array), "array" },
+            { typeof(object), "object" }
         };
         private static Dictionary<Type, TokenType> _datatype_token = new()
         {
@@ -38,7 +42,9 @@ namespace DaJet.Scripting
             { typeof(byte[]), TokenType.Binary },
             { typeof(Guid), TokenType.Uuid },
             { typeof(Entity), TokenType.Entity },
-            { typeof(Union), TokenType.Union }
+            { typeof(Union), TokenType.Union },
+            { typeof(Array), TokenType.Array },
+            { typeof(object), TokenType.Object }
         };
         
         private static Dictionary<string, TokenType> _keywords_en = new()

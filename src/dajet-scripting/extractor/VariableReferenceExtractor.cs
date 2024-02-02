@@ -4,20 +4,20 @@ namespace DaJet.Scripting
 {
     public sealed class VariableReferenceExtractor : IScriptWalker
     {
-        private readonly List<string> _variables = new();
-        public List<string> Extract(in SyntaxNode node)
+        private readonly Dictionary<string, VariableReference> _variables = new();
+        public List<VariableReference> Extract(in SyntaxNode node)
         {
             ScriptWalker.Walk(in node, this);
 
-            return _variables;
+            return _variables.Values.ToList();
         }
         public void SayHello(in SyntaxNode node)
         {
             if (node is VariableReference variable)
             {
-                if (!_variables.Contains(variable.Identifier))
+                if (!_variables.ContainsKey(variable.Identifier))
                 {
-                    _variables.Add(variable.Identifier[1..]);
+                    _variables.Add(variable.Identifier, variable);
                 }
             }
         }

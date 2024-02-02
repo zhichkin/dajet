@@ -211,7 +211,7 @@ namespace DaJet.Scripting
                 throw new InvalidOperationException("SELECT statement is not defined.");
             }
 
-            if (select.Into is not null)
+            if (select.Into is not null && select.Into.Table is not null)
             {
                 return; //NOTE: SELECT ... INTO ... statement does not return any records
             }
@@ -223,7 +223,7 @@ namespace DaJet.Scripting
         }
         private void ConfigureDataMapper(in ConsumeStatement statement, in EntityMapper mapper)
         {
-            if (statement.Into is not null)
+            if (statement.Into is not null && statement.Into.Table is not null)
             {
                 return; //NOTE: CONSUME ... INTO ... statement returns data into temporary table
             }
@@ -235,7 +235,7 @@ namespace DaJet.Scripting
         }
         private void ConfigureDataMapper(in OutputClause output, in EntityMapper mapper)
         {
-            if (output.Into is not null)
+            if (output.Into is not null && output.Into.Table is not null)
             {
                 return; //NOTE: OUTPUT ... INTO ... statement does not return any records
             }
@@ -256,6 +256,7 @@ namespace DaJet.Scripting
             else if (expression is CaseExpression case_when) { Visit(in case_when, in script); }
             else if (expression is ScalarExpression scalar) { Visit(in scalar, in script); }
             else if (expression is VariableReference variable) { Visit(in variable, in script); }
+            else if (expression is MemberAccessExpression member) { Visit(in member, in script); }
             else if (expression is SelectExpression select) { Visit(in select, in script); }
             else if (expression is TableJoinOperator join) { Visit(in join, in script); }
             else if (expression is TableUnionOperator union) { Visit(in union, in script); }
@@ -509,8 +510,11 @@ namespace DaJet.Scripting
         }
         protected virtual void Visit(in IntoClause node, in StringBuilder script)
         {
-            script.AppendLine().Append("INTO ");
-            Visit(node.Table, in script);
+            if (node.Table is not null)
+            {
+                script.AppendLine().Append("INTO ");
+                Visit(node.Table, in script);
+            }
         }
         protected virtual void Visit(in FromClause node, in StringBuilder script)
         {
@@ -776,6 +780,10 @@ namespace DaJet.Scripting
         protected virtual void Visit(in VariableReference node, in StringBuilder script)
         {
             script.Append(node.Identifier);
+        }
+        protected virtual void Visit(in MemberAccessExpression node, in StringBuilder script)
+        {
+            script.Append(node.Identifier.Replace('.', '_'));
         }
         protected virtual void Visit(in EnumValue node, in StringBuilder script)
         {
