@@ -1,6 +1,5 @@
 ﻿using DaJet.Data;
 using DaJet.Json;
-using DaJet.Metadata;
 using DaJet.Stream;
 using System.CommandLine;
 using System.Text;
@@ -12,38 +11,66 @@ namespace DaJet
 {
     public static class Program
     {
-        private static readonly string MS_CONNECTION = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
-        private static readonly string PG_CONNECTION = "Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;";
-
         private static readonly JsonWriterOptions JsonOptions = new()
         {
             Indented = true,
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
-
         private static readonly DataObjectJsonConverter _converter = new();
-        private static readonly IMetadataProvider _context = new OneDbMetadataProvider(MS_CONNECTION);
-        //private static readonly IMetadataProvider _context = new OneDbMetadataProvider(PG_CONNECTION);
 
         public static int Main(string[] args)
         {
             args = new string[]
             {
-                "stream", "--url", "dajet://ms-demo/stream/01-insert" //"dajet://ms-demo/stream/test"
+                "stream", "--file", "./test/ms-update-output.txt"
+                //"stream", "--file", "./test/ms-stream-select.txt"
+                //"stream", "--url", "dajet://ms-demo/stream/01-insert"
             };
 
             var root = new RootCommand("dajet");
             var command = new Command("stream", "Execute DaJet Stream");
-            var option = new Option<string>("--url", "Script URL");
-            command.Add(option);
-            command.SetHandler(Stream, option);
+            var option1 = new Option<string>("--url", "Script URL");
+            var option2 = new Option<string>("--file", "Script path");
+            command.AddOption(option1);
+            command.AddOption(option2);
+            command.SetHandler(Stream, option1, option2);
             root.Add(command);
 
             return root.Invoke(args);
         }
-        private static void Stream(string url)
+        private static void Stream(string url, string file)
         {
-            StreamProcessor.Process(in url);
+            if (string.IsNullOrEmpty(file))
+            {
+                StreamUri(url);
+            }
+            else
+            {
+                StreamFile(file);
+            }
+        }
+        private static void StreamUri(string url)
+        {
+            Console.WriteLine($"Execute script from URL: {url}");
+
+            Uri uri = new(url);
+
+            StreamProcessor.Process(in uri);
+        }
+        private static void StreamFile(string filePath)
+        {
+            FileInfo file = new(filePath);
+
+            Console.WriteLine($"Execute script from file: {file.FullName}");
+
+            string script;
+
+            using (StreamReader reader = new(filePath, Encoding.UTF8))
+            {
+                script = reader.ReadToEnd();
+            }
+
+            StreamProcessor.Process(in script);
         }
         private static void WriteResultToFile(in DataObject input)
         {

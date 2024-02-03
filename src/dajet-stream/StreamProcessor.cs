@@ -9,9 +9,9 @@ namespace DaJet.Stream
     public static class StreamProcessor
     {
         private static readonly DaJetDataSource dajet = new();
-        public static void Process(in string url)
+        public static void Process(in Uri uri)
         {
-            IMetadataProvider context = GetDatabaseContext(in url, out string script);
+            IMetadataProvider context = GetDatabaseContext(in uri, out string script);
 
             Dictionary<string, object> parameters = new();
 
@@ -22,10 +22,26 @@ namespace DaJet.Stream
 
             Stream(in context, in result);
         }
-        private static IMetadataProvider GetDatabaseContext(in string url, out string script)
+        public static void Process(in string script)
         {
-            Uri uri = new(url);
+            InfoBaseRecord database = new()
+            {
+                ConnectionString = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;"
+            };
 
+            IMetadataProvider context = MetadataService.CreateOneDbMetadataProvider(in database);
+
+            Dictionary<string, object> parameters = new();
+
+            if (!ScriptProcessor.TryProcess(in context, in script, in parameters, out TranspilerResult result, out string error))
+            {
+                throw new Exception(error);
+            }
+
+            Stream(in context, in result);
+        }
+        private static IMetadataProvider GetDatabaseContext(in Uri uri, out string script)
+        {
             if (uri.Scheme != "dajet")
             {
                 throw new InvalidOperationException($"Unknown data source scheme: {uri.Scheme}");
@@ -72,13 +88,19 @@ namespace DaJet.Stream
                 {
                     pipeline.Processors.Add(new Processor(in pipeline, in statement));
                 }
+
+                //TODO: implement Consumer and Updater (stream while table is not empty)
             }
 
             pipeline.Execute();
         }
         private static StatementType GetStatementType(in SqlStatement statement)
         {
-            if (statement.Node is SelectStatement node)
+            if (statement.Node is ConsumeStatement)
+            {
+                return StatementType.Streaming;
+            }
+            else if (statement.Node is SelectStatement node)
             {
                 if (node.Expression is SelectExpression select)
                 {
@@ -89,6 +111,11 @@ namespace DaJet.Stream
                     return GetStatementType(in union);
                 }
             }
+            else if (statement.Node is UpdateStatement update)
+            {
+                return GetStatementType(in update);
+            }
+
             return StatementType.Processor;
         }
         private static StatementType GetStatementType(in SelectExpression node)
@@ -113,6 +140,24 @@ namespace DaJet.Stream
             if (node.Expression1 is SelectExpression select)
             {
                 return GetStatementType(in select);
+            }
+            return StatementType.Processor;
+        }
+        private static StatementType GetStatementType(in UpdateStatement node)
+        {
+            if (node.Output is not null &&
+                node.Output.Into is not null &&
+                node.Output.Into.Value is VariableReference variable &&
+                variable.Binding is TypeIdentifier type)
+            {
+                if (type.Token == TokenType.Array)
+                {
+                    return StatementType.Buffering;
+                }
+                else if (type.Token == TokenType.Object)
+                {
+                    return StatementType.Streaming;
+                }
             }
             return StatementType.Processor;
         }

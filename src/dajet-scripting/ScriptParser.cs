@@ -174,10 +174,23 @@ namespace DaJet.Scripting
 
             return declare;
         }
+        private SyntaxNode use()
+        {
+            if (!Match(TokenType.String))
+            {
+                throw new FormatException("[USE] uri expected");
+            }
+
+            return new UseStatement()
+            {
+                Uri = new(Previous().Lexeme)
+            };
+        }
         private SyntaxNode statement()
         {
             if (Match(TokenType.Comment)) { return comment(); }
             else if (Match(TokenType.DECLARE)) { return declare(); }
+            else if (Match(TokenType.USE)) { return use(); }
             else if (Match(TokenType.CREATE)) { return create_statement(); }
             else if (Check(TokenType.SELECT)) { return select_statement(); }
             else if (Check(TokenType.INSERT)) { return insert_statement(); }
@@ -1716,6 +1729,11 @@ namespace DaJet.Scripting
                     update.Where = where_clause();
                     if (Match(TokenType.FROM)) { update.Source = table(); }
                 }
+            }
+
+            if (Match(TokenType.OUTPUT))
+            {
+                update.Output = output_clause();
             }
 
             // The WHERE and FROM clauses are optional

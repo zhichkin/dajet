@@ -154,6 +154,37 @@ namespace DaJet.Scripting
             base.Visit(in node, in script);
         }
 
+        #region "UPDATE STATEMENT"
+        protected override void Visit(in UpdateStatement node, in StringBuilder script)
+        {
+            if (node.Output is not null)
+            {
+                foreach (ColumnExpression column in node.Output.Columns)
+                {
+                    if (column.Expression is ColumnReference reference)
+                    {
+                        ParserHelper.GetColumnIdentifiers(reference.Identifier, out string tableAlias, out _);
+
+                        if (string.IsNullOrEmpty(tableAlias))
+                        {
+                            reference.Identifier = "inserted." + reference.Identifier;
+
+                            if (reference.Mapping is not null)
+                            {
+                                foreach (ColumnMapper map in reference.Mapping)
+                                {
+                                    map.Name = "inserted." + map.Name;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            base.Visit(in node, in script);
+        }
+        #endregion
+
         #region "DELETE STATEMENT"
         protected override void Visit(in DeleteStatement node, in StringBuilder script)
         {
@@ -227,11 +258,14 @@ namespace DaJet.Scripting
                 throw new InvalidOperationException("CONSUME: target table is not found.");
             }
 
-            if (node.Into is not null)
+            if (node.Into is IntoClause into)
             {
-                CreateTypeStatement statement = CreateTypeDefinition(node.Into.Table.Identifier, node.Columns);
+                if (into.Table is not null)
+                {
+                    CreateTypeStatement statement = CreateTypeDefinition(node.Into.Table.Identifier, node.Columns);
 
-                script.Insert(0, ScriptDeclareTableVariableStatement(in statement));
+                    script.Insert(0, ScriptDeclareTableVariableStatement(in statement));
+                }
             }
 
             DeleteStatement output;

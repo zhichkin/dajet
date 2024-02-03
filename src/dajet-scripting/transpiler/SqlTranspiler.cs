@@ -29,6 +29,10 @@ namespace DaJet.Scripting
                     {
                         result.Statements.Add(TranspileScriptStatement(in consume));
                     }
+                    else if (node is UpdateStatement update)
+                    {
+                        result.Statements.Add(TranspileScriptStatement(in update));
+                    }
                     else if (node is DeleteStatement delete)
                     {
                         result.Statements.Add(TranspileScriptStatement(in delete));
@@ -154,6 +158,35 @@ namespace DaJet.Scripting
             return new SqlStatement()
             {
                 Node = consume,
+                Mapper = mapper,
+                Script = script.ToString()
+            };
+        }
+        private SqlStatement TranspileScriptStatement(in UpdateStatement update)
+        {
+            StringBuilder script = new();
+
+            Visit(in update, in script);
+
+            EntityMapper mapper = new()
+            {
+                YearOffset = Metadata.YearOffset
+            };
+
+            if (update.Output is not null)
+            {
+                ConfigureDataMapper(update.Output, in mapper);
+            }
+
+            TableReference table = update.Target;
+
+            ParserHelper.GetColumnIdentifiers(table.Identifier, out _, out string tableName);
+
+            mapper.Name = (string.IsNullOrEmpty(table.Alias) ? tableName : table.Alias);
+
+            return new SqlStatement()
+            {
+                Node = update,
                 Mapper = mapper,
                 Script = script.ToString()
             };
@@ -1204,6 +1237,11 @@ namespace DaJet.Scripting
 
             script.AppendLine().Append("SET ");
             Visit(node.Set, in script);
+
+            if (node.Output is not null)
+            {
+                Visit(node.Output, script);
+            }
 
             if (node.Source is not null)
             {

@@ -2,7 +2,7 @@
 {
     public enum TokenType
     {
-        Ignore, Script, Comment, Comma, EndOfStatement,
+        Ignore, Script, Comment, Comma, EndOfStatement, USE,
 
         SELECT, INTO, DISTINCT, TOP, FROM, WHERE, GROUP, HAVING, ORDER, BY, ASC, DESC,
         AND, OR, AS, NOT,

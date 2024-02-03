@@ -404,6 +404,24 @@ namespace DaJet.Scripting
             script.Append(';').AppendLine();
         }
 
+        #region "UPDATE STATEMENT"
+        protected override void Visit(in UpdateStatement node, in StringBuilder script)
+        {
+            OutputClause output = node.Output; //backup
+
+            node.Output = null;
+
+            base.Visit(in node, in script);
+
+            node.Output = output; //restore
+
+            if (node.Output is not null)
+            {
+                Visit(node.Output, in script);
+            }
+        }
+        #endregion
+
         #region "DELETE STATEMENT"
         protected override void Visit(in DeleteStatement node, in StringBuilder script)
         {

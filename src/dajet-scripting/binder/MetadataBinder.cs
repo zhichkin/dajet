@@ -871,7 +871,7 @@ namespace DaJet.Scripting
             if (node.Output is not null) { Bind(node.Output); }
             if (node.Where is not null) { Bind(node.Where); }
 
-            //FIXME: binding columns referencing CTE fails (lookup is done on table aliases)
+            //FIXME: binding columns referencing CTE fails (because of lookup is done on table aliases)
 
             _scope = _scope.CloseScope();
         }
@@ -907,6 +907,7 @@ namespace DaJet.Scripting
 
             if (node.Set is not null) { Bind(node.Set); }
             if (node.Where is not null) { Bind(node.Where); }
+            if (node.Output is not null) { Bind(node.Output); }
 
             _scope = _scope.CloseScope();
         }
