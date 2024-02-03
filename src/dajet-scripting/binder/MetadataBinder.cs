@@ -223,13 +223,13 @@ namespace DaJet.Scripting
             {
                 for (int i = 0; i < columns.Count; i++)
                 {
-                    if (columns[i].Alias == member)
+                    if (DataMapper.TryMap(columns[i], out string name, out UnionType union))
                     {
-                        if (DataMapper.TryInfer(columns[i], out UnionType union))
+                        if (name == member)
                         {
                             node.Binding = UnionType.MapToType(in union);
+                            break;
                         }
-                        break;
                     }
                 }
             }

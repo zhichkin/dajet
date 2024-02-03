@@ -75,21 +75,6 @@ namespace DaJet.Stream
             }
 
             pipeline.Execute();
-
-            //TODO: log results !!!
-            if (pipeline.Parameters.TryGetValue("@output", out object value))
-            {
-                if (value is List<DataObject> output)
-                {
-                    foreach (var record in output)
-                    {
-                        for (int i = 0; i < record.Count(); i++)
-                        {
-                            FileLogger.Default.Write($"{record.GetName(i)} = {record.GetValue(i)}");
-                        }
-                    }
-                }
-            }
         }
         private static StatementType GetStatementType(in SqlStatement statement)
         {

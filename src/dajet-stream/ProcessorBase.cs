@@ -58,7 +58,7 @@ namespace DaJet.Stream
                 }
                 else
                 {
-                    _parameterNames.Add(variable.Identifier);
+                    _parameterNames.Add(variable.Identifier); //TODO: deduplicate !!!
                 }
             }
 
@@ -73,9 +73,10 @@ namespace DaJet.Stream
 
                 if (!_pipeline.Parameters.ContainsKey(memberName))
                 {
-                    _memberNames.Add(memberName);
                     _pipeline.Parameters.Add(memberName, null);
                 }
+
+                _memberNames.Add(memberName); //TODO: deduplicate !!!
             }
         }
         protected void ConfigureParameters(in OneDbCommand command)

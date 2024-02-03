@@ -29,7 +29,7 @@ namespace DaJet
         {
             args = new string[]
             {
-                "stream", "--url", "dajet://ms-demo/stream/test"
+                "stream", "--url", "dajet://ms-demo/stream/01-insert" //"dajet://ms-demo/stream/test"
             };
 
             var root = new RootCommand("dajet");

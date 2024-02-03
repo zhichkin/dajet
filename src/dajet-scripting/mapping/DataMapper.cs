@@ -60,8 +60,22 @@ namespace DaJet.Scripting
 
             _name = string.Empty;
         }
+        public static bool TryMap(in ColumnExpression node, out string name, out UnionType type)
+        {
+            type = new UnionType();
+
+            Visit(in node, in type);
+
+            name = _name;
+
+            _name = string.Empty;
+
+            return !string.IsNullOrEmpty(name);
+        }
         public static void Visit(in SyntaxNode node, in UnionType union)
         {
+            //NOTE: see PropertyMapper CreatePropertyMap(in ColumnExpression source)
+
             if (node is ColumnExpression column) { Visit(in column, in union); }
             else if (node is ColumnReference identifier) { Visit(in identifier, in union); }
             else if (node is ScalarExpression scalar) { Visit(in scalar, in union); }
@@ -70,6 +84,10 @@ namespace DaJet.Scripting
             else if (node is FunctionExpression function) { Visit(in function, in union); }
             else if (node is TableExpression table) { Visit(in table, in union); }
             else if (node is MemberAccessExpression member) { Visit(in member, in union); }
+            else if (node is GroupOperator group) { Visit(in group, in union); }
+            else if (node is UnaryOperator unary) { Visit(in unary, in union); }
+            else if (node is AdditionOperator addition) { Visit(in addition, in union); }
+            else if (node is MultiplyOperator multiply) { Visit(in multiply, in union); }
         }
         private static void Visit(in ColumnExpression column, in UnionType union)
         {
@@ -271,6 +289,27 @@ namespace DaJet.Scripting
             {
                 union.Add(in type);
             }
+        }
+        private static void Visit(in GroupOperator node, in UnionType union)
+        {
+            Visit(node.Expression, in union);
+        }
+        private static void Visit(in UnaryOperator node, in UnionType union)
+        {
+            if (node.Token == TokenType.Minus)
+            {
+                Visit(node.Expression, in union);
+            }
+        }
+        private static void Visit(in AdditionOperator node, in UnionType union)
+        {
+            Visit(node.Expression1, in union);
+            Visit(node.Expression2, in union);
+        }
+        private static void Visit(in MultiplyOperator node, in UnionType union)
+        {
+            Visit(node.Expression1, in union);
+            Visit(node.Expression2, in union);
         }
         private static ColumnExpression GetFirstColumnExpression(in SyntaxNode node)
         {
@@ -482,34 +521,27 @@ namespace DaJet.Scripting
                 map.Name = source.Alias;
             }
 
-            if (source.Expression is ColumnReference column)
-            {
-                Visit(in column, in map);
-            }
-            else if (source.Expression is CaseExpression case_when_then_else)
-            {
-                Map(case_when_then_else, in map);
-            }
-            else if (source.Expression is ScalarExpression scalar)
-            {
-                Map(scalar, in map);
-            }
-            else if (source.Expression is VariableReference variable)
-            {
-                Map(variable, in map);
-            }
-            else if (source.Expression is FunctionExpression function)
-            {
-                Map(function, in map);
-            }
+            //NOTE: void Visit(in SyntaxNode node, in UnionType union)
 
+            if (source.Expression is ColumnReference column) { Visit(in column, in map); }
+            else if (source.Expression is CaseExpression case_when_then_else) { Map(case_when_then_else, in map); }
+            else if (source.Expression is ScalarExpression scalar) { Map(scalar, in map); }
+            else if (source.Expression is VariableReference variable) { Map(variable, in map); }
+            else if (source.Expression is FunctionExpression function) { Map(function, in map); }
+            else if (source.Expression is MemberAccessExpression member) { Map(member, in map); }
+            else if (source.Expression is TableExpression table) { Map(table, in map); }
+            else if (source.Expression is GroupOperator group) { Map(group, in map); }
+            else if (source.Expression is UnaryOperator unary) { Map(unary, in map); }
+            else if (source.Expression is AdditionOperator addition) { Map(addition, in map); }
+            else if (source.Expression is MultiplyOperator multiply) { Map(multiply, in map); }
+            
             return map;
         }
         private static void Map(in SyntaxNode expression, in PropertyMapper map)
         {
             UnionType type = new();
             
-            Visit(expression, in type);
+            Visit(in expression, in type);
 
             map.DataType.Merge(type);
 

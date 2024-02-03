@@ -73,8 +73,6 @@ namespace DaJet.Stream
         }
         private void SetObjectVariable()
         {
-            _pipeline.Parameters[_objectName] = null;
-
             using (OneDbConnection connection = new(_pipeline.Context))
             {
                 connection.Open();
@@ -85,6 +83,11 @@ namespace DaJet.Stream
                     command.CommandText = _statement.Script;
 
                     ConfigureParameters(in command);
+
+                    //NOTE: ConfigureParameters method can use _objectName parameter
+                    // !!!  before overriding it's value by the code below
+
+                    _pipeline.Parameters[_objectName] = null;
 
                     foreach (IDataReader reader in command.ExecuteNoMagic())
                     {
