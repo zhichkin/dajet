@@ -117,7 +117,15 @@ namespace DaJet.Scripting
         {
             Visit(node.Expression1, in script); // left operand
 
-            if (node.Token == TokenType.CROSS_APPLY)
+            if (node.Token == TokenType.APPEND)
+            {
+                //NOTE: do not generate SQL database code
+                //for the right TableExpression operand
+                //leave it for the script processor
+                
+                return;
+            }
+            else if (node.Token == TokenType.CROSS_APPLY)
             {
                 script.AppendLine().Append("INNER JOIN LATERAL ");
             }

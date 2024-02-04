@@ -327,13 +327,15 @@ namespace DaJet.Scripting
         #region "SELECT AND TABLE BINDING"
         private void Bind(in SelectStatement node)
         {
+            ValidateStatement(in node);
+
             _scope = _scope.OpenScope(node);
 
             if (node.CommonTables is not null)
             {
                 Bind(node.CommonTables);
             }
-
+            
             Bind(node.Expression); //NOTE: SelectExpression | TableUnionOperator
 
             _scope = _scope.CloseScope();
@@ -830,6 +832,8 @@ namespace DaJet.Scripting
         #region "DML STATEMENT BINDING"
         private void Bind(in ConsumeStatement node)
         {
+            ValidateStatement(in node);
+
             _scope = _scope.OpenScope(node);
 
             if (node.From is not null) { Bind(node.From); }
@@ -947,5 +951,48 @@ namespace DaJet.Scripting
             }
         }
         #endregion
+
+        private void ValidateStatement(in SelectStatement node)
+        {
+            if (node.Expression is SelectExpression select)
+            {
+                ValidateAppendOperator(select.From, select.Into);
+            }
+            else if (node.Expression is TableUnionOperator union)
+            {
+                var append = new AppendOperatorExtractor().Extract(union);
+
+                if (append.Count > 0)
+                {
+                    throw new FormatException("[APPEND] operator is not allowed with UNION");
+                }
+            }
+        }
+        private void ValidateStatement(in ConsumeStatement node)
+        {
+            ValidateAppendOperator(node.From, node.Into);
+        }
+        private void ValidateAppendOperator(in FromClause from, in IntoClause into)
+        {
+            if (from is null) { return; }
+
+            var append = new AppendOperatorExtractor().Extract(from);
+
+            if (append.Count > 0)
+            {
+                if (into is null)
+                {
+                    throw new FormatException("[APPEND] INTO keyword expected.");
+                }
+                else if (into.Value is null)
+                {
+                    throw new FormatException("[APPEND] INTO value expected.");
+                }
+                else if (!into.Value.Identifier.StartsWith('@'))
+                {
+                    throw new FormatException("[APPEND] INTO variable reference expected.");
+                }
+            }
+        }
     }
 }

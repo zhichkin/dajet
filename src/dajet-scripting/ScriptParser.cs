@@ -589,11 +589,16 @@ namespace DaJet.Scripting
 
             Skip(TokenType.Comment);
 
-            while (Match(TokenType.LEFT, TokenType.RIGHT, TokenType.INNER, TokenType.FULL, TokenType.CROSS, TokenType.OUTER))
+            while (Match(TokenType.LEFT, TokenType.RIGHT, TokenType.INNER,
+                TokenType.FULL, TokenType.CROSS, TokenType.OUTER, TokenType.APPEND))
             {
                 TokenType _operator = Previous().Type;
 
-                if (Match(TokenType.APPLY))
+                if (_operator == TokenType.APPEND)
+                {
+                    // do nothing
+                }
+                else if (Match(TokenType.APPLY))
                 {
                     if (_operator == TokenType.CROSS) { _operator = TokenType.CROSS_APPLY; }
                     else if (_operator == TokenType.OUTER) { _operator = TokenType.OUTER_APPLY; }
@@ -615,7 +620,9 @@ namespace DaJet.Scripting
                     throw new FormatException($"[{_operator}] Table expression alias expected.");
                 }
 
-                if (_operator == TokenType.CROSS_APPLY || _operator == TokenType.OUTER_APPLY)
+                if (_operator == TokenType.CROSS_APPLY ||
+                    _operator == TokenType.OUTER_APPLY ||
+                    _operator == TokenType.APPEND)
                 {
                     if (subquery is null)
                     {

@@ -135,7 +135,8 @@ namespace DaJet.Scripting
             { "START", TokenType.START },
             { "INCREMENT", TokenType.INCREMENT },
             { "CACHE", TokenType.CACHE },
-            { "USE", TokenType.USE }
+            { "USE", TokenType.USE },
+            { "APPEND", TokenType.APPEND }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {
