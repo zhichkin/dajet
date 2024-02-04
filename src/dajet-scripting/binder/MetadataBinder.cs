@@ -410,7 +410,8 @@ namespace DaJet.Scripting
                 Bind(in union2);
             }
 
-            if (node.Order is OrderClause order) // root union operator
+            //NOTE: UNION root order clause
+            if (node.Order is OrderClause order)
             {
                 for (int i = 0; i < order.Expressions.Count; i++)
                 {

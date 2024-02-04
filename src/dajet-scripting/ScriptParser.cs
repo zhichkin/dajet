@@ -2044,9 +2044,9 @@ namespace DaJet.Scripting
 
             return consume;
         }
-        private void select_columns(in ConsumeStatement statement)
+        private void select_columns(in ConsumeStatement consume)
         {
-            statement.Columns.Add(column());
+            consume.Columns.Add(column());
 
             Skip(TokenType.Comment);
 
@@ -2054,7 +2054,7 @@ namespace DaJet.Scripting
             {
                 Skip(TokenType.Comment);
 
-                statement.Columns.Add(column());
+                consume.Columns.Add(column());
 
                 Skip(TokenType.Comment);
             }

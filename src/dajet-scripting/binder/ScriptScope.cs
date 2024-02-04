@@ -15,16 +15,11 @@ namespace DaJet.Scripting
         public SyntaxNode Owner { get; set; }
         public ScriptScope Parent { get; set; }
         public List<ScriptScope> Children { get; } = new();
-
         public Dictionary<string, object> Tables { get; } = new(); // CTE (common table expression) or temporary tables
         public Dictionary<string, object> Aliases { get; } = new(); // table expression (subquery) or schema tables
         public Dictionary<string, object> Columns { get; } = new(); //NOTE: used for diagnosic purposes
         public Dictionary<string, object> Variables { get; } = new(); // table variables or UDT (user-defined type)
-
-        public override string ToString()
-        {
-            return $"Owner: {Owner}";
-        }
+        public override string ToString() { return $"Owner: {Owner}"; }
 
         public ScriptScope GetRoot()
         {

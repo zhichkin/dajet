@@ -2,7 +2,6 @@
 using DaJet.Data.Client;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
-using System.Reflection.Metadata;
 
 namespace DaJet.Stream
 {
@@ -77,6 +76,30 @@ namespace DaJet.Stream
                 }
 
                 _memberNames.Add(memberName); //TODO: deduplicate !!!
+            }
+
+            var appends = new AppendOperatorExtractor().Extract(_statement.Node);
+
+            if (appends.Count > 0)
+            {
+                foreach (var item in appends)
+                {
+                    if (item.Value.Expression2 is not TableExpression table)
+                    {
+                        continue;
+                    }
+
+                    if (table.Expression is not SelectExpression select) //TODO: TableUnionOperator
+                    {
+                        continue;
+                    }
+
+                    var members = new MemberAccessExtractor().Extract(select);
+
+                    //TODO: extract ColumnReference binded to ColumnExpression of the root SELECT
+
+
+                }
             }
         }
         protected void ConfigureParameters(in OneDbCommand command)
