@@ -5,13 +5,11 @@ namespace DaJet.Scripting
     public sealed class AppendOperatorExtractor : IScriptWalker
     {
         private readonly Dictionary<string, TableJoinOperator> _result = new();
-        public Dictionary<string, TableJoinOperator> Extract(in SyntaxNode node)
+        public List<TableJoinOperator> Extract(in SyntaxNode node)
         {
-            if (node is null) { return _result; }
-
             ScriptWalker.Walk(in node, this);
 
-            return _result;
+            return _result.Values.ToList();
         }
         public void SayHello(in SyntaxNode node)
         {

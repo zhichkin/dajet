@@ -602,7 +602,7 @@ namespace DaJet.Scripting
                 {
                     if (_operator == TokenType.CROSS) { _operator = TokenType.CROSS_APPLY; }
                     else if (_operator == TokenType.OUTER) { _operator = TokenType.OUTER_APPLY; }
-                    else { throw new FormatException("APPLY keyword expected."); }
+                    else { throw new FormatException("[APPLY] CROSS or OUTER keyword expected"); }
                 }
                 else if (!Match(TokenType.JOIN))
                 {
@@ -655,6 +655,16 @@ namespace DaJet.Scripting
                     Skip(TokenType.Comment);
                 }
 
+                if (_operator == TokenType.APPEND)
+                {
+                    MemberAccessDescriptor descriptor = new()
+                    {
+                        Member = subquery.Alias
+                    };
+                    disable_correlation_flag(in subquery);
+                    set_member_access_descriptor(in subquery, in descriptor);
+                }
+
                 left = new TableJoinOperator()
                 {
                     Token = _operator,
@@ -689,6 +699,30 @@ namespace DaJet.Scripting
         {
             disable_correlation_flag(union.Expression1);
             disable_correlation_flag(union.Expression2);
+        }
+        private void set_member_access_descriptor(in SyntaxNode node, in MemberAccessDescriptor descriptor)
+        {
+            if (node is SelectExpression select)
+            {
+                select.Modifier = descriptor;
+            }
+            else if (node is TableExpression table)
+            {
+                set_member_access_descriptor(in table, in descriptor);
+            }
+            else if (node is TableUnionOperator union)
+            {
+                set_member_access_descriptor(in union, in descriptor);
+            }
+        }
+        private void set_member_access_descriptor(in TableExpression table, in MemberAccessDescriptor descriptor)
+        {
+            set_member_access_descriptor(table.Expression, in descriptor);
+        }
+        private void set_member_access_descriptor(in TableUnionOperator union, in MemberAccessDescriptor descriptor)
+        {
+            set_member_access_descriptor(union.Expression1, in descriptor);
+            set_member_access_descriptor(union.Expression2, in descriptor);
         }
         private FromClause from_clause() { return new FromClause() { Expression = join() }; }
         private IntoClause into_clause(in List<ColumnExpression> columns)

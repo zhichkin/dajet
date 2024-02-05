@@ -14,6 +14,7 @@ namespace DaJet.Stream
         protected string _objectName;
         protected List<string> _memberNames = new();
         protected List<string> _parameterNames = new();
+        protected MemberAccessDescriptor _descriptor;
         protected StatementType _mode = StatementType.Processor;
         internal ProcessorBase(in Pipeline pipeline, in SqlStatement statement)
         {
@@ -28,8 +29,16 @@ namespace DaJet.Stream
         }
         public abstract void Process();
         public abstract void Synchronize();
+        internal string ObjectName { get { return _objectName; } }
         private void Configure()
         {
+            if (_statement.Node is SelectStatement statement &&
+                statement.Expression is SelectExpression select &&
+                select.Modifier is MemberAccessDescriptor descriptor)
+            {
+                _descriptor = descriptor;
+            }
+
             List<VariableReference> variables = new VariableReferenceExtractor().Extract(_statement.Node);
 
             foreach (VariableReference variable in variables)
@@ -47,7 +56,14 @@ namespace DaJet.Stream
                         _objectName = variable.Identifier;
                     }
 
-                    if (_mode != StatementType.Processor)
+                    if (_mode == StatementType.Streaming)
+                    {
+                        if (!_pipeline.Parameters.ContainsKey(variable.Identifier))
+                        {
+                            _pipeline.Parameters.Add(variable.Identifier, null);
+                        }
+                    }
+                    else if (_mode == StatementType.Buffering && _descriptor is null)
                     {
                         if (!_pipeline.Parameters.ContainsKey(variable.Identifier))
                         {
@@ -76,30 +92,6 @@ namespace DaJet.Stream
                 }
 
                 _memberNames.Add(memberName); //TODO: deduplicate !!!
-            }
-
-            var appends = new AppendOperatorExtractor().Extract(_statement.Node);
-
-            if (appends.Count > 0)
-            {
-                foreach (var item in appends)
-                {
-                    if (item.Value.Expression2 is not TableExpression table)
-                    {
-                        continue;
-                    }
-
-                    if (table.Expression is not SelectExpression select) //TODO: TableUnionOperator
-                    {
-                        continue;
-                    }
-
-                    var members = new MemberAccessExtractor().Extract(select);
-
-                    //TODO: extract ColumnReference binded to ColumnExpression of the root SELECT
-
-
-                }
             }
         }
         protected void ConfigureParameters(in OneDbCommand command)
@@ -130,7 +122,8 @@ namespace DaJet.Stream
 
             foreach (var parameter in parameters)
             {
-                _pipeline.Parameters[parameter.Key] = parameter.Value;
+                //TODO: remove diagnostic !?
+                //_pipeline.Parameters[parameter.Key] = parameter.Value;
                 command.Parameters.Add(parameter.Key[1..], parameter.Value);
             }
 

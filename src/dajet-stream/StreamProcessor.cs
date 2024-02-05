@@ -76,21 +76,37 @@ namespace DaJet.Stream
                 {
                     continue; //NOTE: declaration of parameters
                 }
-                
+
+                //TODO: use ProcessorFactory for all types of statements
+
+                ProcessorBase processor;
+
                 StatementType type = GetStatementType(in statement);
 
                 if (type == StatementType.Streaming && !stream_starter_is_found)
                 {
                     stream_starter_is_found = true;
-                    pipeline.Processors.Add(new Streamer(in pipeline, in statement));
+                    processor = new Streamer(in pipeline, in statement);
                 }
                 else
                 {
-                    pipeline.Processors.Add(new Processor(in pipeline, in statement));
+                    processor = new Processor(in pipeline, in statement);
                 }
 
-                //TODO: implement Consumer and Updater (stream while table is not empty)
+                pipeline.Processors.Add(processor);
+
+                if (type == StatementType.Streaming)
+                {
+                    string objectName = processor.ObjectName;
+
+                    foreach (var append in new AppendOperatorExtractor().Extract(statement.Node))
+                    {
+                        pipeline.Processors.Add(ProcessorFactory.Create(in pipeline, in append, in objectName));
+                    }
+                }
             }
+
+            //TODO: implement Consumer and Updater (stream while table is not empty)
 
             pipeline.Execute();
         }

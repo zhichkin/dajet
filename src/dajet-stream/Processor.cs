@@ -13,7 +13,7 @@ namespace DaJet.Stream
         {
             if (_mode == StatementType.Processor)
             {
-                ExecuteNonQuery(); //TODO: analyze {SELECT|INSERT|UPDATE|DELETE}
+                ExecuteNonQuery(); //TODO: analyze {SELECT|INSERT|UPDATE|DELETE} ?
             }
             else if (_mode == StatementType.Buffering)
             {
@@ -69,7 +69,17 @@ namespace DaJet.Stream
                 }
             }
 
-            _pipeline.Parameters[_arrayName] = table;
+            if (_descriptor is not null)
+            {
+                if (_pipeline.Parameters[_descriptor.Target] is DataObject target)
+                {
+                    target.SetValue(_descriptor.Member, table); //FIXME: optimize DataObject capacity
+                }
+            }
+            else
+            {
+                _pipeline.Parameters[_arrayName] = table;
+            }
         }
         private void SetObjectVariable()
         {

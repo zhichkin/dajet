@@ -373,6 +373,16 @@ namespace DaJet.Scripting
 
             if (node.Into is not null) { Bind(node.Into); }
 
+            if (node.From is not null)
+            {
+                var appends = new AppendOperatorExtractor().Extract(node.From);
+
+                foreach (var append in appends)
+                {
+                    BindAppend(append); //FIXME: recursive multiple times binding when nested APPEND
+                }
+            }
+
             _scope = _scope.CloseScope();
         }
         private void Bind(in TableExpression node) //NOTE: this is subquery
@@ -387,7 +397,12 @@ namespace DaJet.Scripting
         private void Bind(in TableJoinOperator node)
         {
             Bind(node.Expression1); //NOTE: { TableReference | TableExpression | TableJoinOperator }
+
+            //NOTE: delay binding till INTO clause has been binded
+            if (node.Token == TokenType.APPEND) { return; }
+            
             Bind(node.Expression2);
+
             if (node.On is not null) { Bind(node.On); }
         }
         private void Bind(in TableUnionOperator node)
@@ -476,6 +491,13 @@ namespace DaJet.Scripting
                 {
                     _scope.Aliases.Add(node.Identifier, node.Binding);
                 }
+            }
+        }
+        private void BindAppend(in TableJoinOperator node)
+        {
+            if (node.Token == TokenType.APPEND)
+            {
+                Bind(node.Expression2);
             }
         }
         #endregion
@@ -850,6 +872,16 @@ namespace DaJet.Scripting
 
             if (node.Into is not null) { Bind(node.Into); }
 
+            if (node.From is not null)
+            {
+                var appends = new AppendOperatorExtractor().Extract(node.From);
+
+                foreach (var append in appends)
+                {
+                    BindAppend(append); //FIXME: recursive binding (nested APPEND)
+                }
+            }
+
             _scope = _scope.CloseScope();
         }
         private void Bind(in ImportStatement node)
@@ -912,7 +944,7 @@ namespace DaJet.Scripting
 
             if (node.Set is not null) { Bind(node.Set); }
             if (node.Where is not null) { Bind(node.Where); }
-            if (node.Output is not null) { Bind(node.Output); }
+            if (node.Output is not null) { Bind(node.Output); } //NOTE: INTO clause is included
 
             _scope = _scope.CloseScope();
         }

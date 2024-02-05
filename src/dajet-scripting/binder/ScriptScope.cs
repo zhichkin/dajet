@@ -4,6 +4,7 @@ namespace DaJet.Scripting
 {
     public sealed class ScriptScope
     {
+        ///<summary>Иерархия пространства видимости (физическая)</summary>
         private readonly ScriptScope _ancestor; //TODO: encapsulate logic in OpenScope method or class
         public ScriptScope() { }
         public ScriptScope(SyntaxNode owner, ScriptScope parent)
@@ -13,7 +14,9 @@ namespace DaJet.Scripting
             _ancestor = parent; //NOTE: is used by CloseScope method
         }
         public SyntaxNode Owner { get; set; }
+        ///<summary>Иерархия пространства видимости (логическа)</summary>
         public ScriptScope Parent { get; set; }
+        ///<summary>Дочерние пространства видимости (логические)</summary>
         public List<ScriptScope> Children { get; } = new();
         public Dictionary<string, object> Tables { get; } = new(); // CTE (common table expression) or temporary tables
         public Dictionary<string, object> Aliases { get; } = new(); // table expression (subquery) or schema tables

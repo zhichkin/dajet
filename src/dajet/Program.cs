@@ -22,7 +22,8 @@ namespace DaJet
         {
             args = new string[]
             {
-                "stream", "--file", "./test/ms-update-output.txt"
+                "stream", "--file", "./test/ms-append.txt"
+                //"stream", "--file", "./test/ms-update-output.txt"
                 //"stream", "--file", "./test/ms-stream-select.txt"
                 //"stream", "--url", "dajet://ms-demo/stream/01-insert"
             };
