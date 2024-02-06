@@ -105,7 +105,19 @@ namespace DaJet.Stream
 
                         _statement.Mapper.Map(in reader, in record);
 
-                        _pipeline.Parameters[_objectName] = record;
+                        //_pipeline.Parameters[_objectName] = record;
+
+                        if (_descriptor is not null)
+                        {
+                            if (_pipeline.Parameters[_descriptor.Target] is DataObject target)
+                            {
+                                target.SetValue(_descriptor.Member, record); //FIXME: optimize DataObject capacity
+                            }
+                        }
+                        else
+                        {
+                            _pipeline.Parameters[_objectName] = record;
+                        }
 
                         break; // take the first one record
                     }

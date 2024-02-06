@@ -57,6 +57,10 @@ namespace DaJet.Stream
                         throw error;
                     }
                 }
+                finally // clear streaming buffer
+                {
+                    _pipeline.Parameters[_objectName] = null;
+                }
             }
         }
     }

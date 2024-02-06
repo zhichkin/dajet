@@ -594,9 +594,16 @@ namespace DaJet.Scripting
             {
                 TokenType _operator = Previous().Type;
 
+                Type memberType = typeof(Array);
+
                 if (_operator == TokenType.APPEND)
                 {
-                    // do nothing
+                    if (Match(TokenType.Identifier) &&
+                        ParserHelper.IsDataType(Previous().Lexeme, out Type type) &&
+                        (type == typeof(Array) || type == typeof(object)))
+                    {
+                        memberType = type; //THINK: make "array" & "object" keywords !?
+                    }
                 }
                 else if (Match(TokenType.APPLY))
                 {
@@ -659,7 +666,8 @@ namespace DaJet.Scripting
                 {
                     MemberAccessDescriptor descriptor = new()
                     {
-                        Member = subquery.Alias
+                        Member = subquery.Alias,
+                        MemberType = memberType
                     };
                     disable_correlation_flag(in subquery);
                     set_member_access_descriptor(in subquery, in descriptor);

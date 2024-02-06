@@ -12,12 +12,10 @@ namespace DaJet.Stream
 
             if (append.Token == TokenType.APPEND &&
                 append.Expression2 is TableExpression subquery &&
-                subquery.Expression is SelectExpression select)
+                subquery.Expression is SelectExpression select &&
+                select.Modifier is MemberAccessDescriptor descriptor)
             {
-                if (select.Modifier is MemberAccessDescriptor descriptor)
-                {
-                    descriptor.Target = objectName;
-                }
+                descriptor.Target = objectName;
 
                 select.Into = new IntoClause()
                 {
@@ -27,9 +25,11 @@ namespace DaJet.Stream
                         Identifier = $"{objectName}_{subquery.Alias}",
                         Binding = new TypeIdentifier()
                         {
-                            Token = TokenType.Array,
-                            Binding = typeof(Array),
-                            Identifier = ParserHelper.GetDataTypeLiteral(typeof(Array))
+                            Token = descriptor.MemberType == typeof(Array)
+                            ? TokenType.Array
+                            : TokenType.Object,
+                            Binding = descriptor.MemberType,
+                            Identifier = ParserHelper.GetDataTypeLiteral(descriptor.MemberType)
                         }
                     }
                 };

@@ -7,9 +7,15 @@ namespace DaJet.Scripting
         private readonly Dictionary<string, TableJoinOperator> _result = new();
         public List<TableJoinOperator> Extract(in SyntaxNode node)
         {
+            //NOTE: the node is traversed bottom-up left-to-right (LR parser)
+
             ScriptWalker.Walk(in node, this);
 
-            return _result.Values.ToList();
+            List<TableJoinOperator> list = _result.Values.ToList();
+
+            list.Reverse(); 
+
+            return list;
         }
         public void SayHello(in SyntaxNode node)
         {
