@@ -1,4 +1,5 @@
 ﻿using DaJet.Data;
+using DaJet.Metadata;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
 
@@ -6,14 +7,16 @@ namespace DaJet.Stream
 {
     internal static class ProcessorFactory
     {
-        internal static IProcessor Create(in Pipeline pipeline, in TableJoinOperator append, in string objectName)
+        internal static IProcessor Create(
+            in IMetadataProvider context, in Dictionary<string, object> parameters,
+            in TableJoinOperator append, in string objectName)
         {
             if (append is null) { return null; }
 
             if (append.Token == TokenType.APPEND &&
                 append.Expression2 is TableExpression subquery &&
                 subquery.Expression is SelectExpression select &&
-                select.Modifier is MemberAccessDescriptor descriptor)
+                select.Binding is MemberAccessDescriptor descriptor)
             {
                 descriptor.Target = objectName;
 
@@ -41,20 +44,20 @@ namespace DaJet.Stream
 
                 ISqlTranspiler transpiler;
 
-                if (pipeline.Context.DatabaseProvider == DatabaseProvider.SqlServer)
+                if (context.DatabaseProvider == DatabaseProvider.SqlServer)
                 {
-                    transpiler = new MsSqlTranspiler() { YearOffset = pipeline.Context.YearOffset };
+                    transpiler = new MsSqlTranspiler() { YearOffset = context.YearOffset };
                 }
-                else if (pipeline.Context.DatabaseProvider == DatabaseProvider.PostgreSql)
+                else if (context.DatabaseProvider == DatabaseProvider.PostgreSql)
                 {
-                    transpiler = new PgSqlTranspiler() { YearOffset = pipeline.Context.YearOffset };
+                    transpiler = new PgSqlTranspiler() { YearOffset = context.YearOffset };
                 }
                 else
                 {
-                    throw new InvalidOperationException($"Unsupported database provider: {pipeline.Context.DatabaseProvider}");
+                    throw new InvalidOperationException($"Unsupported database provider: {context.DatabaseProvider}");
                 }
 
-                if (!transpiler.TryTranspile(in script, pipeline.Context, out TranspilerResult result, out string error))
+                if (!transpiler.TryTranspile(in script, in context, out TranspilerResult result, out string error))
                 {
                     throw new InvalidOperationException(error);
                 }
@@ -63,7 +66,7 @@ namespace DaJet.Stream
                 {
                     SqlStatement statement = result.Statements[0];
 
-                    return new Processor(in pipeline, in statement);
+                    return new Processor(in context, in statement, in parameters);
                 }
             }
 

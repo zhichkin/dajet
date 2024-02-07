@@ -221,6 +221,11 @@ namespace DaJet.Scripting
         }
         private static void Visit(in FunctionExpression function, in UnionType union)
         {
+            if (function.Token == TokenType.UDF)
+            {
+                union.IsString = true; return; //TODO: how to infer return data type of an user-defined function  ???
+            }
+
             string name = function.Name.ToUpperInvariant();
 
             if (name == "COUNT")

@@ -1,5 +1,6 @@
 ﻿using DaJet.Data;
 using DaJet.Data.Client;
+using DaJet.Metadata;
 using DaJet.Scripting;
 using System.Data;
 using System.Data.Common;
@@ -8,7 +9,8 @@ namespace DaJet.Stream
 {
     internal sealed class Streamer : ProcessorBase
     {
-        internal Streamer(in Pipeline pipeline, in SqlStatement statement) : base(pipeline, statement) { }
+        internal Streamer(in IMetadataProvider context, in SqlStatement statement, in Dictionary<string, object> parameters)
+            : base(in context, in statement, in parameters) { }
         public override void Synchronize() { /* do nothing */ }
         public override void Process()
         {
@@ -21,7 +23,7 @@ namespace DaJet.Stream
         {
             DataObject buffer = new(_statement.Mapper.Properties.Count);
 
-            using (OneDbConnection connection = new(_pipeline.Context))
+            using (OneDbConnection connection = new(_context))
             {
                 connection.Open();
 
@@ -39,7 +41,7 @@ namespace DaJet.Stream
                     {
                         _statement.Mapper.Map(in reader, in buffer);
 
-                        _pipeline.Parameters[_objectName] = buffer;
+                        _parameters[_objectName] = buffer;
 
                         _next?.Process();
                     }
@@ -59,7 +61,7 @@ namespace DaJet.Stream
                 }
                 finally // clear streaming buffer
                 {
-                    _pipeline.Parameters[_objectName] = null;
+                    _parameters[_objectName] = null;
                 }
             }
         }

@@ -712,7 +712,7 @@ namespace DaJet.Scripting
         {
             if (node is SelectExpression select)
             {
-                select.Modifier = descriptor;
+                select.Binding = descriptor;
             }
             else if (node is TableExpression table)
             {
@@ -1395,7 +1395,11 @@ namespace DaJet.Scripting
 
             if (ParserHelper.IsFunction(identifier, out TokenType token))
             {
-                return function(token, identifier);
+                return function(token, identifier); // database built-in function
+            }
+            else if (Check(TokenType.OpenRoundBracket))
+            {
+                return function(TokenType.UDF, identifier); // user-defined function
             }
 
             return new ColumnReference() { Identifier = identifier };

@@ -22,6 +22,12 @@ namespace DaJet.Json
                 if (reader.TokenType == JsonTokenType.StartObject)
                 {
                     // converter starts parsing from '{'
+                    
+                    if (name is not null) // read nested DataObject
+                    {
+                        value = Read(ref reader, typeof(DataObject), options);
+                        storeValue = true;
+                    }
                 }
                 else if (reader.TokenType == JsonTokenType.PropertyName)
                 {
@@ -180,6 +186,11 @@ namespace DaJet.Json
                 else if (value is ushort uint2) { writer.WriteNumber(name, uint2); }
                 else if (value is uint uint4) { writer.WriteNumber(name, uint4); }
                 else if (value is ulong uint8) { writer.WriteNumber(name, uint8); }
+                else if (value is DataObject entity)
+                {
+                    writer.WritePropertyName(name);
+                    Write(writer, entity, options);
+                }
                 else if (value is List<DataObject> list)
                 {
                     writer.WritePropertyName(name);

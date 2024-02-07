@@ -833,6 +833,11 @@ namespace DaJet.Scripting
 
         protected virtual void Visit(in FunctionExpression node, in StringBuilder script)
         {
+            if (node.Token == TokenType.UDF)
+            {
+                script.Append(node.GetVariableIdentifier()); return;
+            }
+
             string name = node.Name.ToUpperInvariant();
 
             if (name == "UUIDOF")

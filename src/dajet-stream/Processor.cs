@@ -1,5 +1,6 @@
 ﻿using DaJet.Data;
 using DaJet.Data.Client;
+using DaJet.Metadata;
 using DaJet.Scripting;
 using System.Data;
 
@@ -7,7 +8,8 @@ namespace DaJet.Stream
 {
     internal sealed class Processor : ProcessorBase
     {
-        internal Processor(in Pipeline pipeline, in SqlStatement statement) : base(pipeline, statement) { }
+        internal Processor(in IMetadataProvider context, in SqlStatement statement, in Dictionary<string, object> parameters)
+            : base(in context, in statement, in parameters) { }
         public override void Synchronize() { _next?.Synchronize(); }
         public override void Process()
         {
@@ -28,7 +30,7 @@ namespace DaJet.Stream
         }
         private void ExecuteNonQuery()
         {
-            using (OneDbConnection connection = new(_pipeline.Context))
+            using (OneDbConnection connection = new(_context))
             {
                 connection.Open();
 
@@ -47,7 +49,7 @@ namespace DaJet.Stream
         {
             List<DataObject> table = new();
 
-            using (OneDbConnection connection = new(_pipeline.Context))
+            using (OneDbConnection connection = new(_context))
             {
                 connection.Open();
 
@@ -71,19 +73,19 @@ namespace DaJet.Stream
 
             if (_descriptor is not null)
             {
-                if (_pipeline.Parameters[_descriptor.Target] is DataObject target)
+                if (_parameters[_descriptor.Target] is DataObject target)
                 {
                     target.SetValue(_descriptor.Member, table); //FIXME: optimize DataObject capacity
                 }
             }
             else
             {
-                _pipeline.Parameters[_arrayName] = table;
+                _parameters[_arrayName] = table;
             }
         }
         private void SetObjectVariable()
         {
-            using (OneDbConnection connection = new(_pipeline.Context))
+            using (OneDbConnection connection = new(_context))
             {
                 connection.Open();
 
@@ -97,7 +99,7 @@ namespace DaJet.Stream
                     //NOTE: ConfigureParameters method can use _objectName parameter
                     // !!!  before overriding it's value by the code below
 
-                    _pipeline.Parameters[_objectName] = null;
+                    _parameters[_objectName] = null;
 
                     foreach (IDataReader reader in command.ExecuteNoMagic())
                     {
@@ -109,14 +111,14 @@ namespace DaJet.Stream
 
                         if (_descriptor is not null)
                         {
-                            if (_pipeline.Parameters[_descriptor.Target] is DataObject target)
+                            if (_parameters[_descriptor.Target] is DataObject target)
                             {
                                 target.SetValue(_descriptor.Member, record); //FIXME: optimize DataObject capacity
                             }
                         }
                         else
                         {
-                            _pipeline.Parameters[_objectName] = record;
+                            _parameters[_objectName] = record;
                         }
 
                         break; // take the first one record

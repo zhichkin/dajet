@@ -299,6 +299,14 @@ namespace DaJet.Scripting
         }
         protected override void Visit(in FunctionExpression node, in StringBuilder script)
         {
+            if (node.Token == TokenType.UDF)
+            {
+                script.Append("CAST(");
+                script.Append(node.GetVariableIdentifier());
+                script.Append(" AS mvarchar)");
+                return;
+            }
+
             string name = node.Name.ToUpperInvariant();
 
             string pg_name = null;

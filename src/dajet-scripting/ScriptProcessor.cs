@@ -136,7 +136,7 @@ namespace DaJet.Scripting
                 declare.Initializer = scalar; 
             }
         }
-        private static void ConfigureParameters(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)
+        public static void ConfigureParameters(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)
         {
             // add script parameters to the dictionary if they are missing
             foreach (SyntaxNode node in model.Statements)
@@ -293,7 +293,7 @@ namespace DaJet.Scripting
             }
         }
         
-        private static void ConfigureSelectParameters(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)
+        public static void ConfigureSelectParameters(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)
         {
             foreach (SyntaxNode node in model.Statements)
             {
