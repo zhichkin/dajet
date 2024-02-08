@@ -37,6 +37,8 @@ namespace DaJet.Stream
 
                 try
                 {
+                    int consumed = 0;
+
                     foreach (IDataReader reader in command.ExecuteNoMagic())
                     {
                         _statement.Mapper.Map(in reader, in buffer);
@@ -44,9 +46,16 @@ namespace DaJet.Stream
                         _parameters[_objectName] = buffer;
 
                         _next?.Process();
+
+                        consumed++;
                     }
+                    
                     _next?.Synchronize();
                     transaction.Commit();
+
+                    Console.WriteLine($"Thread {Environment.CurrentManagedThreadId} consumed {consumed} rows");
+
+                    //TODO: consume while not empty !?
                 }
                 catch (Exception error)
                 {

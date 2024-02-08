@@ -17,7 +17,7 @@
         SUBSTRING,
         NOW,
 
-        Identifier, Type, Table, Column, Variable, Enumeration, Star, Array, Object, APPEND,
+        Identifier, Type, Table, Column, Variable, Enumeration, Star, Array, Object, APPEND, FOR, EACH, MAXDOP,
 
         IS, NULL, ISNULL, Boolean, Number, DateTime, String, Binary, Uuid, Entity, Union, Version, Integer,
 

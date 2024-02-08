@@ -5,6 +5,7 @@ using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using Microsoft.Data.SqlClient;
 using Npgsql;
+using System.Diagnostics;
 using System.Text;
 using System.Web;
 
@@ -31,22 +32,24 @@ namespace DaJet.Stream
             List<IProcessor> stream = AssemblePipeline(in script);
 
             stream[0].Process();
+        }
+        private static string FormatErrorMessage(in List<string> errors)
+        {
+            if (errors is null || errors.Count == 0)
+            {
+                return "Unknown binding error";
+            }
 
-            //InfoBaseRecord database = new()
-            //{
-            //    ConnectionString = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;"
-            //};
+            StringBuilder error = new();
 
-            //IMetadataProvider context = MetadataService.CreateOneDbMetadataProvider(in database);
+            for (int i = 0; i < errors.Count; i++)
+            {
+                if (i > 0) { error.AppendLine(); }
 
-            //Dictionary<string, object> parameters = new();
+                error.Append(errors[i]);
+            }
 
-            //if (!ScriptProcessor.TryProcess(in context, in script, in parameters, out TranspilerResult result, out string error))
-            //{
-            //    throw new Exception(error);
-            //}
-
-            //Stream(in context, in result);
+            return error.ToString();
         }
         private static List<IProcessor> AssemblePipeline(in string script)
         {
@@ -56,7 +59,7 @@ namespace DaJet.Stream
             {
                 if (!parser.TryParse(in script, out model, out string error))
                 {
-                    //return false;
+                    Console.WriteLine(error);
                 }
             }
 
@@ -75,22 +78,48 @@ namespace DaJet.Stream
                 {
                     continue;
                 }
+
                 if (statement is DeclareStatement declare)
                 {
                     _variables.Add(declare);
+                    _script.Statements.Add(statement);
                 }
                 else if (statement is UseStatement use)
                 {
                     _script = new ScriptModel();
                     _scripts.Add(_script);
+                    _script.Statements.Add(statement);
                 }
-                
-                _script.Statements.Add(statement);
+                else if (statement is ForEachStatement for_each)
+                {
+                    _script.Statements.Add(statement);
+
+                    UseStatement _use = _script.Statements
+                        .Where(s => s is UseStatement)
+                        .FirstOrDefault() as UseStatement;
+
+                    _script = new ScriptModel();
+                    _scripts.Add(_script);
+
+                    if (_use is not null)
+                    {
+                        _script.Statements.Add(_use);
+                    }
+                }
+                else
+                {
+                    _script.Statements.Add(statement);
+                }
             }
+
+            PipelineBuilder pipeline = new();
+            Parallelizer parallelizer = null;
 
             for (int i = 0; i < _scripts.Count; i++)
             {
                 ScriptModel _model = _scripts[i];
+
+                int insert = 1;
 
                 foreach (DeclareStatement variable in _variables)
                 {
@@ -98,7 +127,7 @@ namespace DaJet.Stream
                         .Where(statement => statement == variable)
                         .FirstOrDefault() is null)
                     {
-                        _model.Statements.Insert(1, variable);
+                        _model.Statements.Insert(insert++, variable);
                     }
                 }
 
@@ -110,12 +139,12 @@ namespace DaJet.Stream
 
                 if (!new MetadataBinder().TryBind(_model, in _context, out _, out List<string> errors))
                 {
-                    //error = FormatErrorMessage(in errors); return false;
+                    Console.WriteLine(FormatErrorMessage(in errors));
                 }
 
                 if (!new ScriptTransformer().TryTransform(_model, out string error))
                 {
-                    //return false;
+                    Console.WriteLine(error);
                 }
 
                 ISqlTranspiler transpiler = null;
@@ -135,7 +164,7 @@ namespace DaJet.Stream
 
                 if (!transpiler.TryTranspile(in _model, in _context, out TranspilerResult _result, out error))
                 {
-                    //return false;
+                    Console.WriteLine(error);
                 }
 
                 ScriptProcessor.ConfigureParameters(in _model, in _context, _result.Parameters);
@@ -145,8 +174,19 @@ namespace DaJet.Stream
                     ScriptProcessor.ConfigureSelectParameters(in _model, in _context, _result.Parameters);
                 }
 
-                _processors.AddRange(CreatePipeline(in _context, in _result, in _parameters));
+                if (parallelizer is null)
+                {
+                    _processors.AddRange(CreatePipeline(in _context, in _result, in _parameters));
+
+                    parallelizer = _processors.Where(p => p is Parallelizer).FirstOrDefault() as Parallelizer;
+                }
+                else
+                {
+                    pipeline.Add(in _context, in _result);
+                }
             }
+
+            parallelizer?.SetPipelineBuilder(in pipeline);
 
             for (int i = 0; i < _processors.Count - 1; i++)
             {
@@ -212,9 +252,10 @@ namespace DaJet.Stream
 
             return MetadataService.CreateOneDbMetadataProvider(in database);
         }
-        private static List<IProcessor> CreatePipeline(in IMetadataProvider context,
+        internal static List<IProcessor> CreatePipeline(in IMetadataProvider context,
             in TranspilerResult script, in Dictionary<string,object> parameters)
         {
+            ProcessorBase processor;
             List<IProcessor> processors = new();
             bool stream_starter_is_found = false;
 
@@ -227,14 +268,19 @@ namespace DaJet.Stream
             {
                 SqlStatement statement = script.Statements[i];
 
+                if (statement.Node is ForEachStatement)
+                {
+                    processor = new Parallelizer(in context, in statement, in parameters);
+                    processors.Add(processor);
+                    continue;
+                }
+
                 if (string.IsNullOrEmpty(statement.Script))
                 {
-                    continue; //NOTE: USE and DECLARE
+                    continue; //NOTE: USE and DECLARE and FOR EACH
                 }
 
                 //TODO: use ProcessorFactory for all types of statements
-
-                ProcessorBase processor;
 
                 StatementType type = GetStatementType(in statement);
 

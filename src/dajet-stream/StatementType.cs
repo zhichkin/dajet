@@ -4,6 +4,7 @@
     {
         Processor,
         Buffering,
-        Streaming
+        Streaming,
+        Parallelizer
     }
 }

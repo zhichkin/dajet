@@ -186,11 +186,58 @@ namespace DaJet.Scripting
                 Uri = new(Previous().Lexeme)
             };
         }
+        private SyntaxNode for_each()
+        {
+            ForEachStatement statement = new();
+
+            if (!Match(TokenType.EACH))
+            {
+                throw new FormatException("[FOR] EACH keyword expected");
+            }
+
+            if (!Match(TokenType.Variable) || variable() is not VariableReference _variable)
+            {
+                throw new FormatException("[FOR] variable identifier expected");
+            }
+
+            statement.Variable = _variable;
+
+            if (!Match(TokenType.IN))
+            {
+                throw new FormatException("[FOR] IN keyword expected");
+            }
+
+            if (!Match(TokenType.Variable) || variable() is not VariableReference _iterator)
+            {
+                throw new FormatException("[FOR] iterator identifier expected");
+            }
+
+            statement.Iterator = _iterator;
+
+            Skip(TokenType.Comment);
+
+            if (Match(TokenType.MAXDOP)) // optional
+            {
+                int minus = Match(TokenType.Minus) ? -1 : 1;
+
+                if (!Match(TokenType.Number) || scalar() is not ScalarExpression _scalar)
+                {
+                    throw new FormatException("[FOR] MAXDOP parameter expected");
+                }
+
+                statement.DegreeOfParallelism = minus * int.Parse(_scalar.Literal);
+
+                Skip(TokenType.Comment);
+            }
+
+            return statement;
+        }
         private SyntaxNode statement()
         {
             if (Match(TokenType.Comment)) { return comment(); }
             else if (Match(TokenType.DECLARE)) { return declare(); }
             else if (Match(TokenType.USE)) { return use(); }
+            else if (Match(TokenType.FOR)) { return for_each(); }
             else if (Match(TokenType.CREATE)) { return create_statement(); }
             else if (Check(TokenType.SELECT)) { return select_statement(); }
             else if (Check(TokenType.INSERT)) { return insert_statement(); }
@@ -1366,6 +1413,10 @@ namespace DaJet.Scripting
                 {
                     scalar.Token = TokenType.DateTime;
                 }
+            }
+            else if (scalar.Token == TokenType.Number && !scalar.Literal.Contains('.'))
+            {
+                scalar.Token = TokenType.Integer;
             }
 
             return scalar;

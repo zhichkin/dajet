@@ -107,8 +107,6 @@ namespace DaJet.Stream
 
                         _statement.Mapper.Map(in reader, in record);
 
-                        //_pipeline.Parameters[_objectName] = record;
-
                         if (_descriptor is not null)
                         {
                             if (_parameters[_descriptor.Target] is DataObject target)

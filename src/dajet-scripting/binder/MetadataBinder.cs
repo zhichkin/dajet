@@ -90,6 +90,7 @@ namespace DaJet.Scripting
             else if (node is TableUnionOperator union) { Bind(in union); }
             else if (node is ConsumeStatement consume_statement) { Bind(in consume_statement); }
             else if (node is ImportStatement import_statement) { Bind(in import_statement); }
+            else if (node is ForEachStatement for_each) { Bind(in for_each); }
         }
         private void RegisterBindingError(TokenType token, string identifier)
         {
@@ -146,7 +147,19 @@ namespace DaJet.Scripting
         }
         private void Bind(in DeclareStatement node)
         {
-            if (node.Type is null) { return; }
+            if (node.Type.Token == TokenType.Array || node.Type.Token == TokenType.Object)
+            {
+                if (node.Type.Binding is List<ColumnExpression> schema)
+                {
+                    if (!_scope.Variables.ContainsKey(node.Name))
+                    {
+                        _scope.Variables.Add(node.Name, node.Type);
+                        //FIXME: DaJet.Stream - bind data schema only once !
+                        return;
+                    }
+                    
+                }
+            }
 
             Bind(node.Type);
 
@@ -194,12 +207,29 @@ namespace DaJet.Scripting
 
             if (node.Type.Token == TokenType.Array || node.Type.Token == TokenType.Object)
             {
-                _scope.Variables.Add(node.Name, node.Type);
+                _scope.Variables.Add(node.Name, node.Type); //NOTE: Binding is used to define data schema
             }
             else
             {
                 _scope.Variables.Add(node.Name, node.Type.Binding);
             }
+        }
+        private void Bind(in ForEachStatement node)
+        {
+            Bind(node.Iterator); // bind to array variable
+            Bind(node.Variable); // bind to object variable
+
+            if (node.Iterator.Binding is not TypeIdentifier itype || itype.Token != TokenType.Array)
+            {
+                RegisterBindingError(node.Token, node.Iterator.Identifier); return;
+            }
+
+            if (node.Variable.Binding is not TypeIdentifier vtype || vtype.Token != TokenType.Object)
+            {
+                RegisterBindingError(node.Token, node.Variable.Identifier); return;
+            }
+
+            vtype.Binding = itype.Binding; // columns schema
         }
         private void Bind(in VariableReference node)
         {

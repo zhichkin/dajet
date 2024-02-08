@@ -14,9 +14,9 @@ namespace DaJet.Stream
     internal abstract class ProcessorBase : IProcessor
     {
         protected IProcessor _next;
-        protected readonly IMetadataProvider _context;
         protected readonly SqlStatement _statement;
-        protected readonly Dictionary<string, object> _parameters;
+        protected readonly IMetadataProvider _context;
+        protected Dictionary<string, object> _parameters;
         protected string _arrayName;
         protected string _objectName;
         protected List<string> _memberNames = new();
@@ -51,7 +51,11 @@ namespace DaJet.Stream
         {
             into = null;
 
-            if (statement.Node is ConsumeStatement consume)
+            if (statement.Node is ForEachStatement)
+            {
+                return StatementType.Parallelizer;
+            }
+            else if (statement.Node is ConsumeStatement consume)
             {
                 into = consume.Into.Value;
 
