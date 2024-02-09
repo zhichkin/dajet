@@ -20,13 +20,13 @@ namespace DaJet
 
         public static int Main(string[] args)
         {
-            args = new string[]
-            {
-                "stream", "--file", "./test/ms-pg-for-each.txt"
-                //"stream", "--file", "./test/ms-update-output.txt"
-                //"stream", "--file", "./test/ms-stream-select.txt"
-                //"stream", "--url", "dajet://ms-demo/stream/01-insert"
-            };
+            //args = new string[]
+            //{
+            //    "stream", "--file", "./test/01-rg-rg-select.txt"
+            //    //"stream", "--file", "./test/ms-update-output.txt"
+            //    //"stream", "--file", "./test/ms-stream-select.txt"
+            //    //"stream", "--url", "dajet://ms-demo/stream/01-insert"
+            //};
 
             var root = new RootCommand("dajet");
             var command = new Command("stream", "Execute DaJet Stream");

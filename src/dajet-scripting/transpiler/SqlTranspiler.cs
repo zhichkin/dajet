@@ -1145,7 +1145,7 @@ namespace DaJet.Scripting
 
             InsertStatementTransformer transformer = new();
             
-            transformer.Transform(node);
+            //transformer.Transform(node);
 
             if (node.CommonTables is not null)
             {
@@ -1189,6 +1189,21 @@ namespace DaJet.Scripting
             }
             else // SELECT expression - convert to derived table to ensure proper column order
             {
+                if (vectorColumn is not null && vectorFunction is not null)
+                {
+                    if (node.Source is SelectExpression source)
+                    {
+                        ColumnExpression vector = source.Columns
+                            .Where(c => c.Alias == vectorColumn && c.Expression == vectorFunction)
+                            .FirstOrDefault();
+
+                        if (vector is not null)
+                        {
+                            source.Columns.Remove(vector);
+                        }
+                    }
+                }
+                
                 script.AppendLine("SELECT ");
                 script.AppendLine(columns[1]);
                 script.Append("FROM (");

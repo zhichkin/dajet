@@ -2,6 +2,7 @@
 using DaJet.Data.Client;
 using DaJet.Metadata;
 using DaJet.Scripting;
+using DaJet.Scripting.Model;
 using System.Data;
 using System.Data.Common;
 
@@ -16,8 +17,67 @@ namespace DaJet.Stream
         {
             if (_mode == StatementType.Streaming)
             {
-                StreamIntoObjectVariable();
+                if (_statement.Node is ConsumeStatement)
+                {
+                    ConsumeIntoObjectVariable();
+                }
+                else // SELECT или UPDATE
+                {
+                    StreamIntoObjectVariable();
+                }
             }
+        }
+        private void ConsumeIntoObjectVariable()
+        {
+            DataObject buffer = new(_statement.Mapper.Properties.Count);
+
+            int consumed;
+
+            do
+            {
+                consumed = 0;
+
+                using (OneDbConnection connection = new(_context))
+                {
+                    connection.Open();
+
+                    OneDbCommand command = connection.CreateCommand();
+                    DbTransaction transaction = connection.BeginTransaction();
+                    command.Transaction = transaction;
+                    command.CommandText = _statement.Script;
+                    ConfigureParameters(in command);
+
+                    try
+                    {
+                        foreach (IDataReader reader in command.ExecuteNoMagic())
+                        {
+                            _statement.Mapper.Map(in reader, in buffer);
+
+                            _parameters[_objectName] = buffer;
+
+                            _next?.Process();
+
+                            consumed++;
+                        }
+                        
+                        if (consumed > 0) { _next?.Synchronize(); }
+
+                        transaction.Commit();
+                    }
+                    catch (Exception error)
+                    {
+                        try { transaction.Rollback(); throw; }
+                        catch { throw error; }
+                    }
+                    finally // clear streaming buffer
+                    {
+                        _parameters[_objectName] = null;
+                    }
+                }
+
+                Console.WriteLine($"Thread {Environment.CurrentManagedThreadId} consumed {consumed} rows");
+            }
+            while (consumed > 0); // read while queue is not empty
         }
         private void StreamIntoObjectVariable()
         {
