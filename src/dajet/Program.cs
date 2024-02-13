@@ -22,9 +22,7 @@ namespace DaJet
         {
             //args = new string[]
             //{
-            //    "stream", "--file", "./test/01-rg-rg-select.txt"
-            //    //"stream", "--file", "./test/ms-update-output.txt"
-            //    //"stream", "--file", "./test/ms-stream-select.txt"
+            //    "stream", "--file", "./test/10-ms-pg-exchange-consume-maxdop.sql"
             //    //"stream", "--url", "dajet://ms-demo/stream/01-insert"
             //};
 

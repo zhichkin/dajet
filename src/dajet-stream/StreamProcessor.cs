@@ -29,9 +29,27 @@ namespace DaJet.Stream
         }
         public static void Process(in string script)
         {
+            Stopwatch watch = new();
+
+            watch.Start();
+
             List<IProcessor> stream = AssemblePipeline(in script);
 
+            watch.Stop();
+
+            long elapsed = watch.ElapsedMilliseconds;
+
+            Console.WriteLine($"Pipeline assembled in {elapsed} ms");
+
+            watch.Restart();
+
             stream[0].Process();
+
+            watch.Stop();
+
+            elapsed = watch.ElapsedMilliseconds;
+
+            Console.WriteLine($"Pipeline executed in {elapsed} ms");
         }
         private static string FormatErrorMessage(in List<string> errors)
         {

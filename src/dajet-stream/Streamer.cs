@@ -5,6 +5,7 @@ using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 
 namespace DaJet.Stream
 {
@@ -12,93 +13,75 @@ namespace DaJet.Stream
     {
         internal Streamer(in IMetadataProvider context, in SqlStatement statement, in Dictionary<string, object> parameters)
             : base(in context, in statement, in parameters) { }
-        public override void Synchronize() { /* do nothing */ }
+        public override void Synchronize() { _next?.Synchronize(); }
         public override void Process()
         {
-            if (_mode == StatementType.Streaming)
+            Stopwatch watch = new();
+
+            watch.Start();
+
+            int tid = Environment.CurrentManagedThreadId;
+
+            int processed = 0;
+
+            try
             {
-                if (_statement.Node is ConsumeStatement)
+                if (_connection.State != ConnectionState.Open)
                 {
-                    ConsumeIntoObjectVariable();
+                    _connection = new OneDbConnection(_context);
+
+                    _connection.Open();
                 }
-                else // SELECT или UPDATE
+
+                if (_mode == StatementType.Streaming)
                 {
-                    StreamIntoObjectVariable();
+                    if (_statement.Node is ConsumeStatement)
+                    {
+                        processed = ConsumeIntoObjectVariable();
+                    }
+                    else // SELECT или UPDATE
+                    {
+                        processed = StreamIntoObjectVariable();
+                    }
                 }
+
             }
+            catch (Exception error)
+            {
+                _connection.Dispose();
+
+                Console.WriteLine(ExceptionHelper.GetErrorMessage(error));
+            }
+
+            watch.Stop();
+
+            long elapsed = watch.ElapsedMilliseconds;
+
+            Console.WriteLine($"Thread {tid} processed {processed} rows in {elapsed} ms");
         }
-        private void ConsumeIntoObjectVariable()
+        private int ConsumeIntoObjectVariable()
         {
             DataObject buffer = new(_statement.Mapper.Properties.Count);
 
             int consumed;
+            int processed = 0;
 
             do
             {
+                Stopwatch watch = new();
+
+                watch.Start();
+
                 consumed = 0;
 
-                using (OneDbConnection connection = new(_context))
-                {
-                    connection.Open();
-
-                    OneDbCommand command = connection.CreateCommand();
-                    DbTransaction transaction = connection.BeginTransaction();
-                    command.Transaction = transaction;
-                    command.CommandText = _statement.Script;
-                    ConfigureParameters(in command);
-
-                    try
-                    {
-                        foreach (IDataReader reader in command.ExecuteNoMagic())
-                        {
-                            _statement.Mapper.Map(in reader, in buffer);
-
-                            _parameters[_objectName] = buffer;
-
-                            _next?.Process();
-
-                            consumed++;
-                        }
-                        
-                        if (consumed > 0) { _next?.Synchronize(); }
-
-                        transaction.Commit();
-                    }
-                    catch (Exception error)
-                    {
-                        try { transaction.Rollback(); throw; }
-                        catch { throw error; }
-                    }
-                    finally // clear streaming buffer
-                    {
-                        _parameters[_objectName] = null;
-                    }
-                }
-
-                Console.WriteLine($"Thread {Environment.CurrentManagedThreadId} consumed {consumed} rows");
-            }
-            while (consumed > 0); // read while queue is not empty
-        }
-        private void StreamIntoObjectVariable()
-        {
-            DataObject buffer = new(_statement.Mapper.Properties.Count);
-
-            using (OneDbConnection connection = new(_context))
-            {
-                connection.Open();
-
-                OneDbCommand command = connection.CreateCommand();
-                DbTransaction transaction = connection.BeginTransaction();
-
+                OneDbCommand command = _connection.CreateCommand();
+                DbTransaction transaction = _connection.BeginTransaction();
                 command.Transaction = transaction;
                 command.CommandText = _statement.Script;
-
                 ConfigureParameters(in command);
 
                 try
                 {
-                    int consumed = 0;
-
                     foreach (IDataReader reader in command.ExecuteNoMagic())
                     {
                         _statement.Mapper.Map(in reader, in buffer);
@@ -108,31 +91,81 @@ namespace DaJet.Stream
                         _next?.Process();
 
                         consumed++;
+                        processed++;
                     }
-                    
+
                     _next?.Synchronize();
                     transaction.Commit();
-
-                    Console.WriteLine($"Thread {Environment.CurrentManagedThreadId} consumed {consumed} rows");
-
-                    //TODO: consume while not empty !?
                 }
                 catch (Exception error)
                 {
-                    try
-                    {
-                        transaction.Rollback(); throw;
-                    }
-                    catch
-                    {
-                        throw error;
-                    }
+                    try { transaction.Rollback(); throw; }
+                    catch { throw error; }
                 }
                 finally // clear streaming buffer
                 {
                     _parameters[_objectName] = null;
                 }
+
+                watch.Stop();
+
+                long elapsed = watch.ElapsedMilliseconds;
+
+                Console.WriteLine($"Thread {Environment.CurrentManagedThreadId} consumed {consumed} rows in {elapsed} ms");
             }
+            while (consumed > 0); // read while queue is not empty
+
+            return processed;
+        }
+        private int StreamIntoObjectVariable()
+        {
+            DataObject buffer = new(_statement.Mapper.Properties.Count);
+
+            int processed = 0;
+
+            OneDbCommand command = _connection.CreateCommand();
+            DbTransaction transaction = _connection.BeginTransaction();
+
+            command.Transaction = transaction;
+            command.CommandText = _statement.Script;
+
+            ConfigureParameters(in command);
+
+            try
+            {
+                foreach (IDataReader reader in command.ExecuteNoMagic())
+                {
+                    _statement.Mapper.Map(in reader, in buffer);
+
+                    _parameters[_objectName] = buffer;
+
+                    _next?.Process();
+
+                    processed++;
+                }
+
+                _next?.Synchronize();
+                transaction.Commit();
+
+                Console.WriteLine($"Thread {Environment.CurrentManagedThreadId} processed {processed} rows");
+            }
+            catch (Exception error)
+            {
+                try
+                {
+                    transaction.Rollback(); throw;
+                }
+                catch
+                {
+                    throw error;
+                }
+            }
+            finally // clear streaming buffer
+            {
+                _parameters[_objectName] = null;
+            }
+
+            return processed;
         }
     }
 }

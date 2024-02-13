@@ -14,6 +14,7 @@ namespace DaJet.Stream
     internal abstract class ProcessorBase : IProcessor
     {
         protected IProcessor _next;
+        protected OneDbConnection _connection;
         protected readonly SqlStatement _statement;
         protected readonly IMetadataProvider _context;
         protected Dictionary<string, object> _parameters;
@@ -37,6 +38,8 @@ namespace DaJet.Stream
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _parameters = parameters ?? throw new ArgumentNullException(nameof(parameters));
+
+            _connection = new OneDbConnection(_context);
 
             Configure();
         }

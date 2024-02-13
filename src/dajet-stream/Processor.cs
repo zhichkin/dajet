@@ -10,64 +10,82 @@ namespace DaJet.Stream
     {
         internal Processor(in IMetadataProvider context, in SqlStatement statement, in Dictionary<string, object> parameters)
             : base(in context, in statement, in parameters) { }
-        public override void Synchronize() { _next?.Synchronize(); }
+        public override void Synchronize()
+        {
+            try
+            {
+                _connection.Close();
+            }
+            finally
+            {
+                _connection.Dispose();
+            }
+
+            _next?.Synchronize();
+        }
         public override void Process()
         {
-            if (_mode == StatementType.Processor)
+            try
             {
-                ExecuteNonQuery(); //TODO: analyze {SELECT|INSERT|UPDATE|DELETE} ?
+                if (_connection.State != ConnectionState.Open)
+                {
+                    _connection = new OneDbConnection(_context);
+
+                    _connection.Open();
+                }
+
+                if (_mode == StatementType.Processor)
+                {
+                    ExecuteNonQuery(); //TODO: analyze {SELECT|INSERT|UPDATE|DELETE} ?
+                }
+                else if (_mode == StatementType.Buffering)
+                {
+                    SetArrayVariable();
+                }
+                else if (_mode == StatementType.Streaming)
+                {
+                    SetObjectVariable();
+                }
+
+                _next?.Process();
             }
-            else if (_mode == StatementType.Buffering)
+            catch (Exception error)
             {
-                SetArrayVariable();
+                _connection.Dispose();
+
+                Console.WriteLine(ExceptionHelper.GetErrorMessage(error));
             }
-            else if (_mode == StatementType.Streaming)
-            {
-                SetObjectVariable();
-            }
-            
-            _next?.Process();
         }
         private void ExecuteNonQuery()
         {
-            using (OneDbConnection connection = new(_context))
+            using (OneDbCommand command = _connection.CreateCommand())
             {
-                connection.Open();
+                command.CommandType = CommandType.Text;
+                command.CommandText = _statement.Script;
 
-                using (OneDbCommand command = connection.CreateCommand())
-                {
-                    command.CommandType = CommandType.Text;
-                    command.CommandText = _statement.Script;
+                ConfigureParameters(in command);
 
-                    ConfigureParameters(in command);
-
-                    int result = command.ExecuteNonMagic();
-                }
+                int result = command.ExecuteNonMagic();
             }
         }
         private void SetArrayVariable()
         {
             List<DataObject> table = new();
 
-            using (OneDbConnection connection = new(_context))
+            using (OneDbCommand command = _connection.CreateCommand())
             {
-                connection.Open();
+                command.CommandType = CommandType.Text;
+                command.CommandText = _statement.Script;
 
-                using (OneDbCommand command = connection.CreateCommand())
+                ConfigureParameters(in command);
+
+                foreach (IDataReader reader in command.ExecuteNoMagic())
                 {
-                    command.CommandType = CommandType.Text;
-                    command.CommandText = _statement.Script;
+                    DataObject record = new(_statement.Mapper.Properties.Count);
 
-                    ConfigureParameters(in command);
+                    _statement.Mapper.Map(in reader, in record);
 
-                    foreach (IDataReader reader in command.ExecuteNoMagic())
-                    {
-                        DataObject record = new(_statement.Mapper.Properties.Count);
-
-                        _statement.Mapper.Map(in reader, in record);
-
-                        table.Add(record);
-                    }
+                    table.Add(record);
                 }
             }
 
@@ -85,42 +103,37 @@ namespace DaJet.Stream
         }
         private void SetObjectVariable()
         {
-            using (OneDbConnection connection = new(_context))
+            using (OneDbCommand command = _connection.CreateCommand())
             {
-                connection.Open();
+                command.CommandType = CommandType.Text;
+                command.CommandText = _statement.Script;
 
-                using (OneDbCommand command = connection.CreateCommand())
+                ConfigureParameters(in command);
+
+                //NOTE: ConfigureParameters method can use _objectName parameter
+                // !!!  before overriding it's value by the code below
+
+                _parameters[_objectName] = null;
+
+                foreach (IDataReader reader in command.ExecuteNoMagic())
                 {
-                    command.CommandType = CommandType.Text;
-                    command.CommandText = _statement.Script;
+                    DataObject record = new(_statement.Mapper.Properties.Count);
 
-                    ConfigureParameters(in command);
+                    _statement.Mapper.Map(in reader, in record);
 
-                    //NOTE: ConfigureParameters method can use _objectName parameter
-                    // !!!  before overriding it's value by the code below
-
-                    _parameters[_objectName] = null;
-
-                    foreach (IDataReader reader in command.ExecuteNoMagic())
+                    if (_descriptor is not null)
                     {
-                        DataObject record = new(_statement.Mapper.Properties.Count);
-
-                        _statement.Mapper.Map(in reader, in record);
-
-                        if (_descriptor is not null)
+                        if (_parameters[_descriptor.Target] is DataObject target)
                         {
-                            if (_parameters[_descriptor.Target] is DataObject target)
-                            {
-                                target.SetValue(_descriptor.Member, record); //FIXME: optimize DataObject capacity
-                            }
+                            target.SetValue(_descriptor.Member, record); //FIXME: optimize DataObject capacity
                         }
-                        else
-                        {
-                            _parameters[_objectName] = record;
-                        }
-
-                        break; // take the first one record
                     }
+                    else
+                    {
+                        _parameters[_objectName] = record;
+                    }
+
+                    break; // take the first one record
                 }
             }
         }
