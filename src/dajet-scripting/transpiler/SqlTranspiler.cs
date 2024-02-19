@@ -256,6 +256,11 @@ namespace DaJet.Scripting
         }
         private void ConfigureDataMapper(in ConsumeStatement statement, in EntityMapper mapper)
         {
+            if (!string.IsNullOrEmpty(statement.Target))
+            {
+                return; //NOTE: stream processor statement
+            }
+
             if (statement.Into is not null && statement.Into.Table is not null)
             {
                 return; //NOTE: CONSUME ... INTO ... statement returns data into temporary table
@@ -962,6 +967,11 @@ namespace DaJet.Scripting
         #region "CONSUME STATEMENT"
         protected virtual void Visit(in ConsumeStatement node, in StringBuilder script)
         {
+            if (!string.IsNullOrEmpty(node.Target))
+            {
+                return; //NOTE: stream processor statement
+            }
+
             script.Append("SELECT");
 
             if (node.Top is not null) { Visit(node.Top, in script); }

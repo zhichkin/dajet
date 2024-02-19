@@ -49,6 +49,7 @@ namespace DaJet.Stream
         }
         public abstract void Process();
         public abstract void Synchronize();
+        public void Dispose() { _next?.Dispose(); }
         internal string ObjectName { get { return _objectName; } }
         private StatementType GetStatementType(in SqlStatement statement, out VariableReference into)
         {
@@ -144,7 +145,7 @@ namespace DaJet.Stream
                 statement.Expression is SelectExpression select &&
                 select.Binding is MemberAccessDescriptor descriptor)
             {
-                _descriptor = descriptor; // APPEND operator
+                _descriptor = descriptor; // APPEND operator extracted into SELECT statement
             }
 
             _mode = GetStatementType(in _statement, out VariableReference into);
@@ -232,7 +233,7 @@ namespace DaJet.Stream
                 MemberAccessDescriptor descriptor = new()
                 {
                     Target = identifier, // output - query parameter
-                    Member = variable.Identifier, // input - object variable
+                    Member = variable.Identifier // input - object variable
                 };
 
 

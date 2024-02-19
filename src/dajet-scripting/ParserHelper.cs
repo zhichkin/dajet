@@ -46,7 +46,22 @@ namespace DaJet.Scripting
             { typeof(Array), TokenType.Array },
             { typeof(object), TokenType.Object }
         };
-        
+        private static Dictionary<TokenType, Type> _token_datatype = new()
+        {
+            { TokenType.Boolean, typeof(bool) },
+            { TokenType.Number, typeof(decimal) },
+            { TokenType.Integer, typeof(int) },
+            { TokenType.Version, typeof(ulong) },
+            { TokenType.DateTime, typeof(DateTime) },
+            { TokenType.String, typeof(string) },
+            { TokenType.Binary, typeof(byte[]) },
+            { TokenType.Uuid, typeof(Guid) },
+            { TokenType.Entity, typeof(Entity) },
+            { TokenType.Union, typeof(Union) },
+            { TokenType.Array, typeof(Array) },
+            { TokenType.Object, typeof(object) }
+        };
+
         private static Dictionary<string, TokenType> _keywords_en = new()
         {
             { "WITH", TokenType.WITH },
@@ -139,7 +154,8 @@ namespace DaJet.Scripting
             { "APPEND", TokenType.APPEND },
             { "FOR", TokenType.FOR },
             { "EACH", TokenType.EACH },
-            { "MAXDOP", TokenType.MAXDOP }
+            { "MAXDOP", TokenType.MAXDOP },
+            { "PRODUCE", TokenType.PRODUCE }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {
@@ -236,6 +252,14 @@ namespace DaJet.Scripting
                 return token;
             }
             throw new NotSupportedException($"Unsupported data type token {type}");
+        }
+        public static Type GetTokenDataType(TokenType token)
+        {
+            if (_token_datatype.TryGetValue(token, out Type type))
+            {
+                return type;
+            }
+            throw new NotSupportedException($"Unsupported data type token {token}");
         }
         public static string GetDataTypeLiteral(Type type)
         {

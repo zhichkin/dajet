@@ -15,6 +15,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\dajet-data-client\dajet-data-client.csproj" />
     <ProjectReference Include="..\dajet-file-logger\dajet-file-logger.csproj" />
   </ItemGroup>

@@ -89,6 +89,7 @@ namespace DaJet.Scripting
             else if (node is TemporaryTableExpression temporary_table) { Bind(in temporary_table); }
             else if (node is TableUnionOperator union) { Bind(in union); }
             else if (node is ConsumeStatement consume_statement) { Bind(in consume_statement); }
+            else if (node is ProduceStatement produce_statement) { Bind(in produce_statement); }
             else if (node is ImportStatement import_statement) { Bind(in import_statement); }
             else if (node is ForEachStatement for_each) { Bind(in for_each); }
         }
@@ -885,6 +886,33 @@ namespace DaJet.Scripting
         #region "DML STATEMENT BINDING"
         private void Bind(in ConsumeStatement node)
         {
+            if (!string.IsNullOrEmpty(node.Target))
+            {
+                BindStreamConsume(in node);
+            }
+            else
+            {
+                BindDatabaseConsume(in node);
+            }
+        }
+        private void BindStreamConsume(in ConsumeStatement node)
+        {
+            _scope = _scope.OpenScope(node);
+
+            for (int i = 0; i < node.Options.Count; i++)
+            {
+                Bind(node.Options[i]);
+            }
+
+            for (int i = 0; i < node.Columns.Count; i++)
+            {
+                Bind(node.Columns[i]);
+            }
+
+            _scope = _scope.CloseScope();
+        }
+        private void BindDatabaseConsume(in ConsumeStatement node)
+        {
             ValidateStatement(in node);
 
             _scope = _scope.OpenScope(node);
@@ -910,6 +938,22 @@ namespace DaJet.Scripting
                 {
                     BindAppend(append); //FIXME: recursive binding (nested APPEND)
                 }
+            }
+
+            _scope = _scope.CloseScope();
+        }
+        private void Bind(in ProduceStatement node)
+        {
+            _scope = _scope.OpenScope(node);
+
+            for (int i = 0; i < node.Options.Count; i++)
+            {
+                Bind(node.Options[i]);
+            }
+
+            for (int i = 0; i < node.Columns.Count; i++)
+            {
+                Bind(node.Columns[i]);
             }
 
             _scope = _scope.CloseScope();

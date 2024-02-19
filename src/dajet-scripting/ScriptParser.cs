@@ -245,6 +245,7 @@ namespace DaJet.Scripting
             else if (Check(TokenType.DELETE)) { return delete_statement(); }
             else if (Check(TokenType.UPSERT)) { return upsert_statement(); }
             else if (Check(TokenType.CONSUME)) { return consume_statement(); }
+            else if (Check(TokenType.PRODUCE)) { return produce_statement(); }
             else if (Check(TokenType.IMPORT)) { return import_statement(); }
             else if (Match(TokenType.DROP)) { return drop_statement(); }
             else if (Match(TokenType.EndOfStatement)) { return null; }
@@ -1359,6 +1360,10 @@ namespace DaJet.Scripting
             {
                 return exists_function();
             }
+            else if (Match(TokenType.TYPE)) //NOTE: exceptional keyword - see also alias() function
+            {
+                return new ColumnReference() { Identifier = Previous().Lexeme };
+            }
 
             Ignore();
 
@@ -2099,7 +2104,16 @@ namespace DaJet.Scripting
             ConsumeStatement consume = new();
 
             Skip(TokenType.Comment);
-            consume.Top = top_clause();
+
+            if (Match(TokenType.String)) //NOTE: stream processor URI
+            {
+                return consume_stream_statement(in consume);
+            }
+            else
+            {
+                consume.Top = top_clause();
+            }
+            
             Skip(TokenType.Comment);
 
             if (consume.Top is null) { throw new FormatException("CONSUME: TOP keyword expected."); }
@@ -2141,6 +2155,37 @@ namespace DaJet.Scripting
 
             return consume;
         }
+        private SyntaxNode consume_stream_statement(in ConsumeStatement consume)
+        {
+            consume.Target = Previous().Lexeme;
+
+            Skip(TokenType.Comment);
+
+            if (Match(TokenType.WITH))
+            {
+                consume_options(in consume);
+            }
+
+            Skip(TokenType.Comment);
+            
+            if (!Match(TokenType.INTO))
+            {
+                throw new FormatException($"CONSUME: INTO keyword expected");
+            }
+
+            Skip(TokenType.Comment);
+
+            consume.Into = into_clause(consume.Columns);
+
+            if (consume.Into is null || consume.Into.Value is null)
+            {
+                throw new FormatException("CONSUME: INTO variable identifier expected");
+            }
+
+            Skip(TokenType.Comment);
+
+            return consume;
+        }
         private void select_columns(in ConsumeStatement consume)
         {
             consume.Columns.Add(column());
@@ -2152,6 +2197,21 @@ namespace DaJet.Scripting
                 Skip(TokenType.Comment);
 
                 consume.Columns.Add(column());
+
+                Skip(TokenType.Comment);
+            }
+        }
+        private void consume_options(in ConsumeStatement consume)
+        {
+            consume.Options.Add(column());
+
+            Skip(TokenType.Comment);
+
+            while (Match(TokenType.Comma))
+            {
+                Skip(TokenType.Comment);
+
+                consume.Options.Add(column());
 
                 Skip(TokenType.Comment);
             }
@@ -2215,6 +2275,73 @@ namespace DaJet.Scripting
             }
 
             return tables;
+        }
+        #endregion
+
+        #region "PRODUCE STATEMENT"
+        private SyntaxNode produce_statement()
+        {
+            if (!Match(TokenType.PRODUCE))
+            {
+                throw new FormatException("PRODUCE keyword expected");
+            }
+
+            ProduceStatement produce = new();
+
+            Skip(TokenType.Comment);
+
+            if (!Match(TokenType.String))
+            {
+                throw new FormatException("PRODUCE: uri expected");
+            }
+
+            produce.Target = Previous().Lexeme;
+
+            Skip(TokenType.Comment);
+
+            if (Match(TokenType.WITH))
+            {
+                produce_options(in produce);
+            }
+
+            if (!Match(TokenType.SELECT))
+            {
+                throw new FormatException($"PRODUCE: SELECT keyword expected");
+            }
+
+            produce_columns(in produce);
+
+            return produce;
+        }
+        private void produce_options(in ProduceStatement produce)
+        {
+            produce.Options.Add(column());
+
+            Skip(TokenType.Comment);
+
+            while (Match(TokenType.Comma))
+            {
+                Skip(TokenType.Comment);
+
+                produce.Options.Add(column());
+
+                Skip(TokenType.Comment);
+            }
+        }
+        private void produce_columns(in ProduceStatement produce)
+        {
+            produce.Columns.Add(column());
+
+            Skip(TokenType.Comment);
+
+            while (Match(TokenType.Comma))
+            {
+                Skip(TokenType.Comment);
+
+                produce.Columns.Add(column());
+
+                Skip(TokenType.Comment);
+            }
         }
         #endregion
     }

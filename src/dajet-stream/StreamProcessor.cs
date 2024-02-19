@@ -92,10 +92,7 @@ namespace DaJet.Stream
             {
                 SyntaxNode statement = model.Statements[i];
 
-                if (statement is CommentStatement)
-                {
-                    continue;
-                }
+                if (statement is CommentStatement) { continue; }
 
                 if (statement is DeclareStatement declare)
                 {
@@ -104,7 +101,7 @@ namespace DaJet.Stream
                 }
                 else if (statement is UseStatement use)
                 {
-                    _script = new ScriptModel();
+                    _script = new ScriptModel(); // database context
                     _scripts.Add(_script);
                     _script.Statements.Add(statement);
                 }
@@ -116,13 +113,25 @@ namespace DaJet.Stream
                         .Where(s => s is UseStatement)
                         .FirstOrDefault() as UseStatement;
 
-                    _script = new ScriptModel();
+                    _script = new ScriptModel(); // separate parallelized pipeline
                     _scripts.Add(_script);
 
                     if (_use is not null)
                     {
                         _script.Statements.Add(_use);
                     }
+                }
+                else if (statement is ConsumeStatement consume && !string.IsNullOrEmpty(consume.Target))
+                {
+                    _script = new ScriptModel(); // non-database stream processor
+                    _scripts.Add(_script);
+                    _script.Statements.Add(statement);
+                }
+                else if (statement is ProduceStatement produce)
+                {
+                    _script = new ScriptModel(); // non-database stream processor
+                    _scripts.Add(_script);
+                    _script.Statements.Add(statement);
                 }
                 else
                 {
@@ -152,6 +161,18 @@ namespace DaJet.Stream
                 UseStatement use = _model.Statements
                     .Where(s => s is UseStatement)
                     .FirstOrDefault() as UseStatement;
+
+                if (use is null) // non-database stream processor
+                {
+                    if (parallelizer is null)
+                    {
+                        //TODO: _processors.AddRange(CreatePipeline(in _context, in _result, in _parameters));
+                    }
+                    else
+                    {
+                        //TODO: pipeline.Add(in _context, in _result);
+                    }
+                }
 
                 IMetadataProvider _context = GetDatabaseContext(in use);
 
@@ -292,10 +313,42 @@ namespace DaJet.Stream
                     processors.Add(processor);
                     continue;
                 }
+                else if (statement.Node is ConsumeStatement consume && !string.IsNullOrEmpty(consume.Target))
+                {
+                    if (consume.Target.StartsWith("amqp"))
+                    {
+                        processors.Add(new RabbitMQ.Consumer(consume));
+                    }
+                    else if (consume.Target.StartsWith("kafka"))
+                    {
+                        processors.Add(new Kafka.Consumer(in consume));
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Unknown schema provider");
+                    }
+                    continue;
+                }
+                else if (statement.Node is ProduceStatement produce)
+                {
+                    if (produce.Target.StartsWith("amqp"))
+                    {
+                        processors.Add(new RabbitMQ.Producer(in produce));
+                    }
+                    else if (produce.Target.StartsWith("kafka"))
+                    {
+                        processors.Add(new Kafka.Producer(in produce));
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Unknown schema provider");
+                    }
+                    continue;
+                }
 
                 if (string.IsNullOrEmpty(statement.Script))
                 {
-                    continue; //NOTE: USE and DECLARE and FOR EACH
+                    continue; //NOTE: USE, DECLARE, FOR EACH, PRODUCE, CONSUME <uri>
                 }
 
                 //TODO: use ProcessorFactory for all types of statements
@@ -304,8 +357,29 @@ namespace DaJet.Stream
 
                 if (type == StatementType.Streaming && !stream_starter_is_found)
                 {
+                    //TODO: check if consume statement is present in upcoming scripts !!!
+                    
                     stream_starter_is_found = true;
-                    processor = new Streamer(in context, in statement, in parameters);
+
+                    if (statement.Node is ConsumeStatement consume && !string.IsNullOrEmpty(consume.Target))
+                    {
+                        if (consume.Target.StartsWith("amqp"))
+                        {
+                            processor = new RabbitMQ.Consumer(in consume);
+                        }
+                        else if (consume.Target.StartsWith("kafka"))
+                        {
+                            processor = new Kafka.Consumer(in consume);
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Unknown schema provider");
+                        }
+                    }
+                    else // database context
+                    {
+                        processor = new Streamer(in context, in statement, in parameters);
+                    }
                 }
                 else
                 {
