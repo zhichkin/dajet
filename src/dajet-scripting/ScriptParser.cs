@@ -244,6 +244,7 @@ namespace DaJet.Scripting
             else if (Check(TokenType.UPDATE)) { return update_statement(); }
             else if (Check(TokenType.DELETE)) { return delete_statement(); }
             else if (Check(TokenType.UPSERT)) { return upsert_statement(); }
+            else if (Check(TokenType.STREAM)) { return stream_statement(); }
             else if (Check(TokenType.CONSUME)) { return consume_statement(); }
             else if (Check(TokenType.PRODUCE)) { return produce_statement(); }
             else if (Check(TokenType.IMPORT)) { return import_statement(); }
@@ -415,6 +416,12 @@ namespace DaJet.Scripting
                     CommonTables = root
                 };
             }
+            else if (Check(TokenType.STREAM))
+            {
+                SelectStatement select = stream_statement();
+                select.CommonTables = root;
+                return select;
+            }
             else if (Check(TokenType.INSERT))
             {
                 InsertStatement insert = insert_statement();
@@ -491,6 +498,52 @@ namespace DaJet.Scripting
 
         #region "SELECT STATEMENT"
         private SyntaxNode select_statement() { return new SelectStatement() { Expression = union() }; }
+        private SelectStatement stream_statement()
+        {
+            if (Current().Type == TokenType.STREAM)
+            {
+                Current().Override(TokenType.SELECT);
+            }
+
+            SelectStatement select = new()
+            {
+                IsStream = true,
+                Expression = union()
+            };
+
+            ValidateStreamStatement(in select);
+
+            return select;
+        }
+        private void ValidateStreamStatement(in SelectStatement node)
+        {
+            if (node.Expression is SelectExpression select)
+            {
+                ValidateStreamStatement(in select);
+            }
+            else if (node.Expression is TableUnionOperator union)
+            {
+                ValidateStreamStatement(in union);
+            }
+        }
+        private void ValidateStreamStatement(in SelectExpression node)
+        {
+            if (node.Into is null)
+            {
+                throw new FormatException("[STREAM] INTO clause expected");
+            }
+            else if (node.Into.Value is null)
+            {
+                throw new FormatException("[STREAM] INTO variable expected");
+            }
+        }
+        private void ValidateStreamStatement(in TableUnionOperator node)
+        {
+            if (node.Expression1 is SelectExpression select)
+            {
+                ValidateStreamStatement(in select);
+            }
+        }
         ///<returns>SelectExpression or TableUnionOperator</returns>
         private SyntaxNode union()
         {

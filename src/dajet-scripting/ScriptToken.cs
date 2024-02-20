@@ -6,7 +6,8 @@
         {
             Type = tokenType;
         }
-        public TokenType Type { get; }
+        public TokenType Type { get; private set; }
+        public void Override(TokenType token) { Type = token; }
         public string Lexeme { get; set; }
         public int Line { get; set; }
         public int Offset { get; set; }
@@ -15,5 +16,6 @@
         {
             return $"{Type} {{{Line}}} [{Offset}-{Offset + Length - 1}] {Lexeme}";
         }
+
     }
 }

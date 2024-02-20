@@ -72,5 +72,21 @@ namespace DaJet.Stream
 
             return null;
         }
+
+        internal static IProcessor CreateDatabaseProcessor()
+        {
+            return null;
+        }
+
+        internal static IProcessor CreateBrokerProcessor()
+        {
+
+            return null;
+        }
+
+        internal static List<IProcessor> CreateDatabasePipeline(in ScriptModel model)
+        {
+            return null;
+        }
     }
 }

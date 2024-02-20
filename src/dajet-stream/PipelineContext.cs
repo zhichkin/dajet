@@ -48,6 +48,7 @@ namespace DaJet.Stream
 
         private readonly Dictionary<string, object> _context;
         private string _uri;
+        private string _intoObject;
         private Dictionary<string, MemberAccessDescriptor> _templates = new();
         private Dictionary<string, MemberAccessDescriptor> _descriptors = new();
         internal PipelineContext(in Dictionary<string, object> context)
@@ -101,6 +102,11 @@ namespace DaJet.Stream
             MapColumnExpressions(statement.Options);
             MapColumnExpressions(statement.Columns);
         }
+        internal void MapOptions(in ConsumeStatement statement)
+        {
+            MapColumnExpressions(statement.Options);
+            MapColumnExpressions(statement.Columns);
+        }
         private void MapColumnExpressions(in List<ColumnExpression> columns)
         {
             foreach (ColumnExpression column in columns)
@@ -140,6 +146,24 @@ namespace DaJet.Stream
                 }
             }
         }
+        internal void MapIntoObject(in ConsumeStatement statement)
+        {
+            if (statement.Into is not null &&
+                statement.Into.Value is VariableReference variable &&
+                variable.Binding is TypeIdentifier type &&
+                type.Token == TokenType.Object)
+            {
+                _intoObject = variable.Identifier;
+
+                _descriptors.Add(_intoObject, new MemberAccessDescriptor()
+                {
+                    Target = _intoObject,
+                    MemberType = typeof(object)
+                });
+            }
+        }
+
+        #region "PRODUCER OPTIONS"
         internal string GetExchange()
         {
             if (_descriptors.TryGetValue("Exchange", out MemberAccessDescriptor descriptor))
@@ -364,99 +388,85 @@ namespace DaJet.Stream
             }
             return null;
         }
+        #endregion
 
-        internal static MemberAccessDescriptor MapIntoVariable(in SyntaxNode node, in Dictionary<string, object> context)
+        #region "CONSUMER OPTIONS"
+        internal string GetQueueName()
         {
-            if (node is SelectStatement statement &&
-                statement.Expression is SelectExpression select &&
-                select.Binding is MemberAccessDescriptor descriptor) // descriptor configured by script parser
+            if (_descriptors.TryGetValue("QueueName", out MemberAccessDescriptor descriptor))
             {
-                return descriptor; // APPEND operator extracted by pipeline builder into SELECT statement
-            }
-
-            if (TryGetIntoVariable(in node, out VariableReference into))
-            {
-                _ = context.TryAdd(into.Identifier, null);
-
-                return new MemberAccessDescriptor()
+                if (descriptor.TryGetValue(in _context, out object value))
                 {
-                    Member = into.Identifier // context member - @variable value
-                };
-            }
-
-            return null;
-        }
-        private static bool TryGetIntoVariable(in SyntaxNode node, out VariableReference into)
-        {
-            into = null;
-
-            if (node is ConsumeStatement consume)
-            {
-                into = consume.Into.Value;
-
-                return true;
-            }
-            else if (node is SelectStatement statement)
-            {
-                if (statement.Expression is SelectExpression select)
-                {
-                    return TryGetIntoVariable(in select, out into);
-                }
-                else if (statement.Expression is TableUnionOperator union)
-                {
-                    return TryGetIntoVariable(in union, out into);
+                    return value.ToString();
                 }
             }
-            else if (node is UpdateStatement update)
-            {
-                return TryGetIntoVariable(in update, out into);
-            }
-
-            return false;
+            return string.Empty;
         }
-        private static bool TryGetIntoVariable(in SelectExpression node, out VariableReference into)
+        internal int GetHeartbeat()
         {
-            into = null;
-
-            if (node.Into is not null &&
-                node.Into.Value is VariableReference variable &&
-                variable.Binding is TypeIdentifier type)
+            if (_descriptors.TryGetValue("Heartbeat", out MemberAccessDescriptor descriptor))
             {
-                into = variable;
-
-                return type.Token == TokenType.Array
-                    || type.Token == TokenType.Object;
+                if (descriptor.TryGetValue(in _context, out object value)
+                    && value is not null
+                    && int.TryParse(value.ToString(), out int result))
+                {
+                    return result;
+                }
             }
-
-            return false;
+            return 60; // seconds
         }
-        private static bool TryGetIntoVariable(in TableUnionOperator node, out VariableReference into)
+        internal uint GetPrefetchSize()
         {
-            into = null;
-
-            if (node.Expression1 is SelectExpression select)
+            if (_descriptors.TryGetValue("PrefetchSize", out MemberAccessDescriptor descriptor))
             {
-                return TryGetIntoVariable(in select, out into);
+                if (descriptor.TryGetValue(in _context, out object value)
+                    && value is not null
+                    && uint.TryParse(value.ToString(), out uint result))
+                {
+                    return result;
+                }
             }
-
-            return false;
+            return 0; // size of the client buffer in bytes
         }
-        private static bool TryGetIntoVariable(in UpdateStatement node, out VariableReference into)
+        internal ushort GetPrefetchCount()
         {
-            into = null;
-
-            if (node.Output is not null &&
-                node.Output.Into is not null &&
-                node.Output.Into.Value is VariableReference variable &&
-                variable.Binding is TypeIdentifier type)
+            if (_descriptors.TryGetValue("PrefetchCount", out MemberAccessDescriptor descriptor))
             {
-                into = variable;
-
-                return type.Token == TokenType.Array
-                    || type.Token == TokenType.Object;
+                if (descriptor.TryGetValue(in _context, out object value)
+                    && value is not null
+                    && ushort.TryParse(value.ToString(), out ushort result))
+                {
+                    return result;
+                }
+            }
+            return 1; // allowed messages on the fly without ack
+        }
+        internal DataObject GetIntoObject()
+        {
+            if (_descriptors.TryGetValue(_intoObject, out MemberAccessDescriptor descriptor))
+            {
+                if (descriptor.TryGetValue(in _context, out object value))
+                {
+                    if (value is DataObject record)
+                    {
+                        return record;
+                    }
+                }
             }
 
-            return false;
+            DataObject message = new(8);
+
+            message.SetValue("Body", string.Empty);
+            message.SetValue(nameof(IBasicProperties.AppId), string.Empty);
+            message.SetValue(nameof(IBasicProperties.Type), string.Empty);
+            message.SetValue(nameof(IBasicProperties.ContentType), "application/json");
+            message.SetValue(nameof(IBasicProperties.ContentEncoding), "UTF-8");
+            message.SetValue(nameof(IBasicProperties.ReplyTo), string.Empty);
+            message.SetValue(nameof(IBasicProperties.MessageId), string.Empty);
+            message.SetValue(nameof(IBasicProperties.CorrelationId), string.Empty);
+
+            return message;
         }
+        #endregion
     }
 }

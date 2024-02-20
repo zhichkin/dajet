@@ -294,7 +294,7 @@ namespace DaJet.Stream
         internal static List<IProcessor> CreatePipeline(in IMetadataProvider context,
             in TranspilerResult script, in Dictionary<string,object> parameters)
         {
-            ProcessorBase processor;
+            IProcessor processor = null;
             List<IProcessor> processors = new();
             bool stream_starter_is_found = false;
 
@@ -317,11 +317,11 @@ namespace DaJet.Stream
                 {
                     if (consume.Target.StartsWith("amqp"))
                     {
-                        processors.Add(new RabbitMQ.Consumer(consume));
+                        processors.Add(new RabbitMQ.Consumer(in consume, in parameters));
                     }
                     else if (consume.Target.StartsWith("kafka"))
                     {
-                        processors.Add(new Kafka.Consumer(in consume));
+                        //TODO: processors.Add(new Kafka.Consumer(in consume));
                     }
                     else
                     {
@@ -333,11 +333,11 @@ namespace DaJet.Stream
                 {
                     if (produce.Target.StartsWith("amqp"))
                     {
-                        processors.Add(new RabbitMQ.Producer(in produce));
+                        processors.Add(new RabbitMQ.Producer(in produce, in parameters));
                     }
                     else if (produce.Target.StartsWith("kafka"))
                     {
-                        processors.Add(new Kafka.Producer(in produce));
+                        //TODO: processors.Add(new Kafka.Producer(in produce));
                     }
                     else
                     {
@@ -365,11 +365,11 @@ namespace DaJet.Stream
                     {
                         if (consume.Target.StartsWith("amqp"))
                         {
-                            processor = new RabbitMQ.Consumer(in consume);
+                            processor = new RabbitMQ.Consumer(in consume, in parameters);
                         }
                         else if (consume.Target.StartsWith("kafka"))
                         {
-                            processor = new Kafka.Consumer(in consume);
+                            //TODO: processor = new Kafka.Consumer(in consume);
                         }
                         else
                         {
@@ -390,7 +390,7 @@ namespace DaJet.Stream
 
                 if (type == StatementType.Streaming)
                 {
-                    string objectName = processor.ObjectName;
+                    string objectName = string.Empty; //TODO: processor.ObjectName;
 
                     foreach (var append in new AppendOperatorExtractor().Extract(statement.Node))
                     {

@@ -155,7 +155,8 @@ namespace DaJet.Scripting
             { "FOR", TokenType.FOR },
             { "EACH", TokenType.EACH },
             { "MAXDOP", TokenType.MAXDOP },
-            { "PRODUCE", TokenType.PRODUCE }
+            { "PRODUCE", TokenType.PRODUCE },
+            { "STREAM", TokenType.STREAM }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {

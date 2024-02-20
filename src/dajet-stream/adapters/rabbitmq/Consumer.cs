@@ -1,7 +1,12 @@
-﻿using DaJet.Scripting.Model;
+﻿using DaJet.Data;
+using DaJet.Json;
+using DaJet.Scripting.Model;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Unicode;
 using System.Timers;
 using System.Web;
 
@@ -25,29 +30,45 @@ namespace DaJet.Stream.RabbitMQ
         private IModel _channel;
         private IConnection _connection;
         private EventingBasicConsumer _consumer;
-        private Message _message; // data buffer
         private int _consumed = 0; // in-memory counter
         private string _consumerTag;
-        private readonly IPipeline _pipeline; // in-memory online monitoring
-        private readonly ConsumerOptions _options;
-        public Consumer(in ConsumeStatement options)
+        private readonly PipelineContext _context;
+        private readonly ConsumeStatement _options;
+        public Consumer(in ConsumeStatement options, in Dictionary<string, object> context)
         {
+            _context = new PipelineContext(in context);
             _options = options ?? throw new ArgumentNullException(nameof(options));
-            _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
-            
-            Configure();
+
+            _context.MapUri(_options.Target);
+            _context.MapOptions(in options);
+            _context.MapIntoObject(in options);
+
+            InitializeUri();
+            ConfigureConsumer();
         }
         public void Synchronize() { /* do nothing */ }
         public void LinkTo(in IProcessor next) { _next = next; }
-        private void Configure()
+        
+        #region "CONFIGURATION OPTIONS"
+        private string HostName { get; set; } = "localhost";
+        private int HostPort { get; set; } = 5672;
+        private string VirtualHost { get; set; } = "/";
+        private string UserName { get; set; } = "guest";
+        private string Password { get; set; } = "guest";
+        private string QueueName { get; set; } = string.Empty;
+        private int Heartbeat { get; set; } = 60; // consumer health check
+        private uint PrefetchSize { get; set; } = 0; // size of the client buffer in bytes
+        private ushort PrefetchCount { get; set; } = 1; // allowed messages on the fly without ack
+        #endregion
+
+        private void InitializeUri()
         {
-            if (_options.Heartbeat < 10) { _options.Heartbeat = 10; }
+            Uri uri = _context.GetUri();
 
-            if (string.IsNullOrWhiteSpace(_options.Source)) { return; }
-
-            Uri uri = new(_options.Source);
-
-            if (uri.Scheme != "amqp") { return; }
+            if (uri.Scheme != "amqp")
+            {
+                throw new InvalidOperationException($"[URI] amqp scheme expected");
+            }
 
             HostName = uri.Host;
             HostPort = uri.Port;
@@ -65,21 +86,18 @@ namespace DaJet.Stream.RabbitMQ
                 VirtualHost = HttpUtility.UrlDecode(uri.Segments[1].TrimEnd('/'), Encoding.UTF8);
             }
         }
-
-        #region "CONFIGURATION OPTIONS"
-        private string HostName { get; set; } = "localhost";
-        private int HostPort { get; set; } = 5672;
-        private string VirtualHost { get; set; } = "/";
-        private string UserName { get; set; } = "guest";
-        private string Password { get; set; } = "guest";
-        #endregion
-
+        private void ConfigureConsumer()
+        {
+            QueueName = _context.GetQueueName();
+            Heartbeat = _context.GetHeartbeat();
+            PrefetchSize = _context.GetPrefetchSize();
+            PrefetchCount = _context.GetPrefetchCount();
+        }
         private void UpdatePipelineStatus()
         {
             int consumed = Interlocked.Exchange(ref _consumed, 0);
 
-            _pipeline.UpdateMonitorStatus($"Consumed {consumed} messages in {_options.Heartbeat} seconds.");
-            _pipeline.UpdateMonitorFinishTime(DateTime.Now);
+            FileLogger.Default.Write($"Consumed {consumed} messages in {Heartbeat} seconds.");
         }
         private bool ConsumerIsHealthy()
         {
@@ -98,11 +116,11 @@ namespace DaJet.Stream.RabbitMQ
             _connection = factory.CreateConnection();
 
             _channel = _connection.CreateModel();
-            _channel.BasicQos(0, 1, false); // consume any size messages one-by-one at the channels scope
+            _channel.BasicQos(PrefetchSize, PrefetchCount, false);
 
             _consumer = new EventingBasicConsumer(_channel);
             _consumer.Received += ProcessMessage;
-            _consumerTag = _channel.BasicConsume(_options.Queue, false, _consumer);
+            _consumerTag = _channel.BasicConsume(QueueName, false, _consumer);
         }
         private void EnsureConsumerIsActive(object sender, ElapsedEventArgs args)
         {
@@ -122,7 +140,7 @@ namespace DaJet.Stream.RabbitMQ
                 {
                     DisposeConsumer();
 
-                    _pipeline.UpdateMonitorStatus(error.Message);
+                    FileLogger.Default.Write(ExceptionHelper.GetErrorMessage(error));
                 }
                 finally
                 {
@@ -144,7 +162,7 @@ namespace DaJet.Stream.RabbitMQ
                 {
                     _heartbeat.AutoReset = true;
                     _heartbeat.Elapsed += EnsureConsumerIsActive;
-                    _heartbeat.Interval = TimeSpan.FromSeconds(_options.Heartbeat).TotalMilliseconds;
+                    _heartbeat.Interval = TimeSpan.FromSeconds(Heartbeat).TotalMilliseconds;
                 }
 
                 ManualResetEvent cancellation = new(false);
@@ -165,19 +183,20 @@ namespace DaJet.Stream.RabbitMQ
         {
             if (sender is not EventingBasicConsumer consumer) { return; }
 
-            _message ??= new Message();
-            _message.Payload = args.Body;
-            _message.AppId = args.BasicProperties.AppId;
-            _message.Type = args.BasicProperties.Type;
-            _message.ReplyTo = args.BasicProperties.ReplyTo;
-            _message.MessageId = args.BasicProperties.MessageId;
-            _message.CorrelationId = args.BasicProperties.CorrelationId;
-            _message.ContentType = args.BasicProperties.ContentType;
-            _message.ContentEncoding = args.BasicProperties.ContentEncoding;
+            DataObject record = _context.GetIntoObject();
+
+            record.SetValue("Body", DecodeMessageBody(args.Body));
+            record.SetValue(nameof(IBasicProperties.AppId), args.BasicProperties.AppId ?? string.Empty);
+            record.SetValue(nameof(IBasicProperties.Type), args.BasicProperties.Type ?? string.Empty);
+            record.SetValue(nameof(IBasicProperties.ContentType), args.BasicProperties.ContentType ?? "application/json");
+            record.SetValue(nameof(IBasicProperties.ContentEncoding), args.BasicProperties.ContentEncoding ?? "UTF-8");
+            record.SetValue(nameof(IBasicProperties.ReplyTo), args.BasicProperties.ReplyTo ?? string.Empty);
+            record.SetValue(nameof(IBasicProperties.MessageId), args.BasicProperties.MessageId ?? string.Empty);
+            record.SetValue(nameof(IBasicProperties.CorrelationId), args.BasicProperties.CorrelationId ?? string.Empty);
 
             try
             {
-                _next?.Process(in _message);
+                _next?.Process();
 
                 _next?.Synchronize();
 
@@ -192,15 +211,14 @@ namespace DaJet.Stream.RabbitMQ
         }
         private void NackMessage(in EventingBasicConsumer consumer, in BasicDeliverEventArgs args, in Exception error)
         {
-            _pipeline.UpdateMonitorStatus(error.Message);
-            _pipeline.UpdateMonitorFinishTime(DateTime.Now);
+            FileLogger.Default.Write(ExceptionHelper.GetErrorMessage(error));
 
             if (_cancellation is null)
             {
                 return; // Consumer is most likely already disposed
             }
 
-            bool signaled = _cancellation.WaitOne(TimeSpan.FromSeconds(_options.Heartbeat));
+            bool signaled = _cancellation.WaitOne(TimeSpan.FromSeconds(Heartbeat));
 
             if (!signaled) // Consumer is still active
             {
@@ -227,7 +245,6 @@ namespace DaJet.Stream.RabbitMQ
             catch { /* IGNORE */ }
             finally { _connection = null; }
 
-            _message = null;
             _consumerTag = null;
         }
         private void DisposeHeartbeat()
@@ -272,6 +289,22 @@ namespace DaJet.Stream.RabbitMQ
             }
 
             _next?.Dispose();
+        }
+
+        private static readonly DataObjectJsonConverter _converter = new();
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+        };
+        private static void Transform(in ReadOnlyMemory<byte> message, out DataObject output)
+        {
+            Utf8JsonReader reader = new(message.Span, true, default);
+
+            output = _converter.Read(ref reader, typeof(DataObject), JsonOptions);
+        }
+        private static string DecodeMessageBody(in ReadOnlyMemory<byte> message)
+        {
+            return Encoding.UTF8.GetString(message.Span);
         }
     }
 }
