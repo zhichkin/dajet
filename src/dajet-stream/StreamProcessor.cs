@@ -81,6 +81,8 @@ namespace DaJet.Stream
                 }
             }
 
+            AnalyzeScript(in model);
+
             List<IProcessor> _processors = new();
 
             ScriptModel _script = null;
@@ -538,6 +540,28 @@ namespace DaJet.Stream
                 }
             }
             return StatementType.Processor;
+        }
+
+
+
+        private static void AnalyzeScript(in ScriptModel script)
+        {
+            ScriptScope _root_scope = new() { Owner = script };
+
+            ScriptScope _current = _root_scope;
+
+            for (int i = 0; i < script.Statements.Count; i++)
+            {
+                SyntaxNode statement = script.Statements[i];
+
+                if (statement is CommentStatement) { continue; }
+
+                _current = _current.OpenScope(in statement); // open child scope
+
+                //TODO: ???
+
+                _current = _current.CloseScope(); // returning to previous scope
+            }
         }
     }
 }

@@ -92,6 +92,7 @@ namespace DaJet.Scripting
             else if (node is ProduceStatement produce_statement) { Bind(in produce_statement); }
             else if (node is ImportStatement import_statement) { Bind(in import_statement); }
             else if (node is ForEachStatement for_each) { Bind(in for_each); }
+            else if (node is CreateTypeStatement udt) { Bind(in udt); }
         }
         private void RegisterBindingError(TokenType token, string identifier)
         {
@@ -1093,6 +1094,23 @@ namespace DaJet.Scripting
             foreach (SyntaxNode value in node.Values)
             {
                 Bind(in value);
+            }
+        }
+        #endregion
+
+        #region "DDL STATEMENT BINDING"
+        private void Bind(in CreateTypeStatement node)
+        {
+            ColumnDefinition column;
+
+            for (int i = 0; i < node.Columns.Count; i++)
+            {
+                column = node.Columns[i];
+
+                if (column.Type is not null)
+                {
+                    Bind(column.Type);
+                }
             }
         }
         #endregion
