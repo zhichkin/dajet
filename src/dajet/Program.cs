@@ -20,11 +20,11 @@ namespace DaJet
 
         public static int Main(string[] args)
         {
-            //args = new string[]
-            //{
-            //    "stream", "--file", "./test/10-ms-pg-exchange-consume-maxdop.sql"
-            //    //"stream", "--url", "dajet://ms-demo/stream/01-insert"
-            //};
+            args = new string[]
+            {
+                "stream", "--file", "./test/10-ms-pg-exchange-consume-maxdop.sql" //"./test/01-ms-pg-select.sql"
+                //"stream", "--url", "dajet://ms-demo/stream/01-insert"
+            };
 
             var root = new RootCommand("dajet");
             var command = new Command("stream", "Execute DaJet Stream");

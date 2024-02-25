@@ -55,6 +55,14 @@ namespace DaJet.Scripting
 
             return null;
         }
+        public ScriptScope NewScope(in SyntaxNode owner)
+        {
+            ScriptScope scope = new(owner, this);
+            
+            Children.Add(scope);
+            
+            return scope;
+        }
         public ScriptScope OpenScope(in SyntaxNode owner)
         {
             ScriptScope scope = new(owner, this);
@@ -89,6 +97,16 @@ namespace DaJet.Scripting
             throw new InvalidOperationException($"Failed to open scope [{owner}]");
         }
         public ScriptScope CloseScope() { return _ancestor; }
+
+        public static bool IsStreamScope(in SyntaxNode statement)
+        {
+            return statement is UseStatement
+                || statement is ForEachStatement
+                || statement is ConsumeStatement
+                || statement is ProduceStatement
+                || statement is SelectStatement select && select.IsStream
+                || statement is UpdateStatement update && update.Output?.Into?.Value is not null;
+        }
 
         public object GetVariableBinding(in string name)
         {

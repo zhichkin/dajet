@@ -11,7 +11,7 @@ using System.Text.Unicode;
 
 namespace DaJet.Stream
 {
-    internal sealed class PipelineContext
+    internal sealed class StreamContext
     {
         private static readonly JsonWriterOptions JsonWriterOptions = new()
         {
@@ -51,7 +51,7 @@ namespace DaJet.Stream
         private string _intoObject;
         private Dictionary<string, MemberAccessDescriptor> _templates = new();
         private Dictionary<string, MemberAccessDescriptor> _descriptors = new();
-        internal PipelineContext(in Dictionary<string, object> context)
+        internal StreamContext(in Dictionary<string, object> context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }

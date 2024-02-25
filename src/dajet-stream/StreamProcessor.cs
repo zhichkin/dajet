@@ -3,11 +3,8 @@ using DaJet.Metadata;
 using DaJet.Model;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
-using Microsoft.Data.SqlClient;
-using Npgsql;
 using System.Diagnostics;
 using System.Text;
-using System.Web;
 
 namespace DaJet.Stream
 {
@@ -33,7 +30,7 @@ namespace DaJet.Stream
 
             watch.Start();
 
-            List<IProcessor> stream = AssemblePipeline(in script);
+            IProcessor stream = CreateStream(in script);
 
             watch.Stop();
 
@@ -43,7 +40,7 @@ namespace DaJet.Stream
 
             watch.Restart();
 
-            stream[0].Process();
+            stream.Process();
 
             watch.Stop();
 
@@ -69,7 +66,7 @@ namespace DaJet.Stream
 
             return error.ToString();
         }
-        private static List<IProcessor> AssemblePipeline(in string script)
+        private static IProcessor CreateStream(in string script)
         {
             ScriptModel model;
 
@@ -81,328 +78,276 @@ namespace DaJet.Stream
                 }
             }
 
-            AnalyzeScript(in model);
+            return StreamFactory.Create(in model);
 
-            List<IProcessor> _processors = new();
+            #region "DEPRECATED CODE"
 
-            ScriptModel _script = null;
-            List<ScriptModel> _scripts = new();
-            List<DeclareStatement> _variables = new();
-            Dictionary<string, object> _parameters = new();
+            //List<IProcessor> _processors = new();
 
-            for (int i = 0; i < model.Statements.Count; i++)
-            {
-                SyntaxNode statement = model.Statements[i];
+            //ScriptModel _script = null;
+            //List<ScriptModel> _scripts = new();
+            //List<DeclareStatement> _variables = new();
+            //Dictionary<string, object> _parameters = new();
 
-                if (statement is CommentStatement) { continue; }
+            //for (int i = 0; i < model.Statements.Count; i++)
+            //{
+            //    SyntaxNode statement = model.Statements[i];
 
-                if (statement is DeclareStatement declare)
-                {
-                    _variables.Add(declare);
-                    _script.Statements.Add(statement);
-                }
-                else if (statement is UseStatement use)
-                {
-                    _script = new ScriptModel(); // database context
-                    _scripts.Add(_script);
-                    _script.Statements.Add(statement);
-                }
-                else if (statement is ForEachStatement for_each)
-                {
-                    _script.Statements.Add(statement);
+            //    if (statement is CommentStatement) { continue; }
 
-                    UseStatement _use = _script.Statements
-                        .Where(s => s is UseStatement)
-                        .FirstOrDefault() as UseStatement;
+            //    if (statement is DeclareStatement declare)
+            //    {
+            //        _variables.Add(declare);
+            //        _script.Statements.Add(statement);
+            //    }
+            //    else if (statement is UseStatement use)
+            //    {
+            //        _script = new ScriptModel(); // database context
+            //        _scripts.Add(_script);
+            //        _script.Statements.Add(statement);
+            //    }
+            //    else if (statement is ForEachStatement for_each)
+            //    {
+            //        _script.Statements.Add(statement);
 
-                    _script = new ScriptModel(); // separate parallelized pipeline
-                    _scripts.Add(_script);
+            //        UseStatement _use = _script.Statements
+            //            .Where(s => s is UseStatement)
+            //            .FirstOrDefault() as UseStatement;
 
-                    if (_use is not null)
-                    {
-                        _script.Statements.Add(_use);
-                    }
-                }
-                else if (statement is ConsumeStatement consume && !string.IsNullOrEmpty(consume.Target))
-                {
-                    _script = new ScriptModel(); // non-database stream processor
-                    _scripts.Add(_script);
-                    _script.Statements.Add(statement);
-                }
-                else if (statement is ProduceStatement produce)
-                {
-                    _script = new ScriptModel(); // non-database stream processor
-                    _scripts.Add(_script);
-                    _script.Statements.Add(statement);
-                }
-                else
-                {
-                    _script.Statements.Add(statement);
-                }
-            }
+            //        _script = new ScriptModel(); // separate parallelized pipeline
+            //        _scripts.Add(_script);
 
-            PipelineBuilder pipeline = new();
-            Parallelizer parallelizer = null;
+            //        if (_use is not null)
+            //        {
+            //            _script.Statements.Add(_use);
+            //        }
+            //    }
+            //    else if (statement is ConsumeStatement consume && !string.IsNullOrEmpty(consume.Target))
+            //    {
+            //        _script = new ScriptModel(); // non-database stream processor
+            //        _scripts.Add(_script);
+            //        _script.Statements.Add(statement);
+            //    }
+            //    else if (statement is ProduceStatement produce)
+            //    {
+            //        _script = new ScriptModel(); // non-database stream processor
+            //        _scripts.Add(_script);
+            //        _script.Statements.Add(statement);
+            //    }
+            //    else
+            //    {
+            //        _script.Statements.Add(statement);
+            //    }
+            //}
 
-            for (int i = 0; i < _scripts.Count; i++)
-            {
-                ScriptModel _model = _scripts[i];
+            //PipelineBuilder pipeline = new();
+            //Parallelizer parallelizer = null;
 
-                int insert = 1;
+            //for (int i = 0; i < _scripts.Count; i++)
+            //{
+            //    ScriptModel _model = _scripts[i];
 
-                foreach (DeclareStatement variable in _variables)
-                {
-                    if (_model.Statements
-                        .Where(statement => statement == variable)
-                        .FirstOrDefault() is null)
-                    {
-                        _model.Statements.Insert(insert++, variable);
-                    }
-                }
+            //    int insert = 1;
 
-                UseStatement use = _model.Statements
-                    .Where(s => s is UseStatement)
-                    .FirstOrDefault() as UseStatement;
+            //    foreach (DeclareStatement variable in _variables)
+            //    {
+            //        if (_model.Statements
+            //            .Where(statement => statement == variable)
+            //            .FirstOrDefault() is null)
+            //        {
+            //            _model.Statements.Insert(insert++, variable);
+            //        }
+            //    }
 
-                if (use is null) // non-database stream processor
-                {
-                    if (parallelizer is null)
-                    {
-                        //TODO: _processors.AddRange(CreatePipeline(in _context, in _result, in _parameters));
-                    }
-                    else
-                    {
-                        //TODO: pipeline.Add(in _context, in _result);
-                    }
-                }
+            //    UseStatement use = _model.Statements
+            //        .Where(s => s is UseStatement)
+            //        .FirstOrDefault() as UseStatement;
 
-                IMetadataProvider _context = GetDatabaseContext(in use);
+            //    if (use is null) // non-database stream processor
+            //    {
+            //        if (parallelizer is null)
+            //        {
+            //            //TODO: _processors.AddRange(CreatePipeline(in _context, in _result, in _parameters));
+            //        }
+            //        else
+            //        {
+            //            //TODO: pipeline.Add(in _context, in _result);
+            //        }
+            //    }
 
-                if (!new MetadataBinder().TryBind(_model, in _context, out _, out List<string> errors))
-                {
-                    Console.WriteLine(FormatErrorMessage(in errors));
-                }
+            //    IMetadataProvider _context = GetDatabaseContext(in use);
 
-                if (!new ScriptTransformer().TryTransform(_model, out string error))
-                {
-                    Console.WriteLine(error);
-                }
+            //    if (!new MetadataBinder().TryBind(_model, in _context, out _, out List<string> errors))
+            //    {
+            //        Console.WriteLine(FormatErrorMessage(in errors));
+            //    }
 
-                ISqlTranspiler transpiler = null;
+            //    if (!new ScriptTransformer().TryTransform(_model, out string error))
+            //    {
+            //        Console.WriteLine(error);
+            //    }
 
-                if (_context.DatabaseProvider == DatabaseProvider.SqlServer)
-                {
-                    transpiler = new MsSqlTranspiler() { YearOffset = _context.YearOffset };
-                }
-                else if (_context.DatabaseProvider == DatabaseProvider.PostgreSql)
-                {
-                    transpiler = new PgSqlTranspiler() { YearOffset = _context.YearOffset };
-                }
-                else
-                {
-                    error = $"Unsupported database provider: {_context.DatabaseProvider}";
-                }
+            //    ISqlTranspiler transpiler = null;
 
-                if (!transpiler.TryTranspile(in _model, in _context, out TranspilerResult _result, out error))
-                {
-                    Console.WriteLine(error);
-                }
+            //    if (_context.DatabaseProvider == DatabaseProvider.SqlServer)
+            //    {
+            //        transpiler = new MsSqlTranspiler() { YearOffset = _context.YearOffset };
+            //    }
+            //    else if (_context.DatabaseProvider == DatabaseProvider.PostgreSql)
+            //    {
+            //        transpiler = new PgSqlTranspiler() { YearOffset = _context.YearOffset };
+            //    }
+            //    else
+            //    {
+            //        error = $"Unsupported database provider: {_context.DatabaseProvider}";
+            //    }
 
-                ScriptProcessor.ConfigureParameters(in _model, in _context, _result.Parameters);
+            //    if (!transpiler.TryTranspile(in _model, in _context, out TranspilerResult _result, out error))
+            //    {
+            //        Console.WriteLine(error);
+            //    }
 
-                if (i == 0)
-                {
-                    ScriptProcessor.ConfigureSelectParameters(in _model, in _context, _result.Parameters);
-                }
+            //    ScriptProcessor.ConfigureParameters(in _model, in _context, _result.Parameters);
 
-                if (parallelizer is null)
-                {
-                    _processors.AddRange(CreatePipeline(in _context, in _result, in _parameters));
+            //    if (i == 0)
+            //    {
+            //        ScriptProcessor.ConfigureSelectParameters(in _model, in _context, _result.Parameters);
+            //    }
 
-                    parallelizer = _processors.Where(p => p is Parallelizer).FirstOrDefault() as Parallelizer;
-                }
-                else
-                {
-                    pipeline.Add(in _context, in _result);
-                }
-            }
+            //    if (parallelizer is null)
+            //    {
+            //        _processors.AddRange(CreatePipeline(in _context, in _result, in _parameters));
 
-            parallelizer?.SetPipelineBuilder(in pipeline);
+            //        parallelizer = _processors.Where(p => p is Parallelizer).FirstOrDefault() as Parallelizer;
+            //    }
+            //    else
+            //    {
+            //        pipeline.Add(in _context, in _result);
+            //    }
+            //}
 
-            for (int i = 0; i < _processors.Count - 1; i++)
-            {
-                _processors[i].LinkTo(_processors[i + 1]);
-            }
+            //parallelizer?.SetPipelineBuilder(in pipeline);
 
-            return _processors;
+            //for (int i = 0; i < _processors.Count - 1; i++)
+            //{
+            //    _processors[i].LinkTo(_processors[i + 1]);
+            //}
+
+            //return _processors;
+
+            #endregion
         }
-        private static IMetadataProvider GetDatabaseContext(in UseStatement use)
-        {
-            string[] userpass = use.Uri.UserInfo.Split(':');
 
-            string connectionString = string.Empty;
+        //internal static List<IProcessor> CreatePipeline(in IMetadataProvider context,
+        //    in TranspilerResult script, in Dictionary<string,object> parameters)
+        //{
+        //    IProcessor processor = null;
+        //    List<IProcessor> processors = new();
+        //    bool stream_starter_is_found = false;
 
-            if (use.Uri.Scheme == "mssql")
-            {
-                var ms = new SqlConnectionStringBuilder()
-                {
-                    Encrypt = false,
-                    DataSource = use.Uri.Host,
-                    InitialCatalog = use.Uri.AbsolutePath.Remove(0, 1)
-                };
+        //    foreach (var item in script.Parameters)
+        //    {
+        //        _ = parameters.TryAdd(item.Key, item.Value);
+        //    }
 
+        //    for (int i = 0; i < script.Statements.Count; i++)
+        //    {
+        //        SqlStatement statement = script.Statements[i];
 
-                if (userpass is not null && userpass.Length == 2)
-                {
-                    ms.UserID = HttpUtility.UrlDecode(userpass[0], Encoding.UTF8);
-                    ms.Password = HttpUtility.UrlDecode(userpass[1], Encoding.UTF8);
-                }
-                else
-                {
-                    ms.IntegratedSecurity = true;
-                }
+        //        if (statement.Node is ForEachStatement)
+        //        {
+        //            processor = new Parallelizer(in context, in statement, in parameters);
+        //            processors.Add(processor);
+        //            continue;
+        //        }
+        //        else if (statement.Node is ConsumeStatement consume && !string.IsNullOrEmpty(consume.Target))
+        //        {
+        //            if (consume.Target.StartsWith("amqp"))
+        //            {
+        //                processors.Add(new RabbitMQ.Consumer(in consume, in parameters));
+        //            }
+        //            else if (consume.Target.StartsWith("kafka"))
+        //            {
+        //                //TODO: processors.Add(new Kafka.Consumer(in consume));
+        //            }
+        //            else
+        //            {
+        //                throw new InvalidOperationException("Unknown schema provider");
+        //            }
+        //            continue;
+        //        }
+        //        else if (statement.Node is ProduceStatement produce)
+        //        {
+        //            if (produce.Target.StartsWith("amqp"))
+        //            {
+        //                processors.Add(new RabbitMQ.Producer(in produce, in parameters));
+        //            }
+        //            else if (produce.Target.StartsWith("kafka"))
+        //            {
+        //                //TODO: processors.Add(new Kafka.Producer(in produce));
+        //            }
+        //            else
+        //            {
+        //                throw new InvalidOperationException("Unknown schema provider");
+        //            }
+        //            continue;
+        //        }
 
-                connectionString = ms.ToString();
-            }
-            else if (use.Uri.Scheme == "pgsql")
-            {
-                var pg = new NpgsqlConnectionStringBuilder()
-                {
-                    Host = use.Uri.Host,
-                    Port = use.Uri.Port,
-                    Database = use.Uri.AbsolutePath.Remove(0, 1)
-                };
+        //        if (string.IsNullOrEmpty(statement.Script))
+        //        {
+        //            continue; //NOTE: USE, DECLARE, FOR EACH, PRODUCE, CONSUME <uri>
+        //        }
 
-                if (userpass is not null && userpass.Length == 2)
-                {
-                    pg.Username = HttpUtility.UrlDecode(userpass[0], Encoding.UTF8);
-                    pg.Password = HttpUtility.UrlDecode(userpass[1], Encoding.UTF8);
-                }
-                else
-                {
-                    pg.IntegratedSecurity = true;
-                }
+        //        //TODO: use ProcessorFactory for all types of statements
 
-                connectionString = pg.ToString();
-            }
+        //        StatementType type = GetStatementType(in statement);
 
-            InfoBaseRecord database = new()
-            {
-                ConnectionString = connectionString
-            };
-
-            return MetadataService.CreateOneDbMetadataProvider(in database);
-        }
-        internal static List<IProcessor> CreatePipeline(in IMetadataProvider context,
-            in TranspilerResult script, in Dictionary<string,object> parameters)
-        {
-            IProcessor processor = null;
-            List<IProcessor> processors = new();
-            bool stream_starter_is_found = false;
-
-            foreach (var item in script.Parameters)
-            {
-                _ = parameters.TryAdd(item.Key, item.Value);
-            }
-
-            for (int i = 0; i < script.Statements.Count; i++)
-            {
-                SqlStatement statement = script.Statements[i];
-
-                if (statement.Node is ForEachStatement)
-                {
-                    processor = new Parallelizer(in context, in statement, in parameters);
-                    processors.Add(processor);
-                    continue;
-                }
-                else if (statement.Node is ConsumeStatement consume && !string.IsNullOrEmpty(consume.Target))
-                {
-                    if (consume.Target.StartsWith("amqp"))
-                    {
-                        processors.Add(new RabbitMQ.Consumer(in consume, in parameters));
-                    }
-                    else if (consume.Target.StartsWith("kafka"))
-                    {
-                        //TODO: processors.Add(new Kafka.Consumer(in consume));
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Unknown schema provider");
-                    }
-                    continue;
-                }
-                else if (statement.Node is ProduceStatement produce)
-                {
-                    if (produce.Target.StartsWith("amqp"))
-                    {
-                        processors.Add(new RabbitMQ.Producer(in produce, in parameters));
-                    }
-                    else if (produce.Target.StartsWith("kafka"))
-                    {
-                        //TODO: processors.Add(new Kafka.Producer(in produce));
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Unknown schema provider");
-                    }
-                    continue;
-                }
-
-                if (string.IsNullOrEmpty(statement.Script))
-                {
-                    continue; //NOTE: USE, DECLARE, FOR EACH, PRODUCE, CONSUME <uri>
-                }
-
-                //TODO: use ProcessorFactory for all types of statements
-
-                StatementType type = GetStatementType(in statement);
-
-                if (type == StatementType.Streaming && !stream_starter_is_found)
-                {
-                    //TODO: check if consume statement is present in upcoming scripts !!!
+        //        if (type == StatementType.Streaming && !stream_starter_is_found)
+        //        {
+        //            //TODO: check if consume statement is present in upcoming scripts !!!
                     
-                    stream_starter_is_found = true;
+        //            stream_starter_is_found = true;
 
-                    if (statement.Node is ConsumeStatement consume && !string.IsNullOrEmpty(consume.Target))
-                    {
-                        if (consume.Target.StartsWith("amqp"))
-                        {
-                            processor = new RabbitMQ.Consumer(in consume, in parameters);
-                        }
-                        else if (consume.Target.StartsWith("kafka"))
-                        {
-                            //TODO: processor = new Kafka.Consumer(in consume);
-                        }
-                        else
-                        {
-                            throw new InvalidOperationException("Unknown schema provider");
-                        }
-                    }
-                    else // database context
-                    {
-                        processor = new Streamer(in context, in statement, in parameters);
-                    }
-                }
-                else
-                {
-                    processor = new Processor(in context, in statement, in parameters);
-                }
+        //            if (statement.Node is ConsumeStatement consume && !string.IsNullOrEmpty(consume.Target))
+        //            {
+        //                if (consume.Target.StartsWith("amqp"))
+        //                {
+        //                    processor = new RabbitMQ.Consumer(in consume, in parameters);
+        //                }
+        //                else if (consume.Target.StartsWith("kafka"))
+        //                {
+        //                    //TODO: processor = new Kafka.Consumer(in consume);
+        //                }
+        //                else
+        //                {
+        //                    throw new InvalidOperationException("Unknown schema provider");
+        //                }
+        //            }
+        //            else // database context
+        //            {
+        //                processor = new Streamer(in context, in statement, in parameters);
+        //            }
+        //        }
+        //        else
+        //        {
+        //            processor = new Processor(in context, in statement, in parameters);
+        //        }
 
-                processors.Add(processor);
+        //        processors.Add(processor);
 
-                if (type == StatementType.Streaming)
-                {
-                    string objectName = string.Empty; //TODO: processor.ObjectName;
+        //        if (type == StatementType.Streaming)
+        //        {
+        //            string objectName = string.Empty; //TODO: processor.ObjectName;
 
-                    foreach (var append in new AppendOperatorExtractor().Extract(statement.Node))
-                    {
-                        processors.Add(ProcessorFactory.Create(in context, in parameters, in append, in objectName));
-                    }
-                }
-            }
+        //            foreach (var append in new AppendOperatorExtractor().Extract(statement.Node))
+        //            {
+        //                processors.Add(PipelineFactory.Create(in context, in parameters, in append, in objectName));
+        //            }
+        //        }
+        //    }
 
-            return processors;
-        }
+        //    return processors;
+        //}
 
         private static IMetadataProvider GetDatabaseContext(in Uri uri, out string script)
         {
@@ -424,55 +369,55 @@ namespace DaJet.Stream
         }
         private static void Stream(in IMetadataProvider context, in TranspilerResult script)
         {
-            Pipeline pipeline = new(in context);
-            bool stream_starter_is_found = false;
+            //Pipeline pipeline = new(in context);
+            //bool stream_starter_is_found = false;
 
-            foreach (var item in script.Parameters)
-            {
-                pipeline.Parameters.Add(item.Key, item.Value);
-            }
+            //foreach (var item in script.Parameters)
+            //{
+            //    pipeline.Parameters.Add(item.Key, item.Value);
+            //}
 
-            for (int i = 0; i < script.Statements.Count; i++)
-            {
-                SqlStatement statement = script.Statements[i];
+            //for (int i = 0; i < script.Statements.Count; i++)
+            //{
+            //    SqlStatement statement = script.Statements[i];
 
-                if (string.IsNullOrEmpty(statement.Script))
-                {
-                    continue; //NOTE: declaration of parameters
-                }
+            //    if (string.IsNullOrEmpty(statement.Script))
+            //    {
+            //        continue; //NOTE: declaration of parameters
+            //    }
 
-                //TODO: use ProcessorFactory for all types of statements
+            //    //TODO: use ProcessorFactory for all types of statements
 
-                ProcessorBase processor;
+            //    ProcessorBase processor;
 
-                StatementType type = GetStatementType(in statement);
+            //    StatementType type = GetStatementType(in statement);
 
-                if (type == StatementType.Streaming && !stream_starter_is_found)
-                {
-                    stream_starter_is_found = true;
-                    processor = new Streamer(pipeline.Context, in statement, pipeline.Parameters);
-                }
-                else
-                {
-                    processor = new Processor(pipeline.Context, in statement, pipeline.Parameters);
-                }
+            //    if (type == StatementType.Streaming && !stream_starter_is_found)
+            //    {
+            //        stream_starter_is_found = true;
+            //        processor = new Streamer(pipeline.Context, in statement, pipeline.Parameters);
+            //    }
+            //    else
+            //    {
+            //        processor = new Processor(pipeline.Context, in statement, pipeline.Parameters);
+            //    }
 
-                pipeline.Processors.Add(processor);
+            //    pipeline.Processors.Add(processor);
 
-                if (type == StatementType.Streaming)
-                {
-                    string objectName = processor.ObjectName;
+            //    if (type == StatementType.Streaming)
+            //    {
+            //        string objectName = processor.ObjectName;
 
-                    foreach (var append in new AppendOperatorExtractor().Extract(statement.Node))
-                    {
-                        pipeline.Processors.Add(ProcessorFactory.Create(pipeline.Context, pipeline.Parameters, in append, in objectName));
-                    }
-                }
-            }
+            //        foreach (var append in new AppendOperatorExtractor().Extract(statement.Node))
+            //        {
+            //            pipeline.Processors.Add(PipelineFactory.Create(pipeline.Context, pipeline.Parameters, in append, in objectName));
+            //        }
+            //    }
+            //}
 
-            //TODO: implement Consumer and Updater (stream while table is not empty)
+            ////TODO: implement Consumer and Updater (stream while table is not empty)
 
-            pipeline.Execute();
+            //pipeline.Execute();
         }
         private static StatementType GetStatementType(in SqlStatement statement)
         {
@@ -540,28 +485,6 @@ namespace DaJet.Stream
                 }
             }
             return StatementType.Processor;
-        }
-
-
-
-        private static void AnalyzeScript(in ScriptModel script)
-        {
-            ScriptScope _root_scope = new() { Owner = script };
-
-            ScriptScope _current = _root_scope;
-
-            for (int i = 0; i < script.Statements.Count; i++)
-            {
-                SyntaxNode statement = script.Statements[i];
-
-                if (statement is CommentStatement) { continue; }
-
-                _current = _current.OpenScope(in statement); // open child scope
-
-                //TODO: ???
-
-                _current = _current.CloseScope(); // returning to previous scope
-            }
         }
     }
 }

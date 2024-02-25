@@ -32,11 +32,11 @@ namespace DaJet.Stream.RabbitMQ
         private EventingBasicConsumer _consumer;
         private int _consumed = 0; // in-memory counter
         private string _consumerTag;
-        private readonly PipelineContext _context;
+        private readonly StreamContext _context;
         private readonly ConsumeStatement _options;
         public Consumer(in ConsumeStatement options, in Dictionary<string, object> context)
         {
-            _context = new PipelineContext(in context);
+            _context = new StreamContext(in context);
             _options = options ?? throw new ArgumentNullException(nameof(options));
 
             _context.MapUri(_options.Target);
