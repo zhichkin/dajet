@@ -11,7 +11,7 @@ using System.Text.Unicode;
 
 namespace DaJet.Stream
 {
-    internal sealed class StreamContext
+    public sealed class StreamContext
     {
         private static readonly JsonWriterOptions JsonWriterOptions = new()
         {
@@ -23,7 +23,7 @@ namespace DaJet.Stream
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
         private static readonly DataObjectJsonConverter _converter = new();
-        internal static string ToJson(in DataObject record)
+        public static string ToJson(in DataObject record)
         {
             using (MemoryStream memory = new())
             {
@@ -39,7 +39,7 @@ namespace DaJet.Stream
                 }
             }
         }
-        internal static DataObject FromJson(in string json)
+        public static DataObject FromJson(in string json)
         {
             Utf8JsonReader reader = new(Encoding.UTF8.GetBytes(json), true, default);
 
@@ -47,15 +47,28 @@ namespace DaJet.Stream
         }
 
         private readonly Dictionary<string, object> _context;
+
         private string _uri;
+        private string _intoArray;
         private string _intoObject;
         private Dictionary<string, MemberAccessDescriptor> _templates = new();
         private Dictionary<string, MemberAccessDescriptor> _descriptors = new();
-        internal StreamContext(in Dictionary<string, object> context)
+        public StreamContext(in Dictionary<string, object> context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
-        internal void MapUri(in string uri)
+        public StreamContext Clone()
+        {
+            Dictionary<string, object> context = new();
+
+            foreach (var variable in _context)
+            {
+                context.Add(variable.Key, variable.Value);
+            }
+
+            return new StreamContext(in context);
+        }
+        public void MapUri(in string uri)
         {
             _uri = uri; // store initial value
 
@@ -83,7 +96,7 @@ namespace DaJet.Stream
                 }
             }
         }
-        internal Uri GetUri()
+        public Uri GetUri()
         {
             string uri = string.Empty;
 
@@ -97,15 +110,40 @@ namespace DaJet.Stream
 
             return new Uri(uri);
         }
-        internal void MapOptions(in ProduceStatement statement)
+        public void SetIntoObject(in DataObject record)
         {
-            MapColumnExpressions(statement.Options);
-            MapColumnExpressions(statement.Columns);
+            if (_context.TryGetValue(_intoObject, out _))
+            {
+                _context[_intoObject] = record;
+            }
         }
-        internal void MapOptions(in ConsumeStatement statement)
+        public DataObject GetIntoObject()
         {
-            MapColumnExpressions(statement.Options);
-            MapColumnExpressions(statement.Columns);
+            if (_descriptors.TryGetValue(_intoObject, out MemberAccessDescriptor descriptor))
+            {
+                if (descriptor.TryGetValue(in _context, out object value))
+                {
+                    if (value is DataObject record)
+                    {
+                        return record;
+                    }
+                }
+            }
+            return null;
+        }
+        public List<DataObject> GetIntoArray()
+        {
+            if (_descriptors.TryGetValue(_intoArray, out MemberAccessDescriptor descriptor))
+            {
+                if (descriptor.TryGetValue(in _context, out object value))
+                {
+                    if (value is List<DataObject> table)
+                    {
+                        return table;
+                    }
+                }
+            }
+            return null;
         }
         private void MapColumnExpressions(in List<ColumnExpression> columns)
         {
@@ -146,7 +184,18 @@ namespace DaJet.Stream
                 }
             }
         }
-        internal void MapIntoObject(in ConsumeStatement statement)
+
+        public void MapOptions(in ProduceStatement statement)
+        {
+            MapColumnExpressions(statement.Options);
+            MapColumnExpressions(statement.Columns);
+        }
+        public void MapOptions(in ConsumeStatement statement)
+        {
+            MapColumnExpressions(statement.Options);
+            MapColumnExpressions(statement.Columns);
+        }
+        public void MapIntoObject(in ConsumeStatement statement)
         {
             if (statement.Into is not null &&
                 statement.Into.Value is VariableReference variable &&
@@ -164,7 +213,7 @@ namespace DaJet.Stream
         }
 
         #region "PRODUCER OPTIONS"
-        internal string GetExchange()
+        public string GetExchange()
         {
             if (_descriptors.TryGetValue("Exchange", out MemberAccessDescriptor descriptor))
             {
@@ -175,7 +224,7 @@ namespace DaJet.Stream
             }
             return string.Empty;
         }
-        internal string GetRoutingKey()
+        public string GetRoutingKey()
         {
             if (_descriptors.TryGetValue("RoutingKey", out MemberAccessDescriptor descriptor))
             {
@@ -186,7 +235,7 @@ namespace DaJet.Stream
             }
             return string.Empty;
         }
-        internal bool GetMandatory()
+        public bool GetMandatory()
         {
             if (_descriptors.TryGetValue("Mandatory", out MemberAccessDescriptor descriptor))
             {
@@ -197,7 +246,7 @@ namespace DaJet.Stream
             }
             return false;
         }
-        internal string GetMessageBody()
+        public string GetMessageBody()
         {
             if (_descriptors.TryGetValue("Body", out MemberAccessDescriptor descriptor))
             {
@@ -218,7 +267,7 @@ namespace DaJet.Stream
             }
             return string.Empty;
         }
-        internal string[] GetBlindCopy()
+        public string[] GetBlindCopy()
         {
             if (_descriptors.TryGetValue("BlindCopy", out MemberAccessDescriptor descriptor))
             {
@@ -246,7 +295,7 @@ namespace DaJet.Stream
             }
             return null;
         }
-        internal string[] GetCarbonCopy()
+        public string[] GetCarbonCopy()
         {
             if (_descriptors.TryGetValue("CarbonCopy", out MemberAccessDescriptor descriptor))
             {
@@ -274,7 +323,7 @@ namespace DaJet.Stream
             }
             return null;
         }
-        internal string GetAppId()
+        public string GetAppId()
         {
             if (_descriptors.TryGetValue(nameof(IBasicProperties.AppId), out MemberAccessDescriptor descriptor))
             {
@@ -285,7 +334,7 @@ namespace DaJet.Stream
             }
             return null;
         }
-        internal string GetMessageId()
+        public string GetMessageId()
         {
             if (_descriptors.TryGetValue(nameof(IBasicProperties.MessageId), out MemberAccessDescriptor descriptor))
             {
@@ -296,7 +345,7 @@ namespace DaJet.Stream
             }
             return null;
         }
-        internal string GetMessageType()
+        public string GetMessageType()
         {
             if (_descriptors.TryGetValue(nameof(IBasicProperties.Type), out MemberAccessDescriptor descriptor))
             {
@@ -307,7 +356,7 @@ namespace DaJet.Stream
             }
             return null;
         }
-        internal string GetCorrelationId()
+        public string GetCorrelationId()
         {
             if (_descriptors.TryGetValue(nameof(IBasicProperties.CorrelationId), out MemberAccessDescriptor descriptor))
             {
@@ -318,7 +367,7 @@ namespace DaJet.Stream
             }
             return null;
         }
-        internal byte GetPriority()
+        public byte GetPriority()
         {
             if (_descriptors.TryGetValue(nameof(IBasicProperties.Priority), out MemberAccessDescriptor descriptor))
             {
@@ -331,7 +380,7 @@ namespace DaJet.Stream
             }
             return 0;
         }
-        internal byte GetDeliveryMode()
+        public byte GetDeliveryMode()
         {
             if (_descriptors.TryGetValue(nameof(IBasicProperties.DeliveryMode), out MemberAccessDescriptor descriptor))
             {
@@ -344,7 +393,7 @@ namespace DaJet.Stream
             }
             return 2;
         }
-        internal string GetContentType()
+        public string GetContentType()
         {
             if (_descriptors.TryGetValue(nameof(IBasicProperties.ContentType), out MemberAccessDescriptor descriptor))
             {
@@ -355,7 +404,7 @@ namespace DaJet.Stream
             }
             return "application/json";
         }
-        internal string GetContentEncoding()
+        public string GetContentEncoding()
         {
             if (_descriptors.TryGetValue(nameof(IBasicProperties.ContentEncoding), out MemberAccessDescriptor descriptor))
             {
@@ -366,7 +415,7 @@ namespace DaJet.Stream
             }
             return "UTF-8";
         }
-        internal string GetReplyTo()
+        public string GetReplyTo()
         {
             if (_descriptors.TryGetValue(nameof(IBasicProperties.ReplyTo), out MemberAccessDescriptor descriptor))
             {
@@ -377,7 +426,7 @@ namespace DaJet.Stream
             }
             return null;
         }
-        internal string GetExpiration()
+        public string GetExpiration()
         {
             if (_descriptors.TryGetValue(nameof(IBasicProperties.Expiration), out MemberAccessDescriptor descriptor))
             {
@@ -391,7 +440,7 @@ namespace DaJet.Stream
         #endregion
 
         #region "CONSUMER OPTIONS"
-        internal string GetQueueName()
+        public string GetQueueName()
         {
             if (_descriptors.TryGetValue("QueueName", out MemberAccessDescriptor descriptor))
             {
@@ -402,7 +451,7 @@ namespace DaJet.Stream
             }
             return string.Empty;
         }
-        internal int GetHeartbeat()
+        public int GetHeartbeat()
         {
             if (_descriptors.TryGetValue("Heartbeat", out MemberAccessDescriptor descriptor))
             {
@@ -415,7 +464,7 @@ namespace DaJet.Stream
             }
             return 60; // seconds
         }
-        internal uint GetPrefetchSize()
+        public uint GetPrefetchSize()
         {
             if (_descriptors.TryGetValue("PrefetchSize", out MemberAccessDescriptor descriptor))
             {
@@ -428,7 +477,7 @@ namespace DaJet.Stream
             }
             return 0; // size of the client buffer in bytes
         }
-        internal ushort GetPrefetchCount()
+        public ushort GetPrefetchCount()
         {
             if (_descriptors.TryGetValue("PrefetchCount", out MemberAccessDescriptor descriptor))
             {
@@ -441,31 +490,28 @@ namespace DaJet.Stream
             }
             return 1; // allowed messages on the fly without ack
         }
-        internal DataObject GetIntoObject()
+        #endregion
+
+        #region "FOR EACH STATEMENT"
+        public void MapIntoArray(in ForEachStatement statement)
         {
-            if (_descriptors.TryGetValue(_intoObject, out MemberAccessDescriptor descriptor))
+            _intoArray = statement.Iterator.Identifier;
+
+            _descriptors.Add(_intoArray, new MemberAccessDescriptor()
             {
-                if (descriptor.TryGetValue(in _context, out object value))
-                {
-                    if (value is DataObject record)
-                    {
-                        return record;
-                    }
-                }
-            }
+                Target = _intoArray,
+                MemberType = typeof(Array)
+            });
+        }
+        public void MapIntoObject(in ForEachStatement statement)
+        {
+            _intoObject = statement.Variable.Identifier;
 
-            DataObject message = new(8);
-
-            message.SetValue("Body", string.Empty);
-            message.SetValue(nameof(IBasicProperties.AppId), string.Empty);
-            message.SetValue(nameof(IBasicProperties.Type), string.Empty);
-            message.SetValue(nameof(IBasicProperties.ContentType), "application/json");
-            message.SetValue(nameof(IBasicProperties.ContentEncoding), "UTF-8");
-            message.SetValue(nameof(IBasicProperties.ReplyTo), string.Empty);
-            message.SetValue(nameof(IBasicProperties.MessageId), string.Empty);
-            message.SetValue(nameof(IBasicProperties.CorrelationId), string.Empty);
-
-            return message;
+            _descriptors.Add(_intoObject, new MemberAccessDescriptor()
+            {
+                Target = _intoObject,
+                MemberType = typeof(object)
+            });
         }
         #endregion
     }

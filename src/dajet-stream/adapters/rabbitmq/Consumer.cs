@@ -183,16 +183,29 @@ namespace DaJet.Stream.RabbitMQ
         {
             if (sender is not EventingBasicConsumer consumer) { return; }
 
-            DataObject record = _context.GetIntoObject();
+            DataObject message = _context.GetIntoObject();
 
-            record.SetValue("Body", DecodeMessageBody(args.Body));
-            record.SetValue(nameof(IBasicProperties.AppId), args.BasicProperties.AppId ?? string.Empty);
-            record.SetValue(nameof(IBasicProperties.Type), args.BasicProperties.Type ?? string.Empty);
-            record.SetValue(nameof(IBasicProperties.ContentType), args.BasicProperties.ContentType ?? "application/json");
-            record.SetValue(nameof(IBasicProperties.ContentEncoding), args.BasicProperties.ContentEncoding ?? "UTF-8");
-            record.SetValue(nameof(IBasicProperties.ReplyTo), args.BasicProperties.ReplyTo ?? string.Empty);
-            record.SetValue(nameof(IBasicProperties.MessageId), args.BasicProperties.MessageId ?? string.Empty);
-            record.SetValue(nameof(IBasicProperties.CorrelationId), args.BasicProperties.CorrelationId ?? string.Empty);
+            if (message is null)
+            {
+                message = new DataObject(8);
+                //message.SetValue("Body", string.Empty);
+                //message.SetValue(nameof(IBasicProperties.AppId), string.Empty);
+                //message.SetValue(nameof(IBasicProperties.Type), string.Empty);
+                //message.SetValue(nameof(IBasicProperties.ContentType), "application/json");
+                //message.SetValue(nameof(IBasicProperties.ContentEncoding), "UTF-8");
+                //message.SetValue(nameof(IBasicProperties.ReplyTo), string.Empty);
+                //message.SetValue(nameof(IBasicProperties.MessageId), string.Empty);
+                //message.SetValue(nameof(IBasicProperties.CorrelationId), string.Empty);
+            }
+
+            message.SetValue("Body", DecodeMessageBody(args.Body));
+            message.SetValue(nameof(IBasicProperties.AppId), args.BasicProperties.AppId ?? string.Empty);
+            message.SetValue(nameof(IBasicProperties.Type), args.BasicProperties.Type ?? string.Empty);
+            message.SetValue(nameof(IBasicProperties.ContentType), args.BasicProperties.ContentType ?? "application/json");
+            message.SetValue(nameof(IBasicProperties.ContentEncoding), args.BasicProperties.ContentEncoding ?? "UTF-8");
+            message.SetValue(nameof(IBasicProperties.ReplyTo), args.BasicProperties.ReplyTo ?? string.Empty);
+            message.SetValue(nameof(IBasicProperties.MessageId), args.BasicProperties.MessageId ?? string.Empty);
+            message.SetValue(nameof(IBasicProperties.CorrelationId), args.BasicProperties.CorrelationId ?? string.Empty);
 
             try
             {

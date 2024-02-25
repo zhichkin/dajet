@@ -1,10 +1,16 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata;
+using DaJet.Metadata.Model;
 using DaJet.Model;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
+using Microsoft.Data.SqlClient;
+using Npgsql;
+using System.Data;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
+using System.Web;
 
 namespace DaJet.Stream
 {
@@ -237,6 +243,233 @@ namespace DaJet.Stream
 
             #endregion
         }
+        internal static IMetadataProvider GetDatabaseContext(in UseStatement statement)
+        {
+            string[] userpass = statement.Uri.UserInfo.Split(':');
+
+            string connectionString = string.Empty;
+
+            if (statement.Uri.Scheme == "mssql")
+            {
+                var ms = new SqlConnectionStringBuilder()
+                {
+                    Encrypt = false,
+                    DataSource = statement.Uri.Host,
+                    InitialCatalog = statement.Uri.AbsolutePath.Remove(0, 1) // slash
+                };
+
+                if (userpass is not null && userpass.Length == 2)
+                {
+                    ms.UserID = HttpUtility.UrlDecode(userpass[0], Encoding.UTF8);
+                    ms.Password = HttpUtility.UrlDecode(userpass[1], Encoding.UTF8);
+                }
+                else
+                {
+                    ms.IntegratedSecurity = true;
+                }
+
+                connectionString = ms.ToString();
+            }
+            else if (statement.Uri.Scheme == "pgsql")
+            {
+                var pg = new NpgsqlConnectionStringBuilder()
+                {
+                    Host = statement.Uri.Host,
+                    Port = statement.Uri.Port,
+                    Database = statement.Uri.AbsolutePath.Remove(0, 1)
+                };
+
+                if (userpass is not null && userpass.Length == 2)
+                {
+                    pg.Username = HttpUtility.UrlDecode(userpass[0], Encoding.UTF8);
+                    pg.Password = HttpUtility.UrlDecode(userpass[1], Encoding.UTF8);
+                }
+                else
+                {
+                    pg.IntegratedSecurity = true;
+                }
+
+                connectionString = pg.ToString();
+            }
+
+            InfoBaseRecord database = new()
+            {
+                ConnectionString = connectionString
+            };
+
+            return MetadataService.CreateOneDbMetadataProvider(in database);
+        }
+        internal static void InitializeVariables(in ScriptScope scope)
+        {
+            if (scope.Variables.Count == 0)
+            {
+                return;
+            }
+
+            IMetadataProvider database = null;
+
+            ScriptScope ancestor = scope.Ancestor<UseStatement>();
+
+            if (ancestor is not null && ancestor.Owner is UseStatement use)
+            {
+                database = GetDatabaseContext(in use);
+            }
+
+            ScriptModel script = new();
+
+            foreach (var variable in scope.Variables)
+            {
+                if (variable.Value is DeclareStatement declare)
+                {
+                    script.Statements.Add(declare);
+
+                    // Database UDT records are initialized either by IMPORT statement or user-supplied parameter
+                    if (declare.Type.Binding is EntityDefinition) { continue; }
+
+                    if (ParserHelper.IsDataType(declare.Type.Identifier, out Type type))
+                    {
+                        if (declare.Initializer is ScalarExpression scalar)
+                        {
+                            scope.Variables[variable.Key] = ParserHelper.GetScalarValue(in scalar);
+                        }
+                        else if (declare.Initializer is SelectExpression select)
+                        {
+                            //TODO: ?
+                        }
+                        else
+                        {
+                            scope.Variables[variable.Key] = UnionType.GetDefaultValue(in type);
+                        }
+                    }
+                }
+            }
+
+            if (database is not null)
+            {
+                InitializeSelectVariables(in script, in database, scope.Variables);
+            }
+        }
+        internal static void InitializeSelectVariables(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)
+        {
+            foreach (SyntaxNode node in model.Statements)
+            {
+                if (node is not DeclareStatement declare) { continue; }
+
+                if (declare.Initializer is SelectExpression select)
+                {
+                    SqlStatement statement = CreateScriptStatement(in context, in select);
+
+                    List<VariableReference> variables = new VariableReferenceExtractor().Extract(select);
+
+                    Dictionary<string, object> select_parameters = new();
+
+                    foreach (VariableReference variable in variables)
+                    {
+                        string name = variable.Identifier[1..];
+
+                        if (parameters.TryGetValue(name, out object value))
+                        {
+                            select_parameters.Add(name, value);
+                        }
+                    }
+
+                    if (declare.Type.Binding is Entity)
+                    {
+                        Entity entity = SelectEntityValue(in context, in statement, in select_parameters);
+
+                        if (entity.IsUndefined)
+                        {
+                            if (declare.Type.Binding is Entity value)
+                            {
+                                entity = value;
+                            }
+                        }
+
+                        declare.Initializer = new ScalarExpression()
+                        {
+                            Token = TokenType.Entity,
+                            Literal = entity.ToString()
+                        };
+
+                        parameters.Add(declare.Name[1..], entity.Identity.ToByteArray());
+                    }
+                    else
+                    {
+                        object value = SelectParameterValue(in context, in statement, in select_parameters);
+
+                        parameters.Add(declare.Name[1..], value);
+                    }
+                }
+            }
+        }
+        private static SqlStatement CreateScriptStatement(in IMetadataProvider context, in SelectExpression select)
+        {
+            ScriptModel model = new();
+
+            model.Statements.Add(new SelectStatement()
+            {
+                Expression = select
+            });
+
+            ISqlTranspiler transpiler;
+
+            if (context.DatabaseProvider == DatabaseProvider.SqlServer)
+            {
+                transpiler = new MsSqlTranspiler() { YearOffset = context.YearOffset };
+            }
+            else if (context.DatabaseProvider == DatabaseProvider.PostgreSql)
+            {
+                transpiler = new PgSqlTranspiler() { YearOffset = context.YearOffset };
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unsupported database provider: {context.DatabaseProvider}");
+            }
+
+            if (!transpiler.TryTranspile(in model, in context, out TranspilerResult result, out string error))
+            {
+                throw new Exception(error);
+            }
+
+            if (result is not null && result.Statements is not null && result.Statements.Count > 0)
+            {
+                return result.Statements[0];
+            }
+
+            throw new InvalidOperationException("Entity parameters configuration error");
+        }
+        private static Entity SelectEntityValue(in IMetadataProvider context, in SqlStatement statement, in Dictionary<string, object> parameters)
+        {
+            object value = null;
+
+            IQueryExecutor executor = context.CreateQueryExecutor(); //TODO: use OneDbConnection ?
+
+            foreach (IDataReader reader in executor.ExecuteReader(statement.Script, 10, parameters))
+            {
+                value = statement.Mapper.Properties[0].GetValue(in reader); break;
+            }
+
+            if (value is Entity entity)
+            {
+                return entity;
+            }
+
+            return Entity.Undefined;
+        }
+        private static object SelectParameterValue(in IMetadataProvider context, in SqlStatement statement, in Dictionary<string, object> parameters)
+        {
+            object value = null;
+
+            IQueryExecutor executor = context.CreateQueryExecutor(); //TODO: use OneDbConnection ?
+
+            foreach (IDataReader reader in executor.ExecuteReader(statement.Script, 10, parameters))
+            {
+                value = statement.Mapper.Properties[0].GetValue(in reader); break;
+            }
+
+            return value;
+        }
+
 
         //internal static List<IProcessor> CreatePipeline(in IMetadataProvider context,
         //    in TranspilerResult script, in Dictionary<string,object> parameters)
@@ -305,7 +538,7 @@ namespace DaJet.Stream
         //        if (type == StatementType.Streaming && !stream_starter_is_found)
         //        {
         //            //TODO: check if consume statement is present in upcoming scripts !!!
-                    
+
         //            stream_starter_is_found = true;
 
         //            if (statement.Node is ConsumeStatement consume && !string.IsNullOrEmpty(consume.Target))

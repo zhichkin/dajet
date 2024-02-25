@@ -1,4 +1,6 @@
-﻿using DaJet.Scripting.Model;
+﻿using DaJet.Data;
+using DaJet.Scripting.Model;
+using System.Globalization;
 
 namespace DaJet.Scripting
 {
@@ -416,9 +418,14 @@ namespace DaJet.Scripting
                 literal = "false";
                 token = TokenType.Boolean;
             }
-            else if (type == typeof(decimal))
+            else if (type == typeof(int))
             {
                 literal = "0";
+                token = TokenType.Integer;
+            }
+            else if (type == typeof(decimal))
+            {
+                literal = "0.00";
                 token = TokenType.Number;
             }
             else if (type == typeof(DateTime))
@@ -448,6 +455,56 @@ namespace DaJet.Scripting
             }
 
             return new ScalarExpression() { Token = token, Literal = literal };
+        }
+        public static object GetScalarValue(in ScalarExpression scalar)
+        {
+            object value = null;
+            string literal = scalar.Literal;
+            TokenType token = scalar.Token;
+
+            if (token == TokenType.Boolean)
+            {
+                if (literal.ToLowerInvariant() == "true")
+                {
+                    value = true;
+                }
+                else if (literal.ToLowerInvariant() == "false")
+                {
+                    value = false;
+                }
+            }
+            else if (token == TokenType.Number)
+            {
+                value = decimal.Parse(literal, CultureInfo.InvariantCulture);
+            }
+            else if (token == TokenType.Integer)
+            {
+                value = int.Parse(literal, CultureInfo.InvariantCulture);
+            }
+            else if (token == TokenType.DateTime)
+            {
+                value = DateTime.Parse(literal);
+            }
+            else if (token == TokenType.String)
+            {
+                value = literal;
+            }
+            else if (token == TokenType.Uuid)
+            {
+                value = new Guid(literal);
+            }
+            else if (token == TokenType.Binary)
+            {
+                value = DbUtilities.StringToByteArray(literal[2..]); // remove leading 0x
+            }
+            else if (token == TokenType.Entity)
+            {
+                // Metadata object reference parameter:
+                // DECLARE @product entity = {50:9a1984dc-3084-11ed-9cd7-408d5c93cc8e};
+                value = Entity.Parse(scalar.Literal);
+            }
+
+            return value;
         }
     }
 }

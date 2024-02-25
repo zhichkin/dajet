@@ -103,19 +103,15 @@ namespace DaJet.Stream
                 }
             }
         }
-        private static IProcessor Create(in ScriptScope scope)
+        private static IProcessor Create(in ScriptScope scope, in StreamContext context)
         {
-            if (scope.Owner is ScriptModel)
+            if (scope.Owner is UseStatement)
             {
-                return new DataStream(in scope);
-            }
-            else if (scope.Owner is UseStatement)
-            {
-                return new UseProcessor(in scope);
+                return new UseProcessor(in scope, in context);
             }
             else if (scope.Owner is ForEachStatement)
             {
-                return new Parallelizer(in scope);
+                return new Parallelizer(in scope, in context);
             }
             else if (scope.Owner is ConsumeStatement consume)
             {
@@ -144,9 +140,9 @@ namespace DaJet.Stream
         {
             BuildScriptScope(in script, out ScriptScope scope);
 
-            return Create(in scope);
+            return new DataStream(in scope);
         }
-        internal static IProcessor Create(in List<ScriptScope> children)
+        internal static IProcessor Create(in List<ScriptScope> children, in StreamContext context)
         {
             ScriptScope next;
             IProcessor starter = null;
@@ -157,7 +153,7 @@ namespace DaJet.Stream
             {
                 next = children[i];
 
-                processor = Create(in next);
+                processor = Create(in next, in context);
 
                 if (i == 0)
                 {

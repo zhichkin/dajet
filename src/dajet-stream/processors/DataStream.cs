@@ -16,13 +16,11 @@ namespace DaJet.Stream
                 throw new InvalidOperationException();
             }
 
-            _next = StreamFactory.Create(_scope.Children);
+            StreamProcessor.InitializeVariables(in _scope);
 
-            foreach (var declare in scope.Variables)
-            {
-                //TODO: initialize stream context
-                // see ConfigureParameters !!!
-            }
+            StreamContext context = new(_scope.Variables);
+
+            _next = StreamFactory.Create(_scope.Children, in context);
         }
         public void LinkTo(in IProcessor next) { throw new NotImplementedException(); }
         public void Synchronize() { _next?.Synchronize(); }

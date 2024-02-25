@@ -1,11 +1,6 @@
 ﻿using DaJet.Metadata;
-using DaJet.Model;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
-using Microsoft.Data.SqlClient;
-using Npgsql;
-using System.Text;
-using System.Web;
 
 namespace DaJet.Stream
 {
@@ -14,8 +9,10 @@ namespace DaJet.Stream
         private IProcessor _next;
         private readonly ScriptScope _scope;
         private readonly IProcessor _stream;
+        private readonly StreamContext _context;
         private readonly IMetadataProvider _database;
-        public UseProcessor(in ScriptScope scope)
+
+        public UseProcessor(in ScriptScope scope, in StreamContext context)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
@@ -24,7 +21,9 @@ namespace DaJet.Stream
                 throw new InvalidOperationException();
             }
 
-            _database = GetDatabaseContext(in statement);
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+
+            _database = StreamProcessor.GetDatabaseContext(in statement);
 
             foreach (var item in _scope.Variables)
             {
@@ -34,11 +33,9 @@ namespace DaJet.Stream
                 }
             }
 
-            _stream = StreamFactory.Create(_scope.Children);
+            _stream = StreamFactory.Create(_scope.Children, in _context);
 
-            var context = new StreamContext(_scope.Variables);
-
-            context.MapUri(statement.Uri.ToString());
+            //TODO: _context.MapUri(statement.Uri.ToString());
         }
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Synchronize() { _next?.Synchronize(); }
@@ -48,62 +45,6 @@ namespace DaJet.Stream
             _stream?.Process();
             
             _next?.Process();
-        }
-        private static IMetadataProvider GetDatabaseContext(in UseStatement statement)
-        {
-            string[] userpass = statement.Uri.UserInfo.Split(':');
-
-            string connectionString = string.Empty;
-
-            if (statement.Uri.Scheme == "mssql")
-            {
-                var ms = new SqlConnectionStringBuilder()
-                {
-                    Encrypt = false,
-                    DataSource = statement.Uri.Host,
-                    InitialCatalog = statement.Uri.AbsolutePath.Remove(0, 1) // slash
-                };
-
-                if (userpass is not null && userpass.Length == 2)
-                {
-                    ms.UserID = HttpUtility.UrlDecode(userpass[0], Encoding.UTF8);
-                    ms.Password = HttpUtility.UrlDecode(userpass[1], Encoding.UTF8);
-                }
-                else
-                {
-                    ms.IntegratedSecurity = true;
-                }
-
-                connectionString = ms.ToString();
-            }
-            else if (statement.Uri.Scheme == "pgsql")
-            {
-                var pg = new NpgsqlConnectionStringBuilder()
-                {
-                    Host = statement.Uri.Host,
-                    Port = statement.Uri.Port,
-                    Database = statement.Uri.AbsolutePath.Remove(0, 1)
-                };
-
-                if (userpass is not null && userpass.Length == 2)
-                {
-                    pg.Username = HttpUtility.UrlDecode(userpass[0], Encoding.UTF8);
-                    pg.Password = HttpUtility.UrlDecode(userpass[1], Encoding.UTF8);
-                }
-                else
-                {
-                    pg.IntegratedSecurity = true;
-                }
-
-                connectionString = pg.ToString();
-            }
-
-            InfoBaseRecord database = new()
-            {
-                ConnectionString = connectionString
-            };
-
-            return MetadataService.CreateOneDbMetadataProvider(in database);
         }
     }
 }
