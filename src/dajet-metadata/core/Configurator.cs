@@ -1329,6 +1329,18 @@ namespace DaJet.Metadata.Core
 
         public static void ConfigurePredefinedValues(in OneDbMetadataProvider cache, in MetadataObject metadata)
         {
+            try
+            {
+                TryConfigurePredefinedValues(in cache, in metadata);
+            }
+            catch
+            {
+                //TODO: нужно доисследовать структуру хранения предопределённых значений
+                //ERROR (line 1376) : Unable to cast object of type 'System.String' to type 'DaJet.Metadata.Core.ConfigObject'
+            }
+        }
+        private static void TryConfigurePredefinedValues(in OneDbMetadataProvider cache, in MetadataObject metadata)
+        {
             if (metadata is not IPredefinedValueOwner owner) return;
 
             int predefinedValueUuid = 3;
@@ -1338,6 +1350,7 @@ namespace DaJet.Metadata.Core
             int predefinedDescription = 8;
 
             string fileName = metadata.Uuid.ToString() + ".1c"; // файл с описанием предопределённых элементов
+            
             if (metadata is Characteristic)
             {
                 fileName = metadata.Uuid.ToString() + ".7";
