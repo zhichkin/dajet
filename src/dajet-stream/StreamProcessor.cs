@@ -1,6 +1,5 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata;
-using DaJet.Metadata.Model;
 using DaJet.Model;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
@@ -8,7 +7,6 @@ using Microsoft.Data.SqlClient;
 using Npgsql;
 using System.Data;
 using System.Diagnostics;
-using System.Globalization;
 using System.Text;
 using System.Web;
 
@@ -245,17 +243,19 @@ namespace DaJet.Stream
         }
         internal static IMetadataProvider GetDatabaseContext(in UseStatement statement)
         {
-            string[] userpass = statement.Uri.UserInfo.Split(':');
+            Uri uri = new(statement.Uri);
+
+            string[] userpass = uri.UserInfo.Split(':');
 
             string connectionString = string.Empty;
 
-            if (statement.Uri.Scheme == "mssql")
+            if (uri.Scheme == "mssql")
             {
                 var ms = new SqlConnectionStringBuilder()
                 {
                     Encrypt = false,
-                    DataSource = statement.Uri.Host,
-                    InitialCatalog = statement.Uri.AbsolutePath.Remove(0, 1) // slash
+                    DataSource = uri.Host,
+                    InitialCatalog = uri.AbsolutePath.Remove(0, 1) // slash
                 };
 
                 if (userpass is not null && userpass.Length == 2)
@@ -270,13 +270,13 @@ namespace DaJet.Stream
 
                 connectionString = ms.ToString();
             }
-            else if (statement.Uri.Scheme == "pgsql")
+            else if (uri.Scheme == "pgsql")
             {
                 var pg = new NpgsqlConnectionStringBuilder()
                 {
-                    Host = statement.Uri.Host,
-                    Port = statement.Uri.Port,
-                    Database = statement.Uri.AbsolutePath.Remove(0, 1)
+                    Host = uri.Host,
+                    Port = uri.Port,
+                    Database = uri.AbsolutePath.Remove(0, 1)
                 };
 
                 if (userpass is not null && userpass.Length == 2)
@@ -299,21 +299,9 @@ namespace DaJet.Stream
 
             return MetadataService.CreateOneDbMetadataProvider(in database);
         }
-        internal static void InitializeVariables(in ScriptScope scope)
+        internal static void InitializeVariables(in ScriptScope scope, in IMetadataProvider database)
         {
-            if (scope.Variables.Count == 0)
-            {
-                return;
-            }
-
-            IMetadataProvider database = null;
-
-            ScriptScope ancestor = scope.Ancestor<UseStatement>();
-
-            if (ancestor is not null && ancestor.Owner is UseStatement use)
-            {
-                database = GetDatabaseContext(in use);
-            }
+            if (scope.Variables.Count == 0) { return; }
 
             ScriptModel script = new();
 
@@ -321,112 +309,180 @@ namespace DaJet.Stream
             {
                 if (variable.Value is DeclareStatement declare)
                 {
-                    script.Statements.Add(declare);
+                    script.Statements.Add(declare); // local scope variable
 
-                    // Database UDT records are initialized either by IMPORT statement or user-supplied parameter
-                    if (declare.Type.Binding is EntityDefinition) { continue; }
-
-                    if (ParserHelper.IsDataType(declare.Type.Identifier, out Type type))
+                    if (declare.Initializer is SelectExpression select)
                     {
-                        if (declare.Initializer is ScalarExpression scalar)
+                        List<VariableReference> references = new VariableReferenceExtractor().Extract(select);
+                        
+                        foreach (VariableReference reference in references)
                         {
-                            scope.Variables[variable.Key] = ParserHelper.GetScalarValue(in scalar);
-                        }
-                        else if (declare.Initializer is SelectExpression select)
-                        {
-                            //TODO: ?
-                        }
-                        else
-                        {
-                            scope.Variables[variable.Key] = UnionType.GetDefaultValue(in type);
-                        }
-                    }
-                }
-            }
-
-            if (database is not null)
-            {
-                InitializeSelectVariables(in script, in database, scope.Variables);
-            }
-        }
-        internal static void InitializeSelectVariables(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)
-        {
-            foreach (SyntaxNode node in model.Statements)
-            {
-                if (node is not DeclareStatement declare) { continue; }
-
-                if (declare.Initializer is SelectExpression select)
-                {
-                    SqlStatement statement = CreateScriptStatement(in context, in select);
-
-                    List<VariableReference> variables = new VariableReferenceExtractor().Extract(select);
-
-                    Dictionary<string, object> select_parameters = new();
-
-                    foreach (VariableReference variable in variables)
-                    {
-                        string name = variable.Identifier[1..];
-
-                        if (parameters.TryGetValue(name, out object value))
-                        {
-                            select_parameters.Add(name, value);
-                        }
-                    }
-
-                    if (declare.Type.Binding is Entity)
-                    {
-                        Entity entity = SelectEntityValue(in context, in statement, in select_parameters);
-
-                        if (entity.IsUndefined)
-                        {
-                            if (declare.Type.Binding is Entity value)
+                            if (scope.TryGetVariableDeclaration(reference.Identifier, out bool local, out DeclareStatement statement))
                             {
-                                entity = value;
+                                if (!local) { script.Statements.Add(statement); } // outer scope variable
                             }
                         }
 
-                        declare.Initializer = new ScalarExpression()
+                        List<MemberAccessExpression> members = new MemberAccessExtractor().Extract(select);
+
+                        Dictionary<string, DeclareStatement> memberAccess = new();
+
+                        foreach (MemberAccessExpression member in members)
                         {
-                            Token = TokenType.Entity,
-                            Literal = entity.ToString()
-                        };
+                            string target = member.GetTargetName();
 
-                        parameters.Add(declare.Name[1..], entity.Identity.ToByteArray());
-                    }
-                    else
-                    {
-                        object value = SelectParameterValue(in context, in statement, in select_parameters);
-
-                        parameters.Add(declare.Name[1..], value);
+                            if (!memberAccess.ContainsKey(target))
+                            {
+                                if (scope.TryGetVariableDeclaration(target, out bool local, out DeclareStatement statement))
+                                {
+                                    if (!local) { script.Statements.Add(statement); } // outer scope variable
+                                }
+                            }
+                        }
                     }
                 }
             }
-        }
-        private static SqlStatement CreateScriptStatement(in IMetadataProvider context, in SelectExpression select)
-        {
-            ScriptModel model = new();
 
-            model.Statements.Add(new SelectStatement()
+            foreach (ScriptScope child in scope.Children)
+            {
+                if (child.Owner is ImportStatement import)
+                {
+                    script.Statements.Add(import);
+                }
+            }
+
+            if (!ScriptProcessor.TryPrepareScript(in script, in database, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            foreach (var variable in scope.Variables)
+            {
+                if (variable.Value is DeclareStatement declare)
+                {
+                    if (declare.Initializer is null)
+                    {
+                        scope.Context[variable.Key] = GetDefaultValue(in declare);
+                    }
+                    else if (declare.Initializer is ScalarExpression scalar)
+                    {
+                        scope.Context[variable.Key] = ParserHelper.GetScalarValue(in scalar);
+                    }
+                    else if (declare.Initializer is SelectExpression select)
+                    {
+                        scope.Context[variable.Key] = GetSelectValue(in scope, in database, in declare, in select);
+                    }
+                }
+            }
+
+            //TODO: IMPORT statements ?
+            //ScriptProcessor.ExecuteImportStatements(in model, in context, in sql_parameters);
+        }
+        private static object GetDefaultValue(in DeclareStatement declare)
+        {
+            object value = null;
+
+            if (declare.Type.Binding is Entity entity)
+            {
+                value = entity;
+
+                string literal = ParserHelper.GetDataTypeLiteral(typeof(Entity));
+
+                if (declare.Type.Identifier != literal) // DECLARE @Ссылка Справочник.Номенклатура
+                {
+                    declare.Type.Identifier = literal; // DECLARE @Ссылка entity = {code:uuid}
+
+                    declare.Initializer = new ScalarExpression()
+                    {
+                        Token = TokenType.Entity,
+                        Literal = entity.ToString()
+                    };
+                }
+            }
+            else if (declare.Type.Binding is Type type)
+            {
+                value = UnionType.GetDefaultValue(in type);
+            }
+
+            return value;
+        }
+        private static object GetSelectValue(in ScriptScope scope, in IMetadataProvider database, in DeclareStatement declare, in SelectExpression select)
+        {
+            SqlStatement statement = TranspileSelectStatement(in database, in select);
+            
+            Dictionary<string, object> select_parameters = new();
+
+            List<VariableReference> references = new VariableReferenceExtractor().Extract(select);
+
+            foreach (VariableReference reference in references)
+            {
+                if (scope.TryGetVariableValue(reference.Identifier, out object value))
+                {
+                    select_parameters.Add(reference.Identifier, value);
+                }
+            }
+
+            List<MemberAccessExpression> members = new MemberAccessExtractor().Extract(select);
+
+            foreach (MemberAccessExpression member in members)
+            {
+                string target = member.GetTargetName();
+
+                if (!select_parameters.ContainsKey(target))
+                {
+                    if (scope.TryGetVariableValue(target, out object value))
+                    {
+                        select_parameters.Add(member.GetDbParameterName(), value);
+                    }
+                }
+            }
+
+            database.ConfigureDbParameters(in select_parameters);
+
+            if (declare.Type.Binding is Entity empty)
+            {
+                Entity entity = SelectEntityValue(in database, in statement, in select_parameters);
+
+                if (entity.IsUndefined) { entity = empty; }
+
+                declare.Initializer = new ScalarExpression()
+                {
+                    Token = TokenType.Entity,
+                    Literal = entity.ToString()
+                };
+
+                return entity;
+            }
+            else
+            {
+                return SelectParameterValue(in database, in statement, in select_parameters);
+            }
+        }
+        private static SqlStatement TranspileSelectStatement(in IMetadataProvider database, in SelectExpression select)
+        {
+            ScriptModel script = new();
+
+            script.Statements.Add(new SelectStatement()
             {
                 Expression = select
             });
 
             ISqlTranspiler transpiler;
 
-            if (context.DatabaseProvider == DatabaseProvider.SqlServer)
+            if (database.DatabaseProvider == DatabaseProvider.SqlServer)
             {
-                transpiler = new MsSqlTranspiler() { YearOffset = context.YearOffset };
+                transpiler = new MsSqlTranspiler() { YearOffset = database.YearOffset };
             }
-            else if (context.DatabaseProvider == DatabaseProvider.PostgreSql)
+            else if (database.DatabaseProvider == DatabaseProvider.PostgreSql)
             {
-                transpiler = new PgSqlTranspiler() { YearOffset = context.YearOffset };
+                transpiler = new PgSqlTranspiler() { YearOffset = database.YearOffset };
             }
             else
             {
-                throw new InvalidOperationException($"Unsupported database provider: {context.DatabaseProvider}");
+                throw new InvalidOperationException($"Unsupported database provider: {database.DatabaseProvider}");
             }
 
-            if (!transpiler.TryTranspile(in model, in context, out TranspilerResult result, out string error))
+            if (!transpiler.TryTranspile(in script, in database, out TranspilerResult result, out string error))
             {
                 throw new Exception(error);
             }

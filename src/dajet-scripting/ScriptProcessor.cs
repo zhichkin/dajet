@@ -414,7 +414,7 @@ namespace DaJet.Scripting
             return value;
         }
 
-        private static void ExecuteImportStatements(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)
+        public static void ExecuteImportStatements(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)
         {
             List<SyntaxNode> items_to_remove = new();
 
@@ -523,6 +523,59 @@ namespace DaJet.Scripting
                     {
                         importParameters.Add(parameterName, value);
                     }
+                }
+            }
+        }
+
+
+        public static bool TryPrepareScript(in ScriptModel script, in IMetadataProvider database, out string error)
+        {
+            if (!new MetadataBinder().TryBind(script, in database, out _, out List<string> errors))
+            {
+                error = FormatErrorMessage(in errors); return false;
+            }
+
+            if (!new ScriptTransformer().TryTransform(script, out error)) { return false; }
+
+            return true;
+        }
+        public static void ConfigureDbParameters(in ScriptModel script, in IMetadataProvider context, out Dictionary<string, object> parameters)
+        {
+            parameters = new Dictionary<string, object>();
+
+            //TODO: ?
+
+            foreach (var parameter in parameters)
+            {
+                if (parameter.Value is Entity entity)
+                {
+                    parameters[parameter.Key] = entity.Identity.ToByteArray();
+                }
+                else if (parameter.Value is bool boolean)
+                {
+                    if (context.DatabaseProvider == DatabaseProvider.SqlServer)
+                    {
+                        parameters[parameter.Key] = new byte[] { Convert.ToByte(boolean) };
+                    }
+                }
+                else if (parameter.Value is DateTime dateTime)
+                {
+                    parameters[parameter.Key] = dateTime.AddYears(context.YearOffset);
+                }
+                else if (parameter.Value is Guid uuid)
+                {
+                    parameters[parameter.Key] = uuid.ToByteArray();
+                }
+                else if (parameter.Value is List<Dictionary<string, object>> table)
+                {
+                    DeclareStatement declare = GetDeclareStatementByName(in script, parameter.Key);
+
+                    parameters[parameter.Key] = new TableValuedParameter()
+                    {
+                        Name = parameter.Key,
+                        Value = table,
+                        DbName = declare is null ? string.Empty : declare.Type.Identifier
+                    };
                 }
             }
         }

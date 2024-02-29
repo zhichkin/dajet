@@ -98,16 +98,6 @@ namespace DaJet.Scripting
         }
         public ScriptScope CloseScope() { return _ancestor; }
 
-        public static bool IsStreamScope(in SyntaxNode statement)
-        {
-            return statement is UseStatement
-                || statement is ForEachStatement
-                || statement is ConsumeStatement
-                || statement is ProduceStatement
-                || statement is SelectStatement select && select.IsStream
-                || statement is UpdateStatement update && update.Output?.Into?.Value is not null;
-        }
-
         public object GetVariableBinding(in string name)
         {
             ScriptScope scope = this;
@@ -172,6 +162,89 @@ namespace DaJet.Scripting
 
             table = null;
             return false;
+        }
+
+        public Dictionary<string, object> Context { get; } = new(); // stream context variables and their values
+        public bool TryGetVariableValue(in string name, out object value)
+        {
+            value = null;
+
+            ScriptScope scope = this;
+
+            while (scope is not null)
+            {
+                if (scope.Context.TryGetValue(name, out value))
+                {
+                    return true;
+                }
+
+                scope = scope.Parent;
+            }
+
+            return false;
+        }
+        public bool TryGetVariableDeclaration(in string name, out bool local, out DeclareStatement declare)
+        {
+            local = true;
+            declare = null;
+
+            ScriptScope scope = this;
+
+            while (scope is not null)
+            {
+                if (scope.Variables.TryGetValue(name, out object statement))
+                {
+                    local = ReferenceEquals(this, scope);
+                    
+                    declare = statement as DeclareStatement;
+                    
+                    return declare is not null;
+                }
+
+                scope = scope.Parent;
+            }
+
+            return false; // not found
+        }
+        public static bool IsStreamScope(in SyntaxNode statement)
+        {
+            return statement is UseStatement
+                || statement is ForEachStatement
+                || statement is ConsumeStatement
+                || statement is ProduceStatement
+                || statement is SelectStatement select && select.IsStream
+                || statement is UpdateStatement update && update.Output?.Into?.Value is not null;
+        }
+        public static void BuildStreamScope(in ScriptModel script, out ScriptScope scope)
+        {
+            scope = new ScriptScope() { Owner = script };
+
+            ScriptScope _current = scope;
+
+            for (int i = 0; i < script.Statements.Count; i++)
+            {
+                SyntaxNode statement = script.Statements[i];
+
+                if (statement is CommentStatement) { continue; }
+
+                if (statement is DeclareStatement declare)
+                {
+                    _current.Context.Add(declare.Name, null);
+                    _current.Variables.Add(declare.Name, declare);
+                }
+                else if (IsStreamScope(in statement))
+                {
+                    if (_current.Owner is UseStatement && statement is UseStatement)
+                    {
+                        _current = _current.CloseScope(); // one database context closes another
+                    }
+                    _current = _current.NewScope(in statement); // create parent scope
+                }
+                else
+                {
+                    _ = _current.NewScope(in statement); // add child to parent scope
+                }
+            }
         }
     }
 }

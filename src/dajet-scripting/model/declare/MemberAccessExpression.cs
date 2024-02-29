@@ -1,6 +1,4 @@
-﻿using System.Xml.Linq;
-
-namespace DaJet.Scripting.Model
+﻿namespace DaJet.Scripting.Model
 {
     public sealed class MemberAccessExpression : SyntaxNode
     {
@@ -11,7 +9,15 @@ namespace DaJet.Scripting.Model
         {
             return $"[{Token}: {Identifier}]";
         }
-        public string GetVariableIdentifier()
+        public string GetTargetName()
+        {
+            return Identifier.Split('.')[0]; // @variable
+        }
+        public string GetMemberName()
+        {
+            return Identifier.Split('.')[1]; // member
+        }
+        public string GetDbParameterName()
         {
             return Identifier.Replace('.', '_'); // @variable.member -> @variable_member
         }

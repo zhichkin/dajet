@@ -72,37 +72,7 @@ namespace DaJet.Stream
 
             return null;
         }
-
-        private static void BuildScriptScope(in ScriptModel script, out ScriptScope scope)
-        {
-            scope = new ScriptScope() { Owner = script };
-
-            ScriptScope _current = scope;
-
-            for (int i = 0; i < script.Statements.Count; i++)
-            {
-                SyntaxNode statement = script.Statements[i];
-
-                if (statement is CommentStatement) { continue; }
-
-                if (statement is DeclareStatement declare)
-                {
-                    _current.Variables.Add(declare.Name, declare);
-                }
-                else if (ScriptScope.IsStreamScope(in statement))
-                {
-                    if (_current.Owner is UseStatement && statement is UseStatement)
-                    {
-                        _current = _current.CloseScope(); // one database context closes another
-                    }
-                    _current = _current.NewScope(in statement); // create parent scope
-                }
-                else
-                {
-                    _ = _current.NewScope(in statement); // add child to parent scope
-                }
-            }
-        }
+        
         private static IProcessor Create(in ScriptScope scope, in StreamContext context)
         {
             if (scope.Owner is UseStatement)
@@ -138,7 +108,7 @@ namespace DaJet.Stream
         }
         internal static IProcessor Create(in ScriptModel script)
         {
-            BuildScriptScope(in script, out ScriptScope scope);
+            ScriptScope.BuildStreamScope(in script, out ScriptScope scope);
 
             return new DataStream(in scope);
         }

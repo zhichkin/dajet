@@ -183,7 +183,7 @@ namespace DaJet.Scripting
 
             return new UseStatement()
             {
-                Uri = new(Previous().Lexeme)
+                Uri = Previous().Lexeme
             };
         }
         private SyntaxNode for_each()

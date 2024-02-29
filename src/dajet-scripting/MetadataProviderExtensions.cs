@@ -31,8 +31,21 @@ namespace DaJet.Scripting
                 {
                     parameters[parameter.Key] = uuid.ToByteArray();
                 }
+
                 //TODO: user-defined type - table-valued parameter
                 //else if (parameter.Value is List<DataObject> table)
+                //{
+                //    DeclareStatement declare = GetDeclareStatementByName(in model, parameter.Key);
+
+                //    parameters[parameter.Key] = new TableValuedParameter()
+                //    {
+                //        Name = parameter.Key,
+                //        Value = table,
+                //        DbName = declare is null ? string.Empty : declare.Type.Identifier
+                //    };
+                //}
+
+                //else if (parameter.Value is List<Dictionary<string, object>> table)
                 //{
                 //    DeclareStatement declare = GetDeclareStatementByName(in model, parameter.Key);
 

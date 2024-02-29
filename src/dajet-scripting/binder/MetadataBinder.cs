@@ -16,7 +16,7 @@ namespace DaJet.Scripting
                 throw new ArgumentNullException(nameof(node));
             }
 
-            _schema = schema ?? throw new ArgumentNullException(nameof(schema));
+            _schema = schema; //NOTE: non-database types and objects do not need it
             
             _errors = new List<string>();
 
@@ -31,7 +31,7 @@ namespace DaJet.Scripting
                 _errors.Add(ExceptionHelper.GetErrorMessage(exception));
             }
 
-            scope = _scope;
+            scope = _scope; //NOTE: test purposes
             errors = _errors;
 
             _scope = null;
@@ -128,7 +128,7 @@ namespace DaJet.Scripting
 
                 node.Binding = type;
             }
-            else // EntityDefinition (table)
+            else if (_schema is not null) // EntityDefinition (table) or ApplicationObject (Справочник.Номенклатура)
             {
                 MetadataObject table = _schema.GetMetadataObject(node.Identifier);
 
@@ -159,7 +159,6 @@ namespace DaJet.Scripting
                         //FIXME: DaJet.Stream - bind data schema only once !
                         return;
                     }
-                    
                 }
             }
 
@@ -173,11 +172,19 @@ namespace DaJet.Scripting
             {
                 if (type == typeof(Entity)) // DECLARE @Ссылка entity
                 {
-                    if (node.Initializer is ScalarExpression scalar) // DECLARE @Ссылка entity = {code:guid}
+                    if (node.Initializer is null)
+                    {
+                        throw new FormatException($"[DECLARE {node.Name} entity] must have initializer");
+                    }
+                    else if (node.Initializer is ScalarExpression scalar) // DECLARE @Ссылка entity = {code:uuid}
                     {
                         if (Entity.TryParse(scalar.Literal, out Entity entity))
                         {
                             node.Type.Binding = entity;
+                        }
+                        else
+                        {
+                            RegisterBindingError(node.Token, node.Name);
                         }
                     }
                     else if (node.Initializer is SelectExpression select) // DECLARE @Ссылка entity = SELECT Ссылка FROM ... WHERE ...
@@ -197,6 +204,10 @@ namespace DaJet.Scripting
                         {
                             RegisterBindingError(node.Token, node.Name);
                         }
+                    }
+                    else
+                    {
+                        throw new FormatException($"[DECLARE {node.Name} entity] unknown initializer");
                     }
                 }
                 else if (node.Initializer is SelectExpression select) // all other types of variables
@@ -499,7 +510,7 @@ namespace DaJet.Scripting
             }
 
             // 3. try bind database schema table
-            if (node.Binding is null)
+            if (node.Binding is null && _schema is not null)
             {
                 MetadataObject schema = _schema.GetMetadataObject(node.Identifier);
 
@@ -563,7 +574,7 @@ namespace DaJet.Scripting
 
             if (identifiers is null || identifiers.Length != 3) { return false; }
 
-            if (_schema.TryGetEnumValue(column.Identifier, out EnumValue value) && value is not null)
+            if (_schema is not null && _schema.TryGetEnumValue(column.Identifier, out EnumValue value) && value is not null)
             {
                 column.Binding = value;
                 column.Token = TokenType.Enumeration;

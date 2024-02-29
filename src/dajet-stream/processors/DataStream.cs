@@ -16,7 +16,7 @@ namespace DaJet.Stream
                 throw new InvalidOperationException();
             }
 
-            StreamProcessor.InitializeVariables(in _scope);
+            StreamProcessor.InitializeVariables(in _scope, null);
 
             StreamContext context = new(_scope.Variables);
 
