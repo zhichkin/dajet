@@ -36,11 +36,11 @@ namespace DaJet.Stream.RabbitMQ
         private IModel _channel;
         private IConnection _connection;
         private IBasicProperties _properties;
-        private readonly StreamContext _context;
+        private readonly StreamScope _context;
         private readonly ProduceStatement _options;
         public Producer(in ProduceStatement options, in Dictionary<string, object> context)
         {
-            _context = new StreamContext(in context);
+            _context = new StreamScope(in context);
             _options = options ?? throw new ArgumentNullException(nameof(options));
 
             _context.MapUri(_options.Target);

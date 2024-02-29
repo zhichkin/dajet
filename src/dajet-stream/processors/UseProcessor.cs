@@ -9,42 +9,64 @@ namespace DaJet.Stream
         private IProcessor _next;
         private readonly ScriptScope _scope;
         private readonly IProcessor _stream;
-        private readonly StreamContext _context;
-        private readonly IMetadataProvider _database;
+        private IMetadataProvider _database;
+        private readonly string _uri;
+        private readonly string[] _uri_templates;
 
-        public UseProcessor(in ScriptScope scope, in StreamContext context)
+        public UseProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
             if (_scope.Owner is not UseStatement statement)
             {
-                throw new InvalidOperationException();
+                throw new ArgumentException(nameof(UseStatement));
             }
 
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _uri = statement.Uri;
 
-            _database = StreamProcessor.GetDatabaseContext(in statement);
+            _uri_templates = StreamScope.GetUriVariables(in _uri);
 
-            foreach (var item in _scope.Variables)
-            {
-                if (item.Value is DeclareStatement declare)
-                {
-                    //TODO: configure declare variable
-                }
-            }
-
-            _stream = StreamFactory.Create(_scope.Children, in _context);
-
-            //TODO: _context.MapUri(statement.Uri.ToString());
+            _stream = StreamFactory.CreateStream(in _scope);
         }
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Synchronize() { _next?.Synchronize(); }
         public void Dispose() { _next?.Dispose(); }
         public void Process()
         {
+            _database ??= GetDatabaseContext();
+
+            StreamProcessor.InitializeVariables(in _scope, in _database);
+
             _stream?.Process();
             
             _next?.Process();
+        }
+        private IMetadataProvider GetDatabaseContext()
+        {
+            if (_uri_templates.Length == 0)
+            {
+                return StreamProcessor.GetDatabaseContext(new Uri(_uri));
+            }
+
+            Dictionary<string, string> values = new(_uri_templates.Length);
+
+            for (int i = 0; i < _uri_templates.Length; i++)
+            {
+                string variable = _uri_templates[i].TrimStart('{').TrimEnd('}');
+
+                if (_scope.TryGetValue(in variable, out object value))
+                {
+                    values.Add(_uri_templates[i], value.ToString());
+                }
+                else
+                {
+                    values.Add(_uri_templates[i], string.Empty);
+                }
+            }
+
+            Uri uri = StreamScope.GetUri(in _uri, in values); //TODO: encapsulate !!!
+
+            return StreamProcessor.GetDatabaseContext(in uri);
         }
     }
 }

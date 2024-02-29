@@ -1,4 +1,6 @@
-﻿using DaJet.Scripting.Model;
+﻿using DaJet.Data;
+using DaJet.Scripting.Model;
+using System.Text.RegularExpressions;
 
 namespace DaJet.Scripting
 {
@@ -165,6 +167,26 @@ namespace DaJet.Scripting
         }
 
         public Dictionary<string, object> Context { get; } = new(); // stream context variables and their values
+        public bool TryGetValue(in string name, out object value)
+        {
+            value = null;
+
+            string[] identifiers = name.Split('.');
+
+            if (identifiers.Length == 1)
+            {
+                return TryGetVariableValue(in name, out value);
+            }
+            else if (identifiers.Length == 2)
+            {
+                if (TryGetVariableValue(identifiers[0], out value) && value is DataObject record)
+                {
+                    return record.TryGetValue(identifiers[1], out value);
+                }
+            }
+
+            return false;
+        }
         public bool TryGetVariableValue(in string name, out object value)
         {
             value = null;

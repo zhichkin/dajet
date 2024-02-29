@@ -11,7 +11,7 @@ using System.Text.Unicode;
 
 namespace DaJet.Stream
 {
-    public sealed class StreamContext
+    public sealed class StreamScope
     {
         private static readonly JsonWriterOptions JsonWriterOptions = new()
         {
@@ -53,11 +53,11 @@ namespace DaJet.Stream
         private string _intoObject;
         private Dictionary<string, MemberAccessDescriptor> _templates = new();
         private Dictionary<string, MemberAccessDescriptor> _descriptors = new();
-        public StreamContext(in Dictionary<string, object> context)
+        public StreamScope(in Dictionary<string, object> context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
-        public StreamContext Clone()
+        public StreamScope Clone()
         {
             Dictionary<string, object> context = new();
 
@@ -66,7 +66,7 @@ namespace DaJet.Stream
                 context.Add(variable.Key, variable.Value);
             }
 
-            return new StreamContext(in context);
+            return new StreamScope(in context);
         }
         public void MapUri(in string uri)
         {
@@ -514,5 +514,37 @@ namespace DaJet.Stream
             });
         }
         #endregion
+
+
+        private static readonly Regex _uri_template = new("{(.*?)}", RegexOptions.CultureInvariant);
+        public static string[] GetUriVariables(in string uri)
+        {
+            MatchCollection matches = _uri_template.Matches(uri);
+
+            if (matches.Count == 0)
+            {
+                return Array.Empty<string>();
+            }
+
+            string[] templates = new string[matches.Count];
+
+            for (int i = 0; i < matches.Count; i++)
+            {
+                templates[i] = matches[i].Value;
+            }
+
+            return templates;
+        }
+        public static Uri GetUri(in string template, in Dictionary<string, string> values)
+        {
+            string uri = string.Empty;
+
+            foreach (var item in values)
+            {
+                uri = template.Replace(item.Key, item.Value);
+            }
+
+            return new Uri(uri);
+        }
     }
 }

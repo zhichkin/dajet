@@ -8,55 +8,51 @@ namespace DaJet.Stream
     {
         private IProcessor _next;
         private readonly ScriptScope _scope;
-        private readonly StreamContext _context;
         private int _maxdop = 1;
         private List<DataObject> _iterator;
-        private readonly List<IProcessor> _streams = new();
-        public Parallelizer(in ScriptScope scope, in StreamContext context)
+        public Parallelizer(in ScriptScope scope)
         {
-            if (scope.Owner is not ForEachStatement statement)
+            _scope = scope ?? throw new ArgumentNullException(nameof(scope));
+
+            if (_scope.Owner is not ForEachStatement statement)
             {
-                throw new InvalidOperationException();
+                throw new ArgumentException(nameof(ForEachStatement));
             }
 
-            _context = context ?? throw new ArgumentNullException(nameof(context));
-
-            //_context = parent.Variables; //TODO: ???
+            IProcessor stream = StreamFactory.CreateStream(in _scope);
 
             _maxdop = statement.DegreeOfParallelism;
 
-            _context.MapIntoArray(in statement);
-            _context.MapIntoObject(in statement);
+            //_context.MapIntoArray(in statement);
+            //_context.MapIntoObject(in statement);
         }
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Synchronize() { throw new NotImplementedException(); }
         public void Dispose() { throw new NotImplementedException(); }
         public void Process()
         {
-            _iterator = _context.GetIntoArray();
+            //_iterator = _context.GetIntoArray();
 
-            if (_iterator is null)
-            {
-                throw new InvalidOperationException();
-            }
+            //if (_iterator is null)
+            //{
+            //    throw new InvalidOperationException();
+            //}
 
-            if (_iterator.Count == 0)
-            {
-                // ???
-            }
+            //if (_iterator.Count == 0)
+            //{
+            //    // ???
+            //}
 
             foreach (DataObject options in _iterator)
             {
-                StreamContext context = _context.Clone();
+                //StreamContext context = _context.Clone();
 
-                context.SetIntoObject(in options);
+                //context.SetIntoObject(in options);
 
-                IProcessor stream = StreamFactory.Create(_scope.Children, in context);
-
-                _streams.Add(stream);
+                //IProcessor stream = StreamFactory.CreateStream(in _scope);
             }
 
-            if (_streams.Count > 0)
+            if (_iterator.Count > 0)
             {
                 Parallelize();
             }
@@ -87,13 +83,11 @@ namespace DaJet.Stream
                 MaxDegreeOfParallelism = _maxdop
             };
 
-            ParallelLoopResult result = Parallel.ForEach(_streams, options, ProcessInParallel);
+            ParallelLoopResult result = Parallel.ForEach(_iterator, options, ProcessInParallel);
         }
-        private void ProcessInParallel(IProcessor stream)
+        private void ProcessInParallel(DataObject options)
         {
             Console.WriteLine($"Thread: {Environment.CurrentManagedThreadId}");
-
-            stream.Process();
         }
     }
 }

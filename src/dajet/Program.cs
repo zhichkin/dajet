@@ -22,7 +22,7 @@ namespace DaJet
         {
             args = new string[]
             {
-                "stream", "--file", "./test/10-ms-pg-exchange-consume-maxdop.sql" //"./test/01-ms-pg-select.sql"
+                "stream", "--file", "./test/11-test-scope-variables.sql" //"./test/01-ms-pg-select.sql"
                 //"stream", "--url", "dajet://ms-demo/stream/01-insert"
             };
 
@@ -50,11 +50,13 @@ namespace DaJet
         }
         private static void StreamUri(string url)
         {
-            Console.WriteLine($"Execute script from URL: {url}");
+            throw new NotImplementedException();
 
-            Uri uri = new(url);
+            //Console.WriteLine($"Execute script from URL: {url}");
 
-            StreamProcessor.Process(in uri);
+            //Uri uri = new(url);
+
+            //StreamProcessor.Process(in uri);
         }
         private static void StreamFile(string filePath)
         {

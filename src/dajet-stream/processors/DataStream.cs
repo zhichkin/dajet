@@ -13,14 +13,12 @@ namespace DaJet.Stream
 
             if (_scope.Owner is not ScriptModel)
             {
-                throw new InvalidOperationException();
+                throw new ArgumentException(nameof(ScriptModel));
             }
 
-            StreamProcessor.InitializeVariables(in _scope, null);
+            StreamProcessor.InitializeVariables(in _scope);
 
-            StreamContext context = new(_scope.Variables);
-
-            _next = StreamFactory.Create(_scope.Children, in context);
+            _next = StreamFactory.CreateStream(in _scope);
         }
         public void LinkTo(in IProcessor next) { throw new NotImplementedException(); }
         public void Synchronize() { _next?.Synchronize(); }

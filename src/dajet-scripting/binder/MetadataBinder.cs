@@ -215,6 +215,13 @@ namespace DaJet.Scripting
                     Bind(in select);
                 }
             }
+            else if (node.Type.Binding is Entity) // DECLARE @Ссылка Справочник.Номенклатура
+            {
+                if (node.Initializer is SelectExpression select)
+                {
+                    Bind(in select);
+                }
+            }
 
             // join current scope
 
