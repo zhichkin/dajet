@@ -1,17 +1,16 @@
-﻿using DaJet.Scripting;
-using DaJet.Scripting.Model;
+﻿using DaJet.Scripting.Model;
 
 namespace DaJet.Stream
 {
-    public sealed class DbProcessor : IProcessor
+    public sealed class SelectIntoObjectProcessor : IProcessor
     {
         private IProcessor _next;
-        private readonly ScriptScope _scope;
-        public DbProcessor(in ScriptScope scope)
+        private readonly StreamScope _scope;
+        public SelectIntoObjectProcessor(in StreamScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
-            _ = _scope.Ancestor<UseStatement>();
+            _ = _scope.GetParent<UseStatement>();
         }
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Synchronize() { _next?.Synchronize(); }

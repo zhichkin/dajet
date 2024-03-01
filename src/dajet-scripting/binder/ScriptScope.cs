@@ -1,6 +1,4 @@
-﻿using DaJet.Data;
-using DaJet.Scripting.Model;
-using System.Text.RegularExpressions;
+﻿using DaJet.Scripting.Model;
 
 namespace DaJet.Scripting
 {
@@ -56,14 +54,6 @@ namespace DaJet.Scripting
             }
 
             return null;
-        }
-        public ScriptScope NewScope(in SyntaxNode owner)
-        {
-            ScriptScope scope = new(owner, this);
-            
-            Children.Add(scope);
-            
-            return scope;
         }
         public ScriptScope OpenScope(in SyntaxNode owner)
         {
@@ -164,109 +154,6 @@ namespace DaJet.Scripting
 
             table = null;
             return false;
-        }
-
-        public Dictionary<string, object> Context { get; } = new(); // stream context variables and their values
-        public bool TryGetValue(in string name, out object value)
-        {
-            value = null;
-
-            string[] identifiers = name.Split('.');
-
-            if (identifiers.Length == 1)
-            {
-                return TryGetVariableValue(in name, out value);
-            }
-            else if (identifiers.Length == 2)
-            {
-                if (TryGetVariableValue(identifiers[0], out value) && value is DataObject record)
-                {
-                    return record.TryGetValue(identifiers[1], out value);
-                }
-            }
-
-            return false;
-        }
-        public bool TryGetVariableValue(in string name, out object value)
-        {
-            value = null;
-
-            ScriptScope scope = this;
-
-            while (scope is not null)
-            {
-                if (scope.Context.TryGetValue(name, out value))
-                {
-                    return true;
-                }
-
-                scope = scope.Parent;
-            }
-
-            return false;
-        }
-        public bool TryGetVariableDeclaration(in string name, out bool local, out DeclareStatement declare)
-        {
-            local = true;
-            declare = null;
-
-            ScriptScope scope = this;
-
-            while (scope is not null)
-            {
-                if (scope.Variables.TryGetValue(name, out object statement))
-                {
-                    local = ReferenceEquals(this, scope);
-                    
-                    declare = statement as DeclareStatement;
-                    
-                    return declare is not null;
-                }
-
-                scope = scope.Parent;
-            }
-
-            return false; // not found
-        }
-        public static bool IsStreamScope(in SyntaxNode statement)
-        {
-            return statement is UseStatement
-                || statement is ForEachStatement
-                || statement is ConsumeStatement
-                || statement is ProduceStatement
-                || statement is SelectStatement select && select.IsStream
-                || statement is UpdateStatement update && update.Output?.Into?.Value is not null;
-        }
-        public static void BuildStreamScope(in ScriptModel script, out ScriptScope scope)
-        {
-            scope = new ScriptScope() { Owner = script };
-
-            ScriptScope _current = scope;
-
-            for (int i = 0; i < script.Statements.Count; i++)
-            {
-                SyntaxNode statement = script.Statements[i];
-
-                if (statement is CommentStatement) { continue; }
-
-                if (statement is DeclareStatement declare)
-                {
-                    _current.Context.Add(declare.Name, null);
-                    _current.Variables.Add(declare.Name, declare);
-                }
-                else if (IsStreamScope(in statement))
-                {
-                    if (_current.Owner is UseStatement && statement is UseStatement)
-                    {
-                        _current = _current.CloseScope(); // one database context closes another
-                    }
-                    _current = _current.NewScope(in statement); // create parent scope
-                }
-                else
-                {
-                    _ = _current.NewScope(in statement); // add child to parent scope
-                }
-            }
         }
     }
 }

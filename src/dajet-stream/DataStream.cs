@@ -1,13 +1,12 @@
-﻿using DaJet.Scripting;
-using DaJet.Scripting.Model;
+﻿using DaJet.Scripting.Model;
 
 namespace DaJet.Stream
 {
     public sealed class DataStream : IProcessor
     {
         private readonly IProcessor _next;
-        private readonly ScriptScope _scope;
-        public DataStream(in ScriptScope scope)
+        private readonly StreamScope _scope;
+        public DataStream(in StreamScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
@@ -16,7 +15,7 @@ namespace DaJet.Stream
                 throw new ArgumentException(nameof(ScriptModel));
             }
 
-            StreamProcessor.InitializeVariables(in _scope);
+            StreamFactory.InitializeVariables(in _scope);
 
             _next = StreamFactory.CreateStream(in _scope);
         }

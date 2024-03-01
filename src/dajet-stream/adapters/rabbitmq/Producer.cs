@@ -36,15 +36,21 @@ namespace DaJet.Stream.RabbitMQ
         private IModel _channel;
         private IConnection _connection;
         private IBasicProperties _properties;
-        private readonly StreamScope _context;
+        private readonly StreamScope _scope;
         private readonly ProduceStatement _options;
-        public Producer(in ProduceStatement options, in Dictionary<string, object> context)
+        public Producer(in StreamScope scope)
         {
-            _context = new StreamScope(in context);
-            _options = options ?? throw new ArgumentNullException(nameof(options));
+            _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
-            _context.MapUri(_options.Target);
-            _context.MapOptions(in options);
+            if (_scope.Owner is not ProduceStatement statement)
+            {
+                throw new ArgumentException(nameof(ProduceStatement));
+            }
+
+            _options = statement;
+
+            _scope.MapUri(_options.Target);
+            _scope.MapOptions(in _options);
         }
         public void LinkTo(in IProcessor next) { _next = next; }
 
@@ -59,7 +65,7 @@ namespace DaJet.Stream.RabbitMQ
         #region "RABBITMQ CONNECTION AND CHANNEL"
         private void InitializeUri()
         {
-            Uri uri = _context.GetUri();
+            Uri uri = _scope.GetUri();
 
             if (uri.Scheme != "amqp")
             {
@@ -297,34 +303,34 @@ namespace DaJet.Stream.RabbitMQ
             ConfigureMessageHeaders();
             ConfigureMessageProperties();
 
-            ReadOnlyMemory<byte> payload = EncodeMessageBody(_context.GetMessageBody());
+            ReadOnlyMemory<byte> payload = EncodeMessageBody(_scope.GetMessageBody());
 
-            if (string.IsNullOrWhiteSpace(_context.GetExchange()))
+            if (string.IsNullOrWhiteSpace(_scope.GetExchange()))
             {
                 // clear CC and BCC headers if present
                 _ = _properties?.Headers?.Remove(HEADER_CC); // carbon copy
                 _ = _properties?.Headers?.Remove(HEADER_BCC); // blind carbon copy
 
                 // send message directly to the specified queue
-                _channel.BasicPublish(string.Empty, _context.GetRoutingKey(), _context.GetMandatory(), _properties, payload);
+                _channel.BasicPublish(string.Empty, _scope.GetRoutingKey(), _scope.GetMandatory(), _properties, payload);
             }
-            else if (string.IsNullOrWhiteSpace(_context.GetRoutingKey()))
+            else if (string.IsNullOrWhiteSpace(_scope.GetRoutingKey()))
             {
                 // send message to the specified exchange without routing key
-                _channel.BasicPublish(_context.GetExchange(), string.Empty, _context.GetMandatory(), _properties, payload);
+                _channel.BasicPublish(_scope.GetExchange(), string.Empty, _scope.GetMandatory(), _properties, payload);
             }
             else
             {
                 // send message to the specified exchange using provided routing key
-                _channel.BasicPublish(_context.GetExchange(), _context.GetRoutingKey(), _context.GetMandatory(), _properties, payload);
+                _channel.BasicPublish(_scope.GetExchange(), _scope.GetRoutingKey(), _scope.GetMandatory(), _properties, payload);
             }
         }
         private void ConfigureMessageHeaders()
         {
             _properties.Headers?.Clear();
 
-            string[] BlindCopy = _context.GetBlindCopy();
-            string[] CarbonCopy = _context.GetCarbonCopy();
+            string[] BlindCopy = _scope.GetBlindCopy();
+            string[] CarbonCopy = _scope.GetCarbonCopy();
 
             if (BlindCopy is null && CarbonCopy is null)
             {
@@ -345,16 +351,16 @@ namespace DaJet.Stream.RabbitMQ
         }
         private void ConfigureMessageProperties()
         {
-            _properties.AppId = _context.GetAppId();
-            _properties.MessageId = _context.GetMessageId();
-            _properties.Type = _context.GetMessageType();
-            _properties.CorrelationId = _context.GetCorrelationId();
-            _properties.Priority = _context.GetPriority();
-            _properties.DeliveryMode = _context.GetDeliveryMode();
-            _properties.ContentType = _context.GetContentType();
-            _properties.ContentEncoding = _context.GetContentEncoding();
-            _properties.ReplyTo = _context.GetReplyTo();
-            _properties.Expiration = _context.GetExpiration();
+            _properties.AppId = _scope.GetAppId();
+            _properties.MessageId = _scope.GetMessageId();
+            _properties.Type = _scope.GetMessageType();
+            _properties.CorrelationId = _scope.GetCorrelationId();
+            _properties.Priority = _scope.GetPriority();
+            _properties.DeliveryMode = _scope.GetDeliveryMode();
+            _properties.ContentType = _scope.GetContentType();
+            _properties.ContentEncoding = _scope.GetContentEncoding();
+            _properties.ReplyTo = _scope.GetReplyTo();
+            _properties.Expiration = _scope.GetExpiration();
         }
         private ReadOnlyMemory<byte> EncodeMessageBody(in string message)
         {

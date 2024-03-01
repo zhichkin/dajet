@@ -32,16 +32,22 @@ namespace DaJet.Stream.RabbitMQ
         private EventingBasicConsumer _consumer;
         private int _consumed = 0; // in-memory counter
         private string _consumerTag;
-        private readonly StreamScope _context;
+        private readonly StreamScope _scope;
         private readonly ConsumeStatement _options;
-        public Consumer(in ConsumeStatement options, in Dictionary<string, object> context)
+        public Consumer(in StreamScope scope)
         {
-            _context = new StreamScope(in context);
-            _options = options ?? throw new ArgumentNullException(nameof(options));
+            _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
-            _context.MapUri(_options.Target);
-            _context.MapOptions(in options);
-            _context.MapIntoObject(in options);
+            if (_scope.Owner is not ConsumeStatement statement)
+            {
+                throw new ArgumentException(nameof(ConsumeStatement));
+            }
+
+            _options = statement;
+
+            _scope.MapUri(_options.Target);
+            _scope.MapOptions(in _options);
+            _scope.MapIntoObject(in _options);
 
             InitializeUri();
             ConfigureConsumer();
@@ -63,7 +69,7 @@ namespace DaJet.Stream.RabbitMQ
 
         private void InitializeUri()
         {
-            Uri uri = _context.GetUri();
+            Uri uri = _scope.GetUri();
 
             if (uri.Scheme != "amqp")
             {
@@ -88,10 +94,10 @@ namespace DaJet.Stream.RabbitMQ
         }
         private void ConfigureConsumer()
         {
-            QueueName = _context.GetQueueName();
-            Heartbeat = _context.GetHeartbeat();
-            PrefetchSize = _context.GetPrefetchSize();
-            PrefetchCount = _context.GetPrefetchCount();
+            QueueName = _scope.GetQueueName();
+            Heartbeat = _scope.GetHeartbeat();
+            PrefetchSize = _scope.GetPrefetchSize();
+            PrefetchCount = _scope.GetPrefetchCount();
         }
         private void UpdatePipelineStatus()
         {
@@ -183,7 +189,7 @@ namespace DaJet.Stream.RabbitMQ
         {
             if (sender is not EventingBasicConsumer consumer) { return; }
 
-            DataObject message = _context.GetIntoObject();
+            DataObject message = _scope.GetIntoObject();
 
             if (message is null)
             {

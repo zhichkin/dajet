@@ -71,7 +71,7 @@ namespace DaJet
                 script = reader.ReadToEnd();
             }
 
-            StreamProcessor.Process(in script);
+            StreamManager.Process(in script);
         }
         private static void WriteResultToFile(in DataObject input)
         {

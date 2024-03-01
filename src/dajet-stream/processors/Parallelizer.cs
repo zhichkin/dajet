@@ -1,5 +1,4 @@
 ﻿using DaJet.Data;
-using DaJet.Scripting;
 using DaJet.Scripting.Model;
 
 namespace DaJet.Stream
@@ -7,10 +6,10 @@ namespace DaJet.Stream
     public sealed class Parallelizer : IProcessor
     {
         private IProcessor _next;
-        private readonly ScriptScope _scope;
+        private readonly StreamScope _scope;
         private int _maxdop = 1;
         private List<DataObject> _iterator;
-        public Parallelizer(in ScriptScope scope)
+        public Parallelizer(in StreamScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
@@ -38,22 +37,17 @@ namespace DaJet.Stream
             //    throw new InvalidOperationException();
             //}
 
-            //if (_iterator.Count == 0)
-            //{
-            //    // ???
-            //}
-
-            foreach (DataObject options in _iterator)
+            if (_iterator is not null && _iterator.Count > 0)
             {
-                //StreamContext context = _context.Clone();
+                foreach (DataObject options in _iterator)
+                {
+                    //StreamContext context = _context.Clone();
 
-                //context.SetIntoObject(in options);
+                    //context.SetIntoObject(in options);
 
-                //IProcessor stream = StreamFactory.CreateStream(in _scope);
-            }
+                    //IProcessor stream = StreamFactory.CreateStream(in _scope);
+                }
 
-            if (_iterator.Count > 0)
-            {
                 Parallelize();
             }
 
