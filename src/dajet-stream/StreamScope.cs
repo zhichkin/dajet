@@ -142,6 +142,22 @@ namespace DaJet.Stream
         }
         public List<DeclareStatement> Declarations { get; } = new(); // order is important for binding
         public Dictionary<string, object> Variables { get; } = new(); // scope variables and their values
+        public bool TrySetValue(in string name, in object value)
+        {
+            StreamScope scope = this;
+
+            while (scope is not null)
+            {
+                if (scope.Variables.ContainsKey(name))
+                {
+                    scope.Variables[name] = value; return true;
+                }
+
+                scope = scope.Parent;
+            }
+
+            return false;
+        }
         public bool TryGetValue(in string name, out object value)
         {
             value = null;
@@ -264,7 +280,19 @@ namespace DaJet.Stream
 
             return new Uri(uri);
         }
-        
+        public Uri GetDatabaseUri()
+        {
+            StreamScope parent = GetParent<UseStatement>()
+                ?? throw new InvalidOperationException("Parent UseStatement is not found");
+            
+            if (parent.Owner is UseStatement use)
+            {
+                return parent.GetUri(use.Uri);
+            }
+
+            throw new InvalidOperationException("Owner UseStatement is not found");
+        }
+
         // ***
 
         private readonly Dictionary<string, object> _context;

@@ -829,7 +829,7 @@ namespace DaJet.Scripting
         }
         protected virtual void Visit(in MemberAccessExpression node, in StringBuilder script)
         {
-            script.Append(node.Identifier.Replace('.', '_'));
+            script.Append(node.GetDbParameterName());
         }
         protected virtual void Visit(in EnumValue node, in StringBuilder script)
         {

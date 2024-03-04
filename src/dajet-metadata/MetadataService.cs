@@ -267,6 +267,10 @@ namespace DaJet.Metadata
             return provider;
         }
 
+        public static IMetadataProvider CreateOneDbMetadataProvider(in Uri uri)
+        {
+            return new OneDbMetadataProvider(in uri, false);
+        }
         public static IMetadataProvider CreateOneDbMetadataProvider(in InfoBaseRecord options)
         {
             return new OneDbMetadataProvider(options.ConnectionString, options.UseExtensions);

@@ -190,11 +190,11 @@ namespace DaJet.Stream
         private static bool TryGetIntoVariable(in SelectExpression select, out VariableReference into, out TokenType type)
         {
             if (select.Into is not null &&
-                select.Into.Value is VariableReference variable &&
-                variable.Binding is TypeIdentifier identifier)
+                select.Into.Value is VariableReference variable) // TODO: the variable is not bound yet !!!
+                //&& variable.Binding is TypeIdentifier identifier)
             {
                 into = variable;
-                type = identifier.Token; // { Array | Object }
+                type = TokenType.Object; //identifier.Token; // { Array | Object }
                 return true;
             }
 
@@ -517,6 +517,173 @@ namespace DaJet.Stream
             }
 
             return value;
+        }
+
+        // ***
+
+        internal static ScriptModel CreateProcessorScript(in StreamScope scope)
+        {
+            ScriptModel script = new();
+
+            // outer scope variables
+            script.Statements.AddRange(GetOuterScopeDeclarations(in scope));
+            // local scope variables
+            script.Statements.AddRange(scope.Declarations);
+            // processor statement
+            script.Statements.Add(scope.Owner);
+
+            return script;
+        }
+        internal static List<DeclareStatement> GetOuterScopeDeclarations(in StreamScope scope)
+        {
+            List<DeclareStatement> declarations = new();
+
+            // { boolean, number, datetime, string, binary, uuid, entity, array, object }
+            declarations.AddRange(GetOuterScopeVariables(in scope));
+
+            // { @object.member }
+            declarations.AddRange(GetOuterScopeMemberAccess(in scope));
+
+            return declarations;
+        }
+        internal static DeclareStatement[] GetOuterScopeVariables(in StreamScope scope)
+        {
+            List<VariableReference> references = new VariableReferenceExtractor().Extract(scope.Owner);
+
+            if (references is null || references.Count == 0)
+            {
+                return Array.Empty<DeclareStatement>();
+            }
+
+            List<DeclareStatement> declarations = new(references.Count);
+
+            foreach (VariableReference reference in references)
+            {
+                if (scope.TryGetDeclaration(reference.Identifier, out bool local, out DeclareStatement statement))
+                {
+                    if (!local) // outer scope variable
+                    {
+                        if (statement.Initializer is SelectExpression)
+                        {
+                            statement = new DeclareStatement()
+                            {
+                                Name = statement.Name,
+                                Type = statement.Type,
+                                Token = statement.Token
+                            };
+
+                            if (statement.Type.Binding is Entity entity)
+                            {
+                                statement.Type = new TypeIdentifier()
+                                {
+                                    Token = statement.Type.Token,
+                                    Binding = statement.Type.Binding,
+                                    Identifier = ParserHelper.GetDataTypeLiteral(typeof(Entity))
+                                };
+
+                                if (scope.TryGetValue(reference.Identifier, out object value) && value is not null)
+                                {
+                                    statement.Initializer = new ScalarExpression()
+                                    {
+                                        Token = TokenType.Entity,
+                                        Literal = value.ToString()
+                                    };
+                                }
+                                else
+                                {
+                                    statement.Initializer = new ScalarExpression()
+                                    {
+                                        Token = TokenType.Entity,
+                                        Literal = entity.ToString()
+                                    };
+                                }
+                            }
+                        }
+
+                        declarations.Insert(0, statement);
+                    }
+                }
+            }
+
+            return declarations.ToArray();
+        }
+        internal static DeclareStatement[] GetOuterScopeMemberAccess(in StreamScope scope)
+        {
+            List<MemberAccessExpression> members = new MemberAccessExtractor().Extract(scope.Owner);
+
+            if (members is null || members.Count == 0)
+            {
+                return Array.Empty<DeclareStatement>();
+            }
+
+            List<DeclareStatement> declarations = new(members.Count);
+
+            Dictionary<string, DeclareStatement> memberAccess = new(members.Count);
+
+            foreach (MemberAccessExpression member in members)
+            {
+                string target = member.GetTargetName();
+
+                if (!memberAccess.ContainsKey(target))
+                {
+                    if (scope.TryGetDeclaration(in target, out bool local, out DeclareStatement statement))
+                    {
+                        if (!local) // outer scope variable
+                        {
+                            declarations.Insert(0, statement);
+                        }
+                    }
+                }
+            }
+
+            return declarations.ToArray();
+        }
+
+        internal static SqlStatement Transpile(in StreamScope scope)
+        {
+            Uri uri = scope.GetDatabaseUri();
+
+            IMetadataProvider database = MetadataService.CreateOneDbMetadataProvider(in uri);
+
+            ScriptModel script = CreateProcessorScript(in scope);
+
+            if (!ScriptProcessor.TryPrepareScript(in script, in database, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            return TranspileProcessorScript(in script, in database);
+        }
+        internal static SqlStatement TranspileProcessorScript(in ScriptModel script, in IMetadataProvider database)
+        {
+            ISqlTranspiler transpiler;
+
+            if (database.DatabaseProvider == DatabaseProvider.SqlServer)
+            {
+                transpiler = new MsSqlTranspiler() { YearOffset = database.YearOffset };
+            }
+            else if (database.DatabaseProvider == DatabaseProvider.PostgreSql)
+            {
+                transpiler = new PgSqlTranspiler() { YearOffset = database.YearOffset };
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unsupported database provider: {database.DatabaseProvider}");
+            }
+
+            if (!transpiler.TryTranspile(in script, in database, out TranspilerResult result, out string error))
+            {
+                throw new Exception(error);
+            }
+
+            if (result is not null && result.Statements is not null && result.Statements.Count > 0)
+            {
+                // find SQL command statement
+                // THINK: && s.Mapper.Properties.Count > 0
+                return result.Statements.Where(s => !string.IsNullOrEmpty(s.Script)).FirstOrDefault();
+            }
+
+            throw new InvalidOperationException("Transpilation error");
         }
 
         //internal static List<IProcessor> CreatePipeline(in IMetadataProvider context,

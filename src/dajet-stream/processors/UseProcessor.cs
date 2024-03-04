@@ -22,6 +22,12 @@ namespace DaJet.Stream
 
             _uri = statement.Uri;
 
+            Uri uri = _scope.GetUri(in _uri);
+
+            _database = MetadataService.CreateOneDbMetadataProvider(in uri);
+
+            StreamFactory.InitializeVariables(in _scope, in _database);
+
             _stream = StreamFactory.CreateStream(in _scope);
         }
         public void LinkTo(in IProcessor next) { _next = next; }
@@ -29,22 +35,18 @@ namespace DaJet.Stream
         public void Dispose() { _next?.Dispose(); }
         public void Process()
         {
-            if (_database is null) // lazy initialization
-            {
-                _database = GetDatabaseContext();
+            //if (_database is null) // lazy initialization
+            //{
+            //    Uri uri = _scope.GetUri(in _uri);
 
-                StreamFactory.InitializeVariables(in _scope, in _database);
-            }
+            //    _database = MetadataService.CreateOneDbMetadataProvider(in uri);
+
+            //    StreamFactory.InitializeVariables(in _scope, in _database);
+            //}
 
             _stream?.Process();
             
             _next?.Process();
-        }
-        private IMetadataProvider GetDatabaseContext()
-        {
-            Uri uri = _scope.GetUri(in _uri);
-
-            return StreamManager.GetDatabaseContext(in uri);
         }
     }
 }

@@ -308,6 +308,25 @@ namespace DaJet.Metadata
 
         #endregion
 
+        public OneDbMetadataProvider(in Uri uri, bool useExtensions)
+        {
+            UseExtensions = useExtensions;
+
+            _parsers = new MetadataObjectParserFactory(this);
+
+            _connectionString = DbConnectionFactory.GetConnectionString(in uri);
+
+            if (uri.Scheme == "mssql")
+            {
+                _provider = DatabaseProvider.SqlServer;
+            }
+            else if (uri.Scheme == "pgsql")
+            {
+                _provider = DatabaseProvider.PostgreSql;
+            }
+            
+            Initialize();
+        }
         public OneDbMetadataProvider(string connectionString) : this(connectionString, false) { }
         public OneDbMetadataProvider(string connectionString, bool useExtensions)
         {

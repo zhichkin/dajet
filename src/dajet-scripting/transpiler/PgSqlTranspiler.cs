@@ -286,7 +286,7 @@ namespace DaJet.Scripting
         }
         protected override void Visit(in MemberAccessExpression node, in StringBuilder script)
         {
-            string identifier = node.Identifier.Replace('.', '_');
+            string identifier = node.GetDbParameterName();
 
             if (node.Binding is Type type && type == typeof(string))
             {

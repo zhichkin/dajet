@@ -12,7 +12,11 @@ namespace DaJet.Scripting
         {
             foreach (var parameter in parameters)
             {
-                if (parameter.Value is Entity entity)
+                if (parameter.Value is null)
+                {
+                    parameters[parameter.Key] = DBNull.Value;
+                }
+                else if (parameter.Value is Entity entity)
                 {
                     parameters[parameter.Key] = entity.Identity.ToByteArray();
                 }

@@ -217,7 +217,7 @@ namespace DaJet.Stream
                     throw new InvalidOperationException($"Unknown function name: [{function.Name}]");
                 }
 
-                string identifier = function.GetVariableIdentifier();
+                string identifier = function.GetVariableIdentifier(); // @dajet_json_object
 
                 if (!_parameters.ContainsKey(identifier))
                 {
