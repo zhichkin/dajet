@@ -8,7 +8,7 @@ namespace DaJet.Stream
 {
     internal static class StreamFactory
     {
-        internal static IProcessor Create(
+        internal static IProcessor CreateAppendProcessor(
             in IMetadataProvider context, in Dictionary<string, object> parameters,
             in TableJoinOperator append, in string objectName)
         {
@@ -67,13 +67,15 @@ namespace DaJet.Stream
                 {
                     SqlStatement statement = result.Statements[0];
 
-                    return new Processor(in context, in statement, in parameters);
+                    //TODO: return new Processor(in context, in statement, in parameters);
                 }
             }
 
             return null;
         }
         
+        // ***
+
         internal static IProcessor Create(in ScriptModel script)
         {
             StreamScope scope = StreamScope.Create(in script);
@@ -141,93 +143,83 @@ namespace DaJet.Stream
         }
         internal static IProcessor CreateDatabaseProcessor(in StreamScope scope)
         {
-            if (scope.Owner is SelectStatement select)
+            if (TryGetIntoVariable(scope.Owner, out VariableReference variable))
             {
-                if (TryGetIntoVariable(in select, out _, out TokenType type))
+                if (scope.TryGetDeclaration(variable.Identifier, out _, out DeclareStatement declare))
                 {
-                    if (type == TokenType.Array)
+                    if (declare.Type.Token == TokenType.Array)
                     {
-                        return new SelectIntoArrayProcessor(in scope);
+                        return new IntoArrayProcessor(in scope);
                     }
-                    else if (type == TokenType.Object)
+                    else if (declare.Type.Token == TokenType.Object)
                     {
-                        return new SelectIntoObjectProcessor(in scope);
-                    }
-                }
-            }
-            else if (scope.Owner is UpdateStatement update)
-            {
-                if (TryGetIntoVariable(in update, out _, out TokenType type))
-                {
-                    if (type == TokenType.Array)
-                    {
-                        return new UpdateIntoArrayProcessor(in scope);
-                    }
-                    else if (type == TokenType.Object)
-                    {
-                        return new UpdateIntoObjectProcessor(in scope);
+                        return new IntoObjectProcessor(in scope);
                     }
                 }
             }
             
             return new NonQueryProcessor(in scope);
         }
-        internal static bool TryGetIntoVariable(in SelectStatement statement, out VariableReference into, out TokenType type)
+        internal static bool TryGetIntoVariable(in SyntaxNode node, out VariableReference into)
+        {
+            into = null;
+
+            if (node is SelectStatement select)
+            {
+                return TryGetIntoVariable(in select, out into);
+            }
+            else if (node is UpdateStatement update)
+            {
+                return TryGetIntoVariable(in update, out into);
+            }
+
+            return into is not null;
+        }
+        internal static bool TryGetIntoVariable(in SelectStatement statement, out VariableReference into)
         {
             if (statement.Expression is SelectExpression select)
             {
-                return TryGetIntoVariable(in select, out into, out type);
+                return TryGetIntoVariable(in select, out into);
             }
             else if (statement.Expression is TableUnionOperator union)
             {
-                return TryGetIntoVariable(in union, out into, out type);
+                return TryGetIntoVariable(in union, out into);
             }
 
             into = null;
-            type = TokenType.Ignore;
             return false;
         }
-        private static bool TryGetIntoVariable(in SelectExpression select, out VariableReference into, out TokenType type)
+        private static bool TryGetIntoVariable(in SelectExpression select, out VariableReference into)
         {
-            if (select.Into is not null &&
-                select.Into.Value is VariableReference variable) // TODO: the variable is not bound yet !!!
-                //&& variable.Binding is TypeIdentifier identifier)
+            into = null;
+
+            if (select.Into?.Value is VariableReference variable)
             {
                 into = variable;
-                type = TokenType.Object; //identifier.Token; // { Array | Object }
-                return true;
             }
 
-            into = null;
-            type = TokenType.Ignore;
-            return false;
+            return into is not null;
         }
-        private static bool TryGetIntoVariable(in TableUnionOperator union, out VariableReference into, out TokenType type)
+        private static bool TryGetIntoVariable(in TableUnionOperator union, out VariableReference into)
         {
             if (union.Expression1 is SelectExpression select)
             {
-                return TryGetIntoVariable(in select, out into, out type);
+                return TryGetIntoVariable(in select, out into);
             }
 
             into = null;
-            type = TokenType.Ignore;
             return false;
         }
-        internal static bool TryGetIntoVariable(in UpdateStatement update, out VariableReference into, out TokenType type)
+        internal static bool TryGetIntoVariable(in UpdateStatement update, out VariableReference into)
         {
-            if (update.Output is not null &&
-                update.Output.Into is not null &&
-                update.Output.Into.Value is VariableReference variable &&
-                variable.Binding is TypeIdentifier identifier)
+            into = null;
+
+            if (update.Output?.Into?.Value is VariableReference variable)
             {
                 into = variable;
-                type = identifier.Token; // { Array | Object }
-                return true;
             }
 
-            into = null;
-            type = TokenType.Ignore;
-            return false;
+            return into is not null;
         }
         internal static IProcessor CreateMessageBrokerProcessor(in StreamScope scope)
         {
@@ -239,7 +231,7 @@ namespace DaJet.Stream
                 }
                 else if (consume.Target.StartsWith("kafka"))
                 {
-
+                    //TODO: Kafka consumer
                 }
             }
             else if (scope.Owner is ProduceStatement produce)
@@ -250,11 +242,11 @@ namespace DaJet.Stream
                 }
                 else if (produce.Target.StartsWith("kafka"))
                 {
-
+                    //TODO: Kafka producer
                 }
             }
 
-            throw new InvalidOperationException("Unsupported message broker type");
+            throw new InvalidOperationException("Unsupported message broker");
         }
 
         // ***
@@ -355,7 +347,7 @@ namespace DaJet.Stream
                 }
             }
 
-            if (!ScriptProcessor.TryPrepareScript(in script, in database, out string error))
+            if (!ScriptProcessor.TryBind(in script, in database, out string error))
             {
                 throw new InvalidOperationException(error);
             }
@@ -527,8 +519,10 @@ namespace DaJet.Stream
 
             // outer scope variables
             script.Statements.AddRange(GetOuterScopeDeclarations(in scope));
+            
             // local scope variables
             script.Statements.AddRange(scope.Declarations);
+
             // processor statement
             script.Statements.Add(scope.Owner);
 
@@ -647,7 +641,7 @@ namespace DaJet.Stream
 
             ScriptModel script = CreateProcessorScript(in scope);
 
-            if (!ScriptProcessor.TryPrepareScript(in script, in database, out string error))
+            if (!ScriptProcessor.TryBind(in script, in database, out string error))
             {
                 throw new InvalidOperationException(error);
             }
@@ -686,115 +680,91 @@ namespace DaJet.Stream
             throw new InvalidOperationException("Transpilation error");
         }
 
-        //internal static List<IProcessor> CreatePipeline(in IMetadataProvider context,
-        //    in TranspilerResult script, in Dictionary<string,object> parameters)
-        //{
-        //    IProcessor processor = null;
-        //    List<IProcessor> processors = new();
-        //    bool stream_starter_is_found = false;
+        internal static void ConfigureVariablesMap(in StreamScope scope, in Dictionary<string, string> map)
+        {
+            SyntaxNode node = scope.Owner;
 
-        //    foreach (var item in script.Parameters)
-        //    {
-        //        _ = parameters.TryAdd(item.Key, item.Value);
-        //    }
+            List<VariableReference> variables = new VariableReferenceExtractor().Extract(in node);
 
-        //    for (int i = 0; i < script.Statements.Count; i++)
-        //    {
-        //        SqlStatement statement = script.Statements[i];
+            foreach (VariableReference variable in variables) // @variable
+            {
+                if (variable.Binding is Type type || variable.Binding is Entity entity)
+                {
+                    // boolean, number, datetime, string, binary, uuid, entity
 
-        //        if (statement.Node is ForEachStatement)
-        //        {
-        //            processor = new Parallelizer(in context, in statement, in parameters);
-        //            processors.Add(processor);
-        //            continue;
-        //        }
-        //        else if (statement.Node is ConsumeStatement consume && !string.IsNullOrEmpty(consume.Target))
-        //        {
-        //            if (consume.Target.StartsWith("amqp"))
-        //            {
-        //                processors.Add(new RabbitMQ.Consumer(in consume, in parameters));
-        //            }
-        //            else if (consume.Target.StartsWith("kafka"))
-        //            {
-        //                //TODO: processors.Add(new Kafka.Consumer(in consume));
-        //            }
-        //            else
-        //            {
-        //                throw new InvalidOperationException("Unknown schema provider");
-        //            }
-        //            continue;
-        //        }
-        //        else if (statement.Node is ProduceStatement produce)
-        //        {
-        //            if (produce.Target.StartsWith("amqp"))
-        //            {
-        //                processors.Add(new RabbitMQ.Producer(in produce, in parameters));
-        //            }
-        //            else if (produce.Target.StartsWith("kafka"))
-        //            {
-        //                //TODO: processors.Add(new Kafka.Producer(in produce));
-        //            }
-        //            else
-        //            {
-        //                throw new InvalidOperationException("Unknown schema provider");
-        //            }
-        //            continue;
-        //        }
+                    if (scope.TryGetDeclaration(variable.Identifier, out _, out _))
+                    {
+                        if (!map.ContainsKey(variable.Identifier))
+                        {
+                            map.Add(variable.Identifier, variable.Identifier);
+                        }
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Declaration of [{variable.Identifier}] is not found");
+                    }
+                }
+            }
 
-        //        if (string.IsNullOrEmpty(statement.Script))
-        //        {
-        //            continue; //NOTE: USE, DECLARE, FOR EACH, PRODUCE, CONSUME <uri>
-        //        }
+            List<MemberAccessExpression> members = new MemberAccessExtractor().Extract(in node);
 
-        //        //TODO: use ProcessorFactory for all types of statements
+            foreach (MemberAccessExpression member in members) // @object.member
+            {
+                string target = member.GetTargetName();
 
-        //        StatementType type = GetStatementType(in statement);
+                if (scope.TryGetDeclaration(in target, out _, out _))
+                {
+                    string parameter = member.GetDbParameterName();
 
-        //        if (type == StatementType.Streaming && !stream_starter_is_found)
-        //        {
-        //            //TODO: check if consume statement is present in upcoming scripts !!!
+                    if (!map.ContainsKey(member.Identifier))
+                    {
+                        map.Add(member.Identifier, parameter);
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Declaration of [{target}] is not found");
+                }
+            }
+        }
+        internal static void ConfigureFunctionsMap(in StreamScope scope, in Dictionary<string, string> map)
+        {
+            SyntaxNode node = scope.Owner;
 
-        //            stream_starter_is_found = true;
+            List<FunctionExpression> functions = new DaJetFunctionExtractor().Extract(in node);
 
-        //            if (statement.Node is ConsumeStatement consume && !string.IsNullOrEmpty(consume.Target))
-        //            {
-        //                if (consume.Target.StartsWith("amqp"))
-        //                {
-        //                    processor = new RabbitMQ.Consumer(in consume, in parameters);
-        //                }
-        //                else if (consume.Target.StartsWith("kafka"))
-        //                {
-        //                    //TODO: processor = new Kafka.Consumer(in consume);
-        //                }
-        //                else
-        //                {
-        //                    throw new InvalidOperationException("Unknown schema provider");
-        //                }
-        //            }
-        //            else // database context
-        //            {
-        //                processor = new Streamer(in context, in statement, in parameters);
-        //            }
-        //        }
-        //        else
-        //        {
-        //            processor = new Processor(in context, in statement, in parameters);
-        //        }
+            foreach (FunctionExpression function in functions)
+            {
+                if (function.Name != "DaJet.Json")
+                {
+                    throw new InvalidOperationException($"Unknown function name: [{function.Name}]");
+                }
 
-        //        processors.Add(processor);
+                if (function.Parameters.Count == 0 ||
+                    function.Parameters[0] is not VariableReference variable)
+                {
+                    throw new InvalidOperationException($"Invalid parameter type: [{function.Name}]");
+                }
 
-        //        if (type == StatementType.Streaming)
-        //        {
-        //            string objectName = string.Empty; //TODO: processor.ObjectName;
-
-        //            foreach (var append in new AppendOperatorExtractor().Extract(statement.Node))
-        //            {
-        //                processors.Add(PipelineFactory.Create(in context, in parameters, in append, in objectName));
-        //            }
-        //        }
-        //    }
-
-        //    return processors;
-        //}
+                if (scope.TryGetDeclaration(variable.Identifier, out _, out DeclareStatement declare))
+                {
+                    if (declare.Type.Token == TokenType.Object)
+                    {
+                        if (!map.ContainsKey(variable.Identifier))
+                        {
+                            map.Add(variable.Identifier, function.GetVariableIdentifier());
+                        }
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Invalid parameter type: [{function.Name}]");
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Declaration of [{variable.Identifier}] is not found");
+                }
+            }
+        }
     }
 }

@@ -93,7 +93,7 @@ namespace DaJet.Data.PostgreSql
                 {
                     cmd.Parameters.AddWithValue(name, uuid.ToByteArray());
                 }
-                else
+                else // bool, int, decimal, string, byte[]
                 {
                     cmd.Parameters.AddWithValue(name, parameter.Value);
                 }

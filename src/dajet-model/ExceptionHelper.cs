@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Text;
 
 namespace DaJet
 {
@@ -42,6 +44,24 @@ namespace DaJet
             }
 
             return message;
+        }
+        public static string FormatErrorMessage(in List<string> errors)
+        {
+            if (errors is null || errors.Count == 0)
+            {
+                return "Unknown error";
+            }
+
+            StringBuilder error = new();
+
+            for (int i = 0; i < errors.Count; i++)
+            {
+                if (i > 0) { error.AppendLine(); }
+
+                error.Append(errors[i]);
+            }
+
+            return error.ToString();
         }
     }
 }

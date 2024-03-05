@@ -1,20 +1,74 @@
-﻿using DaJet.Scripting.Model;
+﻿using DaJet.Data;
+using System.Data;
+using System.Data.Common;
 
 namespace DaJet.Stream
 {
-    public sealed class StreamProcessor : IProcessor
+    public sealed class StreamProcessor : OneDbProcessor
     {
-        private IProcessor _next;
-        private readonly StreamScope _scope;
-        public StreamProcessor(in StreamScope scope)
+        public StreamProcessor(in StreamScope scope) : base(in scope)
         {
-            _scope = scope ?? throw new ArgumentNullException(nameof(scope));
-
-            _ = _scope.GetParent<UseStatement>();
+            _next = StreamFactory.CreateStream(in _scope);
         }
-        public void LinkTo(in IProcessor next) { _next = next; }
-        public void Synchronize() { _next?.Synchronize(); }
-        public void Dispose() { _next?.Dispose(); }
-        public void Process() { _next?.Process(); }
+        public override void Process()
+        {
+            int processed = 0;
+
+            using (DbConnection connection = _factory.Create(in _uri))
+            {
+                connection.Open();
+
+                DbTransaction transaction = connection.BeginTransaction();
+
+                using (DbCommand command = connection.CreateCommand())
+                {
+                    command.Connection = connection;
+                    command.Transaction = transaction;
+                    command.CommandType = CommandType.Text;
+                    command.CommandText = _statement.Script;
+
+                    InitializeParameterValues();
+
+                    _factory.ConfigureParameters(in command, in _parameters, _yearOffset);
+
+                    DataObject record = new(_statement.Mapper.Properties.Count);
+
+                    try
+                    {
+                        using (IDataReader reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                _statement.Mapper.Map(in reader, in record);
+
+                                _ = _scope.TrySetValue(_into.Identifier, record);
+
+                                _next?.Process();
+
+                                processed++;
+                            }
+                            reader.Close();
+                        }
+                        _next?.Synchronize();
+                        transaction.Commit();
+                    }
+                    catch (Exception error)
+                    {
+                        try
+                        {
+                            transaction.Rollback(); throw;
+                        }
+                        catch
+                        {
+                            throw error;
+                        }
+                    }
+                    finally // clear streaming buffer
+                    {
+                        _ = _scope.TrySetValue(_into.Identifier, null);
+                    }
+                }
+            }
+        }
     }
 }

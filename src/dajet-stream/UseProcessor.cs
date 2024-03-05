@@ -35,15 +35,6 @@ namespace DaJet.Stream
         public void Dispose() { _next?.Dispose(); }
         public void Process()
         {
-            //if (_database is null) // lazy initialization
-            //{
-            //    Uri uri = _scope.GetUri(in _uri);
-
-            //    _database = MetadataService.CreateOneDbMetadataProvider(in uri);
-
-            //    StreamFactory.InitializeVariables(in _scope, in _database);
-            //}
-
             _stream?.Process();
             
             _next?.Process();

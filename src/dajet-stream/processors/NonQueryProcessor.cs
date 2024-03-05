@@ -1,20 +1,31 @@
-﻿using DaJet.Scripting.Model;
+﻿using System.Data;
+using System.Data.Common;
 
 namespace DaJet.Stream
 {
-    public sealed class NonQueryProcessor : IProcessor
+    public sealed class NonQueryProcessor : OneDbProcessor
     {
-        private IProcessor _next;
-        private readonly StreamScope _scope;
-        public NonQueryProcessor(in StreamScope scope)
+        public NonQueryProcessor(in StreamScope scope) : base(in scope) { }
+        public override void Process()
         {
-            _scope = scope ?? throw new ArgumentNullException(nameof(scope));
+            using (DbConnection connection = _factory.Create(in _uri))
+            {
+                connection.Open();
 
-            _ = _scope.GetParent<UseStatement>();
+                using (DbCommand command = connection.CreateCommand())
+                {
+                    command.CommandType = CommandType.Text;
+                    command.CommandText = _statement.Script;
+
+                    InitializeParameterValues();
+
+                    _factory.ConfigureParameters(in command, in _parameters, _yearOffset);
+
+                    int rows_affected = command.ExecuteNonQuery();
+                }
+            }
+
+            _next?.Process();
         }
-        public void LinkTo(in IProcessor next) { _next = next; }
-        public void Synchronize() { _next?.Synchronize(); }
-        public void Dispose() { _next?.Dispose(); }
-        public void Process() { _next?.Process(); }
     }
 }

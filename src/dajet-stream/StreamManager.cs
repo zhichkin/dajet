@@ -1,7 +1,6 @@
 ﻿using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using System.Diagnostics;
-using System.Text;
 
 namespace DaJet.Stream
 {
@@ -30,24 +29,6 @@ namespace DaJet.Stream
             elapsed = watch.ElapsedMilliseconds;
 
             Console.WriteLine($"Pipeline executed in {elapsed} ms");
-        }
-        private static string FormatErrorMessage(in List<string> errors)
-        {
-            if (errors is null || errors.Count == 0)
-            {
-                return "Unknown binding error";
-            }
-
-            StringBuilder error = new();
-
-            for (int i = 0; i < errors.Count; i++)
-            {
-                if (i > 0) { error.AppendLine(); }
-
-                error.Append(errors[i]);
-            }
-
-            return error.ToString();
         }
         private static IProcessor CreateStream(in string script)
         {

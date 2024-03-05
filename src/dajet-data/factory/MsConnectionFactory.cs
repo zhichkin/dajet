@@ -97,7 +97,7 @@ namespace DaJet.Data.SqlServer
                 {
                     cmd.Parameters.AddWithValue(name, uuid.ToByteArray());
                 }
-                else
+                else // int, decimal, string, byte[]
                 {
                     cmd.Parameters.AddWithValue(name, parameter.Value);
                 }

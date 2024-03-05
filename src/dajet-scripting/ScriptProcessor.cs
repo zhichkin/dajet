@@ -5,7 +5,6 @@ using DaJet.Model;
 using DaJet.Scripting.Model;
 using System.Data;
 using System.Globalization;
-using System.Text;
 
 namespace DaJet.Scripting
 {
@@ -42,7 +41,7 @@ namespace DaJet.Scripting
 
             if (!new MetadataBinder().TryBind(model, in context, out _, out List<string> errors))
             {
-                error = FormatErrorMessage(in errors); return false;
+                error = ExceptionHelper.FormatErrorMessage(in errors); return false;
             }
 
             if (!new ScriptTransformer().TryTransform(model, out error)) { return false; }
@@ -77,25 +76,6 @@ namespace DaJet.Scripting
             result.Parameters = sql_parameters;
 
             return true;
-        }
-
-        private static string FormatErrorMessage(in List<string> errors)
-        {
-            if (errors is null || errors.Count == 0)
-            {
-                return "Unknown binding error";
-            }
-
-            StringBuilder error = new();
-
-            for (int i = 0; i < errors.Count; i++)
-            {
-                if (i > 0) { error.AppendLine(); }
-
-                error.Append(errors[i]);
-            }
-
-            return error.ToString();
         }
 
         private static DeclareStatement GetDeclareStatementByName(in ScriptModel model, in string name)
@@ -528,11 +508,11 @@ namespace DaJet.Scripting
         }
 
 
-        public static bool TryPrepareScript(in ScriptModel script, in IMetadataProvider database, out string error)
+        public static bool TryBind(in ScriptModel script, in IMetadataProvider database, out string error)
         {
             if (!new MetadataBinder().TryBind(script, in database, out _, out List<string> errors))
             {
-                error = FormatErrorMessage(in errors); return false;
+                error = ExceptionHelper.FormatErrorMessage(in errors); return false;
             }
 
             if (!new ScriptTransformer().TryTransform(script, out error)) { return false; }
