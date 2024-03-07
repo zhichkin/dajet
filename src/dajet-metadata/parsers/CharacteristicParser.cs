@@ -64,13 +64,15 @@ namespace DaJet.Metadata.Parsers
 
             _parser = new ConfigFileParser();
             _converter = new ConfigFileConverter();
+            _typeParser = new DataTypeDescriptorParser(_cache);
 
             // 1.13.1.1.2 - uuid объекта метаданных (FileName)
 
             _converter[1][3] += Reference; // ПланВидовХарактеристикСсылка
             _converter[1][9] += CharacteristicUuid; // Идентификатор характеристики
             _converter[1][13][1][2] += Name; // Имя объекта конфигурации
-            _converter[1][13][1] += Cancel; // Прервать чтение файла
+            _converter[1][18] += DataTypeDescriptor; // "ОписаниеТипов" типов значений характеристик
+            _converter[1][18] += Cancel; // Прервать чтение файла
 
             _parser.Parse(in source, in _converter);
 
@@ -79,6 +81,7 @@ namespace DaJet.Metadata.Parsers
             _entry = null;
             _parser = null;
             _converter = null;
+            _typeParser = null;
         }
         public void Parse(in ConfigFileReader source, Guid uuid, out MetadataObject target)
         {
@@ -187,7 +190,14 @@ namespace DaJet.Metadata.Parsers
             {
                 _typeParser.Parse(in source, out DataTypeDescriptor type);
 
-                _target.DataTypeDescriptor = type;
+                if (_entry is not null) // Первичная загрузка метаданных в кэш
+                {
+                    _entry.DataTypeDescriptor = type;
+                }
+                else // Полная загрузка объекта метаданных
+                {
+                    _target.DataTypeDescriptor = type;
+                }
 
                 //FIXME: extension has higher priority
                 //type.Merge(_target.DataTypeDescriptor);

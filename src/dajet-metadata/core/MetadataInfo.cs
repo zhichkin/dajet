@@ -48,5 +48,7 @@ namespace DaJet.Metadata.Core
         ///<br>Регистры движения: <see cref="InformationRegister"/> или <see cref="AccumulationRegister"/></br>
         ///</summary>
         public List<Guid> DocumentRegisters { get; set; } = new List<Guid>();
+        ///<summary>Описание типов значений характеристик</summary>
+        public DataTypeDescriptor DataTypeDescriptor { get; set; }
     }
 }

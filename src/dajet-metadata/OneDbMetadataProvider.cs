@@ -134,6 +134,13 @@ namespace DaJet.Metadata
         private readonly ConcurrentDictionary<Guid, Guid> _characteristics = new();
 
         ///<summary>
+        ///<br><b>Ключ:</b> UUID типа данных "Характеристика"</br>
+        ///<br><b>Значение:</b> Типы значений характеристики</br>
+        ///<br><b>Использование:</b> расшифровка <see cref="DataTypeDescriptor"/> при чтении файлов конфигурации.</br>
+        ///</summary>
+        private readonly ConcurrentDictionary<Guid, DataTypeDescriptor> _typeDescriptors = new();
+
+        ///<summary>
         ///<b>Коллекция подчинённых справочников и их владельцев:</b>
         ///<br><b>Ключ:</b> UUID объекта метаданных <see cref="Catalog"/></br>
         ///<br><b>Значение:</b> список UUID объектов метаданных <see cref="Catalog"/> - владельцев справочника</br>
@@ -230,6 +237,10 @@ namespace DaJet.Metadata
         private void AddCharacteristic(Guid characteristic, Guid metadata)
         {
             _ = _characteristics.TryAdd(characteristic, metadata);
+        }
+        private void AddCharacteristicTypes(Guid characteristic, DataTypeDescriptor descriptor)
+        {
+            _ = _typeDescriptors.TryAdd(characteristic, descriptor);
         }
         private void AddCatalogOwner(Guid catalog, Guid owner)
         {
@@ -574,6 +585,7 @@ namespace DaJet.Metadata
                     if (metadata.CharacteristicUuid != Guid.Empty)
                     {
                         AddCharacteristic(metadata.CharacteristicUuid, metadata.MetadataUuid);
+                        AddCharacteristicTypes(metadata.CharacteristicUuid, metadata.DataTypeDescriptor); //FIX: 08.03.2024
                     }
 
                     if (metadata.CatalogOwners.Count > 0)
@@ -1026,6 +1038,10 @@ namespace DaJet.Metadata
         internal bool TryResolveCharacteristic(Guid reference, out Guid uuid)
         {
             return _characteristics.TryGetValue(reference, out uuid);
+        }
+        internal bool TryGetCharacteristicDataType(Guid reference, out DataTypeDescriptor descriptor)
+        {
+            return _typeDescriptors.TryGetValue(reference, out descriptor);
         }
         internal IEnumerable<MetadataObject> GetMetadataObjects(Guid type)
         {
