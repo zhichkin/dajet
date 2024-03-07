@@ -1,19 +1,22 @@
 ﻿using DaJet.Data;
+using DaJet.Scripting.Model;
 using System.Data;
 using System.Data.Common;
 
 namespace DaJet.Stream
 {
-    public sealed class IntoObjectProcessor : OneDbProcessor
+    public sealed class AppendArrayProcessor : OneDbProcessor
     {
-        private readonly IProcessor _append;
-        public IntoObjectProcessor(in StreamScope scope) : base(in scope)
+        private readonly string _member;
+        public AppendArrayProcessor(in StreamScope scope, in VariableReference target, in string member) : base(in scope)
         {
-            _append = StreamFactory.CreateAppendStream(in scope, in _into);
+            _into = target ?? throw new ArgumentNullException(nameof(target));
+
+            _member = !string.IsNullOrEmpty(member) ? member : throw new ArgumentNullException(nameof(member));
         }
         public override void Process()
         {
-            DataObject record = new(_statement.Mapper.Properties.Count);
+            List<DataObject> table = new();
 
             using (DbConnection connection = _factory.Create(in _uri))
             {
@@ -30,18 +33,28 @@ namespace DaJet.Stream
 
                     using (IDataReader reader = command.ExecuteReader())
                     {
-                        if (reader.Read()) // take the first record
+                        while (reader.Read())
                         {
+                            DataObject record = new(_statement.Mapper.Properties.Count);
+
                             _statement.Mapper.Map(in reader, in record);
+
+                            table.Add(record);
                         }
                         reader.Close();
                     }
                 }
             }
 
-            _ = _scope.TrySetValue(_into.Identifier, record);
+            if (_scope.TryGetValue(_into.Identifier, out object target))
+            {
+                if (target is DataObject entity)
+                {
+                    entity.SetValue(_member, table);
+                }
+            }
 
-            _append?.Process(); _next?.Process();
+            _next?.Process();
         }
     }
 }

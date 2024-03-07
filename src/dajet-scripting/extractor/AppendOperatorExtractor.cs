@@ -13,7 +13,7 @@ namespace DaJet.Scripting
 
             List<TableJoinOperator> list = _result.Values.ToList();
 
-            list.Reverse(); 
+            list.Reverse();
 
             return list;
         }

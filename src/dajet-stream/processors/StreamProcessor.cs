@@ -6,8 +6,11 @@ namespace DaJet.Stream
 {
     public sealed class StreamProcessor : OneDbProcessor
     {
+        private readonly IProcessor _append;
         public StreamProcessor(in StreamScope scope) : base(in scope)
         {
+            _append = StreamFactory.CreateAppendStream(in scope, in _into);
+
             _next = StreamFactory.CreateStream(in _scope);
         }
         public override void Process()
@@ -43,7 +46,7 @@ namespace DaJet.Stream
 
                                 _ = _scope.TrySetValue(_into.Identifier, record);
 
-                                _next?.Process();
+                                _append?.Process(); _next?.Process();
 
                                 processed++;
                             }

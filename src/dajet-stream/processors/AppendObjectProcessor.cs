@@ -1,15 +1,18 @@
 ﻿using DaJet.Data;
+using DaJet.Scripting.Model;
 using System.Data;
 using System.Data.Common;
 
 namespace DaJet.Stream
 {
-    public sealed class IntoObjectProcessor : OneDbProcessor
+    public sealed class AppendObjectProcessor : OneDbProcessor
     {
-        private readonly IProcessor _append;
-        public IntoObjectProcessor(in StreamScope scope) : base(in scope)
+        private readonly string _member;
+        public AppendObjectProcessor(in StreamScope scope, in VariableReference target, in string member) : base(in scope)
         {
-            _append = StreamFactory.CreateAppendStream(in scope, in _into);
+            _into = target ?? throw new ArgumentNullException(nameof(target));
+
+            _member = !string.IsNullOrEmpty(member) ? member : throw new ArgumentNullException(nameof(member));
         }
         public override void Process()
         {
@@ -39,9 +42,15 @@ namespace DaJet.Stream
                 }
             }
 
-            _ = _scope.TrySetValue(_into.Identifier, record);
+            if (_scope.TryGetValue(_into.Identifier, out object target))
+            {
+                if (target is DataObject entity)
+                {
+                    entity.SetValue(_member, record);
+                }
+            }
 
-            _append?.Process(); _next?.Process();
+            _next?.Process();
         }
     }
 }

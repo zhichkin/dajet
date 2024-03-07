@@ -7,8 +7,9 @@ namespace DaJet.Stream
     {
         private IProcessor _next;
         private readonly StreamScope _scope;
-        private int _maxdop = 1;
-        private List<DataObject> _iterator;
+        private readonly int _maxdop = 1;
+        private readonly string _options;
+        private readonly string _iterator;
         public Parallelizer(in StreamScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
@@ -18,58 +19,60 @@ namespace DaJet.Stream
                 throw new ArgumentException(nameof(ForEachStatement));
             }
 
-            IProcessor stream = StreamFactory.CreateStream(in _scope);
-
             _maxdop = statement.DegreeOfParallelism;
 
-            //_context.MapIntoArray(in statement);
-            //_context.MapIntoObject(in statement);
+            if (_maxdop == 1) { /* do nothing */ }
+            else
+            {
+                int cpu_cores = Environment.ProcessorCount;
+                if (_maxdop == 0) { _maxdop = cpu_cores; }
+                else if (_maxdop < 0) { _maxdop = cpu_cores - 1; }
+                else if (_maxdop > 1) { _maxdop = Math.Min(cpu_cores, _maxdop); }
+            }
+
+            _options = statement.Variable.Identifier;
+            _iterator = statement.Iterator.Identifier;
         }
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Synchronize() { throw new NotImplementedException(); }
         public void Dispose() { throw new NotImplementedException(); }
         public void Process()
         {
-            //_iterator = _context.GetIntoArray();
-
-            //if (_iterator is null)
-            //{
-            //    throw new InvalidOperationException();
-            //}
-
-            if (_iterator is not null && _iterator.Count > 0)
+            if (!_scope.TryGetValue(in _iterator, out object value))
             {
-                foreach (DataObject options in _iterator)
-                {
-                    //StreamContext context = _context.Clone();
-
-                    //context.SetIntoObject(in options);
-
-                    //IProcessor stream = StreamFactory.CreateStream(in _scope);
-                }
-
-                Parallelize();
+                throw new InvalidOperationException($"Iterator {_iterator} is not found");
             }
+
+            if (value is not List<DataObject> iterator)
+            {
+                throw new InvalidOperationException($"Iterator {_iterator} is not of type List<DataObject>");
+            }
+
+            if (iterator.Count == 0)
+            {
+                return; // nothing to process
+            }
+
+            // dynamic object schema binding - inferring schema from iterator
+
+            if (!_scope.TryGetDeclaration(in _iterator, out _, out DeclareStatement schema))
+            {
+                throw new InvalidOperationException($"Declaration of {_iterator} is not found");
+            }
+            
+            if (!_scope.TryGetDeclaration(in _options, out _, out DeclareStatement declare))
+            {
+                throw new InvalidOperationException($"Declaration of {_options} is not found");
+            }
+
+            declare.Type.Binding = schema.Type.Binding;
+
+            Parallelize(in iterator);
 
             _next?.Process();
         }
-        private void Parallelize()
+        private void Parallelize(in List<DataObject> iterator)
         {
-            int cpu_cores = Environment.ProcessorCount;
-
-            if (_maxdop == 0)
-            {
-                _maxdop = cpu_cores;
-            }
-            else if (_maxdop > 1)
-            {
-                _maxdop = Math.Min(cpu_cores, _maxdop);
-            }
-            else if (_maxdop < 0)
-            {
-                _maxdop = cpu_cores - 1;
-            }
-
             Console.WriteLine($"MAXDOP = {_maxdop}");
 
             ParallelOptions options = new()
@@ -77,11 +80,21 @@ namespace DaJet.Stream
                 MaxDegreeOfParallelism = _maxdop
             };
 
-            ParallelLoopResult result = Parallel.ForEach(_iterator, options, ProcessInParallel);
+            ParallelLoopResult result = Parallel.ForEach(iterator, options, ProcessInParallel);
         }
         private void ProcessInParallel(DataObject options)
         {
             Console.WriteLine($"Thread: {Environment.CurrentManagedThreadId}");
+
+            StreamScope clone = _scope.Clone();
+
+            //TODO: clone @message variable !!!
+
+            clone.Variables.Add(_options, options); // something like closure
+
+            IProcessor stream = StreamFactory.CreateStream(in clone);
+
+            stream?.Process();
         }
     }
 }

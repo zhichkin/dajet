@@ -21,16 +21,5 @@
         {
             return Identifier.Replace('.', '_'); // @variable.member -> @variable_member
         }
-        public MemberAccessDescriptor ToDescriptor()
-        {
-            string[] identifier = Identifier.Split('.');
-
-            return new MemberAccessDescriptor()
-            {
-                Target = identifier[0],
-                Member = identifier[1],
-                MemberType = Binding as Type
-            };
-        }
     }
 }

@@ -26,7 +26,7 @@ namespace DaJet.Stream
 
             _yearOffset = _factory.GetYearOffset(in _uri);
 
-            _statement = StreamFactory.Transpile(in _scope);
+            _statement = StreamFactory.Transpile(in _scope); //TODO: cache it for parallelizer !!!
 
             ConfigureParameters();
         }
@@ -40,10 +40,7 @@ namespace DaJet.Stream
 
             StreamFactory.ConfigureFunctionsMap(in _scope, in _functions);
 
-            if (!StreamFactory.TryGetIntoVariable(_statement.Node, out _into))
-            {
-                throw new InvalidOperationException("INTO @variable is not defined");
-            }
+            _ = StreamFactory.TryGetIntoVariable(_statement.Node, out _into);
 
             foreach (var map in _variables)
             {
@@ -60,8 +57,6 @@ namespace DaJet.Stream
                     _parameters.Add(map.Value, null);
                 }
             }
-
-            //TODO: APPEND operators
         }
         protected void InitializeParameterValues()
         {
@@ -82,11 +77,6 @@ namespace DaJet.Stream
                         _parameters[map.Value] = StreamScope.ToJson(in record);
                     }
                 }
-            }
-
-            if (!_scope.TrySetValue(_into.Identifier, null))
-            {
-                throw new InvalidOperationException($"Variable [{_into.Identifier}] is not found");
             }
         }
     }

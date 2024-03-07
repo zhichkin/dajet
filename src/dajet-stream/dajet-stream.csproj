@@ -19,8 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\dajet-data-client\dajet-data-client.csproj" />
     <ProjectReference Include="..\dajet-file-logger\dajet-file-logger.csproj" />
+    <ProjectReference Include="..\dajet-scripting\dajet-scripting.csproj" />
   </ItemGroup>
 
 </Project>

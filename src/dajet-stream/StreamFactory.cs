@@ -8,74 +8,6 @@ namespace DaJet.Stream
 {
     internal static class StreamFactory
     {
-        internal static IProcessor CreateAppendProcessor(
-            in IMetadataProvider context, in Dictionary<string, object> parameters,
-            in TableJoinOperator append, in string objectName)
-        {
-            if (append is null) { return null; }
-
-            if (append.Token == TokenType.APPEND &&
-                append.Expression2 is TableExpression subquery &&
-                subquery.Expression is SelectExpression select &&
-                select.Binding is MemberAccessDescriptor descriptor)
-            {
-                descriptor.Target = objectName;
-
-                select.Into = new IntoClause()
-                {
-                    Columns = select.Columns,
-                    Value = new VariableReference()
-                    {
-                        Identifier = $"{objectName}_{subquery.Alias}",
-                        Binding = new TypeIdentifier()
-                        {
-                            Token = descriptor.MemberType == typeof(Array)
-                            ? TokenType.Array
-                            : TokenType.Object,
-                            Binding = descriptor.MemberType,
-                            Identifier = ParserHelper.GetDataTypeLiteral(descriptor.MemberType)
-                        }
-                    }
-                };
-
-                ScriptModel script = new()
-                {
-                    Statements = { new SelectStatement() { Expression = select } }
-                };
-
-                ISqlTranspiler transpiler;
-
-                if (context.DatabaseProvider == DatabaseProvider.SqlServer)
-                {
-                    transpiler = new MsSqlTranspiler() { YearOffset = context.YearOffset };
-                }
-                else if (context.DatabaseProvider == DatabaseProvider.PostgreSql)
-                {
-                    transpiler = new PgSqlTranspiler() { YearOffset = context.YearOffset };
-                }
-                else
-                {
-                    throw new InvalidOperationException($"Unsupported database provider: {context.DatabaseProvider}");
-                }
-
-                if (!transpiler.TryTranspile(in script, in context, out TranspilerResult result, out string error))
-                {
-                    throw new InvalidOperationException(error);
-                }
-
-                if (result.Statements.Count > 0)
-                {
-                    SqlStatement statement = result.Statements[0];
-
-                    //TODO: return new Processor(in context, in statement, in parameters);
-                }
-            }
-
-            return null;
-        }
-        
-        // ***
-
         internal static IProcessor Create(in ScriptModel script)
         {
             StreamScope scope = StreamScope.Create(in script);
@@ -119,24 +51,13 @@ namespace DaJet.Stream
             {
                 return new Parallelizer(in scope);
             }
-            else if (scope.Owner is ConsumeStatement consume)
+            else if (scope.Owner is ConsumeStatement consume && !string.IsNullOrEmpty(consume.Target))
             {
-                if (string.IsNullOrEmpty(consume.Target))
-                {
-                    return new ConsumeProcessor(in scope); // CONSUME
-                }
-                else
-                {
-                    return CreateMessageBrokerProcessor(in scope);
-                }
+                return CreateMessageBrokerProcessor(in scope);
             }
             else if (scope.Owner is ProduceStatement)
             {
                 return CreateMessageBrokerProcessor(in scope);
-            }
-            else if (scope.Owner is SelectStatement select && select.IsStream) // STREAM
-            {
-                return new StreamProcessor(in scope);
             }
             
             return CreateDatabaseProcessor(in scope);
@@ -145,20 +66,94 @@ namespace DaJet.Stream
         {
             if (TryGetIntoVariable(scope.Owner, out VariableReference variable))
             {
-                if (scope.TryGetDeclaration(variable.Identifier, out _, out DeclareStatement declare))
+                if (!scope.TryGetDeclaration(variable.Identifier, out _, out DeclareStatement declare))
                 {
-                    if (declare.Type.Token == TokenType.Array)
+                    throw new InvalidOperationException($"INTO {variable.Identifier} is not declared");
+                }
+
+                if (declare.Type.Token == TokenType.Array)
+                {
+                    return new IntoArrayProcessor(in scope);
+                }
+                else if (declare.Type.Token == TokenType.Object)
+                {
+                    if (scope.Owner is UpdateStatement)
                     {
-                        return new IntoArrayProcessor(in scope);
+                        return new StreamProcessor(in scope); //THINK: UPDATE TOP 1000 [ConsumeProcessor]
                     }
-                    else if (declare.Type.Token == TokenType.Object)
+                    else if (scope.Owner is ConsumeStatement consume && consume.From is not null)
                     {
-                        return new IntoObjectProcessor(in scope);
+                        return new ConsumeProcessor(in scope);
+                    }
+                    else if (scope.Owner is SelectStatement select) //NOTE: APPEND operators -> AppendProcessor
+                    {
+                        if (select.IsStream)
+                        {
+                            return new StreamProcessor(in scope);
+                        }
+                        else
+                        {
+                            return new IntoObjectProcessor(in scope);
+                        }
                     }
                 }
             }
             
             return new NonQueryProcessor(in scope);
+        }
+        internal static IProcessor CreateAppendStream(in StreamScope parent, in VariableReference target)
+        {
+            List<TableJoinOperator> appends = new AppendOperatorExtractor().Extract(parent.Owner);
+
+            if (appends is null || appends.Count == 0)
+            {
+                return null;
+            }
+
+            IProcessor starter = null;
+            IProcessor current = null;
+            IProcessor processor;
+            TableJoinOperator next;
+
+            for (int i = 0; i < appends.Count; i++)
+            {
+                next = appends[i];
+
+                processor = CreateAppendProcessor(in parent, in target, in next);
+
+                if (i == 0)
+                {
+                    starter = processor;
+                }
+                else
+                {
+                    current.LinkTo(in processor);
+                }
+
+                current = processor;
+            }
+
+            return starter;
+        }
+        internal static IProcessor CreateAppendProcessor(in StreamScope parent, in VariableReference target, in TableJoinOperator append)
+        {
+            if (append.Token == TokenType.APPEND && append.Expression2 is TableExpression subquery)
+            {
+                SelectStatement statement = new() { Expression = subquery.Expression };
+
+                StreamScope scope = new(statement, parent);
+
+                if (append.Modifier == TokenType.Array)
+                {
+                    return new AppendArrayProcessor(in scope, in target, subquery.Alias);
+                }
+                else if (append.Modifier == TokenType.Object)
+                {
+                    return new AppendObjectProcessor(in scope, in target, subquery.Alias);
+                }
+            }
+
+            return null; // Что-то пошло не так ¯\_(ツ)_/¯
         }
         internal static bool TryGetIntoVariable(in SyntaxNode node, out VariableReference into)
         {
@@ -168,9 +163,24 @@ namespace DaJet.Stream
             {
                 return TryGetIntoVariable(in select, out into);
             }
+            else if (node is ConsumeStatement consume)
+            {
+                return TryGetIntoVariable(in consume, out into);
+            }
             else if (node is UpdateStatement update)
             {
                 return TryGetIntoVariable(in update, out into);
+            }
+
+            return into is not null;
+        }
+        internal static bool TryGetIntoVariable(in ConsumeStatement consume, out VariableReference into)
+        {
+            into = null;
+
+            if (consume.Into?.Value is VariableReference variable)
+            {
+                into = variable;
             }
 
             return into is not null;
@@ -221,6 +231,7 @@ namespace DaJet.Stream
 
             return into is not null;
         }
+        
         internal static IProcessor CreateMessageBrokerProcessor(in StreamScope scope)
         {
             if (scope.Owner is ConsumeStatement consume)
@@ -248,7 +259,7 @@ namespace DaJet.Stream
 
             throw new InvalidOperationException("Unsupported message broker");
         }
-
+        
         // ***
 
         internal static void InitializeVariables(in StreamScope scope)
@@ -532,11 +543,27 @@ namespace DaJet.Stream
         {
             List<DeclareStatement> declarations = new();
 
-            // { boolean, number, datetime, string, binary, uuid, entity, array, object }
-            declarations.AddRange(GetOuterScopeVariables(in scope));
+            HashSet<string> deduplicate = new();
 
-            // { @object.member }
-            declarations.AddRange(GetOuterScopeMemberAccess(in scope));
+            // boolean, number, datetime, string, binary, uuid, entity, array, object
+            foreach (DeclareStatement declare in GetOuterScopeVariables(in scope))
+            {
+                if (!deduplicate.Contains(declare.Name))
+                {
+                    declarations.Add(declare);
+                    deduplicate.Add(declare.Name);
+                }
+            }
+
+            // @variable.member -> DECLARE @variable object
+            foreach (DeclareStatement declare in GetOuterScopeMemberAccess(in scope))
+            {
+                if (!deduplicate.Contains(declare.Name))
+                {
+                    declarations.Add(declare);
+                    deduplicate.Add(declare.Name);
+                }
+            }
 
             return declarations;
         }
@@ -672,8 +699,6 @@ namespace DaJet.Stream
 
             if (result is not null && result.Statements is not null && result.Statements.Count > 0)
             {
-                // find SQL command statement
-                // THINK: && s.Mapper.Properties.Count > 0
                 return result.Statements.Where(s => !string.IsNullOrEmpty(s.Script)).FirstOrDefault();
             }
 

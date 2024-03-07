@@ -1,6 +1,6 @@
 ﻿using DaJet.Data;
 
-namespace DaJet.Scripting.Model
+namespace DaJet.Stream
 {
     public sealed class MemberAccessDescriptor
     {

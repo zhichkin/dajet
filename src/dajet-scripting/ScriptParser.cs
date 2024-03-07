@@ -695,15 +695,20 @@ namespace DaJet.Scripting
             {
                 TokenType _operator = Previous().Type;
 
-                Type memberType = typeof(Array);
+                TokenType modifier = TokenType.Array;
 
-                if (_operator == TokenType.APPEND)
+                if (_operator == TokenType.APPEND)  //THINK: make "array" & "object" keywords !?
                 {
-                    if (Match(TokenType.Identifier) &&
-                        ParserHelper.IsDataType(Previous().Lexeme, out Type type) &&
-                        (type == typeof(Array) || type == typeof(object)))
+                    if (Match(TokenType.Identifier) && ParserHelper.IsDataType(Previous().Lexeme, out Type type))
                     {
-                        memberType = type; //THINK: make "array" & "object" keywords !?
+                        if (type == typeof(Array))
+                        {
+                            modifier = TokenType.Array;
+                        }
+                        else if (type == typeof(object))
+                        {
+                            modifier = TokenType.Object;
+                        }
                     }
                 }
                 else if (Match(TokenType.APPLY))
@@ -765,13 +770,7 @@ namespace DaJet.Scripting
 
                 if (_operator == TokenType.APPEND)
                 {
-                    MemberAccessDescriptor descriptor = new()
-                    {
-                        Member = subquery.Alias,
-                        MemberType = memberType
-                    };
                     disable_correlation_flag(in subquery);
-                    set_member_access_descriptor(in subquery, in descriptor);
                 }
 
                 left = new TableJoinOperator()
@@ -779,7 +778,8 @@ namespace DaJet.Scripting
                     Token = _operator,
                     Expression1 = left,
                     Expression2 = right,
-                    On = parse_on_clause ? on_clause() : null
+                    On = parse_on_clause ? on_clause() : null,
+                    Modifier = _operator == TokenType.APPEND ? modifier : _operator
                 };
             }
 
@@ -808,30 +808,6 @@ namespace DaJet.Scripting
         {
             disable_correlation_flag(union.Expression1);
             disable_correlation_flag(union.Expression2);
-        }
-        private void set_member_access_descriptor(in SyntaxNode node, in MemberAccessDescriptor descriptor)
-        {
-            if (node is SelectExpression select)
-            {
-                select.Binding = descriptor;
-            }
-            else if (node is TableExpression table)
-            {
-                set_member_access_descriptor(in table, in descriptor);
-            }
-            else if (node is TableUnionOperator union)
-            {
-                set_member_access_descriptor(in union, in descriptor);
-            }
-        }
-        private void set_member_access_descriptor(in TableExpression table, in MemberAccessDescriptor descriptor)
-        {
-            set_member_access_descriptor(table.Expression, in descriptor);
-        }
-        private void set_member_access_descriptor(in TableUnionOperator union, in MemberAccessDescriptor descriptor)
-        {
-            set_member_access_descriptor(union.Expression1, in descriptor);
-            set_member_access_descriptor(union.Expression2, in descriptor);
         }
         private FromClause from_clause() { return new FromClause() { Expression = join() }; }
         private IntoClause into_clause(in List<ColumnExpression> columns)

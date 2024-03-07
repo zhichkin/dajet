@@ -19,6 +19,5 @@
         // MS hack = WITH (ROWLOCK, READPAST)
         public string Hints { get; set; }
         public IntoClause Into { get; set; }
-        public object Binding { get; set; } // MemberAccessDescriptor
     }
 }

@@ -98,6 +98,28 @@ namespace DaJet.Stream
             return scope;
         }
         public StreamScope Close() { return Parent; }
+        public StreamScope Clone()
+        {
+            StreamScope clone = new(Owner, this);
+
+            foreach (StreamScope child in Children)
+            {
+                clone.Children.Add(child.Clone(in clone));
+            }
+
+            return clone;
+        }
+        private StreamScope Clone(in StreamScope parent)
+        {
+            StreamScope clone = new(Owner, parent);
+
+            foreach (StreamScope child in Children)
+            {
+                clone.Children.Add(child.Clone(in clone));
+            }
+
+            return clone;
+        }
         public static StreamScope Create(in ScriptModel script)
         {
             StreamScope scope = new(script);
@@ -306,17 +328,6 @@ namespace DaJet.Stream
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
-        public StreamScope Clone()
-        {
-            Dictionary<string, object> context = new();
-
-            foreach (var variable in _context)
-            {
-                context.Add(variable.Key, variable.Value);
-            }
-
-            return new StreamScope(in context);
-        }
         public void MapUri(in string uri)
         {
             _uri = uri; // store initial value
@@ -415,9 +426,14 @@ namespace DaJet.Stream
                         MemberType = type
                     });
                 }
-                else if (column.Expression is MemberAccessExpression member)
+                else if (column.Expression is MemberAccessExpression member) // simple type @variable.member
                 {
-                    _descriptors.Add(column.Alias, member.ToDescriptor()); // simple type @variable.member
+                    _descriptors.Add(column.Alias, new MemberAccessDescriptor()
+                    {
+                        Target = member.GetTargetName(),
+                        Member = member.GetMemberName(),
+                        MemberType = member.Binding as Type
+                    }); 
                 }
                 else if (column.Expression is FunctionExpression function
                     && function.Name == "DaJet.Json"
@@ -738,29 +754,6 @@ namespace DaJet.Stream
                 }
             }
             return 1; // allowed messages on the fly without ack
-        }
-        #endregion
-
-        #region "FOR EACH STATEMENT"
-        public void MapIntoArray(in ForEachStatement statement)
-        {
-            _intoArray = statement.Iterator.Identifier;
-
-            _descriptors.Add(_intoArray, new MemberAccessDescriptor()
-            {
-                Target = _intoArray,
-                MemberType = typeof(Array)
-            });
-        }
-        public void MapIntoObject(in ForEachStatement statement)
-        {
-            _intoObject = statement.Variable.Identifier;
-
-            _descriptors.Add(_intoObject, new MemberAccessDescriptor()
-            {
-                Target = _intoObject,
-                MemberType = typeof(object)
-            });
         }
         #endregion
     }
