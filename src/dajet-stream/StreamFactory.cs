@@ -662,6 +662,11 @@ namespace DaJet.Stream
 
         internal static SqlStatement Transpile(in StreamScope scope)
         {
+            if (scope.TryGetTranspilation(scope.Owner, out SqlStatement statement))
+            {
+                return statement;
+            }
+
             Uri uri = scope.GetDatabaseUri();
 
             IMetadataProvider database = MetadataService.CreateOneDbMetadataProvider(in uri);
@@ -673,7 +678,18 @@ namespace DaJet.Stream
                 throw new InvalidOperationException(error);
             }
 
-            return TranspileProcessorScript(in script, in database);
+            statement = TranspileProcessorScript(in script, in database);
+
+            if (statement is null)
+            {
+                throw new InvalidOperationException($"Transpilation error: [{scope.Owner}]");
+            }
+
+            StreamScope root = scope.GetRoot(); //NOTE: ScriptModel is the root
+
+            root.Transpilations.Add(scope.Owner, statement);
+
+            return statement;
         }
         internal static SqlStatement TranspileProcessorScript(in ScriptModel script, in IMetadataProvider database)
         {
@@ -702,7 +718,7 @@ namespace DaJet.Stream
                 return result.Statements.Where(s => !string.IsNullOrEmpty(s.Script)).FirstOrDefault();
             }
 
-            throw new InvalidOperationException("Transpilation error");
+            return null;
         }
 
         internal static void ConfigureVariablesMap(in StreamScope scope, in Dictionary<string, string> map)

@@ -57,6 +57,8 @@ namespace DaJet.Stream
                             }
                             _next?.Synchronize();
                             transaction.Commit();
+
+                            Console.WriteLine($"[{Environment.CurrentManagedThreadId}] consumed {consumed}");
                         }
                         catch (Exception error)
                         {

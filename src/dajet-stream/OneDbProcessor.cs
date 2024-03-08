@@ -26,7 +26,7 @@ namespace DaJet.Stream
 
             _yearOffset = _factory.GetYearOffset(in _uri);
 
-            _statement = StreamFactory.Transpile(in _scope); //TODO: cache it for parallelizer !!!
+            _statement = StreamFactory.Transpile(in _scope);
 
             ConfigureParameters();
         }

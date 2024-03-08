@@ -23,10 +23,6 @@ namespace DaJet
             args = new string[]
             {
                 "stream", "--file", "./test/10-ms-pg-exchange-consume-maxdop.sql"
-                //"./test/06-ms-pg-append-json.sql"
-                //"./test/11-test-scope-variables.sql"
-                //"./test/01-ms-pg-select.sql"
-                //"stream", "--url", "dajet://ms-demo/stream/01-insert"
             };
 
             var root = new RootCommand("dajet");

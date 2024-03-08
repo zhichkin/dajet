@@ -32,6 +32,23 @@ namespace DaJet.Stream
 
             _options = statement.Variable.Identifier;
             _iterator = statement.Iterator.Identifier;
+
+            // dynamic object schema binding - inferring schema from iterator
+
+            if (!_scope.TryGetDeclaration(in _iterator, out _, out DeclareStatement schema))
+            {
+                throw new InvalidOperationException($"Declaration of {_iterator} is not found");
+            }
+
+            if (!_scope.TryGetDeclaration(in _options, out _, out DeclareStatement declare))
+            {
+                throw new InvalidOperationException($"Declaration of {_options} is not found");
+            }
+
+            declare.Type.Binding = schema.Type.Binding;
+
+            // transpile SQL statements and put them in cache
+            IProcessor stream = StreamFactory.CreateStream(in scope);
         }
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Synchronize() { throw new NotImplementedException(); }
@@ -52,20 +69,6 @@ namespace DaJet.Stream
             {
                 return; // nothing to process
             }
-
-            // dynamic object schema binding - inferring schema from iterator
-
-            if (!_scope.TryGetDeclaration(in _iterator, out _, out DeclareStatement schema))
-            {
-                throw new InvalidOperationException($"Declaration of {_iterator} is not found");
-            }
-            
-            if (!_scope.TryGetDeclaration(in _options, out _, out DeclareStatement declare))
-            {
-                throw new InvalidOperationException($"Declaration of {_options} is not found");
-            }
-
-            declare.Type.Binding = schema.Type.Binding;
 
             Parallelize(in iterator);
 
@@ -88,9 +91,9 @@ namespace DaJet.Stream
 
             StreamScope clone = _scope.Clone();
 
-            //TODO: clone @message variable !!!
-
-            clone.Variables.Add(_options, options); // something like closure
+            //TODO: clone outer scope variables !!!
+            clone.Variables.Add("@message", null);
+            clone.Variables.Add(_options, options); // closure !?
 
             IProcessor stream = StreamFactory.CreateStream(in clone);
 

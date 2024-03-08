@@ -164,6 +164,7 @@ namespace DaJet.Stream
         }
         public List<DeclareStatement> Declarations { get; } = new(); // order is important for binding
         public Dictionary<string, object> Variables { get; } = new(); // scope variables and their values
+        public Dictionary<SyntaxNode, SqlStatement> Transpilations { get; } = new(); // script transpilations cache
         public bool TrySetValue(in string name, in object value)
         {
             StreamScope scope = this;
@@ -244,6 +245,24 @@ namespace DaJet.Stream
 
             return false;
         }
+        public bool TryGetTranspilation(in SyntaxNode owner, out SqlStatement statement)
+        {
+            statement = null;
+
+            StreamScope scope = this;
+
+            while (scope is not null)
+            {
+                if (scope.Transpilations.TryGetValue(owner, out statement))
+                {
+                    return true;
+                }
+
+                scope = scope.Parent;
+            }
+
+            return false;
+        }
 
         private static readonly Regex _uri_template = new("{(.*?)}", RegexOptions.CultureInvariant);
         public Uri GetUri(in string uri)
@@ -320,14 +339,9 @@ namespace DaJet.Stream
         private readonly Dictionary<string, object> _context;
 
         private string _uri;
-        private string _intoArray;
         private string _intoObject;
         private Dictionary<string, MemberAccessDescriptor> _templates = new();
         private Dictionary<string, MemberAccessDescriptor> _descriptors = new();
-        public StreamScope(in Dictionary<string, object> context)
-        {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
-        }
         public void MapUri(in string uri)
         {
             _uri = uri; // store initial value
@@ -370,13 +384,6 @@ namespace DaJet.Stream
 
             return new Uri(uri);
         }
-        public void SetIntoObject(in DataObject record)
-        {
-            if (_context.TryGetValue(_intoObject, out _))
-            {
-                _context[_intoObject] = record;
-            }
-        }
         public DataObject GetIntoObject()
         {
             if (_descriptors.TryGetValue(_intoObject, out MemberAccessDescriptor descriptor))
@@ -386,20 +393,6 @@ namespace DaJet.Stream
                     if (value is DataObject record)
                     {
                         return record;
-                    }
-                }
-            }
-            return null;
-        }
-        public List<DataObject> GetIntoArray()
-        {
-            if (_descriptors.TryGetValue(_intoArray, out MemberAccessDescriptor descriptor))
-            {
-                if (descriptor.TryGetValue(in _context, out object value))
-                {
-                    if (value is List<DataObject> table)
-                    {
-                        return table;
                     }
                 }
             }
