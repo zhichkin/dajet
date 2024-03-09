@@ -7,9 +7,38 @@ namespace DaJet.Stream
     {
         private IProcessor _next;
         private readonly StreamScope _scope;
-        private readonly int _maxdop = 1;
+        private readonly int _maxdop;
         private readonly string _options;
         private readonly string _iterator;
+        private readonly List<string> _closure;
+        private static int GetMaxDopValue(in ForEachStatement statement)
+        {
+            int maxdop = statement.DegreeOfParallelism;
+
+            if (maxdop == 1)
+            {
+                return maxdop;
+            }
+            else
+            {
+                int cpu_cores = Environment.ProcessorCount;
+
+                if (maxdop == 0)
+                {
+                    maxdop = cpu_cores;
+                }
+                else if (maxdop < 0)
+                {
+                    maxdop = cpu_cores - 1;
+                }
+                else if (maxdop > 1)
+                {
+                    maxdop = Math.Min(cpu_cores, maxdop);
+                }
+            }
+
+            return maxdop;
+        }
         public Parallelizer(in StreamScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
@@ -19,36 +48,13 @@ namespace DaJet.Stream
                 throw new ArgumentException(nameof(ForEachStatement));
             }
 
-            _maxdop = statement.DegreeOfParallelism;
+            StreamFactory.ConfigureIteratorSchema(in _scope, out _options, out _iterator);
 
-            if (_maxdop == 1) { /* do nothing */ }
-            else
-            {
-                int cpu_cores = Environment.ProcessorCount;
-                if (_maxdop == 0) { _maxdop = cpu_cores; }
-                else if (_maxdop < 0) { _maxdop = cpu_cores - 1; }
-                else if (_maxdop > 1) { _maxdop = Math.Min(cpu_cores, _maxdop); }
-            }
+            _maxdop = GetMaxDopValue(in statement);
+            
+            _closure = StreamFactory.GetClosureVariables(in _scope);
 
-            _options = statement.Variable.Identifier;
-            _iterator = statement.Iterator.Identifier;
-
-            // dynamic object schema binding - inferring schema from iterator
-
-            if (!_scope.TryGetDeclaration(in _iterator, out _, out DeclareStatement schema))
-            {
-                throw new InvalidOperationException($"Declaration of {_iterator} is not found");
-            }
-
-            if (!_scope.TryGetDeclaration(in _options, out _, out DeclareStatement declare))
-            {
-                throw new InvalidOperationException($"Declaration of {_options} is not found");
-            }
-
-            declare.Type.Binding = schema.Type.Binding;
-
-            // transpile SQL statements and put them in cache
-            IProcessor stream = StreamFactory.CreateStream(in scope);
+            _ = StreamFactory.CreateStream(in _scope); // transpile and cache SQL statements 
         }
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Synchronize() { throw new NotImplementedException(); }
@@ -74,6 +80,7 @@ namespace DaJet.Stream
 
             _next?.Process();
         }
+        
         private void Parallelize(in List<DataObject> iterator)
         {
             Console.WriteLine($"MAXDOP = {_maxdop}");
@@ -91,9 +98,15 @@ namespace DaJet.Stream
 
             StreamScope clone = _scope.Clone();
 
-            //TODO: clone outer scope variables !!!
-            clone.Variables.Add("@message", null);
-            clone.Variables.Add(_options, options); // closure !?
+            foreach (string variable in _closure)
+            {
+                if (_scope.TryGetValue(in variable, out object value))
+                {
+                    clone.Variables.Add(variable, value);
+                }
+            }
+
+            _ = clone.TrySetValue(_options, options);
 
             IProcessor stream = StreamFactory.CreateStream(in clone);
 

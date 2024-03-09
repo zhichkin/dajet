@@ -807,5 +807,90 @@ namespace DaJet.Stream
                 }
             }
         }
+
+        internal static void ConfigureIteratorSchema(in StreamScope scope, out string item, out string iterator)
+        {
+            if (scope.Owner is not ForEachStatement statement)
+            {
+                throw new ArgumentException(nameof(ConfigureIteratorSchema));
+            }
+
+            item = statement.Variable.Identifier;
+            iterator = statement.Iterator.Identifier;
+
+            // dynamic object schema binding - inferring schema from iterator
+
+            if (!scope.TryGetDeclaration(in iterator, out _, out DeclareStatement schema))
+            {
+                throw new InvalidOperationException($"Declaration of {iterator} is not found");
+            }
+
+            if (!scope.TryGetDeclaration(in item, out _, out DeclareStatement declare))
+            {
+                throw new InvalidOperationException($"Declaration of {item} is not found");
+            }
+
+            declare.Type.Binding = schema.Type.Binding;
+        }
+        internal static List<string> GetClosureVariables(in StreamScope scope)
+        {
+            if (scope.Owner is not ForEachStatement statement)
+            {
+                throw new ArgumentException(nameof(GetClosureVariables));
+            }
+
+            List<string> closure = new();
+
+            HashSet<string> identifiers = new();
+
+            GetIdentifiersRecursively(in scope, in identifiers);
+
+            _ = identifiers.Remove(statement.Iterator.Identifier);
+
+            foreach (string identifier in identifiers)
+            {
+                if (scope.TryGetDeclaration(identifier, out _, out _))
+                {
+                    closure.Add(identifier);
+                }
+            }
+
+            return closure;
+        }
+        internal static void GetIdentifiersRecursively(in StreamScope scope, in HashSet<string> identifiers)
+        {
+            SyntaxNode node = scope.Owner;
+
+            string identifier;
+
+            List<VariableReference> variables = new VariableReferenceExtractor().Extract(in node);
+
+            foreach (VariableReference variable in variables) // @variable
+            {
+                identifier = variable.Identifier;
+
+                if (!identifiers.Contains(identifier))
+                {
+                    identifiers.Add(identifier);
+                }
+            }
+
+            List<MemberAccessExpression> members = new MemberAccessExtractor().Extract(in node);
+
+            foreach (MemberAccessExpression member in members) // @object.member
+            {
+                identifier = member.GetTargetName();
+
+                if (!identifiers.Contains(identifier))
+                {
+                    identifiers.Add(identifier);
+                }
+            }
+
+            foreach (StreamScope child in scope.Children)
+            {
+                GetIdentifiersRecursively(in child, in identifiers);
+            }
+        }
     }
 }

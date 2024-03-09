@@ -10,7 +10,6 @@ namespace DaJet.Stream
         private readonly IProcessor _stream;
         private IMetadataProvider _database;
         private readonly string _uri;
-
         public UseProcessor(in StreamScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));

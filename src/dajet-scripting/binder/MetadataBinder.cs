@@ -151,7 +151,7 @@ namespace DaJet.Scripting
         {
             if (node.Type.Token == TokenType.Array || node.Type.Token == TokenType.Object)
             {
-                if (node.Type.Binding is List<ColumnExpression> schema)
+                if (node.Type.Binding is List<ColumnExpression>)
                 {
                     if (!_scope.Variables.ContainsKey(node.Name))
                     {
