@@ -8,7 +8,6 @@ namespace DaJet.Stream
         private IProcessor _next;
         private readonly StreamScope _scope;
         private readonly IProcessor _stream;
-        private IMetadataProvider _database;
         private readonly string _uri;
         public UseProcessor(in StreamScope scope)
         {
@@ -21,11 +20,12 @@ namespace DaJet.Stream
 
             _uri = statement.Uri;
 
-            Uri uri = _scope.GetUri(in _uri);
+            if (!scope.TryGetMetadataProvider(out IMetadataProvider database, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
 
-            _database = MetadataService.CreateOneDbMetadataProvider(in uri);
-
-            StreamFactory.InitializeVariables(in _scope, in _database);
+            StreamFactory.InitializeVariables(in _scope, in database);
 
             _stream = StreamFactory.CreateStream(in _scope);
         }

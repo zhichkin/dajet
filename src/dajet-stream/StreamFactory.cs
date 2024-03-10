@@ -259,7 +259,7 @@ namespace DaJet.Stream
 
             throw new InvalidOperationException("Unsupported message broker");
         }
-        
+
         // ***
 
         internal static void InitializeVariables(in StreamScope scope)
@@ -373,9 +373,11 @@ namespace DaJet.Stream
                 {
                     scope.Variables[declare.Name] = ParserHelper.GetScalarValue(in scalar);
                 }
-                else if (declare.Initializer is SelectExpression select)
+                else if (declare.Initializer is SelectExpression || declare.Initializer is TableUnionOperator)
                 {
-                    scope.Variables[declare.Name] = GetSelectValue(in scope, in database, in declare, in select);
+                    SelectStatement statement = new() { Expression = declare.Initializer };
+
+                    scope.Variables[declare.Name] = GetSelectValue(in scope, in database, in declare, in statement);
                 }
             }
 
@@ -410,7 +412,7 @@ namespace DaJet.Stream
 
             return value;
         }
-        private static object GetSelectValue(in StreamScope scope, in IMetadataProvider database, in DeclareStatement declare, in SelectExpression select)
+        private static object GetSelectValue(in StreamScope scope, in IMetadataProvider database, in DeclareStatement declare, in SelectStatement select)
         {
             SqlStatement statement = TranspileSelectStatement(in database, in select);
 
@@ -449,19 +451,24 @@ namespace DaJet.Stream
 
                 return entity.IsUndefined ? empty : entity;
             }
+            else if (declare.Type.Token == TokenType.Array)
+            {
+                return SelectArrayValue(in database, in statement, in select_parameters);
+            }
+            else if (declare.Type.Token == TokenType.Object)
+            {
+                return SelectObjectValue(in database, in statement, in select_parameters);
+            }
             else
             {
                 return SelectParameterValue(in database, in statement, in select_parameters);
             }
         }
-        private static SqlStatement TranspileSelectStatement(in IMetadataProvider database, in SelectExpression select)
+        private static SqlStatement TranspileSelectStatement(in IMetadataProvider database, in SelectStatement select)
         {
             ScriptModel script = new();
 
-            script.Statements.Add(new SelectStatement()
-            {
-                Expression = select
-            });
+            script.Statements.Add(select);
 
             ISqlTranspiler transpiler;
 
@@ -494,7 +501,7 @@ namespace DaJet.Stream
         {
             object value = null;
 
-            IQueryExecutor executor = context.CreateQueryExecutor(); //TODO: use OneDbConnection ?
+            IQueryExecutor executor = context.CreateQueryExecutor();
 
             foreach (IDataReader reader in executor.ExecuteReader(statement.Script, 10, parameters))
             {
@@ -512,7 +519,7 @@ namespace DaJet.Stream
         {
             object value = null;
 
-            IQueryExecutor executor = context.CreateQueryExecutor(); //TODO: use OneDbConnection ?
+            IQueryExecutor executor = context.CreateQueryExecutor();
 
             foreach (IDataReader reader in executor.ExecuteReader(statement.Script, 10, parameters))
             {
@@ -520,6 +527,36 @@ namespace DaJet.Stream
             }
 
             return value;
+        }
+        private static DataObject SelectObjectValue(in IMetadataProvider context, in SqlStatement statement, in Dictionary<string, object> parameters)
+        {
+            DataObject value = new(statement.Mapper.Properties.Count);
+
+            IQueryExecutor executor = context.CreateQueryExecutor();
+
+            foreach (IDataReader reader in executor.ExecuteReader(statement.Script, 10, parameters))
+            {
+                statement.Mapper.Map(in reader, in value); break;
+            }
+
+            return value;
+        }
+        private static List<DataObject> SelectArrayValue(in IMetadataProvider context, in SqlStatement statement, in Dictionary<string, object> parameters)
+        {
+            List<DataObject> table = new();
+
+            IQueryExecutor executor = context.CreateQueryExecutor();
+
+            foreach (IDataReader reader in executor.ExecuteReader(statement.Script, 10, parameters))
+            {
+                DataObject record = new(statement.Mapper.Properties.Count);
+
+                statement.Mapper.Map(in reader, in record);
+
+                table.Add(record);
+            }
+
+            return table;
         }
 
         // ***
@@ -667,13 +704,14 @@ namespace DaJet.Stream
                 return statement;
             }
 
-            Uri uri = scope.GetDatabaseUri();
-
-            IMetadataProvider database = MetadataService.CreateOneDbMetadataProvider(in uri);
+            if (!scope.TryGetMetadataProvider(out IMetadataProvider database, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
 
             ScriptModel script = CreateProcessorScript(in scope);
 
-            if (!ScriptProcessor.TryBind(in script, in database, out string error))
+            if (!ScriptProcessor.TryBind(in script, in database, out error))
             {
                 throw new InvalidOperationException(error);
             }

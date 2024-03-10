@@ -160,7 +160,7 @@ namespace DaJet.Scripting
                 }
                 else if (Check(TokenType.SELECT))
                 {
-                    declare.Initializer = select();
+                    declare.Initializer = union();
                 }
                 else
                 {

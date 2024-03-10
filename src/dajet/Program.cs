@@ -22,7 +22,7 @@ namespace DaJet
         {
             args = new string[]
             {
-                "stream", "--file", "./test/10-ms-pg-exchange-consume-maxdop.sql"
+                "stream", "--file", "./test/12-select-settings-ms-pg-stream-paging-maxdop.sql"
             };
 
             var root = new RootCommand("dajet");

@@ -151,13 +151,11 @@ namespace DaJet.Scripting
         {
             if (node.Type.Token == TokenType.Array || node.Type.Token == TokenType.Object)
             {
-                if (node.Type.Binding is List<ColumnExpression>)
+                if (node.Type.Binding is List<ColumnExpression>) // bind schema only once !?
                 {
                     if (!_scope.Variables.ContainsKey(node.Name))
                     {
-                        _scope.Variables.Add(node.Name, node.Type);
-                        //FIXME: DaJet.Stream - bind data schema only once !
-                        return;
+                        _scope.Variables.Add(node.Name, node.Type); return;
                     }
                 }
             }
@@ -210,9 +208,17 @@ namespace DaJet.Scripting
                         throw new FormatException($"[DECLARE {node.Name} entity] unknown initializer");
                     }
                 }
-                else if (node.Initializer is SelectExpression select) // all other types of variables
+                else if (node.Initializer is SelectExpression select)
                 {
                     Bind(in select);
+
+                    node.Type.Binding = select.Columns;
+                }
+                else if (node.Initializer is TableUnionOperator union)
+                {
+                    Bind(in union);
+
+                    node.Type.Binding = (union.Expression1 as SelectExpression).Columns;
                 }
             }
             else if (node.Type.Binding is Entity) // DECLARE @Ссылка Справочник.Номенклатура

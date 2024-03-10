@@ -1,5 +1,6 @@
 ﻿using DaJet.Data;
 using DaJet.Json;
+using DaJet.Metadata;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using RabbitMQ.Client;
@@ -139,15 +140,11 @@ namespace DaJet.Stream
                 }
                 else if (IsStreamScope(in statement))
                 {
-                    if (_current.Owner is UseStatement && statement is UseStatement)
-                    {
-                        _current = _current.Close(); // one database context closes another
-                    }
-                    _current = _current.Open(in statement); // create parent scope
+                    _current = _current.Open(in statement); // open new scope
                 }
                 else
                 {
-                    _ = _current.Open(in statement); // add child to parent scope
+                    _ = _current.Open(in statement); // join current scope
                 }
             }
 
@@ -165,6 +162,7 @@ namespace DaJet.Stream
         public List<DeclareStatement> Declarations { get; } = new(); // order is important for binding
         public Dictionary<string, object> Variables { get; } = new(); // scope variables and their values
         public Dictionary<SyntaxNode, SqlStatement> Transpilations { get; } = new(); // script transpilations cache
+        public Dictionary<string, IMetadataProvider> MetadataProviders { get; } = new(); // metadata providers cache
         public bool TrySetValue(in string name, in object value)
         {
             StreamScope scope = this;
@@ -263,35 +261,34 @@ namespace DaJet.Stream
 
             return false;
         }
+        public bool TryGetMetadataProvider(out IMetadataProvider provider, out string error)
+        {
+            error = null;
+
+            Uri uri = GetDatabaseUri(); //NOTE: constructs uri dynamically
+
+            StreamScope root = GetRoot(); //NOTE: ScriptModel is the root
+
+            if (root.MetadataProviders.TryGetValue(uri.ToString(), out provider))
+            {
+                return true;
+            }
+
+            try
+            {
+                provider = MetadataService.CreateOneDbMetadataProvider(in uri);
+
+                root.MetadataProviders.Add(uri.ToString(), provider);
+            }
+            catch (Exception exception)
+            {
+                error = ExceptionHelper.GetErrorMessage(exception);
+            }
+
+            return error is null;
+        }
 
         private static readonly Regex _uri_template = new("{(.*?)}", RegexOptions.CultureInvariant);
-        public Uri GetUri(in string uri)
-        {
-            string[] templates = GetUriTemplates(in uri);
-
-            if (templates.Length == 0)
-            {
-                return new Uri(uri);
-            }
-
-            string result = string.Empty;
-
-            for (int i = 0; i < templates.Length; i++)
-            {
-                string variable = templates[i].TrimStart('{').TrimEnd('}');
-
-                if (TryGetValue(in variable, out object value))
-                {
-                    result = uri.Replace(templates[i], value.ToString());
-                }
-                else
-                {
-                    result = uri.Replace(templates[i], string.Empty);
-                }
-            }
-
-            return new Uri(result);
-        }
         public static string[] GetUriTemplates(in string uri)
         {
             MatchCollection matches = _uri_template.Matches(uri);
@@ -310,21 +307,36 @@ namespace DaJet.Stream
 
             return templates;
         }
-        public static Uri GetUri(in string template, in Dictionary<string, string> values)
+        public Uri GetUri(in string uri)
         {
-            string uri = string.Empty;
+            string[] templates = GetUriTemplates(in uri);
 
-            foreach (var item in values)
+            if (templates.Length == 0)
             {
-                uri = template.Replace(item.Key, item.Value);
+                return new Uri(uri);
             }
 
-            return new Uri(uri);
+            string result = uri;
+
+            for (int i = 0; i < templates.Length; i++)
+            {
+                string variable = templates[i].TrimStart('{').TrimEnd('}');
+
+                if (TryGetValue(in variable, out object value))
+                {
+                    result = result.Replace(templates[i], value.ToString());
+                }
+                else
+                {
+                    result = result.Replace(templates[i], string.Empty);
+                }
+            }
+
+            return new Uri(result);
         }
         public Uri GetDatabaseUri()
         {
-            StreamScope parent = GetParent<UseStatement>()
-                ?? throw new InvalidOperationException("Parent UseStatement is not found");
+            StreamScope parent = GetParent<UseStatement>() ?? throw new InvalidOperationException("Parent UseStatement is not found");
             
             if (parent.Owner is UseStatement use)
             {
