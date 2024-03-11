@@ -1,17 +1,4 @@
-## Развитие DaJet Stream и исправление ошибок
-
-### Платформа DaJet
-
-Исправлены ошибки библиотек **DaJet.Metadata** и **DaJet.Scripting**
-- [Ошибка вызова CREATE TYPE](https://github.com/zhichkin/dajet/issues/4)
-- [Ошибка чтения предопределённых значений](https://github.com/zhichkin/dajet/issues/5)
-- [Ошибка чтения планов видов характеристик](https://github.com/zhichkin/dajet/issues/6)
-
-Актуальные версии библиотек:
-- DaJet.Metadata - 4.5.1
-- DaJet.Scripting - 1.7.3
-
-### DaJet Stream
+## Релиз DaJet Stream 3.3.1
 
 [Ознакомительно видео на YouTube](https://www.youtube.com/watch?v=JuQYzqD7RwI)
 
