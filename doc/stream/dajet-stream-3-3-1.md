@@ -1,5 +1,7 @@
 ## Релиз DaJet Stream 3.3.1
 
+[Страница релиза для скачивания](https://github.com/zhichkin/dajet/releases/tag/dajet-3.3.1)
+
 [Ознакомительно видео на YouTube](https://www.youtube.com/watch?v=JuQYzqD7RwI)
 
 > Полностью переделана архитектура процессора скриптов DaJet Stream.
