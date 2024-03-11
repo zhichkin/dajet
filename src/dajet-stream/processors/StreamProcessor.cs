@@ -46,14 +46,23 @@ namespace DaJet.Stream
 
                                 _ = _scope.TrySetValue(_into.Identifier, record);
 
-                                _append?.Process(); _next?.Process();
+                                _append?.Process();
+                                
+                                _next?.Process();
 
                                 processed++;
                             }
                             reader.Close();
                         }
-                        _next?.Synchronize();
+                        
+                        if (processed > 0)
+                        {
+                            _next?.Synchronize();
+                        }
+
                         transaction.Commit();
+
+                        Console.WriteLine($"[{Environment.CurrentManagedThreadId}] Streamed {processed} messages");
                     }
                     catch (Exception error)
                     {

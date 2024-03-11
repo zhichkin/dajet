@@ -20,12 +20,16 @@ namespace DaJet
 
         public static int Main(string[] args)
         {
-            args = new string[]
-            {
-                "stream", "--file", "./test/14-amqp-ms-consume.sql"
-                //"./test/13-ms-amqp-consume.sql"
-                //"./test/12-select-settings-ms-pg-stream-paging-maxdop.sql"
-            };
+            //args = new string[]
+            //{
+            //    "stream", "--file",
+            //    "./test/16-simple-amqp-produce.sql"
+            //    //"./test/15-ms-ms-exchange-to-register.sql"
+            //    //"./test/13-ms-amqp-produce.sql"
+            //    //"./test/14-amqp-ms-consume.sql"
+            //    //"./test/11-ms-pg-exchange-consume-maxdop.sql"
+            //    //"./test/07-ms-pg-catalog-paging-maxdop.sql"
+            //};
 
             var root = new RootCommand("dajet");
             var command = new Command("stream", "Execute DaJet Stream");

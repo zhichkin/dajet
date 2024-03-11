@@ -12,6 +12,34 @@ namespace DaJet.Stream
         }
         public override void Process()
         {
+            int thread = Environment.CurrentManagedThreadId;
+
+            while (true)
+            {
+                try
+                {
+                    Consume();
+                }
+                catch (Exception error)
+                {
+                    Console.WriteLine($"[{thread}] {ExceptionHelper.GetErrorMessage(error)}");
+                    //FileLogger.Default.Write(ExceptionHelper.GetErrorMessageAndStackTrace(error));
+                }
+
+                try
+                {
+                    Console.WriteLine($"[{thread}] Sleep 10 seconds ...");
+                    Task.Delay(TimeSpan.FromSeconds(10)).Wait();
+                    //Task.Delay(TimeSpan.FromSeconds(_idle_timeout)).Wait(_cancellationToken);
+                }
+                catch // (OperationCanceledException)
+                {
+                    // do nothing - host shutdown requested
+                }
+            }
+        }
+        private void Consume()
+        {
             int consumed;
             int processed = 0;
 
@@ -55,10 +83,15 @@ namespace DaJet.Stream
                                 }
                                 reader.Close();
                             }
-                            _next?.Synchronize();
+
+                            if (consumed > 0)
+                            {
+                                _next?.Synchronize();
+                            }
+
                             transaction.Commit();
 
-                            Console.WriteLine($"[{Environment.CurrentManagedThreadId}] consumed {consumed}");
+                            Console.WriteLine($"[{Environment.CurrentManagedThreadId}] Consumed {consumed} messages");
                         }
                         catch (Exception error)
                         {

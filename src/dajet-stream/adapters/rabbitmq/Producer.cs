@@ -51,8 +51,6 @@ namespace DaJet.Stream.RabbitMQ
             _options = statement;
             
             StreamFactory.MapOptions(in _scope);
-
-            // ??? _next = StreamFactory.CreateStream(in _scope);
         }
         public void LinkTo(in IProcessor next) { _next = next; }
 

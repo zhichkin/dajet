@@ -154,7 +154,7 @@ namespace DaJet.Stream.RabbitMQ
                 }
             }
 
-            return 60; // seconds
+            return 10; // seconds
         }
         private uint GetPrefetchSize()
         {
@@ -332,6 +332,8 @@ namespace DaJet.Stream.RabbitMQ
             }
             catch (Exception error)
             {
+                Console.WriteLine(ExceptionHelper.GetErrorMessage(error));
+
                 NackMessage(in consumer, in args, in error);
             }
         }

@@ -41,7 +41,9 @@ namespace DaJet.Stream
 
             _ = _scope.TrySetValue(_into.Identifier, record);
 
-            _append?.Process(); _next?.Process();
+            _append?.Process();
+            
+            _next?.Process();
         }
     }
 }
