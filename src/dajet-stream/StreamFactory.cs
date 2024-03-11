@@ -3,6 +3,7 @@ using DaJet.Metadata;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using System.Data;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace DaJet.Stream
 {
@@ -928,6 +929,90 @@ namespace DaJet.Stream
             foreach (StreamScope child in scope.Children)
             {
                 GetIdentifiersRecursively(in child, in identifiers);
+            }
+        }
+
+        // ***
+
+        internal static bool TryGetOption(in StreamScope scope, in string name, out object value)
+        {
+            if (scope.TryGetValue(name, out value))
+            {
+                if (value is VariableReference variable)
+                {
+                    if (scope.TryGetValue(variable.Identifier, out value))
+                    {
+                        return true;
+                    }
+                }
+                else if (value is MemberAccessExpression member)
+                {
+                    if (scope.TryGetValue(member.Identifier, out value))
+                    {
+                        return true;
+                    }
+                }
+                else if (value is FunctionExpression function
+                    && function.Name == "DaJet.Json"
+                    && function.Parameters.Count > 0
+                    && function.Parameters[0] is VariableReference parameter)
+                {
+                    if (scope.TryGetValue(parameter.Identifier, out value))
+                    {
+                        if (value is DataObject record)
+                        {
+                            value = StreamScope.ToJson(in record);
+                            
+                            return true;
+                        }
+                    }
+                }
+                else
+                {
+                    return true; // scalar value
+                }
+            }
+
+            value = null;
+            return false;
+        }
+        internal static void MapOptions(in StreamScope scope)
+        {
+            if (scope.Owner is ProduceStatement produce)
+            {
+                MapColumnExpressions(in scope, produce.Options);
+                MapColumnExpressions(in scope, produce.Columns);
+            }
+            else if (scope.Owner is ConsumeStatement consume)
+            {
+                MapColumnExpressions(in scope, consume.Options);
+                MapColumnExpressions(in scope, consume.Columns);
+            }
+        }
+        private static void MapColumnExpressions(in StreamScope scope, in List<ColumnExpression> columns)
+        {
+            foreach (ColumnExpression column in columns)
+            {
+                if (column.Expression is ScalarExpression scalar)
+                {
+                    scope.Variables.Add(column.Alias, ParserHelper.GetScalarValue(in scalar));
+                }
+                else if (column.Expression is VariableReference variable)
+                {
+                    scope.Variables.Add(column.Alias, variable);
+                }
+                else if (column.Expression is MemberAccessExpression member)
+                {
+                    scope.Variables.Add(column.Alias, member);
+                }
+                else if (column.Expression is FunctionExpression function
+                    && function.Name == "DaJet.Json"
+                    && function.Parameters.Count > 0
+                    && function.Parameters[0] is VariableReference parameter
+                    && parameter.Binding is TypeIdentifier)
+                {
+                    scope.Variables.Add(column.Alias, function);
+                }
             }
         }
     }

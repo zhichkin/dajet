@@ -1,4 +1,5 @@
-﻿using DaJet.Scripting.Model;
+﻿using DaJet.Data;
+using DaJet.Scripting.Model;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Buffers;
@@ -48,9 +49,10 @@ namespace DaJet.Stream.RabbitMQ
             }
 
             _options = statement;
+            
+            StreamFactory.MapOptions(in _scope);
 
-            _scope.MapUri(_options.Target);
-            _scope.MapOptions(in _options);
+            // ??? _next = StreamFactory.CreateStream(in _scope);
         }
         public void LinkTo(in IProcessor next) { _next = next; }
 
@@ -62,10 +64,194 @@ namespace DaJet.Stream.RabbitMQ
         private string Password { get; set; } = "guest";
         #endregion
 
+        #region "MESSAGE OPTIONS AND VALUES"
+        private string GetExchange()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "Exchange", out object value))
+            {
+                return value.ToString();
+            }
+
+            return string.Empty;
+        }
+        private string GetRoutingKey()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "RoutingKey", out object value))
+            {
+                return value.ToString();
+            }
+
+            return string.Empty;
+        }
+        private bool GetMandatory()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "Mandatory", out object value))
+            {
+                if (value is bool boolean)
+                {
+                    return boolean;
+                }
+            }
+
+            return false;
+        }
+        private string GetMessageBody()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "Body", out object value))
+            {
+                return value.ToString();
+            }
+
+            return string.Empty;
+        }
+        private string[] GetBlindCopy()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "BlindCopy", out object value))
+            {
+                if (value is List<DataObject> list && list.Count > 0)
+                {
+                    string[] array = new string[list.Count];
+
+                    for (int i = 0; i < list.Count; i++)
+                    {
+                        array[i] = list[i].GetValue(0).ToString();
+                    }
+
+                    return array;
+                }
+                else
+                {
+                    return value.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                }
+            }
+
+            return null;
+        }
+        private string[] GetCarbonCopy()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "CarbonCopy", out object value))
+            {
+                if (value is List<DataObject> list && list.Count > 0)
+                {
+                    string[] array = new string[list.Count];
+
+                    for (int i = 0; i < list.Count; i++)
+                    {
+                        array[i] = list[i].GetValue(0).ToString();
+                    }
+
+                    return array;
+                }
+                else
+                {
+                    return value.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                }
+            }
+
+            return null;
+        }
+        private string GetAppId()
+        {
+            if (StreamFactory.TryGetOption(in _scope, nameof(IBasicProperties.AppId), out object value))
+            {
+                return value.ToString();
+            }
+
+            return null;
+        }
+        private string GetMessageId()
+        {
+            if (StreamFactory.TryGetOption(in _scope, nameof(IBasicProperties.MessageId), out object value))
+            {
+                return value.ToString();
+            }
+
+            return null;
+        }
+        private string GetMessageType()
+        {
+            if (StreamFactory.TryGetOption(in _scope, nameof(IBasicProperties.Type), out object value))
+            {
+                return value.ToString();
+            }
+
+            return null;
+        }
+        private string GetCorrelationId()
+        {
+            if (StreamFactory.TryGetOption(in _scope, nameof(IBasicProperties.CorrelationId), out object value))
+            {
+                return value.ToString();
+            }
+
+            return null;
+        }
+        private byte GetPriority()
+        {
+            if (StreamFactory.TryGetOption(in _scope, nameof(IBasicProperties.Priority), out object value))
+            {
+                if (value is not null && byte.TryParse(value.ToString(), out byte priority))
+                {
+                    return priority;
+                }
+            }
+
+            return 0;
+        }
+        private byte GetDeliveryMode()
+        {
+            if (StreamFactory.TryGetOption(in _scope, nameof(IBasicProperties.DeliveryMode), out object value))
+            {
+                if (value is not null && byte.TryParse(value.ToString(), out byte mode))
+                {
+                    return mode;
+                }
+            }
+
+            return 2; // persistent
+        }
+        private string GetContentType()
+        {
+            if (StreamFactory.TryGetOption(in _scope, nameof(IBasicProperties.ContentType), out object value))
+            {
+                return value.ToString();
+            }
+
+            return "application/json";
+        }
+        private string GetContentEncoding()
+        {
+            if (StreamFactory.TryGetOption(in _scope, nameof(IBasicProperties.ContentEncoding), out object value))
+            {
+                return value.ToString();
+            }
+
+            return "UTF-8";
+        }
+        private string GetReplyTo()
+        {
+            if (StreamFactory.TryGetOption(in _scope, nameof(IBasicProperties.ReplyTo), out object value))
+            {
+                return value.ToString();
+            }
+
+            return null;
+        }
+        private string GetExpiration()
+        {
+            if (StreamFactory.TryGetOption(in _scope, nameof(IBasicProperties.Expiration), out object value))
+            {
+                return value.ToString();
+            }
+
+            return null;
+        }
+        #endregion
+
         #region "RABBITMQ CONNECTION AND CHANNEL"
         private void InitializeUri()
         {
-            Uri uri = _scope.GetUri();
+            Uri uri = _scope.GetUri(_options.Target);
 
             if (uri.Scheme != "amqp")
             {
@@ -303,34 +489,34 @@ namespace DaJet.Stream.RabbitMQ
             ConfigureMessageHeaders();
             ConfigureMessageProperties();
 
-            ReadOnlyMemory<byte> payload = EncodeMessageBody(_scope.GetMessageBody());
+            ReadOnlyMemory<byte> payload = EncodeMessageBody(GetMessageBody());
 
-            if (string.IsNullOrWhiteSpace(_scope.GetExchange()))
+            if (string.IsNullOrWhiteSpace(GetExchange()))
             {
                 // clear CC and BCC headers if present
                 _ = _properties?.Headers?.Remove(HEADER_CC); // carbon copy
                 _ = _properties?.Headers?.Remove(HEADER_BCC); // blind carbon copy
 
                 // send message directly to the specified queue
-                _channel.BasicPublish(string.Empty, _scope.GetRoutingKey(), _scope.GetMandatory(), _properties, payload);
+                _channel.BasicPublish(string.Empty, GetRoutingKey(), GetMandatory(), _properties, payload);
             }
-            else if (string.IsNullOrWhiteSpace(_scope.GetRoutingKey()))
+            else if (string.IsNullOrWhiteSpace(GetRoutingKey()))
             {
                 // send message to the specified exchange without routing key
-                _channel.BasicPublish(_scope.GetExchange(), string.Empty, _scope.GetMandatory(), _properties, payload);
+                _channel.BasicPublish(GetExchange(), string.Empty, GetMandatory(), _properties, payload);
             }
             else
             {
                 // send message to the specified exchange using provided routing key
-                _channel.BasicPublish(_scope.GetExchange(), _scope.GetRoutingKey(), _scope.GetMandatory(), _properties, payload);
+                _channel.BasicPublish(GetExchange(), GetRoutingKey(), GetMandatory(), _properties, payload);
             }
         }
         private void ConfigureMessageHeaders()
         {
             _properties.Headers?.Clear();
 
-            string[] BlindCopy = _scope.GetBlindCopy();
-            string[] CarbonCopy = _scope.GetCarbonCopy();
+            string[] BlindCopy = GetBlindCopy();
+            string[] CarbonCopy = GetCarbonCopy();
 
             if (BlindCopy is null && CarbonCopy is null)
             {
@@ -351,16 +537,16 @@ namespace DaJet.Stream.RabbitMQ
         }
         private void ConfigureMessageProperties()
         {
-            _properties.AppId = _scope.GetAppId();
-            _properties.MessageId = _scope.GetMessageId();
-            _properties.Type = _scope.GetMessageType();
-            _properties.CorrelationId = _scope.GetCorrelationId();
-            _properties.Priority = _scope.GetPriority();
-            _properties.DeliveryMode = _scope.GetDeliveryMode();
-            _properties.ContentType = _scope.GetContentType();
-            _properties.ContentEncoding = _scope.GetContentEncoding();
-            _properties.ReplyTo = _scope.GetReplyTo();
-            _properties.Expiration = _scope.GetExpiration();
+            _properties.AppId = GetAppId();
+            _properties.MessageId = GetMessageId();
+            _properties.Type = GetMessageType();
+            _properties.CorrelationId = GetCorrelationId();
+            _properties.Priority = GetPriority();
+            _properties.DeliveryMode = GetDeliveryMode();
+            _properties.ContentType = GetContentType();
+            _properties.ContentEncoding = GetContentEncoding();
+            _properties.ReplyTo = GetReplyTo();
+            _properties.Expiration = GetExpiration();
         }
         private ReadOnlyMemory<byte> EncodeMessageBody(in string message)
         {

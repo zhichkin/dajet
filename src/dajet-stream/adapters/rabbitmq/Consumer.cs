@@ -1,8 +1,11 @@
 ﻿using DaJet.Data;
 using DaJet.Json;
+using DaJet.Metadata.Model;
+using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using System.IO;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -34,6 +37,7 @@ namespace DaJet.Stream.RabbitMQ
         private string _consumerTag;
         private readonly StreamScope _scope;
         private readonly ConsumeStatement _options;
+        private readonly string _target;
         public Consumer(in StreamScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
@@ -45,16 +49,79 @@ namespace DaJet.Stream.RabbitMQ
 
             _options = statement;
 
-            _scope.MapUri(_options.Target);
-            _scope.MapOptions(in _options);
-            _scope.MapIntoObject(in _options);
+            if (_options.Into?.Value is VariableReference variable)
+            {
+                _target = variable.Identifier;
+            }
+
+            if (!_scope.Variables.ContainsKey(_target))
+            {
+                _scope.Variables.Add(_target, new DataObject(8));
+            }
+
+            if (!_scope.TryGetDeclaration(in _target, out _, out DeclareStatement declare))
+            {
+                throw new InvalidOperationException($"Declaration of {_target} is not found");
+            }
+            
+            declare.Type.Binding = CreateMessageSchema();
+
+            StreamFactory.MapOptions(in _scope);
 
             InitializeUri();
             ConfigureConsumer();
+
+            _next = StreamFactory.CreateStream(in _scope);
         }
         public void Synchronize() { /* do nothing */ }
         public void LinkTo(in IProcessor next) { _next = next; }
-        
+        private List<ColumnExpression> CreateMessageSchema()
+        {
+            return new List<ColumnExpression>()
+            {
+                new()
+                {
+                    Alias = nameof(IBasicProperties.AppId),
+                    Expression = new ScalarExpression() { Token = TokenType.String }
+                },
+                new()
+                {
+                    Alias = "Body",
+                    Expression = new ScalarExpression() { Token = TokenType.String }
+                },
+                new()
+                {
+                    Alias = nameof(IBasicProperties.Type),
+                    Expression = new ScalarExpression() { Token = TokenType.String }
+                },
+                new()
+                {
+                    Alias = nameof(IBasicProperties.ContentType),
+                    Expression = new ScalarExpression() { Token = TokenType.String, Literal = "application/json" }
+                },
+                new()
+                {
+                    Alias = nameof(IBasicProperties.ContentEncoding),
+                    Expression = new ScalarExpression() { Token = TokenType.String, Literal = "UTF-8" }
+                },
+                new()
+                {
+                    Alias = nameof(IBasicProperties.ReplyTo),
+                    Expression = new ScalarExpression() { Token = TokenType.String }
+                },
+                new()
+                {
+                    Alias = nameof(IBasicProperties.MessageId),
+                    Expression = new ScalarExpression() { Token = TokenType.String }
+                },
+                new()
+                {
+                    Alias = nameof(IBasicProperties.CorrelationId),
+                    Expression = new ScalarExpression() { Token = TokenType.String }
+                }
+            };
+        }
+
         #region "CONFIGURATION OPTIONS"
         private string HostName { get; set; } = "localhost";
         private int HostPort { get; set; } = 5672;
@@ -67,9 +134,57 @@ namespace DaJet.Stream.RabbitMQ
         private ushort PrefetchCount { get; set; } = 1; // allowed messages on the fly without ack
         #endregion
 
+        #region "MESSAGE OPTIONS AND VALUES"
+        private string GetQueueName()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "QueueName", out object value))
+            {
+                return value.ToString();
+            }
+
+            return string.Empty;
+        }
+        private int GetHeartbeat()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "Heartbeat", out object value))
+            {
+                if (value is not null && int.TryParse(value.ToString(), out int heartbeat))
+                {
+                    return heartbeat;
+                }
+            }
+
+            return 60; // seconds
+        }
+        private uint GetPrefetchSize()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "PrefetchSize", out object value))
+            {
+                if (value is not null && uint.TryParse(value.ToString(), out uint prefetch_size))
+                {
+                    return prefetch_size;
+                }
+            }
+
+            return 0; // size of the client buffer in bytes
+        }
+        private ushort GetPrefetchCount()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "PrefetchCount", out object value))
+            {
+                if (value is not null && ushort.TryParse(value.ToString(), out ushort prefetch_count))
+                {
+                    return prefetch_count;
+                }
+            }
+
+            return 1; // allowed messages on the fly without ack
+        }
+        #endregion
+
         private void InitializeUri()
         {
-            Uri uri = _scope.GetUri();
+            Uri uri = _scope.GetUri(_options.Target);
 
             if (uri.Scheme != "amqp")
             {
@@ -94,16 +209,17 @@ namespace DaJet.Stream.RabbitMQ
         }
         private void ConfigureConsumer()
         {
-            QueueName = _scope.GetQueueName();
-            Heartbeat = _scope.GetHeartbeat();
-            PrefetchSize = _scope.GetPrefetchSize();
-            PrefetchCount = _scope.GetPrefetchCount();
+            QueueName = GetQueueName();
+            Heartbeat = GetHeartbeat();
+            PrefetchSize = GetPrefetchSize();
+            PrefetchCount = GetPrefetchCount();
         }
         private void UpdatePipelineStatus()
         {
             int consumed = Interlocked.Exchange(ref _consumed, 0);
 
-            FileLogger.Default.Write($"Consumed {consumed} messages in {Heartbeat} seconds.");
+            Console.WriteLine($"Consumed {consumed} messages in {Heartbeat} seconds.");
+            //FileLogger.Default.Write($"Consumed {consumed} messages in {Heartbeat} seconds.");
         }
         private bool ConsumerIsHealthy()
         {
@@ -189,29 +305,20 @@ namespace DaJet.Stream.RabbitMQ
         {
             if (sender is not EventingBasicConsumer consumer) { return; }
 
-            DataObject message = _scope.GetIntoObject();
-
-            if (message is null)
+            if (_scope.TryGetValue(_target, out object value))
             {
-                message = new DataObject(8);
-                //message.SetValue("Body", string.Empty);
-                //message.SetValue(nameof(IBasicProperties.AppId), string.Empty);
-                //message.SetValue(nameof(IBasicProperties.Type), string.Empty);
-                //message.SetValue(nameof(IBasicProperties.ContentType), "application/json");
-                //message.SetValue(nameof(IBasicProperties.ContentEncoding), "UTF-8");
-                //message.SetValue(nameof(IBasicProperties.ReplyTo), string.Empty);
-                //message.SetValue(nameof(IBasicProperties.MessageId), string.Empty);
-                //message.SetValue(nameof(IBasicProperties.CorrelationId), string.Empty);
+                if (value is DataObject message)
+                {
+                    message.SetValue("Body", DecodeMessageBody(args.Body));
+                    message.SetValue(nameof(IBasicProperties.AppId), args.BasicProperties.AppId ?? string.Empty);
+                    message.SetValue(nameof(IBasicProperties.Type), args.BasicProperties.Type ?? string.Empty);
+                    message.SetValue(nameof(IBasicProperties.ContentType), args.BasicProperties.ContentType ?? "application/json");
+                    message.SetValue(nameof(IBasicProperties.ContentEncoding), args.BasicProperties.ContentEncoding ?? "UTF-8");
+                    message.SetValue(nameof(IBasicProperties.ReplyTo), args.BasicProperties.ReplyTo ?? string.Empty);
+                    message.SetValue(nameof(IBasicProperties.MessageId), args.BasicProperties.MessageId ?? string.Empty);
+                    message.SetValue(nameof(IBasicProperties.CorrelationId), args.BasicProperties.CorrelationId ?? string.Empty);
+                }
             }
-
-            message.SetValue("Body", DecodeMessageBody(args.Body));
-            message.SetValue(nameof(IBasicProperties.AppId), args.BasicProperties.AppId ?? string.Empty);
-            message.SetValue(nameof(IBasicProperties.Type), args.BasicProperties.Type ?? string.Empty);
-            message.SetValue(nameof(IBasicProperties.ContentType), args.BasicProperties.ContentType ?? "application/json");
-            message.SetValue(nameof(IBasicProperties.ContentEncoding), args.BasicProperties.ContentEncoding ?? "UTF-8");
-            message.SetValue(nameof(IBasicProperties.ReplyTo), args.BasicProperties.ReplyTo ?? string.Empty);
-            message.SetValue(nameof(IBasicProperties.MessageId), args.BasicProperties.MessageId ?? string.Empty);
-            message.SetValue(nameof(IBasicProperties.CorrelationId), args.BasicProperties.CorrelationId ?? string.Empty);
 
             try
             {
