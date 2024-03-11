@@ -92,8 +92,8 @@ PRODUCE 'amqp://guest:guest@localhost:5672/dajet'
 | MessageId | string | Идентификатор сообщения |
 | BlindCopy | string (csv) | Дополнительные ключи маршрутизации. Значения ключей не доставляются получателю. |
 | CarbonCopy | string (csv) | Дополнительные ключи маршрутизации. Значения ключей доставляются получателю. Использовать не рекомендуется. |
-| MessageType | string | Тип сообщения |
-| MessageBody | string | Тело сообщения. DaJet Stream ориентируется на текстовые сообщения в формате UTF-8. |
+| Type | string | Тип сообщения |
+| Body | string | Тело сообщения. DaJet Stream ориентируется на текстовые сообщения в формате UTF-8. |
 | ContentType | string | Тип содержимого тела сообщения. Значение по умолчанию: **application/json** |
 | ContentEncoding | string | Формат (кодировка) тела сообщения. Значение по умолчанию: **UTF-8** |
 | DeliveryMode | number | Вид доставки: 1 - in-memory, 2 - persistent. Значение по умолчанию: **2** (сохранение на диск) |
