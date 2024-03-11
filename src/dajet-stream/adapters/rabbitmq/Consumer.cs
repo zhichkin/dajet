@@ -1,11 +1,9 @@
 ﻿using DaJet.Data;
 using DaJet.Json;
-using DaJet.Metadata.Model;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using System.IO;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;

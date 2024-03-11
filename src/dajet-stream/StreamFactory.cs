@@ -242,7 +242,7 @@ namespace DaJet.Stream
                 }
                 else if (consume.Target.StartsWith("kafka"))
                 {
-                    //TODO: Kafka consumer
+                    return new Kafka.Consumer(in scope);
                 }
             }
             else if (scope.Owner is ProduceStatement produce)
@@ -253,11 +253,11 @@ namespace DaJet.Stream
                 }
                 else if (produce.Target.StartsWith("kafka"))
                 {
-                    //TODO: Kafka producer
+                    return new Kafka.Producer(in scope);
                 }
             }
 
-            throw new InvalidOperationException("Unsupported message broker");
+            throw new InvalidOperationException("Unsupported service");
         }
 
         // ***
