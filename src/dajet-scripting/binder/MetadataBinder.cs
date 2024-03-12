@@ -965,45 +965,7 @@ namespace DaJet.Scripting
                 Bind(node.Columns[i]);
             }
 
-            if (node.Into is not null && node.Into.Value is not null)
-            {
-                if (node.Target.StartsWith("amqp")) // RabbitMQ consumer
-                {
-                    CreateRabbitMQMessageSchema(node.Columns);
-                }
-                else if (node.Target.StartsWith("kafka")) // Apache Kafka consumer
-                {
-                    CreateKafkaMessageSchema(node.Columns);
-                }
-                else
-                {
-                    RegisterBindingError(node.Token, $"amqp or kafka scheme expected");
-                }
-
-                Bind(node.Into);
-            }
-
             _scope = _scope.CloseScope();
-        }
-        private void CreateKafkaMessageSchema(in List<ColumnExpression> columns)
-        {
-            ScalarExpression value = new() { Token = TokenType.String, Literal = string.Empty };
-
-            columns.Add(new ColumnExpression() { Alias = "Key", Expression = value });
-            columns.Add(new ColumnExpression() { Alias = "Value", Expression = value });
-        }
-        private void CreateRabbitMQMessageSchema(in List<ColumnExpression> columns)
-        {
-            ScalarExpression value = new() { Token = TokenType.String, Literal = string.Empty };
-
-            columns.Add(new ColumnExpression() { Alias = "AppId", Expression = value });
-            columns.Add(new ColumnExpression() { Alias = "Type", Expression = value });
-            columns.Add(new ColumnExpression() { Alias = "Body", Expression = value });
-            columns.Add(new ColumnExpression() { Alias = "ContentType", Expression = value });
-            columns.Add(new ColumnExpression() { Alias = "ContentEncoding", Expression = value });
-            columns.Add(new ColumnExpression() { Alias = "ReplyTo", Expression = value });
-            columns.Add(new ColumnExpression() { Alias = "MessageId", Expression = value });
-            columns.Add(new ColumnExpression() { Alias = "CorrelationId", Expression = value });
         }
         private void Bind(in ProduceStatement node)
         {

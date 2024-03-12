@@ -49,8 +49,10 @@ namespace DaJet.Stream.Kafka
 
             if (_scope.Owner is not ConsumeStatement statement)
             {
-                throw new ArgumentException(nameof(ProduceStatement));
+                throw new ArgumentException(nameof(ConsumeStatement));
             }
+
+            StreamFactory.BindVariables(in _scope);
 
             _options = statement;
 
@@ -179,6 +181,8 @@ namespace DaJet.Stream.Kafka
 
             _consumed = 0;
 
+            Console.WriteLine($"Consuming messages ...");
+
             do
             {
                 try
@@ -210,7 +214,8 @@ namespace DaJet.Stream.Kafka
                         DisposeConsumer(); throw;
                     }
 
-                    Console.WriteLine($"Consumed {_consumed} messages");
+                    //TODO: log consumed by timer
+                    //Console.WriteLine($"Consumed {_consumed} messages");
                 }
             }
             while (_result is not null && _result.Message is not null);

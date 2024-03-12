@@ -48,8 +48,10 @@ namespace DaJet.Stream.RabbitMQ
                 throw new ArgumentException(nameof(ProduceStatement));
             }
 
+            StreamFactory.BindVariables(in _scope);
+
             _options = statement;
-            
+
             StreamFactory.MapOptions(in _scope);
         }
         public void LinkTo(in IProcessor next) { _next = next; }

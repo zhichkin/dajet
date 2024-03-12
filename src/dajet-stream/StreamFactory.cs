@@ -933,6 +933,15 @@ namespace DaJet.Stream
 
         // ***
 
+        internal static void BindVariables(in StreamScope scope)
+        {
+            ScriptModel script = CreateProcessorScript(in scope);
+
+            if (!ScriptProcessor.TryBind(in script, null, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+        }
         internal static bool TryGetOption(in StreamScope scope, in string name, out object value)
         {
             if (scope.TryGetValue(name, out value))

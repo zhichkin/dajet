@@ -1,6 +1,8 @@
 ﻿using Confluent.Kafka;
+using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using System.Text;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using Error = Confluent.Kafka.Error;
 
 namespace DaJet.Stream.Kafka
@@ -51,8 +53,10 @@ namespace DaJet.Stream.Kafka
                 throw new ArgumentException(nameof(ProduceStatement));
             }
 
+            StreamFactory.BindVariables(in _scope);
+
             _options = statement;
-            
+
             StreamFactory.MapOptions(in _scope);
 
             _logHandler = LogHandler;

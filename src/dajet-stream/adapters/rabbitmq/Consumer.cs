@@ -45,6 +45,8 @@ namespace DaJet.Stream.RabbitMQ
                 throw new ArgumentException(nameof(ConsumeStatement));
             }
 
+            StreamFactory.BindVariables(in _scope);
+
             _options = statement;
 
             if (_options.Into?.Value is VariableReference variable)
