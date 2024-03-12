@@ -53,7 +53,17 @@ namespace DaJet.Stream
             }
             else if (scope.Owner is ConsumeStatement consume && !string.IsNullOrEmpty(consume.Target))
             {
-                return CreateMessageBrokerProcessor(in scope);
+
+                //TODO: try get uri = scope.GetUri(consume.Target);
+
+                if (consume.Target.StartsWith("http"))
+                {
+                    return new Http.Consumer(in scope);
+                }
+                else
+                {
+                    return CreateMessageBrokerProcessor(in scope);
+                }
             }
             else if (scope.Owner is ProduceStatement)
             {
