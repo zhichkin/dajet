@@ -20,23 +20,24 @@ namespace DaJet
 
         public static int Main(string[] args)
         {
-            args = new string[]
-            {
-                "stream", "--file",
+            //args = new string[]
+            //{
+            //    "stream", "--file",
 
-                "./test/20-http-post.sql"
+            //    //"./test/20-http-post.sql"
+            //    //"./test/21-http-query.sql"
 
-                //"./stream/03-ms-exchange-kafka-producer.sql"
-                //"./stream/04-kafka-consumer-pg-register.sql"
+            //    //"./stream/03-ms-exchange-kafka-producer.sql"
+            //    //"./stream/04-kafka-consumer-pg-register.sql"
 
-                //"./stream/10-simple-amqp-produce.sql"
-                //"./stream/11-ms-amqp-produce.sql"
-                //"./stream/12-amqp-pg-consume.sql"
-                //"./stream/13-amqp-amqp-shovel.sql"
+            //    //"./stream/10-simple-amqp-produce.sql"
+            //    //"./stream/11-ms-amqp-produce.sql"
+            //    //"./stream/12-amqp-pg-consume.sql"
+            //    //"./stream/13-amqp-amqp-shovel.sql"
 
-                //"./test/11-ms-pg-exchange-consume-maxdop.sql"
-                //"./test/07-ms-pg-catalog-paging-maxdop.sql"
-            };
+            //    //"./test/11-ms-pg-exchange-consume-maxdop.sql"
+            //    //"./test/07-ms-pg-catalog-paging-maxdop.sql"
+            //};
 
             var root = new RootCommand("dajet");
             var command = new Command("stream", "Execute DaJet Stream");

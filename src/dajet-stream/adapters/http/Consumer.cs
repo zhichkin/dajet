@@ -1,6 +1,7 @@
 ﻿using DaJet.Data;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
+using System.Net;
 using System.Text;
 
 namespace DaJet.Stream.Http
@@ -10,7 +11,6 @@ namespace DaJet.Stream.Http
         private IProcessor _next;
         private readonly StreamScope _scope;
         private readonly ConsumeStatement _options;
-        private readonly Uri _uri;
         private readonly string _target;
         private readonly HttpClient _client = new();
         public Consumer(in StreamScope scope)
@@ -25,8 +25,6 @@ namespace DaJet.Stream.Http
             StreamFactory.BindVariables(in _scope);
 
             _options = statement;
-
-            _uri = _scope.GetUri(_options.Target);
 
             if (_options.Into?.Value is VariableReference variable)
             {
@@ -84,9 +82,12 @@ namespace DaJet.Stream.Http
 
             foreach (var option in _scope.Variables)
             {
-                if (option.Key == _target || option.Key == "Method" || option.Key == "Body")
+                if (option.Key == _target ||
+                    option.Key == "Method" ||
+                    option.Key == "Body" ||
+                    option.Key == "OnError")
                 {
-                    continue; // http request method and body
+                    continue; // special processor properties
                 }
 
                 if (StreamFactory.TryGetOption(in _scope, option.Key, out object value))
@@ -96,6 +97,15 @@ namespace DaJet.Stream.Http
             }
 
             return headers;
+        }
+        private string GetOnError()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "OnError", out object value))
+            {
+                return value.ToString();
+            }
+
+            return "break";
         }
         private string GetRequestBody()
         {
@@ -128,47 +138,89 @@ namespace DaJet.Stream.Http
         }
         public void Process()
         {
+            string content;
+            HttpStatusCode code;
+
+            bool throw_on_error = (GetOnError() == "break");
+
+            try
+            {
+                code = ProcessRequest(out content);
+            }
+            catch (Exception error)
+            {
+                if (throw_on_error) { throw; }
+                else
+                {
+                    code = HttpStatusCode.BadRequest;
+                    content = ExceptionHelper.GetErrorMessage(error);
+                }
+            }
+            
+            ConfigureResponseObject(code, in content);
+
+            _next?.Process();
+        }
+        private HttpStatusCode ProcessRequest(out string content)
+        {
+            Uri uri = _scope.GetUri(_options.Target);
+
             Dictionary<string, string> headers = GetRequestHeaders();
 
-            using (HttpRequestMessage request = new(GetHttpMethod(), _uri))
+            using (HttpRequestMessage request = new(GetHttpMethod(), uri))
             {
-                foreach (var header in headers)
-                {
-                    if (!header.Key.StartsWith("Content"))
-                    {
-                        request.Headers.Add(header.Key, header.Value);
-                    }
-                }
+                ConfigureRequestHeaders(in request, in headers);
 
                 request.Content = new StringContent(GetRequestBody(), Encoding.UTF8);
 
-                request.Content.Headers.Clear();
-
-                foreach (var header in headers)
-                {
-                    if (header.Key.StartsWith("Content"))
-                    {
-                        request.Content.Headers.Add(header.Key, header.Value);
-                    }
-                }
+                ConfigureContentHeaders(in request, in headers);
 
                 HttpResponseMessage response = _client.Send(request);
 
-                response.EnsureSuccessStatusCode();
+                content = response.Content?.ReadAsStringAsync().Result ?? string.Empty;
 
-                if (_scope.TryGetValue(_target, out object value))
+                if (!response.IsSuccessStatusCode && string.IsNullOrEmpty(content))
                 {
-                    if (value is DataObject message)
-                    {
-                        string content = response.Content?.ReadAsStringAsync().Result;
+                    content = response.ReasonPhrase;
+                }
 
-                        message.SetValue("Code", ((int)response.StatusCode).ToString());
-                        message.SetValue("Body", content is null ? string.Empty : content);
-                    }
+                return response.StatusCode;
+            }
+        }
+        private void ConfigureRequestHeaders(in HttpRequestMessage request, in Dictionary<string, string> headers)
+        {
+            request.Headers.Clear();
+
+            foreach (var header in headers)
+            {
+                if (!header.Key.StartsWith("Content"))
+                {
+                    request.Headers.Add(header.Key, header.Value);
                 }
             }
+        }
+        private void ConfigureContentHeaders(in HttpRequestMessage request, in Dictionary<string, string> headers)
+        {
+            request.Content.Headers.Clear();
 
-            _next?.Process();
+            foreach (var header in headers)
+            {
+                if (header.Key.StartsWith("Content"))
+                {
+                    request.Content.Headers.Add(header.Key, header.Value);
+                }
+            }
+        }
+        private void ConfigureResponseObject(HttpStatusCode code, in string content)
+        {
+            if (_scope.TryGetValue(_target, out object value))
+            {
+                if (value is DataObject message)
+                {
+                    message.SetValue("Code", ((int)code).ToString());
+                    message.SetValue("Body", content is null ? string.Empty : content);
+                }
+            }
         }
     }
 }
