@@ -1302,7 +1302,7 @@ namespace DaJet.Scripting
             for (int i = 0; i < node.Expressions.Count; i++)
             {
                 set = node.Expressions[i];
-                if (i > 0) { script.Append(","); }
+                if (i > 0) { script.Append(','); }
                 Visit(in set, in script);
             }
         }

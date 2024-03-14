@@ -247,6 +247,7 @@ namespace DaJet.Scripting
             else if (Check(TokenType.STREAM)) { return stream_statement(); }
             else if (Check(TokenType.CONSUME)) { return consume_statement(); }
             else if (Check(TokenType.PRODUCE)) { return produce_statement(); }
+            else if (Check(TokenType.REQUEST)) { return request_statement(); }
             else if (Check(TokenType.IMPORT)) { return import_statement(); }
             else if (Match(TokenType.DROP)) { return drop_statement(); }
             else if (Match(TokenType.EndOfStatement)) { return null; }
@@ -889,6 +890,21 @@ namespace DaJet.Scripting
             {
                 Expression = node, Alias = alias()
             };
+        }
+        private void parse_columns(in List<ColumnExpression> columns)
+        {
+            columns.Add(column());
+
+            Skip(TokenType.Comment);
+
+            while (Match(TokenType.Comma))
+            {
+                Skip(TokenType.Comment);
+
+                columns.Add(column());
+
+                Skip(TokenType.Comment);
+            }
         }
         private void select_clause(in SelectExpression select)
         {
@@ -2330,7 +2346,7 @@ namespace DaJet.Scripting
 
             if (Match(TokenType.WITH))
             {
-                produce_options(in produce);
+                parse_columns(produce.Options);
             }
 
             if (!Match(TokenType.SELECT))
@@ -2338,39 +2354,65 @@ namespace DaJet.Scripting
                 throw new FormatException($"PRODUCE: SELECT keyword expected");
             }
 
-            produce_columns(in produce);
+            parse_columns(produce.Columns);
 
             return produce;
         }
-        private void produce_options(in ProduceStatement produce)
+        #endregion
+
+        #region "REQUEST STATEMENT"
+        private SyntaxNode request_statement()
         {
-            produce.Options.Add(column());
+            if (!Match(TokenType.REQUEST))
+            {
+                throw new FormatException("REQUEST keyword expected");
+            }
+
+            RequestStatement request = new();
 
             Skip(TokenType.Comment);
 
-            while (Match(TokenType.Comma))
+            if (!Match(TokenType.String))
             {
-                Skip(TokenType.Comment);
-
-                produce.Options.Add(column());
-
-                Skip(TokenType.Comment);
+                throw new FormatException("REQUEST: URI template expected");
             }
-        }
-        private void produce_columns(in ProduceStatement produce)
-        {
-            produce.Columns.Add(column());
+
+            request.Target = Previous().Lexeme;
 
             Skip(TokenType.Comment);
 
-            while (Match(TokenType.Comma))
+            if (Match(TokenType.WITH)) // optional
             {
-                Skip(TokenType.Comment);
-
-                produce.Columns.Add(column());
-
-                Skip(TokenType.Comment);
+                parse_columns(request.Headers);
             }
+
+            if (Match(TokenType.SELECT))
+            {
+                parse_columns(request.Options);
+            }
+            else
+            {
+                throw new FormatException($"REQUEST: SELECT keyword expected");
+            }
+
+            if (!Match(TokenType.INTO))
+            {
+                throw new FormatException($"REQUEST: INTO keyword expected");
+            }
+
+            if (!Match(TokenType.Variable))
+            {
+                throw new FormatException($"REQUEST: variable identifier expected");
+            }
+
+            request.Response = new VariableReference()
+            {
+                Identifier = Previous().Lexeme
+            };
+
+            Skip(TokenType.Comment);
+
+            return request;
         }
         #endregion
     }

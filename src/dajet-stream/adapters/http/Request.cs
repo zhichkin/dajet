@@ -6,45 +6,40 @@ using System.Text;
 
 namespace DaJet.Stream.Http
 {
-    public sealed class Consumer : IProcessor
+    public sealed class Request : IProcessor
     {
         private IProcessor _next;
         private readonly StreamScope _scope;
-        private readonly ConsumeStatement _options;
-        private readonly string _target;
         private readonly HttpClient _client = new();
-        public Consumer(in StreamScope scope)
+        private readonly string _target;
+        private readonly RequestStatement _statement;
+        public Request(in StreamScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
-            if (_scope.Owner is not ConsumeStatement statement)
+            if (_scope.Owner is not RequestStatement statement)
             {
-                throw new ArgumentException(nameof(ConsumeStatement));
+                throw new ArgumentException(nameof(RequestStatement));
             }
 
             StreamFactory.BindVariables(in _scope);
 
-            _options = statement;
+            _statement = statement;
 
-            if (_options.Into?.Value is VariableReference variable)
+            if (_statement.Response is not VariableReference variable)
             {
-                _target = variable.Identifier;
+                throw new InvalidOperationException($"Response variable is not defined");
             }
 
-            if (!_scope.Variables.ContainsKey(_target))
-            {
-                _scope.Variables.Add(_target, new DataObject(2));
-            }
+            _target = variable.Identifier;
 
             if (!_scope.TryGetDeclaration(in _target, out _, out DeclareStatement declare))
             {
                 throw new InvalidOperationException($"Declaration of {_target} is not found");
             }
 
-            declare.Type.Binding = CreateResponseSchema();
+            declare.Type.Binding = CreateResponseSchema(); //NOTE: used by processors down the stream
 
-            StreamFactory.MapOptions(in _scope);
-            
             _next = StreamFactory.CreateStream(in scope);
         }
         public void LinkTo(in IProcessor next) { _next = next; }
@@ -71,7 +66,7 @@ namespace DaJet.Stream.Http
                 },
                 new()
                 {
-                    Alias = "Body",
+                    Alias = "Value",
                     Expression = new ScalarExpression() { Token = TokenType.String }
                 }
             };
@@ -80,45 +75,46 @@ namespace DaJet.Stream.Http
         {
             Dictionary<string, string> headers = new();
 
-            foreach (var option in _scope.Variables)
+            foreach (ColumnExpression accessor in _statement.Headers)
             {
-                if (option.Key == _target ||
-                    option.Key == "Method" ||
-                    option.Key == "Body" ||
-                    option.Key == "OnError")
+                if (StreamFactory.TryGetValue(in _scope, accessor.Expression, out object value))
                 {
-                    continue; // special processor properties
-                }
-
-                if (StreamFactory.TryGetOption(in _scope, option.Key, out object value))
-                {
-                    headers.Add(option.Key, value.ToString());
+                    headers.Add(accessor.Alias, value.ToString());
                 }
             }
 
             return headers;
         }
+        private SyntaxNode GetOptionAccessor(in string name)
+        {
+            for (int i = 0; i < _statement.Options.Count; i++)
+            {
+                ColumnExpression accessor = _statement.Options[i];
+
+                if (accessor.Alias == name)
+                {
+                    return accessor.Expression;
+                }
+            }
+
+            return null;
+        }
         private string GetOnError()
         {
-            if (StreamFactory.TryGetOption(in _scope, "OnError", out object value))
+            SyntaxNode accessor = GetOptionAccessor("OnError");
+
+            if (StreamFactory.TryGetValue(in _scope, in accessor, out object value))
             {
                 return value.ToString();
             }
-
+            
             return "break";
-        }
-        private string GetRequestBody()
-        {
-            if (StreamFactory.TryGetOption(in _scope, "Body", out object value))
-            {
-                return value.ToString();
-            }
-
-            return string.Empty;
         }
         private HttpMethod GetHttpMethod()
         {
-            if (StreamFactory.TryGetOption(in _scope, "Method", out object value))
+            SyntaxNode accessor = GetOptionAccessor("Method");
+
+            if (StreamFactory.TryGetValue(in _scope, in accessor, out object value))
             {
                 if (value is string method)
                 {
@@ -134,8 +130,20 @@ namespace DaJet.Stream.Http
                 }
             }
 
-            return HttpMethod.Get;
+            return HttpMethod.Post;
         }
+        private string GetRequestContent()
+        {
+            SyntaxNode accessor = GetOptionAccessor("Content");
+
+            if (StreamFactory.TryGetValue(in _scope, in accessor, out object value))
+            {
+                return value.ToString();
+            }
+
+            return string.Empty;
+        }
+        
         public void Process()
         {
             string content;
@@ -163,7 +171,7 @@ namespace DaJet.Stream.Http
         }
         private HttpStatusCode ProcessRequest(out string content)
         {
-            Uri uri = _scope.GetUri(_options.Target);
+            Uri uri = _scope.GetUri(_statement.Target);
 
             Dictionary<string, string> headers = GetRequestHeaders();
 
@@ -171,7 +179,7 @@ namespace DaJet.Stream.Http
             {
                 ConfigureRequestHeaders(in request, in headers);
 
-                request.Content = new StringContent(GetRequestBody(), Encoding.UTF8);
+                request.Content = new StringContent(GetRequestContent(), Encoding.UTF8);
 
                 ConfigureContentHeaders(in request, in headers);
 
@@ -213,13 +221,25 @@ namespace DaJet.Stream.Http
         }
         private void ConfigureResponseObject(HttpStatusCode code, in string content)
         {
-            if (_scope.TryGetValue(_target, out object value))
+            if (!_scope.TryGetValue(_target, out object value))
             {
-                if (value is DataObject message)
+                throw new InvalidOperationException($"Response variable {_target} is not found");
+            }
+
+            if (value is null)
+            {
+                value = new DataObject(2);
+
+                if (!_scope.TrySetValue(_target, value))
                 {
-                    message.SetValue("Code", ((int)code).ToString());
-                    message.SetValue("Body", content is null ? string.Empty : content);
+                    throw new InvalidOperationException($"Failed to set response variable {_target}");
                 }
+            }
+
+            if (value is DataObject response)
+            {
+                response.SetValue("Code", ((int)code).ToString());
+                response.SetValue("Value", content is null ? string.Empty : content);
             }
         }
     }

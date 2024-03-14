@@ -90,6 +90,7 @@ namespace DaJet.Scripting
             else if (node is TableUnionOperator union) { Bind(in union); }
             else if (node is ConsumeStatement consume_statement) { Bind(in consume_statement); }
             else if (node is ProduceStatement produce_statement) { Bind(in produce_statement); }
+            else if (node is RequestStatement request_statement) { Bind(in request_statement); }
             else if (node is ImportStatement import_statement) { Bind(in import_statement); }
             else if (node is ForEachStatement for_each) { Bind(in for_each); }
             else if (node is CreateTypeStatement udt) { Bind(in udt); }
@@ -980,6 +981,24 @@ namespace DaJet.Scripting
             {
                 Bind(node.Columns[i]);
             }
+
+            _scope = _scope.CloseScope();
+        }
+        private void Bind(in RequestStatement node)
+        {
+            _scope = _scope.OpenScope(node);
+
+            for (int i = 0; i < node.Headers.Count; i++)
+            {
+                Bind(node.Headers[i]);
+            }
+
+            for (int i = 0; i < node.Options.Count; i++)
+            {
+                Bind(node.Options[i]);
+            }
+
+            if (node.Response is not null) { Bind(node.Response); }
 
             _scope = _scope.CloseScope();
         }

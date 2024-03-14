@@ -46,6 +46,8 @@ namespace DaJet.Stream
             return _converter.Read(ref reader, typeof(DataObject), JsonReaderOptions);
         }
 
+        // ***
+
         public StreamScope(SyntaxNode owner)
         {
             Owner = owner ?? throw new ArgumentNullException(nameof(owner));
@@ -155,6 +157,7 @@ namespace DaJet.Stream
                 || statement is ForEachStatement
                 || statement is ConsumeStatement
                 || statement is ProduceStatement
+                || statement is RequestStatement
                 || statement is SelectStatement select && select.IsStream
                 || statement is UpdateStatement update && update.Output?.Into?.Value is not null;
         }

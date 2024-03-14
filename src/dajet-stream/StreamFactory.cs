@@ -51,19 +51,13 @@ namespace DaJet.Stream
             {
                 return new Parallelizer(in scope);
             }
+            else if (scope.Owner is RequestStatement)
+            {
+                return new Http.Request(in scope);
+            }
             else if (scope.Owner is ConsumeStatement consume && !string.IsNullOrEmpty(consume.Target))
             {
-
-                //TODO: try get uri = scope.GetUri(consume.Target);
-
-                if (consume.Target.StartsWith("http"))
-                {
-                    return new Http.Consumer(in scope);
-                }
-                else
-                {
-                    return CreateMessageBrokerProcessor(in scope);
-                }
+                return CreateMessageBrokerProcessor(in scope);
             }
             else if (scope.Owner is ProduceStatement)
             {
@@ -1032,6 +1026,47 @@ namespace DaJet.Stream
                     scope.Variables.Add(column.Alias, function);
                 }
             }
+        }
+        internal static bool TryGetValue(in StreamScope scope, in SyntaxNode accessor, out object value)
+        {
+            if (accessor is ScalarExpression scalar)
+            {
+                value = ParserHelper.GetScalarValue(in scalar);
+
+                return true;
+            }
+            else if (accessor is VariableReference variable)
+            {
+                if (scope.TryGetValue(variable.Identifier, out value))
+                {
+                    return true;
+                }
+            }
+            else if (accessor is MemberAccessExpression member)
+            {
+                if (scope.TryGetValue(member.Identifier, out value))
+                {
+                    return true;
+                }
+            }
+            else if (accessor is FunctionExpression function
+                && function.Name == "DaJet.Json"
+                && function.Parameters.Count > 0
+                && function.Parameters[0] is VariableReference parameter)
+            {
+                if (scope.TryGetValue(parameter.Identifier, out value))
+                {
+                    if (value is DataObject record)
+                    {
+                        value = StreamScope.ToJson(in record);
+
+                        return true;
+                    }
+                }
+            }
+
+            value = null;
+            return false;
         }
     }
 }
