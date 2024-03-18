@@ -185,7 +185,17 @@ namespace DaJet.Stream.Http
 
                 HttpResponseMessage response = _client.Send(request);
 
-                content = response.Content?.ReadAsStringAsync().Result ?? string.Empty;
+                using (System.IO.Stream stream = response.Content?.ReadAsStream())
+                {
+                    if (stream is null) { content = string.Empty; }
+                    else
+                    {
+                        using (StreamReader reader = new(stream, Encoding.UTF8))
+                        {
+                            content = reader.ReadToEnd();
+                        }
+                    }
+                }
 
                 if (!response.IsSuccessStatusCode && string.IsNullOrEmpty(content))
                 {
