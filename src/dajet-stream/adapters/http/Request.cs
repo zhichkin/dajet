@@ -10,7 +10,10 @@ namespace DaJet.Stream.Http
     {
         private IProcessor _next;
         private readonly StreamScope _scope;
-        private readonly HttpClient _client = new();
+        private readonly HttpClient _client = new(new SocketsHttpHandler()
+        {
+            MaxConnectionsPerServer = 1 //THINK: implement "circuit breaker" to prevent port exhaustion
+        });
         private readonly string _target;
         private readonly RequestStatement _statement;
         public Request(in StreamScope scope)
