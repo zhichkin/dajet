@@ -246,7 +246,7 @@ namespace DaJet.Metadata
 
             if (options.DatabaseProvider == DatabaseProvider.SqlServer)
             {
-                provider = new MsMetadataProvider();
+                provider = new MsMetadataProvider(options.ConnectionString);
             }
             else if (options.DatabaseProvider == DatabaseProvider.PostgreSql)
             {
@@ -256,13 +256,6 @@ namespace DaJet.Metadata
             {
                 throw new InvalidOperationException(string.Format(ERROR_UNSUPPORTED_DATABASE_PROVIDER, options.DatabaseProvider));
             }
-
-            Dictionary<string, string> settings = new()
-            {
-                { nameof(options.ConnectionString), options.ConnectionString }
-            };
-
-            provider.Configure(settings);
 
             return provider;
         }

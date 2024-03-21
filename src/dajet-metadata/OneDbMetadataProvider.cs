@@ -364,10 +364,6 @@ namespace DaJet.Metadata
 
             Initialize();
         }
-        public void Configure(in Dictionary<string, string> options)
-        {
-            throw new NotImplementedException(); //TODO: IMetadataProvider.Configure(...)
-        }
         internal OneDbMetadataProvider(OneDbMetadataProviderOptions options)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
@@ -389,15 +385,6 @@ namespace DaJet.Metadata
         public ExtensionInfo Extension { get { return _extension; } }
         public string ConnectionString { get { return _connectionString; } }
         public DatabaseProvider DatabaseProvider { get { return _provider; } }
-        public bool IsRegularDatabase
-        {
-            get
-            {
-                IQueryExecutor executor = CreateQueryExecutor();
-                string script = SQLHelper.GetTableExistsScript("_yearoffset");
-                return !(executor.ExecuteScalar<int>(in script, 10) == 1);
-            }
-        }
         public IDbConfigurator GetDbConfigurator()
         {
             if (_provider == DatabaseProvider.SqlServer)

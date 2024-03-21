@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <RootNamespace>DaJet.Sqlite</RootNamespace>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <AssemblyName>DaJet.Sqlite</AssemblyName>
+    <Version>1.0.0</Version>
+    <Authors>Zhichkin</Authors>
+    <Copyright>Zhichkin © 2024</Copyright>
+    <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/zhichkin/dajet/tree/main/src/dajet-sqlite</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\dajet-metadata\dajet-metadata.csproj" />
+  </ItemGroup>
+
+</Project>

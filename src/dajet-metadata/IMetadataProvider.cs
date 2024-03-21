@@ -6,10 +6,9 @@ using System.Collections.Generic;
 
 namespace DaJet.Metadata
 {
-    public interface IMetadataProvider : IConfigurable
+    public interface IMetadataProvider
     {
         int YearOffset { get; }
-        bool IsRegularDatabase { get; }
         string ConnectionString { get; }
         DatabaseProvider DatabaseProvider { get; }
         IDbConfigurator GetDbConfigurator();

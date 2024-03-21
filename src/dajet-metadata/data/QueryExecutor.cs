@@ -1,5 +1,4 @@
 ﻿using DaJet.Data.PostgreSql;
-using DaJet.Data.Sqlite;
 using DaJet.Data.SqlServer;
 using System.Collections.Generic;
 using System.Data;
@@ -18,10 +17,6 @@ namespace DaJet.Data
             else if (provider == DatabaseProvider.PostgreSql)
             {
                 return new PgQueryExecutor(connectionString);
-            }
-            else if (provider == DatabaseProvider.Sqlite)
-            {
-                return new SqliteQueryExecutor(connectionString);
             }
 
             return null;
