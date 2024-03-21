@@ -226,7 +226,7 @@ namespace DaJet.Data.Client
 
             int index = 0;
 
-            foreach (var item in record) //TODO: build metadata from EntityDefinition !?
+            foreach (var item in record) //TODO: build metadata from UserDefinedType !?
             {
                 if (item.Value is null) { throw new InvalidOperationException("NULL values is not allowed"); }
                 else if (item.Value is bool) { metadata[index] = new SqlMetaData(item.Key, SqlDbType.Binary, 1); }

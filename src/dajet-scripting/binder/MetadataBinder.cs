@@ -129,11 +129,11 @@ namespace DaJet.Scripting
 
                 node.Binding = type;
             }
-            else if (_schema is not null) // EntityDefinition (table) or ApplicationObject (Справочник.Номенклатура)
+            else if (_schema is not null) // UserDefinedType (database UDT) or ApplicationObject (Справочник.Номенклатура)
             {
                 MetadataObject table = _schema.GetMetadataObject(node.Identifier);
 
-                if (table is EntityDefinition definition)
+                if (table is UserDefinedType definition)
                 {
                     node.Binding = definition; // UDT (user-defined type)
                 }
@@ -163,7 +163,7 @@ namespace DaJet.Scripting
 
             Bind(node.Type);
 
-            if (node.Type.Binding is EntityDefinition definition)
+            if (node.Type.Binding is UserDefinedType definition)
             {
                 definition.TableName = node.Name; // user-defined type (table-valued parameter)
             }
@@ -517,7 +517,7 @@ namespace DaJet.Scripting
             node.Binding = _scope.GetTableBinding(node.Identifier);
 
             // 2. try bind user-defined type (table-valued parameter)
-            // see DeclareStatement binding to EntityDefinition
+            // see DeclareStatement binding to UserDefinedType
             if (node.Binding is null)
             {
                 node.Binding = _scope.GetVariableBinding(node.Identifier);

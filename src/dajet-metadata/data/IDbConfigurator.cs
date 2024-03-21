@@ -4,7 +4,7 @@ namespace DaJet.Data
 {
     public interface IDbConfigurator
     {
-        bool TryCreateType(in EntityDefinition type);
-        EntityDefinition GetTypeDefinition(in string identifier);
+        bool TryCreateType(in UserDefinedType type);
+        UserDefinedType GetTypeDefinition(in string identifier);
     }
 }

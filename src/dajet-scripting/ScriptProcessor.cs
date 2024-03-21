@@ -130,7 +130,7 @@ namespace DaJet.Scripting
 
                 // 0. Database UDT parameter must be provided by the caller !!!
                 
-                if (declare.Type.Binding is EntityDefinition) { continue; }
+                if (declare.Type.Binding is UserDefinedType) { continue; }
 
                 // 1. Set default value if parameter value is not initialized in script.
 
@@ -469,7 +469,7 @@ namespace DaJet.Scripting
 
                 string key = variable.Identifier[1..];
 
-                if (variable.Binding is EntityDefinition type)
+                if (variable.Binding is UserDefinedType type)
                 {
                     parameters[key] = new TableValuedParameter()
                     {

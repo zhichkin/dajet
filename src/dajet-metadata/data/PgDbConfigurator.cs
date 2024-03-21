@@ -231,7 +231,7 @@ namespace DaJet.Data
 
             return columns;
         }
-        public bool TryCreateType(in EntityDefinition type)
+        public bool TryCreateType(in UserDefinedType type)
         {
             throw new NotImplementedException();
         }
@@ -251,7 +251,7 @@ namespace DaJet.Data
 
             return null;
         }
-        public EntityDefinition GetTypeDefinition(in string identifier)
+        public UserDefinedType GetTypeDefinition(in string identifier)
         {
             string sql = string.Format(TYPE_EXISTS_COMMAND, identifier);
 
@@ -263,7 +263,7 @@ namespace DaJet.Data
 
             if (columns.Count == 0) { return null; }
 
-            EntityDefinition type = new() { Name = identifier };
+            UserDefinedType type = new() { Name = identifier };
 
             StringSplitOptions splitOptions = StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries;
 

@@ -73,7 +73,7 @@ namespace DaJet.Scripting
         }
         protected override void Visit(in TableReference node, in StringBuilder script)
         {
-            if (node.Binding is EntityDefinition table)
+            if (node.Binding is UserDefinedType table)
             {
                 script.Append("UNNEST(").Append(table.TableName).Append(')');
 
