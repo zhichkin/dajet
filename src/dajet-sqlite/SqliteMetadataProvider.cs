@@ -2,6 +2,7 @@
 using DaJet.Data.Sqlite;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
+using DaJet.Sqlite;
 using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
@@ -19,7 +20,7 @@ namespace DaJet.Metadata.Sqlite
             "WHERE s.type = 'table' AND s.name = @table_name " +
             "ORDER BY c.cid ASC;";
 
-        private string _connectionString;
+        private readonly string _connectionString;
         public SqliteMetadataProvider(in string connectionString)
         {
             if (string.IsNullOrWhiteSpace(connectionString))
@@ -32,8 +33,8 @@ namespace DaJet.Metadata.Sqlite
         public int YearOffset { get { return 0; } }
         public string ConnectionString { get { return _connectionString; } }
         public DatabaseProvider DatabaseProvider { get { return DatabaseProvider.Sqlite; } }
-        public IQueryExecutor CreateQueryExecutor() { return new SqliteQueryExecutor(_connectionString); }
-        public IDbConfigurator GetDbConfigurator() { throw new NotImplementedException(); }
+        public IQueryExecutor CreateQueryExecutor() { return new SqliteQueryExecutor(in _connectionString); }
+        public IDbConfigurator GetDbConfigurator() { return new SqliteDbConfigurator(in _connectionString); }
         public MetadataItem GetMetadataItem(int typeCode) { throw new NotImplementedException(); }
         public IEnumerable<MetadataItem> GetMetadataItems(Guid type) { throw new NotImplementedException(); }
         public MetadataObject GetMetadataObject(Guid type, Guid uuid) { throw new NotImplementedException(); }

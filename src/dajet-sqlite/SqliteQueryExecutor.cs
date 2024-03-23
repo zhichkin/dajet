@@ -7,7 +7,7 @@ namespace DaJet.Data.Sqlite
 {
     public sealed class SqliteQueryExecutor : QueryExecutor
     {
-        public SqliteQueryExecutor(string connectionString) : base(connectionString) { }
+        public SqliteQueryExecutor(in string connectionString) : base(connectionString) { }
         public override string GetDatabaseName()
         {
             return new SqliteConnectionStringBuilder(_connectionString).DataSource;
