@@ -236,6 +236,8 @@ namespace DaJet.Metadata.Model
         ///Код типа объекта метаданных (дискриминатор)
         ///<br>Используется для формирования имени таблицы СУБД, а также как</br>
         ///<br>значение поля RTRef составного типа данных в записях таблиц СУБД.</br>
+        ///<br><b>Значение по умолчанию: 0</b> (допускает множественный ссылочный тип данных)</br>
+        ///<br>Выполняет роль квалификатора ссылочного типа данных.</br>
         ///</summary>
         public int TypeCode { get; set; } = 0;
 
@@ -488,7 +490,7 @@ namespace DaJet.Metadata.Model
 
             if (count > 1) { return true; }
 
-            if (canBeReference && Reference == Guid.Empty)
+            if (canBeReference && TypeCode == 0) // !? Reference == Guid.Empty
             {
                 return true;
             }

@@ -126,6 +126,10 @@ namespace DaJet.Sqlite
                 string columnName = property.DbName;
 
                 if (type.IsUuid) { purpose = "u"; definition = "TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'"; }
+                else if (property.IsDbGenerated && type.IsBinary) // row version
+                {
+                    purpose = "v"; definition = "INTEGER NOT NULL DEFAULT 0";
+                }
                 else if (type.IsValueStorage) { purpose = "b"; definition = "BLOB NULL DEFAULT NULL"; }
                 else
                 {
