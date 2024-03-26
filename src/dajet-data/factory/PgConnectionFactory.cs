@@ -27,10 +27,6 @@ namespace DaJet.Data.PostgreSql
                 builder.Username = HttpUtility.UrlDecode(userpass[0], Encoding.UTF8);
                 builder.Password = HttpUtility.UrlDecode(userpass[1], Encoding.UTF8);
             }
-            else
-            {
-                builder.IntegratedSecurity = true;
-            }
 
             return builder.ToString();
         }

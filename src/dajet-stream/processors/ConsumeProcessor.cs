@@ -12,8 +12,6 @@ namespace DaJet.Stream
         }
         public override void Process()
         {
-            int thread = Environment.CurrentManagedThreadId;
-
             while (true)
             {
                 try
@@ -22,15 +20,12 @@ namespace DaJet.Stream
                 }
                 catch (Exception error)
                 {
-                    Console.WriteLine($"[{thread}] {ExceptionHelper.GetErrorMessage(error)}");
-                    //FileLogger.Default.Write(ExceptionHelper.GetErrorMessageAndStackTrace(error));
+                    FileLogger.Default.Write(ExceptionHelper.GetErrorMessage(error));
                 }
 
                 try
                 {
-                    Console.WriteLine($"[{thread}] Sleep 10 seconds ...");
-                    Task.Delay(TimeSpan.FromSeconds(10)).Wait();
-                    //Task.Delay(TimeSpan.FromSeconds(_idle_timeout)).Wait(_cancellationToken);
+                    Task.Delay(TimeSpan.FromSeconds(1)).Wait(); // pool database queue each 1 second
                 }
                 catch // (OperationCanceledException)
                 {
@@ -91,7 +86,10 @@ namespace DaJet.Stream
 
                             transaction.Commit();
 
-                            Console.WriteLine($"[{Environment.CurrentManagedThreadId}] Consumed {consumed} messages");
+                            if (consumed > 0)
+                            {
+                                FileLogger.Default.Write($"Consumed {consumed} messages");
+                            }
                         }
                         catch (Exception error)
                         {

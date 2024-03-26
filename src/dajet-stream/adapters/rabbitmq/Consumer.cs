@@ -218,8 +218,7 @@ namespace DaJet.Stream.RabbitMQ
         {
             int consumed = Interlocked.Exchange(ref _consumed, 0);
 
-            Console.WriteLine($"Consumed {consumed} messages in {Heartbeat} seconds.");
-            //FileLogger.Default.Write($"Consumed {consumed} messages in {Heartbeat} seconds.");
+            FileLogger.Default.Write($"Consumed {consumed} messages in {Heartbeat} seconds.");
         }
         private bool ConsumerIsHealthy()
         {
@@ -332,7 +331,7 @@ namespace DaJet.Stream.RabbitMQ
             }
             catch (Exception error)
             {
-                Console.WriteLine(ExceptionHelper.GetErrorMessage(error));
+                FileLogger.Default.Write(ExceptionHelper.GetErrorMessage(error));
 
                 NackMessage(in consumer, in args, in error);
             }

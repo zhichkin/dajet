@@ -1,108 +1,88 @@
-﻿using DaJet.Data;
-using DaJet.Json;
-using DaJet.Stream;
-using System.CommandLine;
-using System.Text;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using System.Text.Unicode;
+﻿using DaJet.Stream;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace DaJet
 {
     public static class Program
     {
-        private static readonly JsonWriterOptions JsonOptions = new()
+        private static HostConfig Config { get; set; } = new();
+        public static void Main(string[] args)
         {
-            Indented = true,
-            Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-        };
-        private static readonly DataObjectJsonConverter _converter = new();
-
-        public static int Main(string[] args)
-        {
-            //args = new string[]
-            //{
-            //    "stream", "--file",
-
-            //    //"./test/20-http-post.sql"
-            //    //"./test/21-http-query.sql"
-
-            //    //"./stream/03-ms-exchange-kafka-producer.sql"
-            //    //"./stream/04-kafka-consumer-pg-register.sql"
-
-            //    //"./stream/10-simple-amqp-produce.sql"
-            //    //"./stream/11-ms-amqp-produce.sql"
-            //    //"./stream/12-amqp-pg-consume.sql"
-            //    //"./stream/13-amqp-amqp-shovel.sql"
-
-            //    //"./test/11-ms-pg-exchange-consume-maxdop.sql"
-            //    //"./test/07-ms-pg-catalog-paging-maxdop.sql"
-            //};
-
-            var root = new RootCommand("dajet");
-            var command = new Command("stream", "Execute DaJet Stream");
-            var option1 = new Option<string>("--url", "Script URL");
-            var option2 = new Option<string>("--file", "Script path");
-            command.AddOption(option1);
-            command.AddOption(option2);
-            command.SetHandler(Stream, option1, option2);
-            root.Add(command);
-
-            return root.Invoke(args);
-        }
-        private static void Stream(string url, string file)
-        {
-            if (string.IsNullOrEmpty(file))
+            if (args is not null && args.Length > 0)
             {
-                StreamUri(url);
+                RunHost(args[0]);
             }
             else
             {
-                StreamFile(file);
+                RunHost(null);
             }
         }
-        private static void StreamUri(string url)
+        private static void RunHost(in string configFilePath)
         {
-            throw new NotImplementedException();
+            FileLogger.Default.Write("[HOST] Running");
+            FileLogger.Default.Write($"[PATH] {AppContext.BaseDirectory}");
+            FileLogger.Default.Write($"[CONFIG] {configFilePath}");
 
-            //Console.WriteLine($"Execute script from URL: {url}");
+            InitializeHostConfig(in configFilePath);
 
-            //Uri uri = new(url);
+            FileLogger.Default.UseLogFile(Config.LogFile);
+            FileLogger.Default.UseLogSize(Config.LogSize);
+            FileLogger.Default.UseCatalog(Config.LogPath);
+            
+            FileLogger.Default.Write($"[LOG PATH] {Config.LogPath}");
+            FileLogger.Default.Write($"[LOG FILE] {Config.LogFile}");
+            FileLogger.Default.Write($"[LOG SIZE] {Config.LogSize} Kb");
+            FileLogger.Default.Write($"[ROOT] {Config.RootPath}");
 
-            //StreamProcessor.Process(in uri);
+            CreateHostBuilder().Build().Run();
+            
+            FileLogger.Default.Write("[HOST] Stopped");
         }
-        private static void StreamFile(string filePath)
+        private static void InitializeHostConfig(in string configFilePath)
         {
-            FileInfo file = new(filePath);
-
-            Console.WriteLine($"Execute script from file: {file.FullName}");
-
-            string script;
-
-            using (StreamReader reader = new(filePath, Encoding.UTF8))
+            if (File.Exists(configFilePath))
             {
-                script = reader.ReadToEnd();
-            }
+                string path = Path.GetFullPath(configFilePath);
 
-            StreamManager.Process(in script);
-        }
-        private static void WriteResultToFile(in DataObject input)
-        {
-            using (MemoryStream memory = new())
+                IConfigurationRoot config = new ConfigurationBuilder()
+                    .SetBasePath(Path.GetDirectoryName(path))
+                    .AddJsonFile(Path.GetFileName(path), optional: false)
+                    .Build();
+
+                config.Bind(Config);
+            }
+            else if (!string.IsNullOrWhiteSpace(configFilePath))
             {
-                using (Utf8JsonWriter writer = new(memory, JsonOptions))
-                {
-                    _converter.Write(writer, input, null);
-
-                    writer.Flush();
-
-                    string json = Encoding.UTF8.GetString(memory.ToArray());
-
-                    Console.WriteLine(json);
-
-                    FileLogger.Default.Write(json);
-                }
+                FileLogger.Default.Write($"[CONFIG] NOT FOUND");
             }
+
+            if (string.IsNullOrWhiteSpace(Config.LogPath))
+            {
+                Config.LogPath = AppContext.BaseDirectory;
+            }
+
+            if (string.IsNullOrWhiteSpace(Config.RootPath))
+            {
+                Config.RootPath = Path.Combine(AppContext.BaseDirectory, "stream");
+            }
+        }
+        private static IHostBuilder CreateHostBuilder()
+        {
+            IHostBuilder builder = Host.CreateDefaultBuilder()
+                .UseSystemd()
+                .UseWindowsService()
+                .ConfigureServices(ConfigureServices);
+
+            return builder;
+        }
+        private static void ConfigureServices(IServiceCollection services)
+        {
+            services.AddOptions().AddSingleton(Options.Create(Config));
+
+            services.AddHostedService<DaJetStreamService>();
         }
     }
 }

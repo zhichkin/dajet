@@ -141,15 +141,14 @@ namespace DaJet.Stream.Kafka
                 }
                 catch (Exception error)
                 {
-                    Console.WriteLine($"[Kafka consumer] {ExceptionHelper.GetErrorMessage(error)}");
-                    //FileLogger.Default.Write(ExceptionHelper.GetErrorMessageAndStackTrace(error));
+                    FileLogger.Default.Write($"[Kafka consumer] {ExceptionHelper.GetErrorMessage(error)}");
                 }
 
                 try
                 {
-                    Console.WriteLine("[Kafka consumer] Sleep 10 seconds ...");
+                    FileLogger.Default.Write("[Kafka consumer] Sleep 10 seconds ...");
+
                     Task.Delay(TimeSpan.FromSeconds(10)).Wait();
-                    //Task.Delay(TimeSpan.FromSeconds(_idle_timeout)).Wait(_cancellationToken);
                 }
                 catch // (OperationCanceledException)
                 {
@@ -181,7 +180,7 @@ namespace DaJet.Stream.Kafka
 
             _consumed = 0;
 
-            Console.WriteLine($"Consuming messages ...");
+            FileLogger.Default.Write($"Consuming messages ...");
 
             do
             {
@@ -198,7 +197,7 @@ namespace DaJet.Stream.Kafka
 
                 if (_cts.IsCancellationRequested)
                 {
-                    Console.WriteLine($"Consumed {_consumed} messages");
+                    FileLogger.Default.Write($"Consumed {_consumed} messages");
 
                     DisposeConsumer(); return;
                 }
@@ -215,7 +214,7 @@ namespace DaJet.Stream.Kafka
                     }
 
                     //TODO: log consumed by timer
-                    //Console.WriteLine($"Consumed {_consumed} messages");
+                    //FileLogger.Default.Write($"Consumed {_consumed} messages");
                 }
             }
             while (_result is not null && _result.Message is not null);
@@ -265,13 +264,11 @@ namespace DaJet.Stream.Kafka
         }
         private void LogHandler(IConsumer<byte[], byte[]> _, LogMessage log)
         {
-            Console.WriteLine($"[{_topic}] [{log.Name}]: {log.Message}");
-            //FileLogger.Default.Write($"[{_options.Topic}] [{log.Name}]: {log.Message}");
+            FileLogger.Default.Write($"[{_topic}] [{log.Name}]: {log.Message}");
         }
         private void ErrorHandler(IConsumer<byte[], byte[]> consumer, Error error)
         {
-            Console.WriteLine($"[{_topic}] [{consumer.Name}] [{string.Concat(consumer.Subscription)}]: {error.Reason}");
-            //FileLogger.Default.Write($"[{_options.Topic}] [{consumer.Name}] [{string.Concat(consumer.Subscription)}]: {error.Reason}");
+            FileLogger.Default.Write($"[{_topic}] [{consumer.Name}] [{string.Concat(consumer.Subscription)}]: {error.Reason}");
         }
         public void Dispose()
         {

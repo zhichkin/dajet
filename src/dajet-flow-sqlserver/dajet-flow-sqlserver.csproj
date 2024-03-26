@@ -1,12 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>DaJet.Flow.SqlServer</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <AssemblyName>DaJet.Flow.SqlServer</AssemblyName>
-    <Version>1.3.0</Version>
+    <Version>1.3.1</Version>
     <Authors>Zhichkin</Authors>
     <Copyright>Zhichkin © 2022</Copyright>
     <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>

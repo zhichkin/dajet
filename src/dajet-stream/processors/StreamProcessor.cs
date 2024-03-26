@@ -62,7 +62,7 @@ namespace DaJet.Stream
 
                         transaction.Commit();
 
-                        Console.WriteLine($"[{Environment.CurrentManagedThreadId}] Streamed {processed} messages");
+                        FileLogger.Default.Write($"[{Environment.CurrentManagedThreadId}] Streamed {processed} messages");
                     }
                     catch (Exception error)
                     {

@@ -1,12 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>DaJet.Data.Client</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <AssemblyName>DaJet.Data.Client</AssemblyName>
-    <Version>2.0.2</Version>
+    <Version>2.0.3</Version>
     <Authors>Zhichkin</Authors>
     <Description>ADO .NET data provider for 1C:Enterprise 8.
 Microsoft SQL Server and PostgreSQL databases are supported.</Description>

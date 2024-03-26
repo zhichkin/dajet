@@ -83,8 +83,6 @@ namespace DaJet.Stream
         
         private void Parallelize(in List<DataObject> iterator)
         {
-            Console.WriteLine($"MAXDOP = {_maxdop}");
-
             ParallelOptions options = new()
             {
                 MaxDegreeOfParallelism = _maxdop
@@ -94,8 +92,6 @@ namespace DaJet.Stream
         }
         private void ProcessInParallel(DataObject options)
         {
-            Console.WriteLine($"Thread: {Environment.CurrentManagedThreadId}");
-
             StreamScope clone = _scope.Clone();
 
             foreach (string variable in _closure)

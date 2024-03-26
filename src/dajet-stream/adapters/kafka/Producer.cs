@@ -1,8 +1,6 @@
 ﻿using Confluent.Kafka;
-using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using System.Text;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using Error = Confluent.Kafka.Error;
 
 namespace DaJet.Stream.Kafka
@@ -150,8 +148,7 @@ namespace DaJet.Stream.Kafka
         }
         private void LogHandler(IProducer<byte[], byte[]> _, LogMessage message)
         {
-            Console.WriteLine($"[{_topic}] [{message.Name}]: {message.Message}");
-            //FileLogger.Default.Write($"[{_topic}] [{message.Name}]: {message.Message}");
+            FileLogger.Default.Write($"[{_topic}] [{message.Name}]: {message.Message}");
         }
         private void ErrorHandler(IProducer<byte[], byte[]> _, Error error)
         {
@@ -160,8 +157,7 @@ namespace DaJet.Stream.Kafka
                 _error = error.Reason;
             }
 
-            Console.WriteLine($"[{_topic}] [{_config.ClientId}]: {error?.Reason}");
-            //FileLogger.Default.Write($"[{_topic}] [{_config.ClientId}]: {error?.Reason}");
+            FileLogger.Default.Write($"[{_topic}] [{_config.ClientId}]: {error?.Reason}");
         }
         private void HandleDeliveryReport(DeliveryReport<byte[], byte[]> report)
         {
@@ -173,8 +169,7 @@ namespace DaJet.Stream.Kafka
             {
                 _error = report.Error.Reason; //THINK: stop producing the batch !?
 
-                Console.WriteLine($"[{report.Topic}] [{_config.ClientId}]: {report.Error.Reason}");
-                //FileLogger.Default.Write($"[{report.Topic}] [{_config.ClientId}]: {report.Error.Reason}");
+                FileLogger.Default.Write($"[{report.Topic}] [{_config.ClientId}]: {report.Error.Reason}");
             }
         }
         public void Synchronize()
@@ -202,7 +197,7 @@ namespace DaJet.Stream.Kafka
             }
             else
             {
-                Console.WriteLine($"[{_config.ClientId}] Produced {produced} messages");
+                FileLogger.Default.Write($"[{_config.ClientId}] Produced {produced} messages");
             }
         }
         public void Dispose()
