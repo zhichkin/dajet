@@ -115,49 +115,272 @@ namespace DaJet.Sqlite
 
             script.Append("CREATE TABLE ").Append(tableName).AppendLine("(");
 
+            List<MetadataProperty> pk = new();
+
             for (int i = 0; i < entity.Properties.Count; i++)
             {
                 MetadataProperty property = entity.Properties[i];
 
+                if (property.PkOrdinal > 0) { pk.Add(property); }
+
                 DataTypeDescriptor type = property.PropertyType;
 
-                string purpose = string.Empty;
-                string definition = string.Empty;
-                string columnName = property.DbName;
-
-                if (type.IsUuid) { purpose = "u"; definition = "TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'"; }
-                else if (property.IsDbGenerated && type.IsBinary) // row version
+                if (property.Purpose == PropertyPurpose.System)
                 {
-                    purpose = "v"; definition = "INTEGER NOT NULL DEFAULT 0";
-                }
-                else if (type.IsValueStorage) { purpose = "b"; definition = "BLOB NULL DEFAULT NULL"; }
-                else
-                {
-                    if (type.CanBeBoolean) { purpose = "l"; definition = "INTEGER NOT NULL DEFAULT 0"; }
-                    if (type.CanBeNumeric) { purpose = "n"; definition = "REAL NOT NULL DEFAULT 0.00"; }
-                    if (type.CanBeDateTime) { purpose = "t"; definition = "INTEGER NOT NULL DEFAULT 0"; }
-                    if (type.CanBeString) { purpose = "s"; definition = "TEXT NOT NULL DEFAULT ''"; }
-                    if (type.CanBeReference)
+                    if (property.Name == "Ссылка")
                     {
-                        if (type.TypeCode > 0)
+                        property.Columns.Add(new MetadataColumn()
                         {
-                            purpose = $"r_{type.TypeCode}";
-                            definition = "TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'";
-                        }
-                        else
+                            Name = $"_{property.DbName}_r_{type.TypeCode}",
+                            Purpose = ColumnPurpose.Identity,
+                            KeyOrdinal = property.PkOrdinal,
+                            IsPrimaryKey = property.PkOrdinal > 0,
+                            TypeName = "TEXT NOT NULL"
+                        });
+                    }
+                    else // ВерсияДанных (row version)
+                    {
+                        property.Columns.Add(new MetadataColumn()
                         {
-                            purpose = "d"; definition = "INTEGER NOT NULL"; // entity type discriminator
-                            script.Append(columnName).Append('_').Append(purpose).Append(' ').Append(definition);
-
-                            purpose = "r"; definition = "TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'";
-                        }
+                            Name = $"_{property.DbName}_v",
+                            Purpose = ColumnPurpose.Default,
+                            KeyOrdinal = property.PkOrdinal,
+                            IsPrimaryKey = property.PkOrdinal > 0,
+                            TypeName = "INTEGER NOT NULL DEFAULT 0"
+                        });
                     }
                 }
+                else if (type.IsUnionType(out _, out _))
+                {
+                    ConfigureMultipleTypeProperty(in property);
+                }
+                else // single type value
+                {
+                    ConfigureSingleTypeProperty(in property);
+                }
 
-                script.Append(columnName).Append('_').Append(purpose).Append(' ').Append(definition);
+                foreach (MetadataColumn column in property.Columns)
+                {
+                    script.Append(column.Name).Append(' ').Append(column.TypeName);
+                }
             }
 
             script.AppendLine(");");
+        }
+        private void ConfigureSingleTypeProperty(in MetadataProperty property)
+        {
+            DataTypeDescriptor type = property.PropertyType;
+
+            if (type.IsUnionType(out _, out _))
+            {
+                return;
+            }
+
+            if (type.IsUuid)
+            {
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = $"_{property.DbName}_u",
+                    Purpose = ColumnPurpose.Default,
+                    KeyOrdinal = property.PkOrdinal,
+                    IsPrimaryKey = property.PkOrdinal > 0,
+                    TypeName = "TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'"
+                });
+            }
+            else if (type.IsBinary || type.IsValueStorage) // synonyms !?
+            {
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = $"_{property.DbName}_b",
+                    Purpose = ColumnPurpose.Default,
+                    KeyOrdinal = property.PkOrdinal,
+                    IsPrimaryKey = property.PkOrdinal > 0,
+                    TypeName = "BLOB"
+                });
+            }
+            else if (type.CanBeBoolean)
+            {
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = $"_{property.DbName}_l",
+                    Purpose = ColumnPurpose.Boolean,
+                    KeyOrdinal = property.PkOrdinal,
+                    IsPrimaryKey = property.PkOrdinal > 0,
+                    TypeName = "INTEGER NOT NULL DEFAULT 0"
+                });
+            }
+            else if (type.CanBeNumeric)
+            {
+                if (type.NumericScale == 0)
+                {
+                    property.Columns.Add(new MetadataColumn()
+                    {
+                        Name = $"_{property.DbName}_n",
+                        Purpose = ColumnPurpose.Numeric,
+                        KeyOrdinal = property.PkOrdinal,
+                        IsPrimaryKey = property.PkOrdinal > 0,
+                        TypeName = "INTEGER NOT NULL DEFAULT 0"
+                    });
+                }
+                else
+                {
+                    property.Columns.Add(new MetadataColumn()
+                    {
+                        Name = $"_{property.DbName}_n",
+                        Purpose = ColumnPurpose.Numeric,
+                        KeyOrdinal = property.PkOrdinal,
+                        IsPrimaryKey = property.PkOrdinal > 0,
+                        TypeName = "REAL NOT NULL DEFAULT 0.00"
+                    });
+                }
+            }
+            else if (type.CanBeDateTime)
+            {
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = $"_{property.DbName}_t",
+                    Purpose = ColumnPurpose.DateTime,
+                    KeyOrdinal = property.PkOrdinal,
+                    IsPrimaryKey = property.PkOrdinal > 0,
+                    TypeName = "TEXT NOT NULL DEFAULT '0001-01-01T00:00:00'"
+                });
+            }
+            else if (type.CanBeString)
+            {
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = $"_{property.DbName}_s",
+                    Purpose = ColumnPurpose.String,
+                    KeyOrdinal = property.PkOrdinal,
+                    IsPrimaryKey = property.PkOrdinal > 0,
+                    TypeName = "TEXT NOT NULL DEFAULT ''"
+                });
+            }
+            else if (type.CanBeReference)
+            {
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = $"_{property.DbName}_r_{type.TypeCode}",
+                    Purpose = ColumnPurpose.Identity,
+                    KeyOrdinal = property.PkOrdinal,
+                    IsPrimaryKey = property.PkOrdinal > 0,
+                    TypeName = "TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'"
+                });
+            }
+        }
+        private void ConfigureMultipleTypeProperty(in MetadataProperty property)
+        {
+            DataTypeDescriptor type = property.PropertyType;
+
+            if (!type.IsUnionType(out bool canBeSimple, out bool canBeReference))
+            {
+                return;
+            }
+
+            if (canBeSimple)
+            {
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = $"_{property.DbName}_m",
+                    Purpose = ColumnPurpose.Tag,
+                    KeyOrdinal = property.PkOrdinal,
+                    IsPrimaryKey = property.PkOrdinal > 0,
+                    Length = 1,
+                    TypeName = "BLOB NOT NULL DEFAULT X'01'"
+                });
+
+                if (type.CanBeBoolean)
+                {
+                    property.Columns.Add(new MetadataColumn()
+                    {
+                        Name = $"_{property.DbName}_l",
+                        Purpose = ColumnPurpose.Boolean,
+                        KeyOrdinal = property.PkOrdinal,
+                        IsPrimaryKey = property.PkOrdinal > 0,
+                        TypeName = "INTEGER NOT NULL DEFAULT 0"
+                    });
+                }
+
+                if (type.CanBeNumeric)
+                {
+                    if (type.NumericScale == 0)
+                    {
+                        property.Columns.Add(new MetadataColumn()
+                        {
+                            Name = $"_{property.DbName}_n",
+                            Purpose = ColumnPurpose.Numeric,
+                            KeyOrdinal = property.PkOrdinal,
+                            IsPrimaryKey = property.PkOrdinal > 0,
+                            TypeName = "INTEGER NOT NULL DEFAULT 0"
+                        });
+                    }
+                    else
+                    {
+                        property.Columns.Add(new MetadataColumn()
+                        {
+                            Name = $"_{property.DbName}_n",
+                            Purpose = ColumnPurpose.Numeric,
+                            KeyOrdinal = property.PkOrdinal,
+                            IsPrimaryKey = property.PkOrdinal > 0,
+                            TypeName = "REAL NOT NULL DEFAULT 0.00"
+                        });
+                    }
+                }
+
+                if (type.CanBeDateTime)
+                {
+                    property.Columns.Add(new MetadataColumn()
+                    {
+                        Name = $"_{property.DbName}_t",
+                        Purpose = ColumnPurpose.DateTime,
+                        KeyOrdinal = property.PkOrdinal,
+                        IsPrimaryKey = property.PkOrdinal > 0,
+                        TypeName = "TEXT NOT NULL DEFAULT '0001-01-01T00:00:00'"
+                    });
+                }
+
+                if (type.CanBeString)
+                {
+                    property.Columns.Add(new MetadataColumn()
+                    {
+                        Name = $"_{property.DbName}_s",
+                        Purpose = ColumnPurpose.String,
+                        KeyOrdinal = property.PkOrdinal,
+                        IsPrimaryKey = property.PkOrdinal > 0,
+                        TypeName = "TEXT NOT NULL DEFAULT ''"
+                    });
+                }
+            }
+
+            if (canBeReference)
+            {
+                string columnName = $"_{property.DbName}_r";
+
+                if (type.TypeCode == 0)
+                {
+                    property.Columns.Add(new MetadataColumn()
+                    {
+                        Name = $"_{property.DbName}_d",
+                        Purpose = ColumnPurpose.TypeCode,
+                        KeyOrdinal = property.PkOrdinal,
+                        IsPrimaryKey = property.PkOrdinal > 0,
+                        TypeName = "INTEGER NOT NULL DEFAULT 0"
+                    });
+                }
+                else
+                {
+                    columnName += $"_{type.TypeCode}";
+                }
+
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = columnName,
+                    Purpose = ColumnPurpose.Identity,
+                    KeyOrdinal = property.PkOrdinal,
+                    IsPrimaryKey = property.PkOrdinal > 0,
+                    TypeName = "TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'"
+                });
+            }
         }
     }
 }

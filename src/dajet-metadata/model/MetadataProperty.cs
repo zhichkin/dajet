@@ -8,6 +8,11 @@ namespace DaJet.Metadata.Model
     {
         ///<summary>Основа имени поля в таблице СУБД (может быть дополнено постфиксами в зависимости от типа данных свойства)</summary>
         public string DbName { get; set; } = string.Empty;
+        ///<summary>Признак вхождения в состав первичного ключа прикладного объекта
+        ///<br/>Значение = 0 - не входит в состав первичного ключа.
+        ///<br/>Значение > 0 - порядковый номер в составе первичного ключа.
+        ///</summary>
+        public int PkOrdinal { get; set; } = 0;
         ///<summary>Значение свойства генерируется средствами СУБД автоматически при выполнении команды INSERT.</summary>
         public bool IsDbGenerated { get; set; } = false;
         ///<summary>Коллекция для описания полей таблицы СУБД свойства объекта метаданных</summary>
@@ -26,12 +31,6 @@ namespace DaJet.Metadata.Model
         /// <summary>Признак измерения регистра сведений (ведущее):
         /// <br>запись будет подчинена объектам, записываемым в данном измерении</br></summary>
         public bool CascadeDelete { get; set; } = false; // Каскадное удаление по внешнему ключу
-        public bool IsPrimaryKey()
-        {
-            return (Columns != null
-                && Columns.Count > 0
-                && Columns.Where(f => f.IsPrimaryKey).FirstOrDefault() != null);
-        }
         public override string ToString() { return Name; }
     }
 }
