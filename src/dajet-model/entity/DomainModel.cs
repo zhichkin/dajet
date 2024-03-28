@@ -13,6 +13,7 @@ namespace DaJet.Model
         T New<T>(Guid identity) where T : EntityObject, new(); // Original
         EntityObject New(Type type); // New
         EntityObject New(Type type, Guid identity); // Original
+        void Register(Type type, int code);
         void Entity<T>(int typeCode) where T : EntityObject;
         int GetTypeCode(Type entityType);
         Type GetEntityType(int typeCode);
@@ -21,12 +22,21 @@ namespace DaJet.Model
     public sealed class DomainModel : IDomainModel
     {
         private readonly IServiceProvider _services;
-        private readonly Dictionary<int, Type> _types = new();
-        private readonly Dictionary<Type, int> _codes = new();
+        private readonly Dictionary<int, Type> _types;
+        private readonly Dictionary<Type, int> _codes;
+        public DomainModel(int capacity)
+        {
+            _types = new Dictionary<int, Type>(capacity);
+            _codes = new Dictionary<Type, int>(capacity);
+        }
         public DomainModel() : this(null) { }
         public DomainModel(IServiceProvider services)
         {
             _services = services;
+
+            _types = new Dictionary<int, Type>(6);
+            _codes = new Dictionary<Type, int>(6);
+            
             ConfigureDomainModel();
         }
         private void ConfigureDomainModel()
@@ -37,6 +47,16 @@ namespace DaJet.Model
             Entity<OptionRecord>(40);
             Entity<InfoBaseRecord>(50);
             Entity<ScriptRecord>(60);
+        }
+        public void Register(Type type, int code)
+        {
+            if (!type.IsSubclassOf(typeof(EntityObject)))
+            {
+                throw new ArgumentOutOfRangeException(nameof(type));
+            }
+
+            _ = _codes.TryAdd(type, code);
+            _ = _types.TryAdd(code, type);
         }
         public void Entity<T>(int typeCode) where T : EntityObject
         {

@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\dajet-scripting\dajet-scripting.csproj" />
+    <ProjectReference Include="..\dajet-sqlite\dajet-sqlite.csproj" />
   </ItemGroup>
 
 </Project>

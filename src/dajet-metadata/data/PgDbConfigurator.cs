@@ -207,6 +207,7 @@ namespace DaJet.Data
         {
             _provider = provider;
         }
+        public bool TryConfigureDatabase(out string error) { throw new NotImplementedException(); }
         private List<TypeColumnInfo> SelectTypeColumns(in string identifier)
         {
             List<TypeColumnInfo> columns = new();

@@ -31,6 +31,7 @@ namespace DaJet.Data
             _provider = provider;
             _executor = _provider.CreateQueryExecutor();
         }
+        public bool TryConfigureDatabase(out string error) { throw new NotImplementedException(); }
         private List<TypeColumnInfo> SelectTypeColumns(in string identifier)
         {
             List<TypeColumnInfo> columns = new();
