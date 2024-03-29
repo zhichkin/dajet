@@ -33,7 +33,7 @@ namespace DaJet.Metadata.Model
     public sealed class DataTypeDescriptor
     {
         private DataTypeFlags _flags = DataTypeFlags.None;
-        public DataTypeFlags Flags { get { return _flags; } }
+        public bool IsUndefined { get { return _flags == DataTypeFlags.None; } }
 
         #region "SIMPLE DATA TYPES"
 

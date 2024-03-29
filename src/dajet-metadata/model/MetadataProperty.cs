@@ -12,7 +12,7 @@ namespace DaJet.Metadata.Model
         ///<br/>Значение = 0 - не входит в состав первичного ключа.
         ///<br/>Значение > 0 - порядковый номер в составе первичного ключа.
         ///</summary>
-        public int PkOrdinal { get; set; } = 0;
+        public int PrimaryKey { get; set; } = 0;
         ///<summary>Значение свойства генерируется средствами СУБД автоматически при выполнении команды INSERT.</summary>
         public bool IsDbGenerated { get; set; } = false;
         ///<summary>Коллекция для описания полей таблицы СУБД свойства объекта метаданных</summary>

@@ -15,6 +15,7 @@ namespace DaJet.Data
         void Delete(Entity entity);
         void Delete<T>(Guid identity) where T : EntityObject;
         EntityObject Select(Entity entity);
+        T Select<T>(int code) where T : EntityObject;
         T Select<T>(string name) where T : EntityObject;
         T Select<T>(Guid identity) where T : EntityObject;
         T Select<T>(Entity entity) where T : EntityObject;
@@ -43,6 +44,7 @@ namespace DaJet.Data
         void Insert(EntityObject entity);
         void Update(EntityObject entity);
         void Delete(Entity entity);
+        EntityObject Select(int code);
         EntityObject Select(string name);
         EntityObject Select(Guid idenity);
         IEnumerable Select();

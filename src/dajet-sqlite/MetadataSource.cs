@@ -14,13 +14,6 @@ namespace DaJet.Sqlite
         private readonly Dictionary<Type, IDataMapper> _mappers;
         public MetadataSource(in string databaseFileFullPath)
         {
-            SqliteDbConfigurator configurator = new(in databaseFileFullPath);
-
-            if (!configurator.TryConfigureDatabase(out string error))
-            {
-                throw new InvalidOperationException(error);
-            }
-
             _connectionString = new SqliteConnectionStringBuilder()
             {
                 DataSource = databaseFileFullPath,
@@ -114,7 +107,16 @@ namespace DaJet.Sqlite
 
             return null;
         }
-        
+
+        public T Select<T>(int code) where T : EntityObject
+        {
+            if (_mappers.TryGetValue(typeof(T), out IDataMapper mapper))
+            {
+                return mapper.Select(code) as T;
+            }
+
+            return null;
+        }
         public T Select<T>(string name) where T : EntityObject
         {
             if (string.IsNullOrWhiteSpace(name))

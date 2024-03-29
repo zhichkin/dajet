@@ -141,10 +141,8 @@ namespace DaJet.Data
 
             DeleteTreeNode(entity);
         }
-        public IEnumerable Select()
-        {
-            return Select(Entity.Undefined);
-        }
+        public EntityObject Select(int code) { throw new NotImplementedException(); }
+        public IEnumerable Select() { return Select(Entity.Undefined); }
         public EntityObject Select(Guid identity)
         {
             TreeNodeRecord record = null;

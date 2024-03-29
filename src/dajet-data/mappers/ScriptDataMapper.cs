@@ -323,5 +323,9 @@ namespace DaJet.Data
         {
             throw new NotImplementedException();
         }
+        public EntityObject Select(int code)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

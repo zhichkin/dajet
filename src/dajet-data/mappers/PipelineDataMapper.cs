@@ -217,6 +217,10 @@ namespace DaJet.Data
         {
             throw new NotImplementedException();
         }
+        public EntityObject Select(int code)
+        {
+            throw new NotImplementedException();
+        }
         public EntityObject Select(string name)
         {
             PipelineRecord record = null;

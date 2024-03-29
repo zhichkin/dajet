@@ -7,12 +7,12 @@ namespace DaJet.Sqlite.Test
         private static readonly string DATABASE = "C:\\temp\\sqlite\\dajet.db";
         [TestMethod] public void Create_Database()
         {
-            //SqliteDbConfigurator configurator = new(DATABASE);
+            SqliteDbConfigurator configurator = new(DATABASE);
 
-            //if (!configurator.TryConfigureDatabase(out string error))
-            //{
-            //    Console.WriteLine(error); return;
-            //}
+            if (!configurator.TryConfigureDatabase(out string error))
+            {
+                Console.WriteLine(error); return;
+            }
 
             IDataSource source = new MetadataSource(DATABASE);
 
