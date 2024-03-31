@@ -209,3 +209,12 @@ namespace DaJet.Sqlite
         }
     }
 }
+
+//CREATE TABLE sqlite_schema (type text, name text, tbl_name text, rootpage integer, sql text);
+//private const string TABLE_EXISTS_COMMAND = "SELECT 1 FROM sqlite_schema WHERE name = @table_name;";
+//private const string SELECT_TABLE_COLUMNS =
+//"SELECT c.name, c.type, c.pk, c.notnull " +
+//"FROM sqlite_schema AS s " +
+//"INNER JOIN pragma_table_info(s.name) AS c " +
+//"WHERE s.type = 'table' AND s.name = @table_name " +
+//"ORDER BY c.cid ASC;";

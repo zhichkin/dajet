@@ -48,7 +48,11 @@ namespace DaJet.Scripting
 
             ISqlTranspiler transpiler;
 
-            if (context.DatabaseProvider == DatabaseProvider.SqlServer)
+            if (context.DatabaseProvider == DatabaseProvider.Sqlite)
+            {
+                transpiler = new PgSqlTranspiler(); //TODO: !!!
+            }
+            else if (context.DatabaseProvider == DatabaseProvider.SqlServer)
             {
                 transpiler = new MsSqlTranspiler() { YearOffset = context.YearOffset };
             }

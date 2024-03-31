@@ -11,7 +11,7 @@ namespace DaJet.Sqlite
     {
         private readonly string _connectionString;
         private readonly string _databaseFileFullPath;
-        private readonly IDataSource _source;
+        private readonly MetadataSource _source;
         public SqliteDbConfigurator(in string databaseFileFullPath)
         {
             if (string.IsNullOrWhiteSpace(databaseFileFullPath))
@@ -98,6 +98,7 @@ namespace DaJet.Sqlite
             return error is null;
         }
         #endregion
+        
         public int GetNextSequenceValue()
         {
             using (SqliteConnection connection = new(_connectionString))
@@ -108,135 +109,110 @@ namespace DaJet.Sqlite
                 {
                     command.CommandText = GET_NEXT_SEQUENCE_VALUE;
 
-                    return (int)command.ExecuteScalar();
+                    long value = (long)command.ExecuteScalar();
+
+                    return System.Convert.ToInt32(value);
                 }
             }
         }
-        public void CreateTable(in EntityDefinition entity)
+
+        public EntityDefinition Convert(in EntityRecord record)
         {
-            StringBuilder script = new();
-
-            string tableName = $"t{entity.TypeCode}";
-
-            script.Append("CREATE TABLE ").Append(tableName).AppendLine("(");
-
-            for (int i = 0; i < entity.Properties.Count; i++)
+            EntityDefinition definition = new()
             {
-                MetadataProperty property = entity.Properties[i];
-
-                foreach (MetadataColumn column in property.Columns)
-                {
-                    script.Append(column.Name).Append(' ').Append(column.TypeName);
-                }
-            }
-
-            script.AppendLine(");");
-        }
-        private void CreateIndex(in EntityDefinition entity) { }
-        private MetadataColumn CreateBooleanColumn(in string name)
-        {
-            return new MetadataColumn()
-            {
-                Name = $"_{name}_l",
-                Purpose = ColumnPurpose.Boolean,
-                TypeName = "BLOB NOT NULL DEFAULT X'00'"
+                Uuid = record.Identity,
+                Name = record.Name,
+                TypeCode = record.Code,
+                TableName = record.Table
             };
-        }
-        private MetadataColumn CreateNumericColumn(in string name, int precision, int scale, bool signed)
-        {
-            if (scale == 0)
+
+            IEnumerable<PropertyRecord> list = _source.Query<PropertyRecord>(record.GetEntity());
+
+            if (list is null) { return definition; }
+
+            foreach (PropertyRecord item in list)
             {
-                return new MetadataColumn()
-                {
-                    Name = $"_{name}_i",
-                    Purpose = ColumnPurpose.Numeric,
-                    TypeName = "INTEGER NOT NULL DEFAULT 0"
-                };
+                MetadataProperty property = Convert(in record, in item);
+
+                definition.Properties.Add(property);
+            }
+
+            return definition;
+        }
+        private MetadataProperty Convert(in EntityRecord owner, in PropertyRecord record)
+        {
+            MetadataProperty property = new()
+            {
+                Uuid = record.Identity,
+                Name = record.Name,
+                DbName = record.Column,
+                PropertyType = Convert(in record, in owner),
+                PrimaryKey = record.PrimaryKey,
+                IsDbGenerated = record.IsReadOnly,
+                Purpose = record.Name == "Ссылка" || record.Name == "ВерсияДанных"
+                    ? PropertyPurpose.System
+                    : PropertyPurpose.Property
+            };
+
+            if (property.Purpose == PropertyPurpose.System)
+            {
+                ConfigureSystemProperty(in property);
+            }
+            else if (property.PropertyType.IsUnionType(out bool canBeSimple, out bool canBeReference))
+            {
+                ConfigureMultipleTypeProperty(in property, canBeSimple, canBeReference);
             }
             else
             {
-                return new MetadataColumn()
-                {
-                    Name = $"_{name}_n",
-                    Purpose = ColumnPurpose.Numeric,
-                    TypeName = "REAL NOT NULL DEFAULT 0.00"
-                };
+                ConfigureSingleTypeProperty(in property);
             }
-        }
-        private MetadataColumn CreateDateTimeColumn(in string name)
-        {
-            return new MetadataColumn()
-            {
-                Name = $"_{name}_t",
-                Purpose = ColumnPurpose.DateTime,
-                TypeName = "TEXT NOT NULL DEFAULT '0001-01-01T00:00:00'"
-            };
-        }
-        private MetadataColumn CreateStringColumn(in string name, int length, bool variable)
-        {
-            return new MetadataColumn()
-            {
-                Name = $"_{name}_s",
-                Purpose = ColumnPurpose.String,
-                TypeName = "TEXT NOT NULL DEFAULT ''"
-            };
-        }
-        private MetadataColumn CreateBinaryColumn(in string name, int length, bool variable)
-        {
-            return new MetadataColumn()
-            {
-                Name = $"_{name}_b",
-                Purpose = ColumnPurpose.Binary,
-                TypeName = "BLOB NULL DEFAULT NULL"
-            };
-        }
-        private MetadataColumn CreateUuidColumn(in string name)
-        {
-            return new MetadataColumn()
-            {
-                Name = $"_{name}_u",
-                Purpose = ColumnPurpose.Default,
-                TypeName = "BLOB NOT NULL DEFAULT X'00000000000000000000000000000000'"
-            };
-        }
-        private MetadataColumn CreateReferenceColumn(in string name, int discriminator)
-        {
-            string typeCode = discriminator == 0 ? string.Empty : $"_{discriminator}";
 
-            return new MetadataColumn()
-            {
-                Name = $"_{name}_r{typeCode}",
-                Purpose = ColumnPurpose.Identity,
-                TypeName = "BLOB NOT NULL DEFAULT X'00000000000000000000000000000000'"
-            };
+            return property;
         }
-        private MetadataColumn CreateTagColumn(in string name)
+        private DataTypeDescriptor Convert(in PropertyRecord record, in EntityRecord owner)
         {
-            return new MetadataColumn()
+            DataTypeDescriptor type = new()
             {
-                Name = $"_{name}_m",
-                Purpose = ColumnPurpose.Tag,
-                TypeName = "BLOB NOT NULL DEFAULT X'00000000000000000000000000000000'"
+                NumericPrecision = record.Precision,
+                NumericScale = record.Scale,
+                NumericKind = record.IsSigned ? NumericKind.CanBeNegative : NumericKind.AlwaysPositive,
+                DateTimePart = DateTimePart.DateTime,
+                StringLength = record.Length,
+                StringKind = record.IsFixed ? StringKind.Fixed : StringKind.Variable,
+                TypeCode = record.Discriminator
             };
-        }
-        private MetadataColumn CreateDiscriminatorColumn(in string name)
-        {
-            return new MetadataColumn()
+
+            if (record.Discriminator == owner.TypeCode) // self-reference
             {
-                Name = $"_{name}_d",
-                Purpose = ColumnPurpose.TypeCode,
-                TypeName = "BLOB NOT NULL DEFAULT X'00000000'"
-            };
-        }
-        private MetadataColumn CreateVersionColumn(in string name)
-        {
-            return new MetadataColumn()
+                type.Reference = owner.Identity;
+            }
+            else
             {
-                Name = $"_{name}_v",
-                Purpose = ColumnPurpose.Default,
-                TypeName = "INTEGER NOT NULL DEFAULT 0"
-            };
+                EntityRecord entity = _source.Select<EntityRecord>(record.Discriminator);
+
+                if (entity is not null)
+                {
+                    type.Reference = entity.Identity; //FIXME: remove !?
+                }
+            }
+
+            // single types
+            type.IsUuid = record.Type.Contains('u');
+            type.IsBinary = record.Type.Contains('b');
+
+            if (type.IsUndefined)
+            {
+                // multiple types (union)
+                type.CanBeBoolean = record.Type.Contains('l');
+                type.CanBeNumeric = record.Type.Contains('n');
+                type.CanBeDateTime = record.Type.Contains('t');
+                type.CanBeString = record.Type.Contains('s');
+                type.CanBeReference = record.Type.Contains('r');
+            }
+
+            return type;
         }
+
         private void ConfigureSystemProperty(in MetadataProperty property)
         {
             if (property.Name == "Ссылка")
@@ -329,90 +305,162 @@ namespace DaJet.Sqlite
             }
         }
 
-        private EntityDefinition Convert(in EntityRecord record)
+        private MetadataColumn CreateBooleanColumn(in string name)
         {
-            EntityDefinition definition = new()
+            return new MetadataColumn()
             {
-                Uuid = record.Identity,
-                Name = record.Name,
-                TypeCode = record.Code,
-                TableName = record.Table
+                Name = $"_{name}_l",
+                Purpose = ColumnPurpose.Boolean,
+                TypeName = "BLOB NOT NULL DEFAULT X'00'"
             };
-
-            IDataSource source = new MetadataSource(in _databaseFileFullPath);
-
-            IEnumerable<PropertyRecord> list = source.Query<PropertyRecord>(record.GetEntity());
-
-            if (list is null) { return definition; }
-
-            foreach (PropertyRecord item in list)
+        }
+        private MetadataColumn CreateNumericColumn(in string name, int precision, int scale, bool signed)
+        {
+            if (scale == 0)
             {
-                MetadataProperty property = new()
+                return new MetadataColumn()
                 {
-                    Uuid = item.Identity,
-                    Name = item.Name,
-                    DbName = item.Column,
-                    PrimaryKey = item.PrimaryKey,
-                    IsDbGenerated = item.IsReadOnly,
-                    Purpose = item.Name == "Ссылка" || item.Name == "ВерсияДанных"
-                    ? PropertyPurpose.System
-                    : PropertyPurpose.Property, 
+                    Name = $"_{name}_i",
+                    Purpose = ColumnPurpose.Numeric,
+                    TypeName = "INTEGER NOT NULL DEFAULT 0"
                 };
-
-                // type qualifiers
-                property.PropertyType.TypeCode = item.Discriminator;
-                property.PropertyType.DateTimePart = DateTimePart.DateTime;
-                property.PropertyType.StringLength = item.Length;
-                property.PropertyType.StringKind = item.IsFixed ? StringKind.Fixed : StringKind.Variable;
-                property.PropertyType.NumericPrecision = item.Precision;
-                property.PropertyType.NumericScale = item.Scale;
-                property.PropertyType.NumericKind = item.IsSigned ? NumericKind.CanBeNegative : NumericKind.AlwaysPositive;
-
-                if (item.Discriminator == record.TypeCode) // self-reference
+            }
+            else
+            {
+                return new MetadataColumn()
                 {
-                    property.PropertyType.Reference = record.Identity;
-                }
-                else
-                {
-                    EntityRecord entity = _source.Select<EntityRecord>(item.Discriminator);
+                    Name = $"_{name}_n",
+                    Purpose = ColumnPurpose.Numeric,
+                    TypeName = "REAL NOT NULL DEFAULT 0.00"
+                };
+            }
+        }
+        private MetadataColumn CreateDateTimeColumn(in string name)
+        {
+            return new MetadataColumn()
+            {
+                Name = $"_{name}_t",
+                Purpose = ColumnPurpose.DateTime,
+                TypeName = "TEXT NOT NULL DEFAULT '0001-01-01T00:00:00'"
+            };
+        }
+        private MetadataColumn CreateStringColumn(in string name, int length, bool variable)
+        {
+            return new MetadataColumn()
+            {
+                Name = $"_{name}_s",
+                Purpose = ColumnPurpose.String,
+                TypeName = "TEXT NOT NULL DEFAULT ''"
+            };
+        }
+        private MetadataColumn CreateBinaryColumn(in string name, int length, bool variable)
+        {
+            return new MetadataColumn()
+            {
+                Name = $"_{name}_b",
+                Purpose = ColumnPurpose.Binary,
+                TypeName = "BLOB NULL DEFAULT NULL"
+            };
+        }
+        private MetadataColumn CreateUuidColumn(in string name)
+        {
+            return new MetadataColumn()
+            {
+                Name = $"_{name}_u",
+                Purpose = ColumnPurpose.Default,
+                TypeName = "BLOB NOT NULL DEFAULT X'00000000000000000000000000000000'"
+            };
+        }
+        private MetadataColumn CreateReferenceColumn(in string name, int discriminator)
+        {
+            string typeCode = discriminator == 0 ? string.Empty : $"_{discriminator}";
 
-                    if (entity is not null)
-                    {
-                        property.PropertyType.Reference = entity.Identity;
-                    }
-                }
+            return new MetadataColumn()
+            {
+                Name = $"_{name}_r{typeCode}",
+                Purpose = ColumnPurpose.Identity,
+                TypeName = "BLOB NOT NULL DEFAULT X'00000000000000000000000000000000'"
+            };
+        }
+        private MetadataColumn CreateTagColumn(in string name)
+        {
+            return new MetadataColumn()
+            {
+                Name = $"_{name}_m",
+                Purpose = ColumnPurpose.Tag,
+                TypeName = "BLOB NOT NULL DEFAULT X'00'"
+            };
+        }
+        private MetadataColumn CreateDiscriminatorColumn(in string name)
+        {
+            return new MetadataColumn()
+            {
+                Name = $"_{name}_d",
+                Purpose = ColumnPurpose.TypeCode,
+                TypeName = "BLOB NOT NULL DEFAULT X'00000000'"
+            };
+        }
+        private MetadataColumn CreateVersionColumn(in string name)
+        {
+            return new MetadataColumn()
+            {
+                Name = $"_{name}_v",
+                Purpose = ColumnPurpose.Default,
+                TypeName = "INTEGER NOT NULL DEFAULT 0"
+            };
+        }
 
-                // single types
-                property.PropertyType.IsUuid = item.Type.Contains('u');
-                property.PropertyType.IsBinary = item.Type.Contains('b');
+        public void CreateTable(in EntityRecord record)
+        {
+            using (SqliteConnection connection = new(_connectionString))
+            {
+                connection.Open();
 
-                if (property.PropertyType.IsUndefined)
+                using (SqliteCommand command = connection.CreateCommand())
                 {
-                    // multiple types (union)
-                    property.PropertyType.CanBeBoolean = item.Type.Contains('l');
-                    property.PropertyType.CanBeNumeric = item.Type.Contains('n');
-                    property.PropertyType.CanBeDateTime = item.Type.Contains('t');
-                    property.PropertyType.CanBeString = item.Type.Contains('s');
-                    property.PropertyType.CanBeReference = item.Type.Contains('r');
-                }
-                
-                if (property.Purpose == PropertyPurpose.System)
-                {
-                    ConfigureSystemProperty(in property);
-                }
-                else if (property.PropertyType.IsUnionType(out bool canBeSimple, out bool canBeReference))
-                {
-                    ConfigureMultipleTypeProperty(in property, canBeSimple, canBeReference);
-                }
-                else
-                {
-                    ConfigureSingleTypeProperty(in property);
-                }
+                    command.CommandText = CreateTableDefinitionScript(in record);
 
-                definition.Properties.Add(property);
+                    _ = command.ExecuteNonQuery();
+                }
+            }
+        }
+        private string CreateTableDefinitionScript(in EntityRecord record)
+        {
+            var list = _source.Query<PropertyRecord>(record.GetEntity());
+
+            if (list is not List<PropertyRecord> properties)
+            {
+                return string.Empty;
             }
 
-            return definition;
+            StringBuilder script = new("CREATE TABLE IF NOT EXISTS ");
+
+            script.Append('"').Append(record.Table).Append('"').AppendLine();
+            
+            script.Append('(');
+
+            int count = 0;
+
+            for (int i = 0; i < properties.Count; i++)
+            {
+                MetadataProperty property = Convert(in record, properties[i]);
+
+                for (int ii = 0; ii < property.Columns.Count; ii++)
+                {
+                    MetadataColumn column = property.Columns[ii];
+
+                    if (count > 0) { script.AppendLine().Append(','); }
+
+                    script.Append(' ').Append(column.Name).Append(' ').Append(column.TypeName);
+
+                    count++;
+                }
+            }
+
+            script.Append(' ').Append(')').Append(';');
+
+            return script.ToString();
         }
+        private void CreatePrimaryKeyIndex(in EntityRecord record) { }
     }
 }

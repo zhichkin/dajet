@@ -240,9 +240,15 @@ namespace DaJet.Data
                 return Convert.ToDecimal(DbUtilities.GetInt32((byte[])reader.GetValue(ordinal)));
             }
 
-            if (reader.GetFieldType(ordinal) == typeof(int))
+            Type type = reader.GetFieldType(ordinal);
+
+            if (type == typeof(int))
             {
                 return new decimal(reader.GetInt32(ordinal));
+            }
+            else if (type == typeof(long))
+            {
+                return new decimal(reader.GetInt64(ordinal));
             }
             else
             {
