@@ -147,6 +147,14 @@ namespace DaJet.Sqlite
             }
             return Select<T>(entity.Identity);
         }
+        public T Select<T>(Entity owner, string name) where T : EntityObject
+        {
+            if (_mappers.TryGetValue(typeof(T), out IDataMapper mapper))
+            {
+                return mapper.Select(owner, name) as T;
+            }
+            return null;
+        }
         public IEnumerable<T> Query<T>() where T : EntityObject
         {
             if (_mappers.TryGetValue(typeof(T), out IDataMapper mapper))

@@ -19,6 +19,7 @@ namespace DaJet.Data
         T Select<T>(string name) where T : EntityObject;
         T Select<T>(Guid identity) where T : EntityObject;
         T Select<T>(Entity entity) where T : EntityObject;
+        T Select<T>(Entity owner, string name) where T : EntityObject;
         IEnumerable Select(int typeCode);
         IEnumerable Select(int typeCode, Entity owner);
         IEnumerable<T> Query<T>() where T : EntityObject;
@@ -47,6 +48,7 @@ namespace DaJet.Data
         EntityObject Select(int code);
         EntityObject Select(string name);
         EntityObject Select(Guid idenity);
+        EntityObject Select(Entity owner, string name);
         IEnumerable Select();
         IEnumerable Select(Entity owner);
     }

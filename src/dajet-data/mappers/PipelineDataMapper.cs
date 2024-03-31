@@ -256,5 +256,9 @@ namespace DaJet.Data
 
             return record;
         }
+        public EntityObject Select(Entity owner, string name)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

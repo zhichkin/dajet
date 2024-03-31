@@ -135,6 +135,7 @@ namespace DaJet.Data
             }
         }
         public EntityObject Select(int code) { throw new NotImplementedException(); }
+        public EntityObject Select(Entity owner, string name) { throw new NotImplementedException(); }
         public EntityObject Select(string name)
         {
             InfoBaseRecord record = null;

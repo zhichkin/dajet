@@ -17,11 +17,14 @@ namespace DaJet.Sqlite
             "SELECT uuid, name, parent FROM dajet_namespace WHERE name = @name;";
         private const string SELECT_BY_PARENT =
             "SELECT uuid, name, parent FROM dajet_namespace WHERE parent = @parent ORDER BY name ASC;";
+        private const string SELECT_BY_PARENT_AND_NAME =
+            "SELECT uuid, name, parent FROM dajet_namespace WHERE parent = @parent AND name = @name LIMIT 1;";
         private const string INSERT_COMMAND =
             "INSERT INTO dajet_namespace (uuid, name, parent) VALUES (@uuid, @name, @parent);";
         private const string UPDATE_COMMAND =
             "UPDATE dajet_namespace SET name = @name, parent = @parent WHERE uuid = @uuid;";
-        private const string DELETE_BY_UUID = "DELETE FROM dajet_namespace WHERE uuid = @uuid;";
+        private const string DELETE_COMMAND =
+            "DELETE FROM dajet_namespace WHERE uuid = @uuid;";
         #endregion
         public NamespaceDataMapper(IDataSource source)
         {
@@ -29,6 +32,7 @@ namespace DaJet.Sqlite
 
             MY_TYPE_CODE = _source.Model.GetTypeCode(typeof(NamespaceRecord));
         }
+        public EntityObject Select(int code) { throw new NotImplementedException(); }
         public IEnumerable Select()
         {
             return Select(new Entity(MY_TYPE_CODE, Guid.Empty));
@@ -185,11 +189,54 @@ namespace DaJet.Sqlite
         }
         public void Delete(Entity entity)
         {
-            throw new NotImplementedException();
+            using (SqliteConnection connection = new(_source.ConnectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = DELETE_COMMAND;
+
+                    command.Parameters.AddWithValue("uuid", entity.Identity.ToString().ToLowerInvariant());
+
+                    int result = command.ExecuteNonQuery();
+                }
+            }
         }
-        public EntityObject Select(int code)
+        public EntityObject Select(Entity parent, string name)
         {
-            throw new NotImplementedException();
+            NamespaceRecord record = null;
+
+            using (SqliteConnection connection = new(_source.ConnectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = SELECT_BY_PARENT_AND_NAME;
+                    
+                    command.Parameters.AddWithValue("name", name);
+                    command.Parameters.AddWithValue("parent", parent.Identity.ToString().ToLowerInvariant());
+
+                    using (SqliteDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            record = new NamespaceRecord()
+                            {
+                                TypeCode = MY_TYPE_CODE,
+                                Identity = new Guid(reader.GetString(0)),
+                                Name = reader.GetString(1),
+                                Parent = new Entity(MY_TYPE_CODE, new Guid(reader.GetString(2)))
+                            };
+                            record.MarkAsOriginal();
+                        }
+                        reader.Close();
+                    }
+                }
+            }
+
+            return record;
         }
     }
 }

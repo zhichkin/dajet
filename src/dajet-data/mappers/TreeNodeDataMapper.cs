@@ -230,7 +230,8 @@ namespace DaJet.Data
             string[] segments = name.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
             Entity parent = Entity.Undefined;
-            TreeNodeRecord current = null;
+            
+            EntityObject current = null;
 
             foreach (string segment in segments)
             {
@@ -246,7 +247,7 @@ namespace DaJet.Data
 
             return current;
         }
-        private TreeNodeRecord Select(Entity parent, string name)
+        public EntityObject Select(Entity parent, string name)
         {
             TreeNodeRecord record = null;
 
@@ -286,6 +287,11 @@ namespace DaJet.Data
             }
 
             return record;
+        }
+
+        EntityObject IDataMapper.Select(Entity owner, string name)
+        {
+            throw new NotImplementedException();
         }
     }
 }

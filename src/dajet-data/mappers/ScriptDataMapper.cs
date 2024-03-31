@@ -166,7 +166,7 @@ namespace DaJet.Data
             }
 
             string segment;
-            ScriptRecord current = null;
+            EntityObject current = null;
             Entity parent = database.GetEntity();
 
             for (int i = 1; i < segments.Length; i++)
@@ -184,7 +184,7 @@ namespace DaJet.Data
 
             return current;
         }
-        private ScriptRecord Select(Entity parent, string name)
+        public EntityObject Select(Entity parent, string name)
         {
             ScriptRecord record = null;
 

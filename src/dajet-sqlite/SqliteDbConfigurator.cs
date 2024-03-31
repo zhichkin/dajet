@@ -217,7 +217,7 @@ namespace DaJet.Sqlite
         {
             if (property.Name == "Ссылка")
             {
-                property.Columns.Add(CreateReferenceColumn(property.DbName, property.PropertyType.TypeCode));
+                property.Columns.Add(CreateIdentityColumn(property.DbName));
             }
             else if (property.Name == "ВерсияДанных") // row version
             {
@@ -258,7 +258,7 @@ namespace DaJet.Sqlite
             }
             else if (type.CanBeReference)
             {
-                property.Columns.Add(CreateReferenceColumn(property.DbName, type.TypeCode));
+                property.Columns.Add(CreateReferenceColumn(property.DbName));
             }
         }
         private void ConfigureMultipleTypeProperty(in MetadataProperty property, bool canBeSimple, bool canBeReference)
@@ -289,8 +289,7 @@ namespace DaJet.Sqlite
                 if (type.CanBeString)
                 {
                     property.Columns.Add(CreateStringColumn(property.DbName,
-                        type.StringLength,
-                        type.StringKind == StringKind.Variable));
+                        type.StringLength, type.StringKind == StringKind.Variable));
                 }
             }
 
@@ -301,7 +300,7 @@ namespace DaJet.Sqlite
                     property.Columns.Add(CreateDiscriminatorColumn(property.DbName));
                 }
 
-                property.Columns.Add(CreateReferenceColumn(property.DbName, type.TypeCode));
+                property.Columns.Add(CreateReferenceColumn(property.DbName));
             }
         }
 
@@ -371,13 +370,11 @@ namespace DaJet.Sqlite
                 TypeName = "BLOB NOT NULL DEFAULT X'00000000000000000000000000000000'"
             };
         }
-        private MetadataColumn CreateReferenceColumn(in string name, int discriminator)
+        private MetadataColumn CreateReferenceColumn(in string name)
         {
-            string typeCode = discriminator == 0 ? string.Empty : $"_{discriminator}";
-
             return new MetadataColumn()
             {
-                Name = $"_{name}_r{typeCode}",
+                Name = $"_{name}_r",
                 Purpose = ColumnPurpose.Identity,
                 TypeName = "BLOB NOT NULL DEFAULT X'00000000000000000000000000000000'"
             };
@@ -400,11 +397,20 @@ namespace DaJet.Sqlite
                 TypeName = "BLOB NOT NULL DEFAULT X'00000000'"
             };
         }
+        private MetadataColumn CreateIdentityColumn(in string name)
+        {
+            return new MetadataColumn()
+            {
+                Name = $"_{name}",
+                Purpose = ColumnPurpose.Default,
+                TypeName = "BLOB NOT NULL" // DEFAULT X'00000000000000000000000000000000'
+            };
+        }
         private MetadataColumn CreateVersionColumn(in string name)
         {
             return new MetadataColumn()
             {
-                Name = $"_{name}_v",
+                Name = $"_{name}",
                 Purpose = ColumnPurpose.Default,
                 TypeName = "INTEGER NOT NULL DEFAULT 0"
             };
@@ -461,6 +467,9 @@ namespace DaJet.Sqlite
 
             return script.ToString();
         }
-        private void CreatePrimaryKeyIndex(in EntityRecord record) { }
+        private void CreatePrimaryKeyIndex(in EntityRecord record)
+        {
+            //TODO: create primary key clustered index
+        }
     }
 }

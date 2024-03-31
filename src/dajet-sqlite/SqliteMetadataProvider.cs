@@ -5,7 +5,6 @@ using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace DaJet.Sqlite
 {
@@ -44,29 +43,30 @@ namespace DaJet.Sqlite
 
             MetadataSource source = new(in _connectionString);
 
-            EntityRecord entity;
-            NamespaceRecord parent;
-
             string[] identifiers = metadataName.Split('.', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
-            if (identifiers.Length == 1)
+            int current = 0;
+            EntityRecord entity = null;
+            NamespaceRecord _namespace;
+            Entity parent = Entity.Undefined;
+
+            while (current < identifiers.Length)
             {
-                entity = source.Select<EntityRecord>(identifiers[0]);
-            }
-            else
-            {
-                parent = source.Select<NamespaceRecord>(identifiers[0]);
+                _namespace = source.Select<NamespaceRecord>(parent, identifiers[current]);
 
-                if (parent is null) { return null; }
-
-                var list = source.Query<EntityRecord>(parent.GetEntity());
-
-                if (list is not List<EntityRecord> entities)
+                if (_namespace is not null)
                 {
-                    return null;
+                    parent = _namespace.GetEntity(); current++; continue;
                 }
 
-                entity = entities.Where(e => e.Name == identifiers[1]).FirstOrDefault();
+                entity = source.Select<EntityRecord>(parent, identifiers[current]);
+
+                if (entity is not null)
+                {
+                    parent = entity.GetEntity(); current++; continue;
+                }
+
+                break; // not found
             }
 
             if (entity is null) { return null; }

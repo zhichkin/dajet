@@ -11,7 +11,7 @@ using System.Text.Unicode;
 
 namespace DaJet.Sqlite.Test
 {
-    [TestClass] public class SqliteMetadataProvider
+    [TestClass] public class sqlite_proof_of_concept
     {
         private static readonly string DATABASE = "C:\\temp\\sqlite\\dajet.db";
         [TestMethod] public void Create_Database()
@@ -27,27 +27,40 @@ namespace DaJet.Sqlite.Test
 
             Console.WriteLine(source.ConnectionString);
         }
+        [TestMethod] public void Create_Namespace()
+        {
+            IDataSource source = new MetadataSource(in DATABASE);
+
+            NamespaceRecord entity = source.Model.New<NamespaceRecord>();
+            entity.Name = "Документ";
+            entity.Parent = Entity.Undefined;
+            source.Create(entity);
+
+            Console.WriteLine("Created");
+        }
         [TestMethod] public void Create_Entity()
         {
             IDataSource source = new MetadataSource(in DATABASE);
 
-            Sqlite.SqliteMetadataProvider metadata = new(in DATABASE);
+            SqliteMetadataProvider metadata = new(in DATABASE);
 
             IDbConfigurator configurator = metadata.GetDbConfigurator();
 
             if (configurator is SqliteDbConfigurator sqlite)
             {
+                //TODO: check if exists - update
+
                 int code = sqlite.GetNextSequenceValue();
 
                 EntityRecord entity = source.Model.New<EntityRecord>();
-                entity.Type = 1; // entity
+                entity.Type = 0; // entity, table, enum !?
                 entity.Code = code; // type code - discriminator
                 entity.Name = "Тестовый";
-                entity.Table = $"test{code}";
+                entity.Table = $"_entity_{code}";
                 source.Create(entity);
 
                 PropertyRecord property = source.Model.New<PropertyRecord>();
-                property.Owner = entity.GetEntity(); // entity
+                property.Owner = entity.GetEntity();
                 property.Name = "Ссылка";
                 property.Type = "r";
                 property.Discriminator = entity.Code;
@@ -56,7 +69,7 @@ namespace DaJet.Sqlite.Test
                 source.Create(property);
 
                 property = source.Model.New<PropertyRecord>();
-                property.Owner = entity.GetEntity(); // entity
+                property.Owner = entity.GetEntity();
                 property.Name = "ВерсияДанных";
                 property.Type = "n";
                 property.Precision = 10;
@@ -67,7 +80,7 @@ namespace DaJet.Sqlite.Test
                 source.Create(property);
 
                 property = source.Model.New<PropertyRecord>();
-                property.Owner = entity.GetEntity(); // entity
+                property.Owner = entity.GetEntity();
                 property.Name = "Наименование";
                 property.Column = "name";
                 property.Type = "s";
@@ -83,7 +96,7 @@ namespace DaJet.Sqlite.Test
 
             EntityRecord entity = source.Select<EntityRecord>("Тестовый");
 
-            Sqlite.SqliteMetadataProvider metadata = new(in DATABASE);
+            SqliteMetadataProvider metadata = new(in DATABASE);
 
             IDbConfigurator configurator = metadata.GetDbConfigurator();
 
@@ -96,13 +109,22 @@ namespace DaJet.Sqlite.Test
         }
         [TestMethod] public void Select_Entity()
         {
-            IMetadataProvider metadata = new Sqlite.SqliteMetadataProvider(in DATABASE);
+            IMetadataProvider metadata = new SqliteMetadataProvider(in DATABASE);
 
-            MetadataObject entity = metadata.GetMetadataObject("Тестовый");
+            string metadataName = "Справочник.Тестовый";
 
-            Console.WriteLine(entity.Name);
+            MetadataObject entity = metadata.GetMetadataObject(metadataName);
 
-            string script = "SELECT Ссылка, Наименование, ВерсияДанных FROM Тестовый";
+            if (entity is null)
+            {
+                Console.WriteLine($"NOT FOUND: {metadataName}"); return;
+            }
+            
+            Console.WriteLine(metadataName);
+
+            string script = "SELECT Ссылка, Наименование, ВерсияДанных FROM Справочник.Тестовый";
+
+            Console.WriteLine(script);
 
             Dictionary<string, object> parameters = new();
 

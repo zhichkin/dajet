@@ -18,6 +18,9 @@ namespace DaJet.Sqlite
         private const string SELECT_BY_OWNER =
             "SELECT uuid, owner, name, readonly, column_name, type, length, fixed, precision, scale, signed, " +
             "discriminator, primary_key FROM dajet_property WHERE owner = @owner;";
+        private const string SELECT_BY_OWNER_AND_NAME =
+            "SELECT uuid, owner, name, readonly, column_name, type, length, fixed, precision, scale, signed, " +
+            "discriminator, primary_key FROM dajet_property WHERE owner = @owner AND name = @name LIMIT 1;";
         private const string INSERT_COMMAND =
             "INSERT INTO dajet_property " +
             "(uuid, owner, name, readonly, column_name, type, length, fixed, precision, scale, signed, discriminator, primary_key) " +
@@ -217,6 +220,51 @@ namespace DaJet.Sqlite
                     int result = command.ExecuteNonQuery();
                 }
             }
+        }
+        public EntityObject Select(Entity owner, string name)
+        {
+            PropertyRecord record = null;
+
+            using (SqliteConnection connection = new(_source.ConnectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = SELECT_BY_OWNER_AND_NAME;
+                    
+                    command.Parameters.AddWithValue("name", name);
+                    command.Parameters.AddWithValue("owner", owner.Identity.ToString().ToLowerInvariant());
+
+                    using (SqliteDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            record = new PropertyRecord()
+                            {
+                                TypeCode = MY_TYPE_CODE,
+                                Identity = new Guid(reader.GetString(0)),
+                                Owner = new Entity(ENTITY_TYPE_CODE, new(reader.GetString(1))),
+                                Name = reader.GetString(2),
+                                IsReadOnly = reader.GetInt64(3) == 1L,
+                                Column = reader.GetString(4),
+                                Type = reader.GetString(5),
+                                Length = (int)reader.GetInt64(6),
+                                IsFixed = reader.GetInt64(7) == 1L,
+                                Precision = (int)reader.GetInt64(8),
+                                Scale = (int)reader.GetInt64(9),
+                                IsSigned = reader.GetInt64(10) == 1L,
+                                Discriminator = (int)reader.GetInt64(11),
+                                PrimaryKey = (int)reader.GetInt64(12)
+                            };
+                            record.MarkAsOriginal();
+                        }
+                        reader.Close();
+                    }
+                }
+            }
+
+            return record;
         }
     }
 }

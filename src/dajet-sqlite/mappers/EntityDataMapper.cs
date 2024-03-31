@@ -20,6 +20,9 @@ namespace DaJet.Sqlite
         private const string SELECT_BY_PARENT =
             "SELECT uuid, type, code, name, table_name, parent_type, parent_uuid FROM dajet_entity " +
             "WHERE parent_type = @parent_type AND parent_uuid = @parent_uuid ORDER BY name ASC;";
+        private const string SELECT_BY_PARENT_AND_NAME =
+            "SELECT uuid, type, code, name, table_name, parent_type, parent_uuid FROM dajet_entity " +
+            "WHERE parent_type = @parent_type AND parent_uuid = @parent_uuid AND name = @name LIMIT 1;";
         private const string INSERT_COMMAND =
             "INSERT INTO dajet_entity (uuid, type, code, name, table_name, parent_type, parent_uuid) " +
             "VALUES (@uuid, @type, @code, @name, @table_name, @parent_type, @parent_uuid);";
@@ -269,6 +272,49 @@ namespace DaJet.Sqlite
                     int result = command.ExecuteNonQuery();
                 }
             }
+        }
+        public EntityObject Select(Entity parent, string name)
+        {
+            EntityRecord record = null;
+
+            using (SqliteConnection connection = new(_source.ConnectionString))
+            {
+                connection.Open();
+
+                using (SqliteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = SELECT_BY_PARENT_AND_NAME;
+                    
+                    command.Parameters.AddWithValue("name", name);
+                    command.Parameters.AddWithValue("parent_type", parent.TypeCode);
+                    command.Parameters.AddWithValue("parent_uuid", parent.Identity.ToString().ToLowerInvariant());
+
+                    using (SqliteDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            record = new EntityRecord()
+                            {
+                                TypeCode = MY_TYPE_CODE,
+                                Identity = new Guid(reader.GetString(0)),
+                                Type = (int)reader.GetInt64(1),
+                                Code = (int)reader.GetInt64(2),
+                                Name = reader.GetString(3),
+                                Table = reader.GetString(4)
+                            };
+
+                            int code = (int)reader.GetInt64(5);
+                            Guid uuid = new(reader.GetString(6));
+                            record.Parent = new Entity(code, uuid);
+
+                            record.MarkAsOriginal();
+                        }
+                        reader.Close();
+                    }
+                }
+            }
+
+            return record;
         }
     }
 }
