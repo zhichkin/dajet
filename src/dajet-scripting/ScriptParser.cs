@@ -1475,8 +1475,10 @@ namespace DaJet.Scripting
         {
             string identifier = Previous().Lexeme;
 
-            if (identifier.Contains('.')) //NOTE: multi-part identifier
+            if (identifier.Contains('.') || identifier.Contains('['))
             {
+                //NOTE: multi-part identifier, index or selector member access
+
                 return new MemberAccessExpression()
                 {
                     Identifier = identifier

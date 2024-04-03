@@ -3,6 +3,7 @@ using DaJet.Json;
 using DaJet.Metadata;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
+using System.Linq.Expressions;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -181,25 +182,39 @@ namespace DaJet.Stream
 
             return false;
         }
-        public bool TryGetValue(in string name, out object value)
+        /// <summary>Получает значение переменной контекста выполнения или её членов
+        /// <br/>Параметр <b>expression</b> это идентификатор <see cref="VariableReference"/> или <see cref="MemberAccessExpression"/>
+        /// <br/>Например: @variable или @variable.member
+        /// </summary>
+        /// <param name="expression">Выражение доступа к членам переменной<br/>@variable или @variable.member</param>
+        /// <param name="value">Результат вычисления выражения</param>
+        /// <returns>Выражение удалось вычислить успешно или нет</returns>
+        public bool TryGetValue(in string expression, out object value)
         {
             value = null;
 
-            string[] identifiers = name.Split('.');
+            List<string> members = ParserHelper.GetAccessMembers(in expression);
 
-            if (identifiers.Length == 1)
+            for (int current = 0; current < members.Count; current++)
             {
-                return TryGetScopeValue(in name, out value);
-            }
-            else if (identifiers.Length == 2)
-            {
-                if (TryGetScopeValue(identifiers[0], out value) && value is DataObject record)
+                if (current == 0) // root member access variable
                 {
-                    return record.TryGetValue(identifiers[1], out value);
+                    if (!TryGetScopeValue(members[0], out value))
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    if (!TryGetMemberValue(members[current], ref value))
+                    {
+                        value = null;
+                        return false;
+                    }
                 }
             }
 
-            return false;
+            return true;
         }
         private bool TryGetScopeValue(in string name, out object value)
         {
@@ -217,6 +232,92 @@ namespace DaJet.Stream
                 scope = scope.Parent;
             }
 
+            return false;
+        }
+        private bool TryGetMemberValue(in string member, ref object target)
+        {
+            if (target is DataObject data)
+            {
+                return data.TryGetValue(member, out target);
+            }
+            else if (target is string json)
+            {
+                target = FromJson(in json);
+
+                return TryGetMemberValue(in member, ref target);
+            }
+            else if (target is List<DataObject> array)
+            {
+                if (member.StartsWith('[') && member.EndsWith(']'))
+                {
+                    string selector = member.TrimStart('[').TrimEnd(']');
+
+                    if (int.TryParse(selector, out int index))
+                    {
+                        if (array.Count > index)
+                        {
+                            target = array[index];
+                        }
+                        else
+                        {
+                            target = null;
+                            return false;
+                        }
+                    }
+                    else // name = { true | 12 | 1.2 | 'abc' | @variable }
+                    {
+                        return TryGetValueByFilter(in array, in selector, out target);
+                    }
+                }
+                else
+                {
+                    throw new FormatException(nameof(member));
+                }
+            }
+            else
+            {
+                throw new ArgumentOutOfRangeException(nameof(target));
+            }
+
+            return true;
+        }
+        private bool TryGetValueByFilter(in List<DataObject> array, in string filter, out object value)
+        {
+            string[] filters = filter.Split('=');
+
+            string name = filters[0];
+            string test = filters[1];
+
+            if (test.StartsWith('@'))
+            {
+                if (TryGetValue(test, out value))
+                {
+                    test = value?.ToString();
+                }
+                else
+                {
+                    value = null;
+                    return false;
+                }
+            }
+            else if (test.StartsWith('\''))
+            {
+                test = test.TrimStart('\'').TrimEnd('\'');
+            }
+
+            foreach (DataObject item in array)
+            {
+                if (item.GetValue(name).ToString() == test)
+                {
+                    value = item; return true;
+                }
+            }
+
+            //bool equal = ((value != null) && value.GetType().IsValueType)
+            //         ? value.Equals(_properties[property])
+            //         : (value == _properties[property]);
+
+            value = null;
             return false;
         }
         public bool TryGetDeclaration(in string name, out bool local, out DeclareStatement declare)

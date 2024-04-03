@@ -313,8 +313,10 @@ namespace DaJet.Scripting
         }
         internal static bool IsAlpha(char character)
         {
-            return character == '_'
-                || character == '-'
+            return character == '_' || character == '-'
+                || character == '[' || character == ']'
+                || character == '\'' || character == '\''
+                || character == '=' || character == '@'
                 || character == '.' // multipart identifier
                 || (character >= 'A' && character <= 'Z')
                 || (character >= 'a' && character <= 'z')
@@ -506,6 +508,42 @@ namespace DaJet.Scripting
             }
 
             return value;
+        }
+
+        public static List<string> GetAccessMembers(in string expression)
+        {
+            List<string> members = new();
+
+            int position = 0;
+
+            for (int i = 0; i < expression.Length; i++)
+            {
+                if (expression[i] == '.')
+                {
+                    if (position < i)
+                    {
+                        members.Add(expression[position..i]);
+                    }
+
+                    position = i + 1;
+                }
+                else if (expression[i] == '[')
+                {
+                    members.Add(expression[position..i]);
+
+                    position = i;
+                }
+                else if (expression[i] == ']')
+                {
+                    members.Add(expression[position..(i + 1)]);
+
+                    position = i + 1;
+                }
+            }
+
+            members.Add(expression[position..]);
+
+            return members;
         }
     }
 }

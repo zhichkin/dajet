@@ -269,12 +269,13 @@ namespace DaJet.Scripting
         }
         private void Bind(in MemberAccessExpression node)
         {
-            string[] identifier = node.Identifier.Split('.');
-            
-            string target = identifier[0];
-            string member = identifier[1];
+            List<string> members = ParserHelper.GetAccessMembers(node.Identifier);
 
+            string target = members[0];
+            
             object binding = _scope.GetVariableBinding(target);
+
+            string member = members[1].StartsWith('[') ? members[2] : members[1];
 
             if (binding is TypeIdentifier type && type.Binding is List<ColumnExpression> columns)
             {

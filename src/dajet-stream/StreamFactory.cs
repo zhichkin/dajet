@@ -338,7 +338,7 @@ namespace DaJet.Stream
 
                     foreach (MemberAccessExpression member in members)
                     {
-                        string target = member.GetTargetName();
+                        string target = member.GetVariableName();
 
                         if (!memberAccess.ContainsKey(target))
                         {
@@ -436,7 +436,7 @@ namespace DaJet.Stream
 
             foreach (MemberAccessExpression member in members)
             {
-                string target = member.GetTargetName();
+                string target = member.GetVariableName();
 
                 if (!select_parameters.ContainsKey(target))
                 {
@@ -684,7 +684,7 @@ namespace DaJet.Stream
 
             foreach (MemberAccessExpression member in members)
             {
-                string target = member.GetTargetName();
+                string target = member.GetVariableName();
 
                 if (!memberAccess.ContainsKey(target))
                 {
@@ -793,7 +793,7 @@ namespace DaJet.Stream
 
             foreach (MemberAccessExpression member in members) // @object.member
             {
-                string target = member.GetTargetName();
+                string target = member.GetVariableName();
 
                 if (scope.TryGetDeclaration(in target, out _, out _))
                 {
@@ -921,7 +921,7 @@ namespace DaJet.Stream
 
             foreach (MemberAccessExpression member in members) // @object.member
             {
-                identifier = member.GetTargetName();
+                identifier = member.GetVariableName();
 
                 if (!identifiers.Contains(identifier))
                 {
@@ -1027,6 +1027,11 @@ namespace DaJet.Stream
                 }
             }
         }
+
+        ///<summary>
+        ///Функция вычисляет значение синтаксического выражения <b>accessor</b>
+        ///<br/>для текущей области видимости контекста выполнения <b>scope</b>
+        ///</summary>
         internal static bool TryGetValue(in StreamScope scope, in SyntaxNode accessor, out object value)
         {
             if (accessor is ScalarExpression scalar)

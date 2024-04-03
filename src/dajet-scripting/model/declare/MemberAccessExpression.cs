@@ -1,4 +1,7 @@
-﻿namespace DaJet.Scripting.Model
+﻿using System.Linq.Expressions;
+using System.Text;
+
+namespace DaJet.Scripting.Model
 {
     public sealed class MemberAccessExpression : SyntaxNode
     {
@@ -9,17 +12,37 @@
         {
             return $"[{Token}: {Identifier}]";
         }
-        public string GetTargetName()
+        public string GetVariableName()
         {
-            return Identifier.Split('.')[0]; // @variable
-        }
-        public string GetMemberName()
-        {
-            return Identifier.Split('.')[1]; // member
+            List<string> members = ParserHelper.GetAccessMembers(Identifier);
+            
+            return members[0]; // @variable
         }
         public string GetDbParameterName()
         {
-            return Identifier.Replace('.', '_'); // @variable.member -> @variable_member
+            // @variable.member -> @variable_member
+            // @variable.member[0].member -> @variable_member_0_member
+            // @variable.member[id=123].member -> @variable_member_id_member
+
+            List<string> members = ParserHelper.GetAccessMembers(Identifier);
+
+            StringBuilder name = new();
+
+            for (int i = 0; i < members.Count; i++)
+            {
+                if (i > 0) { name.Append('_'); }
+                
+                if (members[i].StartsWith('['))
+                {
+                    name.Append(members[i].TrimStart('[').TrimEnd(']').Split('=')[0]);
+                }
+                else
+                {
+                    name.Append(members[i]);
+                }
+            }
+
+            return name.ToString();
         }
     }
 }
