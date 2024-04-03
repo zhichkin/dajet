@@ -53,6 +53,13 @@ namespace DaJet.Flow.Kafka
                 }
                 catch (ObjectDisposedException) { /* IGNORE */ }
                 catch (OperationCanceledException) { /* IGNORE */ }
+                catch (AccessViolationException)
+                {
+                    // This is the known bug of the Apache Kafka consumer (!!!)
+                    // Throws System.AccessViolationException on cancellation request:
+                    // Attempted to read or write protected memory.
+                    // This is often an indication that other memory is corrupt.
+                }
                 catch
                 {
                     DisposeConsumer(); throw; // Unexpected exception
