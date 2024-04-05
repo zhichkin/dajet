@@ -76,11 +76,11 @@ namespace DaJet.Stream.Http
         }
         private Dictionary<string, string> GetRequestHeaders()
         {
-            Dictionary<string, string> headers = new();
+            Dictionary<string, string> headers = new(_statement.Headers.Count);
 
             foreach (ColumnExpression accessor in _statement.Headers)
             {
-                if (StreamFactory.TryGetValue(in _scope, accessor.Expression, out object value))
+                if (StreamFactory.TryEvaluate(in _scope, accessor.Expression, out object value))
                 {
                     headers.Add(accessor.Alias, value.ToString());
                 }
@@ -106,7 +106,7 @@ namespace DaJet.Stream.Http
         {
             SyntaxNode accessor = GetOptionAccessor("OnError");
 
-            if (StreamFactory.TryGetValue(in _scope, in accessor, out object value))
+            if (StreamFactory.TryEvaluate(in _scope, in accessor, out object value))
             {
                 return value.ToString();
             }
@@ -117,7 +117,7 @@ namespace DaJet.Stream.Http
         {
             SyntaxNode accessor = GetOptionAccessor("Method");
 
-            if (StreamFactory.TryGetValue(in _scope, in accessor, out object value))
+            if (StreamFactory.TryEvaluate(in _scope, in accessor, out object value))
             {
                 if (value is string method)
                 {
@@ -139,7 +139,7 @@ namespace DaJet.Stream.Http
         {
             SyntaxNode accessor = GetOptionAccessor("Content");
 
-            if (StreamFactory.TryGetValue(in _scope, in accessor, out object value))
+            if (StreamFactory.TryEvaluate(in _scope, in accessor, out object value))
             {
                 return value.ToString();
             }

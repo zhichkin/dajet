@@ -831,7 +831,7 @@ namespace DaJet.Stream
 
                 if (scope.TryGetDeclaration(variable.Identifier, out _, out DeclareStatement declare))
                 {
-                    if (declare.Type.Token == TokenType.Object)
+                    if (declare.Type.Token == TokenType.Object || declare.Type.Token == TokenType.Array)
                     {
                         if (!map.ContainsKey(variable.Identifier))
                         {
@@ -1032,46 +1032,82 @@ namespace DaJet.Stream
         ///Функция вычисляет значение синтаксического выражения <b>accessor</b>
         ///<br/>для текущей области видимости контекста выполнения <b>scope</b>
         ///</summary>
-        internal static bool TryGetValue(in StreamScope scope, in SyntaxNode accessor, out object value)
+        internal static bool TryEvaluate(in StreamScope scope, in SyntaxNode expression, out object value)
         {
-            if (accessor is ScalarExpression scalar)
+            if (expression is ScalarExpression scalar)
             {
-                value = ParserHelper.GetScalarValue(in scalar);
-
-                return true;
+                return TryEvaluate(in scope, in scalar, out value);
             }
-            else if (accessor is VariableReference variable)
+            else if (expression is VariableReference variable)
             {
-                if (scope.TryGetValue(variable.Identifier, out value))
-                {
-                    return true;
-                }
+                return TryEvaluate(in scope, in variable, out value);
             }
-            else if (accessor is MemberAccessExpression member)
+            else if (expression is MemberAccessExpression member)
             {
-                if (scope.TryGetValue(member.Identifier, out value))
-                {
-                    return true;
-                }
+                return TryEvaluate(in scope, in member, out value);
             }
-            else if (accessor is FunctionExpression function
-                && function.Name == "DaJet.Json"
-                && function.Parameters.Count > 0
-                && function.Parameters[0] is VariableReference parameter)
+            else if (expression is FunctionExpression function)
             {
-                if (scope.TryGetValue(parameter.Identifier, out value))
+                return TryEvaluate(in scope, in function, out value);
+            }
+            else if (expression is AdditionOperator addition) //NOTE: string concatenation
+            {
+                return TryEvaluate(in scope, in addition, out value);
+            }
+            else
+            {
+                value = null;
+                return false;
+            }
+        }
+        private static bool TryEvaluate(in StreamScope scope, in ScalarExpression expression, out object value)
+        {
+            value = ParserHelper.GetScalarValue(in expression); return true;
+        }
+        private static bool TryEvaluate(in StreamScope scope, in VariableReference expression, out object value)
+        {
+            return scope.TryGetValue(expression.Identifier, out value);
+        }
+        private static bool TryEvaluate(in StreamScope scope, in MemberAccessExpression expression, out object value)
+        {
+            return scope.TryGetValue(expression.Identifier, out value);
+        }
+        private static bool TryEvaluate(in StreamScope scope, in FunctionExpression expression, out object value)
+        {
+            if (expression.Name == "DaJet.Json" &&
+                expression.Parameters.Count > 0 &&
+                expression.Parameters[0] is VariableReference variable)
+            {
+                if (scope.TryGetValue(variable.Identifier, out object parameter))
                 {
-                    if (value is DataObject record)
+                    if (parameter is DataObject record)
                     {
-                        value = StreamScope.ToJson(in record);
-
-                        return true;
+                        value = StreamScope.ToJson(in record); return true;
                     }
                 }
             }
 
             value = null;
             return false;
+        }
+        private static bool TryEvaluate(in StreamScope scope, in AdditionOperator expression, out object value)
+        {
+            value = string.Empty;
+
+            if (!TryEvaluate(in scope, expression.Expression1, out object left))
+            {
+                return false;
+            }
+
+            if (!TryEvaluate(in scope, expression.Expression2, out object right))
+            {
+                return false;
+            }
+
+            value = (left is null ? string.Empty : left.ToString())
+                + (right is null ? string.Empty : right.ToString());
+
+            return true;
         }
     }
 }

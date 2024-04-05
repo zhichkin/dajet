@@ -76,6 +76,14 @@ namespace DaJet.Stream
                     {
                         _parameters[map.Value] = StreamScope.ToJson(in record);
                     }
+                    else if (value is List<DataObject> table)
+                    {
+                        _parameters[map.Value] = StreamScope.ToJson(in table);
+                    }
+                    else
+                    {
+                        _parameters[map.Value] = string.Empty;
+                    }
                 }
             }
         }

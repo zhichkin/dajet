@@ -3,7 +3,6 @@ using DaJet.Json;
 using DaJet.Metadata;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
-using System.Linq.Expressions;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -16,21 +15,24 @@ namespace DaJet.Stream
     {
         private static readonly JsonWriterOptions JsonWriterOptions = new()
         {
-            Indented = true,
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
-        private static readonly JsonSerializerOptions JsonReaderOptions = new()
+        private static readonly JsonSerializerOptions SerializerOptions = new()
         {
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
-        private static readonly DataObjectJsonConverter _converter = new();
+        private static readonly DataObjectJsonConverter JsonConverter = new();
+        static StreamScope()
+        {
+            SerializerOptions.Converters.Add(new DataObjectJsonConverter());
+        }
         public static string ToJson(in DataObject record)
         {
             using (MemoryStream memory = new())
             {
                 using (Utf8JsonWriter writer = new(memory, JsonWriterOptions))
                 {
-                    _converter.Write(writer, record, null);
+                    JsonConverter.Write(writer, record, null);
 
                     writer.Flush();
 
@@ -40,11 +42,26 @@ namespace DaJet.Stream
                 }
             }
         }
-        public static DataObject FromJson(in string json)
+        public static string ToJson(in List<DataObject> table)
+        {
+            return JsonSerializer.Serialize(table, SerializerOptions);
+        }
+        public static object FromJson(in string json)
         {
             Utf8JsonReader reader = new(Encoding.UTF8.GetBytes(json), true, default);
 
-            return _converter.Read(ref reader, typeof(DataObject), JsonReaderOptions);
+            if (json[0] == '{')
+            {
+                return JsonConverter.Read(ref reader, typeof(DataObject), SerializerOptions);
+            }
+            else if (json[0] == '[')
+            {
+                return JsonSerializer.Deserialize(json, typeof(List<DataObject>), SerializerOptions);
+            }
+            else
+            {
+                throw new FormatException(nameof(json));
+            }
         }
 
         // ***
