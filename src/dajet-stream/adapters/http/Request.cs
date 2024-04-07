@@ -102,6 +102,14 @@ namespace DaJet.Stream.Http
 
             return null;
         }
+        private bool WhenIsTrue()
+        {
+            if (_statement.When is null) { return true; }
+
+            SyntaxNode expression = _statement.When;
+
+            return StreamFactory.Evaluate(in _scope, in expression);
+        }
         private string GetOnError()
         {
             SyntaxNode accessor = GetOptionAccessor("OnError");
@@ -149,6 +157,15 @@ namespace DaJet.Stream.Http
         
         public void Process()
         {
+            if (WhenIsTrue())
+            {
+                Execute();
+            }
+            
+            _next?.Process();
+        }
+        private void Execute()
+        {
             string content;
             HttpStatusCode code;
 
@@ -167,10 +184,8 @@ namespace DaJet.Stream.Http
                     content = ExceptionHelper.GetErrorMessage(error);
                 }
             }
-            
-            ConfigureResponseObject(code, in content);
 
-            _next?.Process();
+            ConfigureResponseObject(code, in content);
         }
         private HttpStatusCode ProcessRequest(out string content)
         {

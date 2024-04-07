@@ -989,6 +989,8 @@ namespace DaJet.Scripting
         {
             _scope = _scope.OpenScope(node);
 
+            if (node.When is not null) { Bind(node.When); }
+
             for (int i = 0; i < node.Headers.Count; i++)
             {
                 Bind(node.Headers[i]);

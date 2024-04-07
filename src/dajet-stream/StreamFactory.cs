@@ -1132,7 +1132,7 @@ namespace DaJet.Stream
 
             return true;
         }
-        private static bool Evaluate(in StreamScope scope, in SyntaxNode node)
+        internal static bool Evaluate(in StreamScope scope, in SyntaxNode node)
         {
             if (node is GroupOperator group)
             {
@@ -1167,11 +1167,21 @@ namespace DaJet.Stream
         {
             if (binary.Token == TokenType.OR)
             {
-                return Evaluate(in scope, binary.Expression1) || Evaluate(in scope, binary.Expression2);
+                if (Evaluate(in scope, binary.Expression1))
+                {
+                    return true;
+                }
+
+                return Evaluate(in scope, binary.Expression2);
             }
             else if (binary.Token == TokenType.AND)
             {
-                return Evaluate(in scope, binary.Expression1) && Evaluate(in scope, binary.Expression2);
+                if (!Evaluate(in scope, binary.Expression1))
+                {
+                    return false;
+                }
+
+                return Evaluate(in scope, binary.Expression2);
             }
             else
             {
@@ -1182,12 +1192,12 @@ namespace DaJet.Stream
         {
             if (!TryEvaluate(in scope, comparison.Expression1, out object left))
             {
-                return false;
+                left = null;
             }
 
             if (!TryEvaluate(in scope, comparison.Expression2, out object right))
             {
-                return false;
+                right = null;
             }
 
             string first = left is null ? string.Empty : left.ToString();
@@ -1208,3 +1218,7 @@ namespace DaJet.Stream
         }
     }
 }
+
+//bool equal = ((value != null) && value.GetType().IsValueType)
+//         ? value.Equals(_properties[property])
+//         : (value == _properties[property]);

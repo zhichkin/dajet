@@ -2383,6 +2383,11 @@ namespace DaJet.Scripting
 
             Skip(TokenType.Comment);
 
+            if (Match(TokenType.WHEN))
+            {
+                request.When = predicate();
+            }
+
             if (Match(TokenType.WITH)) // optional
             {
                 parse_columns(request.Headers);
