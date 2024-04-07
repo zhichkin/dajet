@@ -1054,6 +1054,10 @@ namespace DaJet.Stream
             {
                 return TryEvaluate(in scope, in addition, out value);
             }
+            else if (expression is CaseExpression case_when_then)
+            {
+                return TryEvaluate(in scope, in case_when_then, out value);
+            }
             else
             {
                 value = null;
@@ -1108,6 +1112,99 @@ namespace DaJet.Stream
                 + (right is null ? string.Empty : right.ToString());
 
             return true;
+        }
+        private static bool TryEvaluate(in StreamScope scope, in CaseExpression expression, out object value)
+        {
+            value = string.Empty;
+
+            foreach (WhenClause clause in expression.CASE)
+            {
+                if (Evaluate(in scope, clause.WHEN))
+                {
+                    return TryEvaluate(in scope, clause.THEN, out value);
+                }
+            }
+
+            if (expression.ELSE is not null)
+            {
+                return TryEvaluate(in scope, expression.ELSE, out value);
+            }
+
+            return true;
+        }
+        private static bool Evaluate(in StreamScope scope, in SyntaxNode node)
+        {
+            if (node is GroupOperator group)
+            {
+                return Evaluate(in scope, in group);
+            }
+            else if (node is UnaryOperator unary)
+            {
+                return Evaluate(in scope, in unary);
+            }
+            else if (node is BinaryOperator binary)
+            {
+                return Evaluate(in scope, in binary);
+            }
+            else if (node is ComparisonOperator comparison)
+            {
+                return Evaluate(in scope, in comparison);
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unknown boolean operator [{node}]");
+            }
+        }
+        private static bool Evaluate(in StreamScope scope, in GroupOperator group)
+        {
+            return Evaluate(in scope, group.Expression);
+        }
+        private static bool Evaluate(in StreamScope scope, in UnaryOperator unary)
+        {
+            return !Evaluate(in scope, unary.Expression);
+        }
+        private static bool Evaluate(in StreamScope scope, in BinaryOperator binary)
+        {
+            if (binary.Token == TokenType.OR)
+            {
+                return Evaluate(in scope, binary.Expression1) || Evaluate(in scope, binary.Expression2);
+            }
+            else if (binary.Token == TokenType.AND)
+            {
+                return Evaluate(in scope, binary.Expression1) && Evaluate(in scope, binary.Expression2);
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unknown binary operator [{binary.Token}]");
+            }
+        }
+        private static bool Evaluate(in StreamScope scope, in ComparisonOperator comparison)
+        {
+            if (!TryEvaluate(in scope, comparison.Expression1, out object left))
+            {
+                return false;
+            }
+
+            if (!TryEvaluate(in scope, comparison.Expression2, out object right))
+            {
+                return false;
+            }
+
+            string first = left is null ? string.Empty : left.ToString();
+            string second = right is null ? string.Empty : right.ToString();
+
+            if (comparison.Token == TokenType.Equals)
+            {
+                return first == second;
+            }
+            else if (comparison.Token == TokenType.NotEquals)
+            {
+                return first != second;
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unknown comparison operator [{comparison.Token}]");
+            }
         }
     }
 }
