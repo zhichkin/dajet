@@ -39,6 +39,7 @@ namespace DaJet
                 }
             }
         }
+        public void Write(Exception error) { Write(GetErrorMessage(error)); }
         private void WriteSynchronized(string text)
         {
             FileInfo file = new(_fullPath);

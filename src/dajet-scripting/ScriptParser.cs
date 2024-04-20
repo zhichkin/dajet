@@ -218,14 +218,21 @@ namespace DaJet.Scripting
 
             if (Match(TokenType.MAXDOP)) // optional
             {
-                int minus = Match(TokenType.Minus) ? -1 : 1;
-
-                if (!Match(TokenType.Number) || scalar() is not ScalarExpression _scalar)
+                if (Match(TokenType.UNBOUNDED))
                 {
-                    throw new FormatException("[FOR] MAXDOP parameter expected");
+                    statement.DegreeOfParallelism = int.MaxValue;
                 }
+                else
+                {
+                    int minus = Match(TokenType.Minus) ? -1 : 1;
 
-                statement.DegreeOfParallelism = minus * int.Parse(_scalar.Literal);
+                    if (!Match(TokenType.Number) || scalar() is not ScalarExpression _scalar)
+                    {
+                        throw new FormatException("[FOR] MAXDOP parameter expected");
+                    }
+
+                    statement.DegreeOfParallelism = minus * int.Parse(_scalar.Literal);
+                }
 
                 Skip(TokenType.Comment);
             }

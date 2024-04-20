@@ -222,7 +222,10 @@ namespace DaJet.Stream.RabbitMQ
         }
         private bool ConsumerIsHealthy()
         {
-            return (_consumer is not null && _consumer.Model is not null && _consumer.Model.IsOpen && _consumer.IsRunning);
+            return _consumer is not null
+                && _consumer.IsRunning
+                && _consumer.Model is not null
+                && _consumer.Model.IsOpen;
         }
         private void InitializeConsumer()
         {
@@ -390,7 +393,7 @@ namespace DaJet.Stream.RabbitMQ
         {
             try
             {
-                _cancellation?.Set();
+                _ = _cancellation?.Set();
                 _cancellation?.Dispose();
             }
             finally
@@ -406,16 +409,16 @@ namespace DaJet.Stream.RabbitMQ
 
                 DisposeConsumer();
 
-                SignalCancellation();
+                _next?.Dispose();
+
+                SignalCancellation(); // exit current thread
 
                 _ = Interlocked.Exchange(ref _state, STATE_IS_IDLE);
             }
             else if (Interlocked.CompareExchange(ref _state, STATE_AUTORESET, STATE_AUTORESET) == STATE_AUTORESET)
             {
-                Thread.Sleep(10); Dispose();
+                Thread.Sleep(1); Dispose();
             }
-
-            _next?.Dispose();
         }
 
         private static readonly DataObjectJsonConverter _converter = new();

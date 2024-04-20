@@ -31,9 +31,9 @@ namespace DaJet.Stream
             ConfigureParameters();
         }
         public void LinkTo(in IProcessor next) { _next = next; }
-        public void Synchronize() { _next?.Synchronize(); }
-        public void Dispose() { _next?.Dispose(); }
         public abstract void Process();
+        public virtual void Synchronize() { _next?.Synchronize(); }
+        public virtual void Dispose() { _next?.Dispose(); }
         private void ConfigureParameters()
         {
             StreamFactory.ConfigureVariablesMap(in _scope, in _variables);

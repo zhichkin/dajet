@@ -9,7 +9,7 @@
     <Authors>Zhichkin</Authors>
     <Copyright>Zhichkin © 2024</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Title>DaJet.Stream.Service</Title>
     <PackageId>DaJet.Stream.Service</PackageId>
     <Product>DaJet.Stream.Service</Product>

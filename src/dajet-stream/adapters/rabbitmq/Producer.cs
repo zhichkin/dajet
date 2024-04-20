@@ -12,17 +12,15 @@ namespace DaJet.Stream.RabbitMQ
     {
         private IProcessor _next;
 
-        #region "PRIVATE FIELDS AND CONSTANTS"
+        #region "STATE MANAGEMENT"
 
-        private int _session;
-        private const int SESSION_IS_IDLE = 0;
-        private const int SESSION_IS_ACTIVE = 1;
-        private const int SESSION_HAS_ERROR = 2;
+        private int _state;
+        private const int STATE_IDLE = 0;
+        private const int STATE_ACTIVE = 1;
+        private const int STATE_BROKEN = 2;
+        private const int STATE_DISPOSING = 3;
 
-        private int _disposing; // 0 == false, 1 == true
-        private byte[] _buffer; // message body buffer
-
-        private string _last_error_text;
+        private const string ERROR_STATE_IS_BROKEN = "Broken state";
         private const string ERROR_CHANNEL_SHUTDOWN = "Channel shutdown: [{0}] {1}";
         private const string ERROR_CONNECTION_SHUTDOWN = "Connection shutdown: [{0}] {1}";
         private const string ERROR_CONNECTION_IS_BLOCKED = "Connection blocked: {0}";
@@ -34,6 +32,7 @@ namespace DaJet.Stream.RabbitMQ
 
         #endregion
 
+        private byte[] _buffer;
         private IModel _channel;
         private IConnection _connection;
         private IBasicProperties _properties;
@@ -248,7 +247,7 @@ namespace DaJet.Stream.RabbitMQ
         }
         #endregion
 
-        #region "RABBITMQ CONNECTION AND CHANNEL"
+        #region "CONNECTION AND CHANNEL MANAGEMENT"
         private void InitializeUri()
         {
             Uri uri = _scope.GetUri(_options.Target);
@@ -293,12 +292,15 @@ namespace DaJet.Stream.RabbitMQ
         }
         private void HandleConnectionBlocked(object sender, ConnectionBlockedEventArgs args)
         {
-            SetSessionToErrorState(string.Format(ERROR_CONNECTION_IS_BLOCKED, args.Reason));
+            SetSessionToBrokenState(string.Format(ERROR_CONNECTION_IS_BLOCKED, args.Reason));
         }
-        private void HandleConnectionUnblocked(object sender, EventArgs args) { /* ? IGNORE ? */ }
+        private void HandleConnectionUnblocked(object sender, EventArgs args)
+        {
+            FileLogger.Default.Write("Connection unblocked");
+        }
         private void ConnectionShutdownHandler(object sender, ShutdownEventArgs args)
         {
-            SetSessionToErrorState(string.Format(ERROR_CONNECTION_SHUTDOWN, args.ReplyCode.ToString(), args.ReplyText));
+            SetSessionToBrokenState(string.Format(ERROR_CONNECTION_SHUTDOWN, args.ReplyCode.ToString(), args.ReplyText));
         }
 
         private void InitializeChannel()
@@ -320,7 +322,7 @@ namespace DaJet.Stream.RabbitMQ
         }
         private void BasicAcksHandler(object sender, BasicAckEventArgs args) { /* ? IGNORE ? */ }
         private void BasicNacksHandler(object sender, BasicNackEventArgs args) { /* ? IGNORE ? */ }
-        private string GetReturnReason(in BasicReturnEventArgs args)
+        private static string GetReturnReason(in BasicReturnEventArgs args)
         {
             return "Message return (" + args.ReplyCode.ToString() + "): " +
                 (string.IsNullOrWhiteSpace(args.ReplyText) ? "(empty)" : args.ReplyText) + ". " +
@@ -329,17 +331,16 @@ namespace DaJet.Stream.RabbitMQ
         }
         private void BasicReturnHandler(object sender, BasicReturnEventArgs args)
         {
-            SetSessionToErrorState(GetReturnReason(in args));
+            SetSessionToBrokenState(GetReturnReason(in args));
         }
         private void ModelShutdownHandler(object sender, ShutdownEventArgs args)
         {
-            SetSessionToErrorState(string.Format(ERROR_CHANNEL_SHUTDOWN, args.ReplyCode.ToString(), args.ReplyText));
+            SetSessionToBrokenState(string.Format(ERROR_CHANNEL_SHUTDOWN, args.ReplyCode.ToString(), args.ReplyText));
         }
-        #endregion
 
         private void BeginSessionOrThrow()
         {
-            if (Interlocked.CompareExchange(ref _session, SESSION_IS_ACTIVE, SESSION_IS_IDLE) == SESSION_IS_IDLE)
+            if (Interlocked.CompareExchange(ref _state, STATE_ACTIVE, STATE_IDLE) == STATE_IDLE)
             {
                 try
                 {
@@ -351,137 +352,61 @@ namespace DaJet.Stream.RabbitMQ
                 }
                 catch
                 {
-                    _ = Interlocked.Exchange(ref _session, SESSION_IS_IDLE);
-
                     throw;
                 }
             }
         }
-        private void CloseSessionOrThrow()
+        private void ThrowIfSessionIsBroken()
         {
-            if (_channel.WaitForConfirms())
+            if (Interlocked.CompareExchange(ref _state, STATE_BROKEN, STATE_BROKEN) == STATE_BROKEN)
             {
-                int state = Interlocked.CompareExchange(ref _session, SESSION_IS_IDLE, SESSION_IS_ACTIVE);
-
-                if (state != SESSION_IS_ACTIVE)
-                {
-                    throw new OperationCanceledException(state == SESSION_HAS_ERROR ? _last_error_text : ERROR_WAIT_FOR_CONFIRMS);
-                }
-            }
-            else
-            {
-                throw new OperationCanceledException(ERROR_PUBLISHER_CONFIRMS);
+                throw new InvalidOperationException(ERROR_STATE_IS_BROKEN);
             }
         }
-        private void ThrowIfSessionHasErrors()
+        private void SetSessionToBrokenState(string error)
         {
-            if (Interlocked.CompareExchange(ref _session, SESSION_HAS_ERROR, SESSION_HAS_ERROR) == SESSION_HAS_ERROR)
+            if (Interlocked.CompareExchange(ref _state, STATE_BROKEN, STATE_ACTIVE) == STATE_ACTIVE)
             {
-                throw new InvalidOperationException(_last_error_text);
+                FileLogger.Default.Write(error);
             }
         }
-        private void SetSessionToErrorState(string error)
-        {
-            if (Interlocked.CompareExchange(ref _session, SESSION_HAS_ERROR, SESSION_IS_ACTIVE) == SESSION_IS_ACTIVE)
-            {
-                _last_error_text = error;
-            }
-        }
-        private void DisposeProducer()
-        {
-            _last_error_text = null;
-
-            _properties = null;
-
-            if (_channel is not null)
-            {
-                _channel.BasicAcks -= BasicAcksHandler;
-                _channel.BasicNacks -= BasicNacksHandler;
-                _channel.BasicReturn -= BasicReturnHandler;
-                _channel.ModelShutdown -= ModelShutdownHandler;
-            }
-
-            try { _channel?.Dispose(); }
-            catch { /* IGNORE */}
-            finally { _channel = null; }
-
-            if (_connection is not null)
-            {
-                _connection.ConnectionBlocked -= HandleConnectionBlocked;
-                _connection.ConnectionUnblocked -= HandleConnectionUnblocked;
-                _connection.ConnectionShutdown -= ConnectionShutdownHandler;
-            }
-
-            try { _connection?.Dispose(); }
-            catch { /* IGNORE */}
-            finally { _connection = null; }
-
-            if (_buffer is not null)
-            {
-                ArrayPool<byte>.Shared.Return(_buffer); _buffer = null;
-            }
-
-            _ = Interlocked.Exchange(ref _session, SESSION_IS_IDLE);
-        }
-        public void Synchronize()
-        {
-            try
-            {
-                ThrowIfSessionHasErrors();
-
-                CloseSessionOrThrow();
-            }
-            catch (NullReferenceException)
-            {
-                throw new ObjectDisposedException(typeof(Producer).ToString());
-            }
-            catch
-            {
-                throw;
-            }
-            finally
-            {
-                Dispose();
-            }
-        }
-        public void Dispose()
-        {
-            if (Interlocked.CompareExchange(ref _disposing, 1, 0) == 0)
-            {
-                DisposeProducer();
-
-                _ = Interlocked.Exchange(ref _disposing, 0);
-            }
-        }
+        #endregion
 
         public void Process()
         {
             try
             {
-                ThrowIfSessionHasErrors();
+                ThrowIfSessionIsBroken(); // STATE_BROKEN
 
-                BeginSessionOrThrow();
+                BeginSessionOrThrow(); // STATE_IDLE -> STATE_ACTIVE
 
-                PublishMessageOrThrow();
+                PublishMessageOrThrow(); // STATE_ACTIVE
             }
             catch
             {
-                Dispose(); throw;
+                Dispose(); throw; // STATE_DISPOSING -> STATE_IDLE
             }
         }
         private void PublishMessageOrThrow()
         {
-            try
+            if (Interlocked.CompareExchange(ref _state, STATE_ACTIVE, STATE_ACTIVE) == STATE_ACTIVE)
             {
-                PublishMessage();
+                try
+                {
+                    PublishMessage();
+                }
+                catch (NullReferenceException)
+                {
+                    throw new ObjectDisposedException(typeof(Producer).ToString());
+                }
+                catch
+                {
+                    throw;
+                }
             }
-            catch (NullReferenceException)
+            else
             {
                 throw new ObjectDisposedException(typeof(Producer).ToString());
-            }
-            catch
-            {
-                throw;
             }
         }
         private void PublishMessage()
@@ -570,6 +495,99 @@ namespace DaJet.Stream.RabbitMQ
             ReadOnlyMemory<byte> payload = new(_buffer, 0, encoded);
 
             return payload;
+        }
+
+        public void Synchronize()
+        {
+            try
+            {
+                ThrowIfSessionIsBroken(); // STATE_BROKEN
+
+                ConfirmSessionOrThrow(); // STATE_ACTIVE
+            }
+            catch (NullReferenceException)
+            {
+                throw new ObjectDisposedException(typeof(Producer).ToString());
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                Dispose(); // STATE_DISPOSING -> STATE_IDLE
+            }
+        }
+        private void ConfirmSessionOrThrow()
+        {
+            if (Interlocked.CompareExchange(ref _state, STATE_ACTIVE, STATE_ACTIVE) == STATE_ACTIVE)
+            {
+                if (_channel.WaitForConfirms())
+                {
+                    ThrowIfSessionIsBroken(); // STATE_BROKEN
+                }
+                else
+                {
+                    throw new OperationCanceledException(ERROR_PUBLISHER_CONFIRMS);
+                }
+            }
+            else
+            {
+                // STATE_IDLE | STATE_DISPOSING
+            }
+        }
+        
+        public void Dispose()
+        {
+            if (Interlocked.CompareExchange(ref _state, STATE_DISPOSING, STATE_DISPOSING) == STATE_DISPOSING)
+            {
+                return;
+            }
+
+            _ = Interlocked.Exchange(ref _state, STATE_DISPOSING);
+
+            try
+            {
+                DisposeProducer();
+            }
+            finally
+            {
+                _ = Interlocked.Exchange(ref _state, STATE_IDLE);
+            }
+        }
+        private void DisposeProducer()
+        {
+            _properties = null;
+
+            if (_channel is not null)
+            {
+                _channel.BasicAcks -= BasicAcksHandler;
+                _channel.BasicNacks -= BasicNacksHandler;
+                _channel.BasicReturn -= BasicReturnHandler;
+                _channel.ModelShutdown -= ModelShutdownHandler;
+            }
+
+            try { _channel?.Dispose(); }
+            catch { /* IGNORE */}
+            finally { _channel = null; }
+
+            if (_connection is not null)
+            {
+                _connection.ConnectionBlocked -= HandleConnectionBlocked;
+                _connection.ConnectionUnblocked -= HandleConnectionUnblocked;
+                _connection.ConnectionShutdown -= ConnectionShutdownHandler;
+            }
+
+            try { _connection?.Dispose(); }
+            catch { /* IGNORE */}
+            finally { _connection = null; }
+
+            if (_buffer is not null)
+            {
+                ArrayPool<byte>.Shared.Return(_buffer);
+                
+                _buffer = null;
+            }
         }
     }
 }

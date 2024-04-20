@@ -44,13 +44,19 @@ namespace DaJet.Stream
                 script = reader.ReadToEnd();
             }
 
+            Stopwatch watch = new();
+
+            watch.Start();
+
             if (TryCreateStream(in script, out IProcessor stream, out string error))
             {
                 _ = Task.Factory.StartNew(stream.Process, TaskCreationOptions.LongRunning);
 
                 _ = _streams.TryAdd(file, stream);
 
-                FileLogger.Default.Write($"[STREAM] {file}");
+                watch.Stop();
+
+                FileLogger.Default.Write($"[STREAM][Assembled in {watch.ElapsedMilliseconds} ms] {file}");
             }
             else
             {
@@ -96,65 +102,11 @@ namespace DaJet.Stream
                 }
                 catch (Exception error)
                 {
-                    FileLogger.Default.Write(ExceptionHelper.GetErrorMessage(error));
+                    FileLogger.Default.Write(error);
                 }
             }
 
             _streams.Clear();
-        }
-
-        private static void StreamFile(string filePath)
-        {
-            FileInfo file = new(filePath);
-
-            Console.WriteLine($"Execute script from file: {file.FullName}");
-
-            string script;
-
-            using (StreamReader reader = new(filePath, Encoding.UTF8))
-            {
-                script = reader.ReadToEnd();
-            }
-
-            StreamManager.Process(in script);
-        }
-        public static void Process(in string script)
-        {
-            Stopwatch watch = new();
-
-            watch.Start();
-
-            IProcessor stream = CreateStream(in script);
-
-            watch.Stop();
-
-            long elapsed = watch.ElapsedMilliseconds;
-
-            Console.WriteLine($"Pipeline assembled in {elapsed} ms");
-
-            watch.Restart();
-
-            stream.Process();
-
-            watch.Stop();
-
-            elapsed = watch.ElapsedMilliseconds;
-
-            Console.WriteLine($"Pipeline executed in {elapsed} ms");
-        }
-        private static IProcessor CreateStream(in string script)
-        {
-            ScriptModel model;
-
-            using (ScriptParser parser = new())
-            {
-                if (!parser.TryParse(in script, out model, out string error))
-                {
-                    Console.WriteLine(error);
-                }
-            }
-
-            return StreamFactory.Create(in model);
         }
     }
 }

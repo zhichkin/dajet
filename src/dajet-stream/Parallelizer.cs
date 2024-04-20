@@ -15,7 +15,7 @@ namespace DaJet.Stream
         {
             int maxdop = statement.DegreeOfParallelism;
 
-            if (maxdop == 1)
+            if (maxdop == 1 || maxdop == int.MaxValue)
             {
                 return maxdop;
             }
@@ -51,14 +51,12 @@ namespace DaJet.Stream
             StreamFactory.ConfigureIteratorSchema(in _scope, out _options, out _iterator);
 
             _maxdop = GetMaxDopValue(in statement);
-            
+
             _closure = StreamFactory.GetClosureVariables(in _scope);
 
             _ = StreamFactory.CreateStream(in _scope); // transpile and cache SQL statements 
         }
         public void LinkTo(in IProcessor next) { _next = next; }
-        public void Synchronize() { throw new NotImplementedException(); }
-        public void Dispose() { throw new NotImplementedException(); }
         public void Process()
         {
             if (!_scope.TryGetValue(in _iterator, out object value))
@@ -76,11 +74,23 @@ namespace DaJet.Stream
                 return; // nothing to process
             }
 
+            if (_maxdop == 1)
+            {
+                //TODO: single thread
+            }
+            else if (_maxdop == int.MaxValue)
+            {
+                //TODO: unbounded number of threads
+            }
+            else
+            {
+                // Parallelize(in iterator);
+            }
+
             Parallelize(in iterator);
 
             _next?.Process();
         }
-        
         private void Parallelize(in List<DataObject> iterator)
         {
             ParallelOptions options = new()
@@ -108,5 +118,8 @@ namespace DaJet.Stream
 
             stream?.Process();
         }
+
+        public void Synchronize() { throw new NotImplementedException(); }
+        public void Dispose() { throw new NotImplementedException(); }
     }
 }

@@ -9,7 +9,9 @@ namespace DaJet.Stream
         private CancellationToken _cancellationToken;
         public DaJetStreamService(IOptions<HostConfig> config)
         {
-            _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
+            ArgumentNullException.ThrowIfNull(config);
+
+            _config = config.Value ?? throw new ArgumentNullException(nameof(config));
         }
         protected override Task ExecuteAsync(CancellationToken cancellationToken)
         {
@@ -38,7 +40,7 @@ namespace DaJet.Stream
 
                 try
                 {
-                    Task.Delay(TimeSpan.FromSeconds(10)).Wait(_cancellationToken);
+                    Task.Delay(TimeSpan.FromSeconds(_config.Refresh)).Wait(_cancellationToken);
                 }
                 catch // (OperationCanceledException)
                 {
