@@ -8,12 +8,11 @@
     <RootNamespace>DaJet</RootNamespace>
     <Authors>Zhichkin</Authors>
     <Copyright>Zhichkin © 2024</Copyright>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Version>1.0.2</Version>
-    <Title>DaJet.Stream.Service</Title>
+    <Title>DaJet Stream Service</Title>
     <PackageId>DaJet.Stream.Service</PackageId>
-    <Product>DaJet.Stream.Service</Product>
-    <Description>DaJet Stream Service</Description>
+    <Product>DaJet Stream Service</Product>
+    <Description>DaJet Stream is a service for executing integration scripts</Description>
     <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/zhichkin/dajet/tree/main/src/dajet</RepositoryUrl>
   </PropertyGroup>
@@ -26,6 +25,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\dajet-stream\dajet-stream.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

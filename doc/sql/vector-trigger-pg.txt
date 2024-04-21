@@ -1,0 +1,13 @@
+CREATE OR REPLACE FUNCTION _inforg115_before_insert_function()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW._Fld116 IS NULL OR NEW._Fld116 = 0 THEN
+    NEW._Fld116 := CAST(nextval('so_outbox_queue') AS numeric(19,0));
+  END IF;
+  RETURN NEW;
+END $$ LANGUAGE 'plpgsql';
+
+CREATE TRIGGER _inforg115_before_insert_trigger
+BEFORE INSERT ON _inforg115
+FOR EACH ROW
+EXECUTE PROCEDURE _inforg115_before_insert_function();

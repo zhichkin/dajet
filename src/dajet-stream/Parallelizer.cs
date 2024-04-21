@@ -8,9 +8,10 @@ namespace DaJet.Stream
         private IProcessor _next;
         private readonly StreamScope _scope;
         private readonly int _maxdop;
-        private readonly string _options;
+        private readonly string _item;
         private readonly string _iterator;
         private readonly List<string> _closure;
+        private readonly List<IProcessor> _streams = new();
         private static int GetMaxDopValue(in ForEachStatement statement)
         {
             int maxdop = statement.DegreeOfParallelism;
@@ -48,7 +49,7 @@ namespace DaJet.Stream
                 throw new ArgumentException(nameof(ForEachStatement));
             }
 
-            StreamFactory.ConfigureIteratorSchema(in _scope, out _options, out _iterator);
+            StreamFactory.ConfigureIteratorSchema(in _scope, out _item, out _iterator);
 
             _maxdop = GetMaxDopValue(in statement);
 
@@ -71,36 +72,39 @@ namespace DaJet.Stream
 
             if (iterator.Count == 0)
             {
-                return; // nothing to process
+                FileLogger.Default.Write("[Parallelizer] Nothing to process");
+
+                return;
             }
 
             if (_maxdop == 1)
             {
-                //TODO: single thread
+                ProcessSingleThread(in iterator);
             }
             else if (_maxdop == int.MaxValue)
             {
-                //TODO: unbounded number of threads
+                ProcessMaxDopUnbounded(in iterator);
             }
             else
             {
-                // Parallelize(in iterator);
+                Parallelize(in iterator);
             }
-
-            Parallelize(in iterator);
 
             _next?.Process();
         }
-        private void Parallelize(in List<DataObject> iterator)
+        private void ProcessSingleThread(in List<DataObject> iterator)
         {
-            ParallelOptions options = new()
-            {
-                MaxDegreeOfParallelism = _maxdop
-            };
+            IProcessor stream = StreamFactory.CreateStream(in _scope);
 
-            ParallelLoopResult result = Parallel.ForEach(iterator, options, ProcessInParallel);
+            foreach (DataObject item in iterator)
+            {
+                if (_scope.TrySetValue(_item, item))
+                {
+                    stream?.Process();
+                }
+            }
         }
-        private void ProcessInParallel(DataObject options)
+        private IProcessor CloneStreamTemplate(in DataObject item)
         {
             StreamScope clone = _scope.Clone();
 
@@ -112,14 +116,58 @@ namespace DaJet.Stream
                 }
             }
 
-            _ = clone.TrySetValue(_options, options);
+            _ = clone.TrySetValue(_item, item);
 
-            IProcessor stream = StreamFactory.CreateStream(in clone);
+            return StreamFactory.CreateStream(in clone);
+        }
+
+        private void Parallelize(in List<DataObject> iterator)
+        {
+            ParallelOptions options = new()
+            {
+                MaxDegreeOfParallelism = _maxdop
+            };
+
+            ParallelLoopResult result = Parallel.ForEach(iterator, options, ProcessInParallel);
+        }
+        private void ProcessInParallel(DataObject item)
+        {
+            IProcessor stream = CloneStreamTemplate(in item);
 
             stream?.Process();
         }
 
-        public void Synchronize() { throw new NotImplementedException(); }
-        public void Dispose() { throw new NotImplementedException(); }
+        private void ProcessMaxDopUnbounded(in List<DataObject> iterator)
+        {
+            foreach (DataObject item in iterator)
+            {
+                IProcessor stream = CloneStreamTemplate(in item);
+
+                if (stream is not null)
+                {
+                    _ = Task.Factory.StartNew(stream.Process, TaskCreationOptions.LongRunning);
+
+                    _streams.Add(stream);
+                }
+            }
+        }
+
+        public void Synchronize() { /* IGNORE */ }
+        public void Dispose()
+        {
+            foreach (IProcessor stream in _streams)
+            {
+                try
+                {
+                    stream.Dispose();
+                }
+                catch (Exception error)
+                {
+                    FileLogger.Default.Write(error);
+                }
+            }
+
+            _streams.Clear();
+        }
     }
 }

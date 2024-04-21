@@ -68,9 +68,6 @@ namespace DaJet.Stream.RabbitMQ
 
             StreamFactory.MapOptions(in _scope);
 
-            InitializeUri();
-            ConfigureConsumer();
-
             _next = StreamFactory.CreateStream(in _scope);
         }
         public void Synchronize() { /* do nothing */ }
@@ -150,11 +147,11 @@ namespace DaJet.Stream.RabbitMQ
             {
                 if (value is not null && int.TryParse(value.ToString(), out int heartbeat))
                 {
-                    return heartbeat;
+                    return heartbeat <= 0 ? 60 : heartbeat;
                 }
             }
 
-            return 10; // seconds
+            return 60; // seconds
         }
         private uint GetPrefetchSize()
         {
@@ -162,7 +159,7 @@ namespace DaJet.Stream.RabbitMQ
             {
                 if (value is not null && uint.TryParse(value.ToString(), out uint prefetch_size))
                 {
-                    return prefetch_size;
+                    return prefetch_size < 0 ? 0 : prefetch_size;
                 }
             }
 
@@ -174,7 +171,7 @@ namespace DaJet.Stream.RabbitMQ
             {
                 if (value is not null && ushort.TryParse(value.ToString(), out ushort prefetch_count))
                 {
-                    return prefetch_count;
+                    return prefetch_count < 0 ? (ushort)1 : prefetch_count;
                 }
             }
 
@@ -207,27 +204,23 @@ namespace DaJet.Stream.RabbitMQ
                 VirtualHost = HttpUtility.UrlDecode(uri.Segments[1].TrimEnd('/'), Encoding.UTF8);
             }
         }
-        private void ConfigureConsumer()
+        private void InitializeConsumer()
         {
             QueueName = GetQueueName();
             Heartbeat = GetHeartbeat();
             PrefetchSize = GetPrefetchSize();
             PrefetchCount = GetPrefetchCount();
         }
-        private void UpdatePipelineStatus()
+        private void ReportConsumerStatus()
         {
             int consumed = Interlocked.Exchange(ref _consumed, 0);
 
-            FileLogger.Default.Write($"Consumed {consumed} messages in {Heartbeat} seconds.");
+            int rate = consumed / Heartbeat;
+
+            FileLogger.Default.Write($"[{QueueName}] Consumed {consumed} / {Heartbeat} = {rate} msg/sec");
         }
-        private bool ConsumerIsHealthy()
-        {
-            return _consumer is not null
-                && _consumer.IsRunning
-                && _consumer.Model is not null
-                && _consumer.Model.IsOpen;
-        }
-        private void InitializeConsumer()
+        
+        private void CreateConsumer()
         {
             IConnectionFactory factory = new ConnectionFactory()
             {
@@ -246,9 +239,16 @@ namespace DaJet.Stream.RabbitMQ
             _consumer.Received += ProcessMessage;
             _consumerTag = _channel.BasicConsume(QueueName, false, _consumer);
         }
+        private bool ConsumerIsHealthy()
+        {
+            return _consumer is not null
+                && _consumer.IsRunning
+                && _consumer.Model is not null
+                && _consumer.Model.IsOpen;
+        }
         private void EnsureConsumerIsActive(object sender, ElapsedEventArgs args)
         {
-            UpdatePipelineStatus();
+            ReportConsumerStatus();
 
             if (CanAutoReset)
             {
@@ -257,7 +257,7 @@ namespace DaJet.Stream.RabbitMQ
                     if (!ConsumerIsHealthy())
                     {
                         DisposeConsumer();
-                        InitializeConsumer();
+                        CreateConsumer();
                     }
                 }
                 catch (Exception error)
@@ -272,10 +272,14 @@ namespace DaJet.Stream.RabbitMQ
                 }
             }
         }
+        
         public void Process()
         {
             if (CanExecute)
             {
+                InitializeUri();
+                InitializeConsumer(); // read context/scope variables
+
                 System.Timers.Timer timer = new();
 
                 if (Interlocked.CompareExchange(ref _heartbeat, timer, null) is not null)
@@ -298,11 +302,10 @@ namespace DaJet.Stream.RabbitMQ
 
                 EnsureConsumerIsActive(this, null);
 
-                _heartbeat.Start();
+                _heartbeat.Start(); // periodic consumer health checks
                 _cancellation.WaitOne(); // instead of Task.Delay(TimeSpan)
             }
         }
-        
         private void ProcessMessage(object sender, BasicDeliverEventArgs args)
         {
             if (sender is not EventingBasicConsumer consumer) { return; }
@@ -356,6 +359,25 @@ namespace DaJet.Stream.RabbitMQ
             }
         }
 
+        public void Dispose()
+        {
+            if (CanDispose)
+            {
+                DisposeHeartbeat();
+
+                DisposeConsumer();
+
+                _next?.Dispose();
+
+                SignalCancellation(); // exit current thread
+
+                _ = Interlocked.Exchange(ref _state, STATE_IS_IDLE);
+            }
+            else if (Interlocked.CompareExchange(ref _state, STATE_AUTORESET, STATE_AUTORESET) == STATE_AUTORESET)
+            {
+                Thread.Sleep(1); Dispose();
+            }
+        }
         private void DisposeConsumer()
         {
             if (_consumer is not null)
@@ -401,26 +423,7 @@ namespace DaJet.Stream.RabbitMQ
                 _cancellation = null;
             }
         }
-        public void Dispose()
-        {
-            if (CanDispose)
-            {
-                DisposeHeartbeat();
-
-                DisposeConsumer();
-
-                _next?.Dispose();
-
-                SignalCancellation(); // exit current thread
-
-                _ = Interlocked.Exchange(ref _state, STATE_IS_IDLE);
-            }
-            else if (Interlocked.CompareExchange(ref _state, STATE_AUTORESET, STATE_AUTORESET) == STATE_AUTORESET)
-            {
-                Thread.Sleep(1); Dispose();
-            }
-        }
-
+        
         private static readonly DataObjectJsonConverter _converter = new();
         private static readonly JsonSerializerOptions JsonOptions = new()
         {

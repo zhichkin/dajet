@@ -186,7 +186,7 @@ namespace DaJet.Stream.Kafka
             }
             finally
             {
-                Dispose(); _produced = 0; //THINK: _next?.Synchronize(); ???
+                Dispose(); _produced = 0;
             }
 
             if (_error is not null)
@@ -199,6 +199,15 @@ namespace DaJet.Stream.Kafka
             {
                 FileLogger.Default.Write($"[{_config.ClientId}] Produced {produced} messages");
             }
+
+            try
+            {
+                _next?.Synchronize();
+            }
+            catch (Exception error)
+            {
+                FileLogger.Default.Write(error);
+            }
         }
         public void Dispose()
         {
@@ -208,7 +217,16 @@ namespace DaJet.Stream.Kafka
             }
             finally
             {
-                _producer = null; //THINK: _next?.Dispose(); ???
+                _producer = null;
+            }
+
+            try
+            {
+                _next?.Dispose();
+            }
+            catch (Exception error)
+            {
+                FileLogger.Default.Write(error);
             }
         }
     }

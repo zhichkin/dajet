@@ -22,20 +22,20 @@ namespace DaJet
         }
         private static void RunHost(in string configFilePath)
         {
-            FileLogger.Default.Write("[HOST] Running");
-            FileLogger.Default.Write($"[PATH] {AppContext.BaseDirectory}");
-            FileLogger.Default.Write($"[CONFIG] {configFilePath}");
-
             InitializeHostConfig(in configFilePath);
 
             FileLogger.Default.UseLogFile(Config.LogFile);
             FileLogger.Default.UseLogSize(Config.LogSize);
             FileLogger.Default.UseCatalog(Config.LogPath);
-            
+
+            FileLogger.Default.Write("[HOST] Running");
+            FileLogger.Default.Write($"[PATH] {AppContext.BaseDirectory}");
+            FileLogger.Default.Write($"[CONFIG] {configFilePath}");
             FileLogger.Default.Write($"[LOG PATH] {Config.LogPath}");
             FileLogger.Default.Write($"[LOG FILE] {Config.LogFile}");
             FileLogger.Default.Write($"[LOG SIZE] {Config.LogSize} Kb");
             FileLogger.Default.Write($"[ROOT] {Config.RootPath}");
+            FileLogger.Default.Write($"[REFRESH] {Config.Refresh} seconds");
 
             CreateHostBuilder().Build().Run();
             

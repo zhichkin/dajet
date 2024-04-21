@@ -281,14 +281,29 @@ namespace DaJet.Data
 
             if (typeName == "mchar" || typeName == "mvarchar")
             {
-                //TODO: optimize text reading - cash pooled buffer
-                Stream stream = postgres.GetStream(ordinal);
-                int length = (int)stream.Length;
-                if (length == 0) { return string.Empty; }
-                byte[] buffer = ArrayPool<byte>.Shared.Rent(length);
-                int count = stream.Read(buffer, 0, length);
-                string text = Encoding.Unicode.GetString(buffer, 0, count);
+
+                int size = 1024;
+                long length;
+                long offset = 0;
+                string text = string.Empty;
+
+                byte[] buffer = ArrayPool<byte>.Shared.Rent(size);
+
+                do
+                {
+                    length = postgres.GetBytes(ordinal, offset, buffer, 0, size);
+
+                    offset += length;
+
+                    if (length > 0)
+                    {
+                        text += Encoding.Unicode.GetString(buffer, 0, (int)length);
+                    }
+                }
+                while (length > 0);
+                
                 ArrayPool<byte>.Shared.Return(buffer);
+                
                 return text;
             }
             else

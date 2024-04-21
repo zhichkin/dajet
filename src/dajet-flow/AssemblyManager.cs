@@ -2,7 +2,7 @@
 using System.Reflection;
 using System.Runtime.Loader;
 
-namespace DaJet.Data
+namespace DaJet.Flow
 {
     public sealed class AssemblyManager : IAssemblyManager
     {

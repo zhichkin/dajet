@@ -48,7 +48,10 @@ namespace DaJet.Stream
                 {
                     int processed = Consume();
 
-                    FileLogger.Default.Write($"Processed {processed} messages");
+                    if (processed > 0)
+                    {
+                        FileLogger.Default.Write($"Processed {processed} messages");
+                    }
                 }
                 catch (Exception error)
                 {
@@ -63,8 +66,6 @@ namespace DaJet.Stream
 
                 if (IsActive && _sleep is not null)
                 {
-                    FileLogger.Default.Write($"Sleep {delay} seconds");
-
                     bool signaled = _sleep.WaitOne(TimeSpan.FromSeconds(delay)); // suspend thread
 
                     if (signaled) // the Dispose method is called -> STATE_IDLE
@@ -153,6 +154,7 @@ namespace DaJet.Stream
             return processed;
         }
 
+        public override void Synchronize() { /* IGNORE */ }
         public override void Dispose()
         {
             if (CanDispose) // STATE_ACTIVE -> STATE_DISPOSING

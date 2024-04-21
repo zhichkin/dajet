@@ -85,7 +85,7 @@ namespace DaJet.Stream
             }
             catch (Exception exception)
             {
-                error = ExceptionHelper.GetErrorMessage(exception);
+                error = ExceptionHelper.GetErrorMessageAndStackTrace(exception);
             }
 
             return stream is not null;

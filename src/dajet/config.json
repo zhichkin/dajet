@@ -1,0 +1,7 @@
+{
+  "LogSize": 524288,
+  "LogFile": "dajet.log",
+  "LogPath": "./log",
+  "RootPath": "./scripts",
+  "Refresh": 10 // seconds
+}

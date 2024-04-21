@@ -11,7 +11,6 @@
     <Copyright>Zhichkin © 2024</Copyright>
     <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/zhichkin/dajet/tree/main/src/dajet-stream</RepositoryUrl>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>

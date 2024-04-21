@@ -12,8 +12,16 @@ namespace DaJet.Stream.Kafka
         private readonly StreamScope _scope;
         private readonly ConsumeStatement _options;
         private readonly string _target;
-        
-        private CancellationTokenSource _cts;
+
+        private int _state;
+        private const int STATE_IDLE = 0;
+        private const int STATE_ACTIVE = 1;
+        private const int STATE_DISPOSING = 2;
+        private AutoResetEvent _sleep;
+        private bool CanExecute { get { return Interlocked.CompareExchange(ref _state, STATE_ACTIVE, STATE_IDLE) == STATE_IDLE; } }
+        private bool IsActive { get { return Interlocked.CompareExchange(ref _state, STATE_ACTIVE, STATE_ACTIVE) == STATE_ACTIVE; } }
+        private bool CanDispose { get { return Interlocked.CompareExchange(ref _state, STATE_DISPOSING, STATE_ACTIVE) == STATE_ACTIVE; } }
+
         private int _consumed = 0;
         private readonly string _topic;
         private ConsumerConfig _config;
@@ -82,24 +90,14 @@ namespace DaJet.Stream.Kafka
             _next = StreamFactory.CreateStream(in scope);
         }
         public void LinkTo(in IProcessor next) { _next = next; }
-        public void Synchronize() { _next?.Synchronize(); } //THINK: do consumer really need it ???
-        private ConsumerConfig CreateConsumerConfig()
+        private string GetTopic()
         {
-            Dictionary<string, string> config = new();
-
-            foreach (var option in _scope.Variables)
+            if (StreamFactory.TryGetOption(in _scope, "Topic", out object value))
             {
-                string key = GetOptionKey(option.Key);
-
-                if (key == "topic" || key == _target) { continue; }
-
-                if (StreamFactory.TryGetOption(in _scope, option.Key, out object value))
-                {
-                    config.Add(key, value.ToString());
-                }
+                return value.ToString();
             }
 
-            return new ConsumerConfig(config);
+            return string.Empty;
         }
         private List<ColumnExpression> CreateMessageSchema()
         {
@@ -122,104 +120,137 @@ namespace DaJet.Stream.Kafka
                 }
             };
         }
-        private string GetTopic()
+        
+        private void LogHandler(IConsumer<byte[], byte[]> _, LogMessage log)
         {
-            if (StreamFactory.TryGetOption(in _scope, "Topic", out object value))
-            {
-                return value.ToString();
-            }
-
-            return string.Empty;
+            FileLogger.Default.Write($"[{_topic}] [{log.Name}]: {log.Message}");
         }
+        private void ErrorHandler(IConsumer<byte[], byte[]> consumer, Error error)
+        {
+            FileLogger.Default.Write($"[{_topic}] [{consumer.Name}] [{string.Concat(consumer.Subscription)}]: {error.Reason}");
+        }
+        
         public void Process()
         {
-            while (true)
+            if (CanExecute) // STATE_IDLE -> STATE_ACTIVE
+            {
+                AutoResetEvent sleep = new(false);
+
+                if (Interlocked.CompareExchange(ref _sleep, sleep, null) is not null)
+                {
+                    sleep.Dispose();
+                }
+
+                WhileActiveDoWork(); // STATE_ACTIVE -> STATE_IDLE
+            }
+        }
+        private void WhileActiveDoWork()
+        {
+            while (IsActive) // STATE_ACTIVE
             {
                 try
                 {
-                    Consume();
+                    SubscribeConsumer(); // configure consumer and subscribe to topic
+
+                    ConsumeMessages(); // consume messages in "push from broker" mode
                 }
                 catch (Exception error)
                 {
                     FileLogger.Default.Write($"[Kafka consumer] {ExceptionHelper.GetErrorMessage(error)}");
                 }
 
-                try
+                if (IsActive && _sleep is not null)
                 {
                     FileLogger.Default.Write("[Kafka consumer] Sleep 10 seconds ...");
 
-                    Task.Delay(TimeSpan.FromSeconds(10)).Wait();
-                }
-                catch // (OperationCanceledException)
-                {
-                    // do nothing - host shutdown requested
+                    bool signaled = _sleep.WaitOne(TimeSpan.FromSeconds(10)); // suspend thread
+
+                    if (signaled) // the Dispose method is called -> STATE_IDLE
+                    {
+                        FileLogger.Default.Write("[Kafka consumer] Shutdown requested");
+                    }
                 }
             }
         }
-        private void Consume()
+        private ConsumerConfig CreateConsumerConfig()
         {
-            if (_cts is not null) { return; }
+            Dictionary<string, string> config = new();
 
-            _cts ??= new CancellationTokenSource();
-
-            try
+            foreach (var option in _scope.Variables)
             {
-                _config ??= CreateConsumerConfig();
+                string key = GetOptionKey(option.Key);
 
-                _consumer ??= new ConsumerBuilder<byte[], byte[]>(_config)
-                    .SetLogHandler(_logHandler)
-                    .SetErrorHandler(_errorHandler)
-                    .Build();
+                if (key == "topic" || key == _target) { continue; }
 
-                _consumer.Subscribe(_topic);
-            }
-            catch
-            {
-                DisposeConsumer(); throw;
+                if (StreamFactory.TryGetOption(in _scope, option.Key, out object value))
+                {
+                    config.Add(key, value.ToString());
+                }
             }
 
+            return new ConsumerConfig(config);
+        }
+        private void SubscribeConsumer()
+        {
+            _config ??= CreateConsumerConfig();
+
+            _consumer ??= new ConsumerBuilder<byte[], byte[]>(_config)
+                .SetLogHandler(_logHandler)
+                .SetErrorHandler(_errorHandler)
+                .Build();
+
+            _consumer.Subscribe(_topic);
+        }
+        private void ConsumeMessages()
+        {
             _consumed = 0;
-
-            FileLogger.Default.Write($"Consuming messages ...");
+            int batch = 0;
+            int print = 0;
 
             do
             {
-                try
-                {
-                    _result = _consumer.Consume(_cts.Token);
-                }
-                catch (ObjectDisposedException) { /* IGNORE */ }
-                catch (OperationCanceledException) { /* IGNORE */ }
-                catch
-                {
-                    DisposeConsumer(); throw; // Unexpected exception
-                }
-
-                if (_cts.IsCancellationRequested)
-                {
-                    FileLogger.Default.Write($"Consumed {_consumed} messages");
-
-                    DisposeConsumer(); return;
-                }
+                _result = _consumer.Consume(10); //TODO: ConsumeTimeout setting
 
                 if (_result is not null && _result.Message is not null)
                 {
-                    try
+                    ProcessMessage(in _result);
+
+                    _next?.Process();
+                    
+                    _consumed++;
+
+                    batch++;
+                    print++;
+
+                    if (batch == 1000) //TODO: BatchSize setting
                     {
-                        ConsumeMessage(in _result);
-                    }
-                    catch
-                    {
-                        DisposeConsumer(); throw;
+                        _next?.Synchronize();
+
+                        _ = _consumer.Commit(); // commit consumer offsets
+
+                        batch = 0;
                     }
 
-                    //TODO: log consumed by timer
-                    //FileLogger.Default.Write($"Consumed {_consumed} messages");
+                    if (print == 10000) //TODO: monitor consumed messages by timer !?
+                    {
+                        FileLogger.Default.Write($"[Kafka consumer][{_topic}] Consumed {print} messages");
+
+                        print = 0;
+                    }
                 }
             }
-            while (_result is not null && _result.Message is not null);
+            while (_result is not null && _result.Message is not null && IsActive);
+
+            if (batch > 0)
+            {
+                _next?.Synchronize();
+
+                _ = _consumer.Commit(); // commit consumer offsets
+            }
+
+            FileLogger.Default.Write($"[KafkaMessageConsumer][{_topic}] Consumed {_consumed} messages.");
         }
-        private void ConsumeMessage(in ConsumeResult<byte[], byte[]> result)
+        private void ProcessMessage(in ConsumeResult<byte[], byte[]> result)
         {
             if (_scope.TryGetValue(_target, out object value))
             {
@@ -253,47 +284,36 @@ namespace DaJet.Stream.Kafka
                     }
                 }
             }
-
-            _next?.Process();
-
-            _next?.Synchronize();
-
-            _consumer.Commit(); //TODO: commit batches
-
-            _consumed++;
         }
-        private void LogHandler(IConsumer<byte[], byte[]> _, LogMessage log)
-        {
-            FileLogger.Default.Write($"[{_topic}] [{log.Name}]: {log.Message}");
-        }
-        private void ErrorHandler(IConsumer<byte[], byte[]> consumer, Error error)
-        {
-            FileLogger.Default.Write($"[{_topic}] [{consumer.Name}] [{string.Concat(consumer.Subscription)}]: {error.Reason}");
-        }
+        
+        public void Synchronize() { /* IGNORE */ }
         public void Dispose()
         {
-            if (_cts is null || _cts.IsCancellationRequested)
+            if (CanDispose) // STATE_ACTIVE -> STATE_DISPOSING
             {
-                return;
+                _result = null;
+
+                try
+                {
+                    _consumer?.Close();
+                    _consumer?.Dispose();
+                }
+                finally
+                {
+                    _consumer = null;
+                }
+
+                try
+                {
+                    _next?.Dispose();
+                }
+                catch (Exception error)
+                {
+                    FileLogger.Default.Write(error);
+                }
+
+                _ = Interlocked.Exchange(ref _state, STATE_IDLE);
             }
-
-            _cts?.Cancel(); // interrupt consumption
-        }
-        private void DisposeConsumer()
-        {
-            _result = null;
-
-            try
-            {
-                _consumer?.Close();
-                _consumer?.Dispose();
-            }
-            finally { _consumer = null; }
-
-            try { _cts?.Dispose(); }
-            finally { _cts = null; }
-
-            _next?.Dispose();
         }
     }
 }
