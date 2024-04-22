@@ -50,7 +50,7 @@ namespace DaJet.Stream
         }
         private void DoWork()
         {
-            StreamManager.Activate(_config.RootPath);
+            StreamManager.Serve(_config.RootPath);
         }
         public override void Dispose()
         {

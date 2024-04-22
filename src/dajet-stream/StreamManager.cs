@@ -8,11 +8,13 @@ namespace DaJet.Stream
     public static class StreamManager
     {
         private static readonly Dictionary<string, IProcessor> _streams = new();
-        public static void Activate(in string path)
+        public static void Serve(in string path)
         {
             if (Directory.Exists(path))
             {
                 ActivateStreams(in path);
+
+                DisposeStreams();
             }
             else
             {
@@ -107,6 +109,36 @@ namespace DaJet.Stream
             }
 
             _streams.Clear();
+        }
+        private static void DisposeStreams()
+        {
+            List<string> keys = new();
+
+            foreach (var stream in _streams)
+            {
+                if (!File.Exists(stream.Key))
+                {
+                    keys.Add(stream.Key);
+                }
+            }
+
+            foreach (string file in keys)
+            {
+                if (_streams.Remove(file, out IProcessor stream) && stream is not null)
+                {
+                    try
+                    {
+                        stream.Dispose();
+
+                        FileLogger.Default.Write($"[DISPOSED] {file}");
+                    }
+                    catch (Exception error)
+                    {
+                        FileLogger.Default.Write($"[DISPOSE ERROR] {file}");
+                        FileLogger.Default.Write(error);
+                    }
+                }
+            }
         }
     }
 }
