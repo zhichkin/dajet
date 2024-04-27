@@ -7,7 +7,7 @@ BEGIN
   RETURN NEW;
 END $$ LANGUAGE 'plpgsql';
 
-CREATE TRIGGER _inforg115_before_insert_trigger
+CREATE OR REPLACE TRIGGER _inforg115_before_insert_trigger
 BEFORE INSERT ON _inforg115
 FOR EACH ROW
 EXECUTE PROCEDURE _inforg115_before_insert_function();

@@ -22,6 +22,16 @@ namespace DaJet.Stream
         public void LinkTo(in IProcessor next) { throw new NotImplementedException(); }
         public void Synchronize() { _next?.Synchronize(); }
         public void Dispose() { _next?.Dispose(); }
-        public void Process() { _next?.Process(); }
+        public void Process()
+        {
+            try
+            {
+                _next?.Process();
+            }
+            catch (Exception error)
+            {
+                FileLogger.Default.Write(error);
+            }
+        }
     }
 }

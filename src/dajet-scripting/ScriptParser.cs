@@ -257,6 +257,8 @@ namespace DaJet.Scripting
             else if (Check(TokenType.REQUEST)) { return request_statement(); }
             else if (Check(TokenType.IMPORT)) { return import_statement(); }
             else if (Match(TokenType.DROP)) { return drop_statement(); }
+            else if (Match(TokenType.APPLY)) { return apply_statement(); }
+            else if (Match(TokenType.REVOKE)) { return revoke_statement(); }
             else if (Match(TokenType.EndOfStatement)) { return null; }
 
             Ignore();
@@ -325,6 +327,24 @@ namespace DaJet.Scripting
             }
 
             throw new FormatException("Unknown DROP statement.");
+        }
+        private SyntaxNode apply_statement()
+        {
+            if (Match(TokenType.SEQUENCE))
+            {
+                return apply_sequence();
+            }
+
+            throw new FormatException("Unknown APPLY statement");
+        }
+        private SyntaxNode revoke_statement()
+        {
+            if (Match(TokenType.SEQUENCE))
+            {
+                return revoke_sequence();
+            }
+
+            throw new FormatException("Unknown REVOKE statement");
         }
 
         #region "CREATE TABLE STATEMENT"
@@ -1499,6 +1519,7 @@ namespace DaJet.Scripting
                 };
             }
         }
+        ///<returns>ColumnReference or FunctionExpression</returns>
         private SyntaxNode identifier()
         {
             string identifier = Previous().Lexeme;
@@ -2077,7 +2098,7 @@ namespace DaJet.Scripting
         }
         #endregion
 
-        #region "SEQUENCE"
+        #region "CREATE AND APPLY SEQUENCE (VECTOR)"
         private SyntaxNode drop_sequence()
         {
             DropSequenceStatement statement = new();
@@ -2142,6 +2163,52 @@ namespace DaJet.Scripting
 
                 statement.CacheSize = cache;
             }
+
+            return statement;
+        }
+        private SyntaxNode apply_sequence()
+        {
+            // APPLY SEQUENCE <sequence> ON <table>(<column>) [RECALCULATE]
+
+            ApplySequenceStatement statement = new();
+
+            if (!Match(TokenType.Identifier)) { throw new FormatException("[APPLY] Sequence identifier expected"); }
+
+            statement.Identifier = Previous().Lexeme;
+
+            if (!Match(TokenType.ON)) { throw new FormatException("[APPLY] ON keyword expected"); }
+
+            if (!Match(TokenType.Identifier)) { throw new FormatException("[APPLY] Table identifier expected"); }
+
+            statement.Table = new TableReference() { Identifier = Previous().Lexeme };
+
+            if (!Match(TokenType.OpenRoundBracket)) { throw new FormatException("[APPLY] Open round bracket expected"); }
+            
+            if (!Match(TokenType.Identifier)) { throw new FormatException("[APPLY] Column identifier expected"); }
+
+            statement.Column = new ColumnReference() { Identifier = Previous().Lexeme };
+
+            if (!Match(TokenType.CloseRoundBracket)) { throw new FormatException("[APPLY] Close round bracket expected"); }
+
+            statement.ReCalculate = Match(TokenType.RECALCULATE); // optional
+
+            return statement;
+        }
+        private SyntaxNode revoke_sequence()
+        {
+            // REVOKE SEQUENCE <sequence> ON <table>
+
+            RevokeSequenceStatement statement = new();
+
+            if (!Match(TokenType.Identifier)) { throw new FormatException("[REVOKE] Sequence identifier expected"); }
+
+            statement.Identifier = Previous().Lexeme;
+
+            if (!Match(TokenType.ON)) { throw new FormatException("[REVOKE] ON keyword expected"); }
+
+            if (!Match(TokenType.Identifier)) { throw new FormatException("[REVOKE] Table identifier expected"); }
+
+            statement.Table = new TableReference() { Identifier = Previous().Lexeme };
 
             return statement;
         }

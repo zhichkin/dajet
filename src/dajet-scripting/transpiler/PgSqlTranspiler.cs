@@ -1601,6 +1601,85 @@ namespace DaJet.Scripting
 
             script.AppendLine(";");
         }
+        private static string CreateSequenceTriggerName(in string tableName)
+        {
+            if (tableName.StartsWith('_'))
+            {
+                return $"tr{tableName}_before_insert";
+            }
+            else
+            {
+                return $"tr_{tableName}_before_insert";
+            }
+        }
+        private static string CreateSequenceFunctionName(in string tableName)
+        {
+            if (tableName.StartsWith('_'))
+            {
+                return $"fn{tableName}_before_insert";
+            }
+            else
+            {
+                return $"fn_{tableName}_before_insert";
+            }
+        }
+        public override void Visit(in ApplySequenceStatement node, in StringBuilder script)
+        {
+            if (string.IsNullOrWhiteSpace(node.Identifier))
+            {
+                throw new InvalidOperationException("[APPLY SEQUENCE] Sequence identifier missing");
+            }
+
+            if (node.Table.Binding is not ApplicationObject table)
+            {
+                throw new InvalidOperationException("[APPLY SEQUENCE] Unsupported table binding");
+            }
+
+            if (node.Column.Binding is not MetadataProperty sequence)
+            {
+                throw new InvalidOperationException("[APPLY SEQUENCE] Unsupported column binding");
+            }
+
+            string tableName = table.TableName.ToLowerInvariant();
+            string columnName = sequence.Columns[0].Name.ToLowerInvariant();
+            string triggerName = CreateSequenceTriggerName(in tableName);
+            string functionName = CreateSequenceFunctionName(in tableName);
+
+            script.Append("CREATE FUNCTION ").Append(functionName).AppendLine("()");
+            script.AppendLine("RETURNS trigger AS $BODY$");
+            script.AppendLine("BEGIN");
+            script.Append("NEW.").Append(columnName).Append(" := nextval('").Append(node.Identifier).AppendLine("');");//.AppendLine(" := CAST(nextval('so_outbox_queue') AS numeric(19, 0));");
+            script.AppendLine("RETURN NEW;");
+            script.AppendLine("END $BODY$ LANGUAGE 'plpgsql';");
+
+            script.Append("CREATE TRIGGER ").AppendLine(triggerName);
+            script.Append("BEFORE INSERT ON ").Append(tableName).AppendLine(" FOR EACH ROW");
+            script.Append("EXECUTE PROCEDURE ").Append(functionName).AppendLine("();");
+
+            if (node.ReCalculate)
+            {
+                //TODO: recalculate command
+            }
+        }
+        public override void Visit(in RevokeSequenceStatement node, in StringBuilder script)
+        {
+            if (string.IsNullOrWhiteSpace(node.Identifier))
+            {
+                throw new InvalidOperationException("[REVOKE SEQUENCE] Sequence identifier missing");
+            }
+
+            if (node.Table.Binding is not ApplicationObject table)
+            {
+                throw new InvalidOperationException("[REVOKE SEQUENCE] Unsupported table binding");
+            }
+
+            string tableName = table.TableName.ToLowerInvariant();
+            string triggerName = CreateSequenceTriggerName(in tableName);
+            string functionName = CreateSequenceFunctionName(in tableName);
+
+            script.Append("DROP FUNCTION IF EXISTS ").Append(functionName).AppendLine(" CASCADE;");
+            script.Append("DROP TRIGGER IF EXISTS ").Append(triggerName).Append(" ON ").Append(tableName).Append(';').AppendLine();
+        }
     }
 }
 

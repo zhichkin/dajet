@@ -312,6 +312,8 @@ namespace DaJet.Scripting
             else if (expression is CreateTypeStatement type) { Visit(in type, in script); }
             else if (expression is CreateSequenceStatement sequence) { Visit(in sequence, in script); }
             else if (expression is DropSequenceStatement drop_sequence) { Visit(in drop_sequence, in script); }
+            else if (expression is ApplySequenceStatement apply_sequence) { Visit(in apply_sequence, in script); }
+            else if (expression is RevokeSequenceStatement revoke_sequence) { Visit(in revoke_sequence, in script); }
         }
 
         public abstract void Visit(in CreateTypeStatement node, in StringBuilder script);
@@ -1141,6 +1143,8 @@ namespace DaJet.Scripting
         {
             script.Append("DROP SEQUENCE ").Append(node.Identifier).AppendLine(";");
         }
+        public abstract void Visit(in ApplySequenceStatement node, in StringBuilder script);
+        public abstract void Visit(in RevokeSequenceStatement node, in StringBuilder script);
         #endregion
 
         #region "INSERT STATEMENT"

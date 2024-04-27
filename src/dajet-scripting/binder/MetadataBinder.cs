@@ -94,6 +94,8 @@ namespace DaJet.Scripting
             else if (node is ImportStatement import_statement) { Bind(in import_statement); }
             else if (node is ForEachStatement for_each) { Bind(in for_each); }
             else if (node is CreateTypeStatement udt) { Bind(in udt); }
+            else if (node is ApplySequenceStatement apply_sequence) { Bind(in apply_sequence); }
+            else if (node is RevokeSequenceStatement revoke_sequence) { Bind(in revoke_sequence); }
         }
         private void RegisterBindingError(TokenType token, string identifier)
         {
@@ -1120,6 +1122,19 @@ namespace DaJet.Scripting
                     Bind(column.Type);
                 }
             }
+        }
+        #endregion
+
+        #region "APPLY AND REVOKE SEQUENCE"
+        private void Bind(in ApplySequenceStatement node)
+        {
+            Bind(node.Table);
+
+            BindColumn(node.Table.Binding, node.Column.Identifier, node.Column);
+        }
+        private void Bind(in RevokeSequenceStatement node)
+        {
+            Bind(node.Table);
         }
         #endregion
 

@@ -1010,6 +1010,98 @@ namespace DaJet.Scripting
 
             script.AppendLine(";").AppendLine("END;");
         }
+        private static string CreateSequenceTriggerName(string tableName)
+        {
+            return $"{tableName.ToLowerInvariant()}_instead_of_insert";
+        }
+        public override void Visit(in ApplySequenceStatement node, in StringBuilder script)
+        {
+            if (string.IsNullOrWhiteSpace(node.Identifier))
+            {
+                throw new InvalidOperationException("[APPLY SEQUENCE] Sequence identifier missing");
+            }
+
+            if (node.Table.Binding is not ApplicationObject table)
+            {
+                throw new InvalidOperationException("[APPLY SEQUENCE] Unsupported table binding");
+            }
+
+            if (node.Column.Binding is not MetadataProperty sequence)
+            {
+                throw new InvalidOperationException("[APPLY SEQUENCE] Unsupported column binding");
+            }
+
+            string triggerName = CreateSequenceTriggerName(table.TableName);
+
+            script.Append("IF OBJECT_ID('").Append(triggerName).AppendLine("', 'TR') IS NULL");
+
+            script.Append("EXECUTE('CREATE TRIGGER ")
+                .Append(triggerName).Append(" ON ").Append(table.TableName)
+                .AppendLine(" INSTEAD OF INSERT NOT FOR REPLICATION AS");
+
+            bool use_comma = false;
+            StringBuilder values = new();
+            StringBuilder columns = new();
+
+            MetadataColumn column;
+            MetadataProperty property;
+
+            for (int p = 0; p < table.Properties.Count; p++)
+            {
+                property = table.Properties[p];
+
+                for (int c = 0; c < property.Columns.Count; c++)
+                {
+                    column = property.Columns[c];
+
+                    if (use_comma)
+                    {
+                        values.Append(',').Append(' ');
+                        columns.Append(',').Append(' ');
+                    }
+                    else { use_comma = true; }
+
+                    columns.Append(column.Name);
+
+                    if (property.Name == sequence.Name)
+                    {
+                        values.Append("NEXT VALUE FOR ").Append(node.Identifier);
+                    }
+                    else
+                    {
+                        values.Append('i').Append('.').Append(column.Name);
+                    }
+                }
+            }
+
+            script.Append("INSERT ").Append(table.TableName).Append('(').Append(columns).Append(')').AppendLine();
+
+            script.Append("SELECT ").Append(values).AppendLine();
+
+            script.AppendLine(" FROM INSERTED AS i;');"); // close EXECUTE statement
+
+            if (node.ReCalculate)
+            {
+                //TODO: recalculate command
+            }
+        }
+        public override void Visit(in RevokeSequenceStatement node, in StringBuilder script)
+        {
+            if (string.IsNullOrWhiteSpace(node.Identifier))
+            {
+                throw new InvalidOperationException("[REVOKE SEQUENCE] Sequence identifier missing");
+            }
+
+            if (node.Table.Binding is not ApplicationObject table)
+            {
+                throw new InvalidOperationException("[REVOKE SEQUENCE] Unsupported table binding");
+            }
+
+            string triggerName = CreateSequenceTriggerName(table.TableName);
+
+            script.Append("IF OBJECT_ID('").Append(triggerName).Append("', 'TR') IS NOT NULL ")
+                .AppendLine("DROP TRIGGER ").Append(triggerName).Append(';').AppendLine();
+        }
     }
 }
 

@@ -29,3 +29,13 @@ AS
 	END;');
 END;
 GO
+
+************************************************************************************
+
+SELECT tr.name, tr.parent_id, tb.object_id, tb.name
+      FROM sys.triggers AS tr
+INNER JOIN sys.tables AS tb ON tr.parent_id = tb.object_id
+     WHERE tr.type='TR'
+	   AND tr.name = N'DaJetOutgoingQueue_INSTEAD_OF_INSERT'
+	   AND tb.type = 'U'
+       AND tb.name = '_InfoRg115'

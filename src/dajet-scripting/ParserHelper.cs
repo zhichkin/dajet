@@ -159,7 +159,9 @@ namespace DaJet.Scripting
             { "MAXDOP", TokenType.MAXDOP },
             { "PRODUCE", TokenType.PRODUCE },
             { "STREAM", TokenType.STREAM },
-            { "REQUEST", TokenType.REQUEST }
+            { "REQUEST", TokenType.REQUEST },
+            { "REVOKE", TokenType.REVOKE },
+            { "RECALCULATE", TokenType.RECALCULATE }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {
