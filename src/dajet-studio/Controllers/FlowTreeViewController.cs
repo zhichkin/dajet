@@ -113,7 +113,7 @@ namespace DaJet.Studio.Controllers
             };
             var dialog = dialogService.Show<FlowTreeNodeDialog>(node.Title, parameters, options);
             var result = await dialog.Result;
-            if (result.Cancelled) { return; }
+            if (result.Canceled) { return; }
 
             if (result.Data is not TreeNodeDialogResult dialogResult)
             {

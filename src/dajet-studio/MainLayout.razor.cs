@@ -80,7 +80,7 @@ namespace DaJet.Studio
             };
             var dialog = DialogService.Show<InfoBaseDialog>("DaJet Studio", parameters, options);
             var result = await dialog.Result;
-            if (result.Cancelled) { return; }
+            if (result.Canceled) { return; }
 
             if (result.Data is not InfoBaseRecord entity)
             {

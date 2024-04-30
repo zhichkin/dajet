@@ -113,7 +113,7 @@ namespace DaJet.Studio.Controllers
             };
             var dialog = dialogService.Show<DbViewDialog>(node.Url, parameters, options);
             var result = await dialog.Result;
-            if (result.Cancelled) { return; }
+            if (result.Canceled) { return; }
 
             if (result.Data is not DbViewDialogResult dialogResult)
             {
@@ -204,7 +204,7 @@ namespace DaJet.Studio.Controllers
             };
             var dialog = dialogService.Show<DbSchemaDialog>(node.Url, parameters, options);
             var result = await dialog.Result;
-            if (result.Cancelled) { return; }
+            if (result.Canceled) { return; }
 
             if (result.Data is not DbSchemaDialogResult dialogResult)
             {

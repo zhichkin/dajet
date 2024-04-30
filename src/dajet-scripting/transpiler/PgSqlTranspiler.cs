@@ -590,6 +590,27 @@ namespace DaJet.Scripting
             
             Visit(in select, in script);
         }
+        private IndexInfo GetPrimaryOrUniqueIndex(in string tableName)
+        {
+            List<IndexInfo> indexes = new PgSqlHelper().GetIndexes(Metadata.ConnectionString, tableName);
+
+            foreach (IndexInfo index in indexes)
+            {
+                if (index.IsPrimary) { return index; }
+            }
+
+            foreach (IndexInfo index in indexes)
+            {
+                if (index.IsUnique && index.IsClustered) { return index; }
+            }
+
+            foreach (IndexInfo index in indexes)
+            {
+                if (index.IsUnique) { return index; }
+            }
+
+            return null;
+        }
         private IndexInfo GetPrimaryOrUniqueIndex(in TableReference table)
         {
             if (table.Binding is not ApplicationObject entity)
@@ -1652,13 +1673,15 @@ namespace DaJet.Scripting
             script.AppendLine("RETURN NEW;");
             script.AppendLine("END $BODY$ LANGUAGE 'plpgsql';");
 
+            script.AppendLine();
             script.Append("CREATE TRIGGER ").AppendLine(triggerName);
             script.Append("BEFORE INSERT ON ").Append(tableName).AppendLine(" FOR EACH ROW");
             script.Append("EXECUTE PROCEDURE ").Append(functionName).AppendLine("();");
 
             if (node.ReCalculate)
             {
-                //TODO: recalculate command
+                script.AppendLine();
+                script.Append(CreateReCalculateSequenceColumnScript(in tableName, in columnName, node.Identifier));
             }
         }
         public override void Visit(in RevokeSequenceStatement node, in StringBuilder script)
@@ -1679,6 +1702,51 @@ namespace DaJet.Scripting
 
             script.Append("DROP FUNCTION IF EXISTS ").Append(functionName).AppendLine(" CASCADE;");
             script.Append("DROP TRIGGER IF EXISTS ").Append(triggerName).Append(" ON ").Append(tableName).Append(';').AppendLine();
+        }
+        private string CreateReCalculateSequenceColumnScript(in string tableName, in string columnName, in string sequenceName)
+        {
+            StringBuilder script = new();
+
+            IndexInfo index = GetPrimaryOrUniqueIndex(in tableName)
+                ?? throw new InvalidOperationException($"[APPLY SEQUENCE RECALCULATE]: Primary or unique index missing for table [{tableName}]");
+
+            StringBuilder columns = new();
+            StringBuilder orderby = new();
+            StringBuilder compare = new();
+
+            IndexColumnInfo column;
+
+            for (int i = 0; i < index.Columns.Count; i++)
+            {
+                column = index.Columns[i];
+
+                if (i > 0)
+                {
+                    columns.Append(',').Append(' ');
+                    orderby.Append(',').Append(' ');
+                    compare.Append(" AND ");
+                }
+
+                columns.Append(column.Name);
+                orderby.Append(column.Name).Append(' ').Append(column.IsDescending ? "DESC" : "ASC");
+                compare.Append(tableName).Append('.').Append(column.Name)
+                    .Append(" = ")
+                    .Append("cte").Append('.').Append(column.Name);
+            }
+
+            script.AppendLine("BEGIN TRANSACTION;").AppendLine();
+            script.AppendLine($"LOCK TABLE {tableName} IN ACCESS EXCLUSIVE MODE;");
+            
+            script.AppendLine();
+            script.AppendLine($"WITH cte AS (SELECT {columns}, nextval('{sequenceName}') AS sequence_value");
+            script.AppendLine($"FROM {tableName} ORDER BY {orderby})");
+            script.AppendLine($"UPDATE {tableName} SET {columnName} = cte.sequence_value FROM cte");
+            script.AppendLine($"WHERE {compare};");
+
+            script.AppendLine();
+            script.AppendLine("COMMIT TRANSACTION;");
+
+            return script.ToString();
         }
     }
 }

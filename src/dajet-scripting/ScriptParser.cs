@@ -2176,6 +2176,8 @@ namespace DaJet.Scripting
 
             statement.Identifier = Previous().Lexeme;
 
+            Skip(TokenType.Comment);
+
             if (!Match(TokenType.ON)) { throw new FormatException("[APPLY] ON keyword expected"); }
 
             if (!Match(TokenType.Identifier)) { throw new FormatException("[APPLY] Table identifier expected"); }
@@ -2190,6 +2192,8 @@ namespace DaJet.Scripting
 
             if (!Match(TokenType.CloseRoundBracket)) { throw new FormatException("[APPLY] Close round bracket expected"); }
 
+            Skip(TokenType.Comment);
+
             statement.ReCalculate = Match(TokenType.RECALCULATE); // optional
 
             return statement;
@@ -2203,6 +2207,8 @@ namespace DaJet.Scripting
             if (!Match(TokenType.Identifier)) { throw new FormatException("[REVOKE] Sequence identifier expected"); }
 
             statement.Identifier = Previous().Lexeme;
+
+            Skip(TokenType.Comment);
 
             if (!Match(TokenType.ON)) { throw new FormatException("[REVOKE] ON keyword expected"); }
 

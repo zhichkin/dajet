@@ -325,7 +325,7 @@ namespace DaJet.Studio.Components
             DialogOptions options = new() { CloseButton = true };
             var dialog = dialogService.Show<InfoBaseDialog>("DaJet Studio", parameters, options);
             var result = await dialog.Result;
-            if (result.Cancelled)
+            if (result.Canceled)
             {
                 model.Name = _backupName; // TODO: restore state of the model
                 return;

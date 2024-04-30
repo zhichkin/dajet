@@ -32,10 +32,23 @@ GO
 
 ************************************************************************************
 
-SELECT tr.name, tr.parent_id, tb.object_id, tb.name
-      FROM sys.triggers AS tr
-INNER JOIN sys.tables AS tb ON tr.parent_id = tb.object_id
-     WHERE tr.type='TR'
-	   AND tr.name = N'DaJetOutgoingQueue_INSTEAD_OF_INSERT'
-	   AND tb.type = 'U'
-       AND tb.name = '_InfoRg115'
+--BEGIN TRANSACTION;
+
+--SELECT _Fld3155 AS [МоментВремени], _Fld3156 AS [Идентификатор],
+--NEXT VALUE FOR _InfoRg3154_SEQ OVER (ORDER BY _Fld3155 ASC, _Fld3156 ASC) AS [НомерСообщения]
+--INTO #_InfoRg3154_Copy
+--FROM _InfoRg3154 WITH (TABLOCKX, HOLDLOCK);
+
+----SELECT * FROM #_InfoRg3154_Copy;
+
+--UPDATE T
+--SET T._Fld3155 = C.[НомерСообщения]
+--FROM _InfoRg3154 AS T
+--INNER JOIN
+--#_InfoRg3154_Copy AS C
+--ON T._Fld3155 = C.[МоментВремени]
+--AND T._Fld3156 = C.[Идентификатор];
+
+--CREATE TRIGGER ...
+
+--COMMIT TRANSACTION;

@@ -125,7 +125,7 @@ namespace DaJet.Studio.Controllers
             };
             var dialog = dialogService.Show<ExchangeRootDialog>(node.Url, parameters, options);
             var result = await dialog.Result;
-            if (result.Cancelled) { return; }
+            if (result.Canceled) { return; }
 
             if (result.Data is not ExchangeDialogResult dialogResult)
             {
@@ -162,7 +162,7 @@ namespace DaJet.Studio.Controllers
             };
             var dialog = dialogService.Show<ExchangeNodeDialog>(node.Url, parameters, options);
             var result = await dialog.Result;
-            if (result.Cancelled) { return; }
+            if (result.Canceled) { return; }
 
             if (result.Data is not ExchangeDialogResult dialogResult)
             {
@@ -229,7 +229,7 @@ namespace DaJet.Studio.Controllers
             var settings = new DialogOptions() { CloseButton = true };
             var dialog = dialogService.Show<SelectPublicationDialog>("Выбор...", parameters, settings);
             var result = await dialog.Result;
-            if (result.Cancelled) { return; }
+            if (result.Canceled) { return; }
             if (result.Data is not string name) { return; }
 
             foreach (TreeNodeModel child in root.Nodes)
@@ -332,7 +332,7 @@ namespace DaJet.Studio.Controllers
             };
             var dialog = dialogService.Show<ArticleTypeDialog>(node.Url, parameters, options);
             var result = await dialog.Result;
-            if (result.Cancelled) { return; }
+            if (result.Canceled) { return; }
 
             if (result.Data is not ExchangeDialogResult dialogResult)
             {
@@ -410,7 +410,7 @@ namespace DaJet.Studio.Controllers
             };
             var dialog = dialogService.Show<ArticleDialog>(node.Url, parameters, options);
             var result = await dialog.Result;
-            if (result.Cancelled) { return; }
+            if (result.Canceled) { return; }
 
             if (result.Data is not ExchangeDialogResult dialogResult)
             {
@@ -575,7 +575,7 @@ namespace DaJet.Studio.Controllers
             };
             var dialog = dialogService.Show<ScriptDialog>(node.Url, parameters, options);
             var result = await dialog.Result;
-            if (result.Cancelled) { return; }
+            if (result.Canceled) { return; }
 
             if (result.Data is not ExchangeDialogResult dialogResult)
             {

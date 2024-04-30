@@ -286,6 +286,27 @@ namespace DaJet.Scripting
             
             Visit(in output, in script);
         }
+        private IndexInfo GetPrimaryOrUniqueIndex(in string tableName)
+        {
+            List<IndexInfo> indexes = new MsSqlHelper().GetIndexes(Metadata.ConnectionString, tableName);
+
+            foreach (IndexInfo index in indexes)
+            {
+                if (index.IsPrimary) { return index; }
+            }
+
+            foreach (IndexInfo index in indexes)
+            {
+                if (index.IsUnique && index.IsClustered) { return index; }
+            }
+
+            foreach (IndexInfo index in indexes)
+            {
+                if (index.IsUnique) { return index; }
+            }
+
+            return null;
+        }
         private IndexInfo GetPrimaryOrUniqueIndex(in TableReference table)
         {
             if (table.Binding is not ApplicationObject entity)
@@ -1045,6 +1066,7 @@ namespace DaJet.Scripting
 
             MetadataColumn column;
             MetadataProperty property;
+            string sequenceColumn = string.Empty;
 
             for (int p = 0; p < table.Properties.Count; p++)
             {
@@ -1065,6 +1087,8 @@ namespace DaJet.Scripting
 
                     if (property.Name == sequence.Name)
                     {
+                        sequenceColumn = column.Name;
+
                         values.Append("NEXT VALUE FOR ").Append(node.Identifier);
                     }
                     else
@@ -1075,14 +1099,13 @@ namespace DaJet.Scripting
             }
 
             script.Append("INSERT ").Append(table.TableName).Append('(').Append(columns).Append(')').AppendLine();
-
             script.Append("SELECT ").Append(values).AppendLine();
-
-            script.AppendLine(" FROM INSERTED AS i;');"); // close EXECUTE statement
+            script.AppendLine("FROM INSERTED AS i;');"); // close EXECUTE statement
 
             if (node.ReCalculate)
             {
-                //TODO: recalculate command
+                script.AppendLine();
+                script.Append(CreateReCalculateSequenceColumnScript(table.TableName, in sequenceColumn, node.Identifier));
             }
         }
         public override void Visit(in RevokeSequenceStatement node, in StringBuilder script)
@@ -1101,6 +1124,54 @@ namespace DaJet.Scripting
 
             script.Append("IF OBJECT_ID('").Append(triggerName).Append("', 'TR') IS NOT NULL ")
                 .AppendLine("DROP TRIGGER ").Append(triggerName).Append(';').AppendLine();
+        }
+        private string CreateReCalculateSequenceColumnScript(in string tableName, in string columnName, in string sequenceName)
+        {
+            StringBuilder script = new();
+
+            IndexInfo index = GetPrimaryOrUniqueIndex(in tableName)
+                ?? throw new InvalidOperationException($"[APPLY SEQUENCE RECALCULATE]: Primary or unique index missing for table [{tableName}]");
+
+            string temporaryTable = $"#COPY{tableName}";
+
+            StringBuilder columns = new();
+            StringBuilder orderby = new();
+            StringBuilder joinon = new();
+
+            IndexColumnInfo column;
+
+            for (int i = 0; i < index.Columns.Count; i++)
+            {
+                column = index.Columns[i];
+
+                if (i > 0)
+                {
+                    columns.Append(',').Append(' ');
+                    orderby.Append(',').Append(' ');
+                    joinon.Append(" AND ");
+                }
+
+                columns.Append(column.Name);
+                orderby.Append(column.Name).Append(' ').Append(column.IsDescending ? "DESC" : "ASC");
+                joinon.Append('T').Append('.').Append(column.Name)
+                    .Append(" = ");
+                joinon.Append('S').Append('.').Append(column.Name);
+            }
+
+            script.AppendLine("BEGIN TRANSACTION;");
+
+            script.Append($"SELECT {columns}");
+            script.AppendLine($", NEXT VALUE FOR {sequenceName} OVER (ORDER BY {orderby}) AS sequence_value");
+            script.AppendLine($"INTO {temporaryTable} FROM {tableName} WITH (TABLOCKX, HOLDLOCK);");
+
+            script.AppendLine($"UPDATE T SET T.{columnName} = S.sequence_value FROM {tableName} AS T");
+            script.AppendLine($"INNER JOIN {temporaryTable} AS S ON {joinon};");
+
+            script.AppendLine($"DROP TABLE {temporaryTable};");
+
+            script.AppendLine("COMMIT TRANSACTION;");
+
+            return script.ToString();
         }
     }
 }

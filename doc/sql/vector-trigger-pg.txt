@@ -11,3 +11,22 @@ CREATE OR REPLACE TRIGGER _inforg115_before_insert_trigger
 BEFORE INSERT ON _inforg115
 FOR EACH ROW
 EXECUTE PROCEDURE _inforg115_before_insert_function();
+
+*****************
+
+--BEGIN TRANSACTION;
+--LOCK TABLE _inforg152 IN ACCESS EXCLUSIVE MODE;
+-- do some work here ...
+--COMMIT TRANSACTION; -- unlocks table
+
+WITH cte AS
+(
+	SELECT _fld153, _fld154, nextval('_inforg152_seq') AS msgno
+	FROM _inforg152
+	ORDER BY _fld153 ASC, _fld154 ASC
+)
+UPDATE _inforg152
+SET _fld153 = CAST(cte.msgno AS numeric(19,0))
+FROM cte
+WHERE _inforg152._fld153 = cte._fld153
+  AND _inforg152._fld154 = cte._fld154;
