@@ -82,6 +82,9 @@ namespace DaJet.Metadata.Parsers
             _converter[3][1][1][1][1][2] += Name; // Наименование конфигурации
             _converter[3][1][1][1][1][3][2] += Alias; // Синоним
             _converter[3][1][1][1][1][4] += Comment; // Комментарий
+            _converter[3][1][1][4][2] += DetailedDescription; // Подробная информация
+            _converter[3][1][1][5][2] += Description; // Краткая информация
+            _converter[3][1][1][14] += Provider; // Поставщик конфигурации
             _converter[3][1][1][15] += ConfigVersion; // Версия конфигурации
             _converter[3][1][1][26] += Version; // Режим совместимости
             _converter[3][1][1][41] += SyncCallsMode; // Режим использования синхронных вызовов расширений платформы и внешних компонент
@@ -150,9 +153,21 @@ namespace DaJet.Metadata.Parsers
                 _infoBase.CompatibilityVersion = version;
             }
         }
+        private void Provider(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _infoBase.Provider = source.Value;
+        }
         private void ConfigVersion(in ConfigFileReader source, in CancelEventArgs args)
         {
             _infoBase.AppConfigVersion = source.Value;
+        }
+        private void Description(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _infoBase.Description = source.Value;
+        }
+        private void DetailedDescription(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _infoBase.DetailedDescription = source.Value;
         }
         private void SyncCallsMode(in ConfigFileReader source, in CancelEventArgs args)
         {

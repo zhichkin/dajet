@@ -19,6 +19,18 @@
         /// </summary>
         public string AppConfigVersion { get; set; } = string.Empty;
         /// <summary>
+        /// Краткая информация о конфигурации
+        /// </summary>
+        public string Description { get; set; } = string.Empty;
+        /// <summary>
+        /// Подробная информация о конфигурации
+        /// </summary>
+        public string DetailedDescription { get; set; } = string.Empty;
+        /// <summary>
+        /// Поставщик конфигурации
+        /// </summary>
+        public string Provider { get; set; } = string.Empty;
+        /// <summary>
         /// Смещение дат
         /// </summary>
         public int YearOffset { get; set; }
