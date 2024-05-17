@@ -1117,7 +1117,10 @@ namespace DaJet.Metadata.Core
         // 2. "Период"      = Period     - DateTime
         // 3. "ВидДвижения" = RecordType - string { "Receipt", "Expense" }
         // 4. "Активность"  = Active     - bool
-        // 5. _SimpleKey    = binary(16) - версия платформы 8.2.х и ниже
+        // 5. _SimpleKey    = binary(16) - uuid (УникальныйИдентификатор)
+        //    - версия платформы 8.3.2 и ниже
+        //    - только непериодические регистры сведений
+        //    - регистр имеет больше одного измерения
 
         private static void ConfigureInformationRegister(in OneDbMetadataProvider cache, in InformationRegister register)
         {
@@ -1135,6 +1138,27 @@ namespace DaJet.Metadata.Core
             {
                 ConfigurePropertyАктивность(register);
                 ConfigurePropertyНомерЗаписи(register);
+            }
+
+            if (cache.InfoBase.CompatibilityVersion < 80303 &&
+                register.Periodicity == RegisterPeriodicity.None)
+            {
+                int dimensions = 0;
+
+                for (int i = 0; i < register.Properties.Count; i++)
+                {
+                    if (register.Properties[i].Purpose == PropertyPurpose.Dimension)
+                    {
+                        dimensions++;
+                    }
+
+                    if (dimensions > 1) { break; }
+                }
+
+                if (dimensions > 1)
+                {
+                    ConfigurePropertySimpleKey(register);
+                }
             }
         }
         private static void ConfigurePropertyПериод(in ApplicationObject register)
@@ -1280,7 +1304,26 @@ namespace DaJet.Metadata.Core
 
             register.Properties.Add(property);
         }
+        private static void ConfigurePropertySimpleKey(in ApplicationObject register)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "SimpleKey",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_SimpleKey"
+            };
+            property.PropertyType.IsUuid = true;
 
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 16,
+                TypeName = "binary"
+            });
+
+            register.Properties.Add(property);
+        }
         #endregion
 
         #region "ACCUMULATION REGISTER"

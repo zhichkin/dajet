@@ -301,9 +301,9 @@ namespace DaJet.Scripting
                         }
                     }
 
-                    if (declare.Type.Binding is Entity)
+                    if (declare.Type.Binding is Entity binding)
                     {
-                        Entity entity = SelectEntityValue(in context, in statement, in select_parameters);
+                        Entity entity = SelectEntityValue(in context, in statement, in select_parameters, binding.TypeCode);
 
                         if (entity.IsUndefined)
                         {
@@ -325,7 +325,14 @@ namespace DaJet.Scripting
                     {
                         object value = SelectParameterValue(in context, in statement, in select_parameters);
 
-                        parameters.Add(declare.Name[1..], value);
+                        if (value is Guid uuid)
+                        {
+                            parameters.Add(declare.Name[1..], uuid.ToByteArray());
+                        }
+                        else
+                        {
+                            parameters.Add(declare.Name[1..], value);
+                        }
                     }
                 }
             }
@@ -366,7 +373,7 @@ namespace DaJet.Scripting
 
             throw new InvalidOperationException("Entity parameters configuration error");
         }
-        private static Entity SelectEntityValue(in IMetadataProvider context, in SqlStatement statement, in Dictionary<string, object> parameters)
+        private static Entity SelectEntityValue(in IMetadataProvider context, in SqlStatement statement, in Dictionary<string, object> parameters, int typeCode)
         {
             object value = null;
 
@@ -380,6 +387,10 @@ namespace DaJet.Scripting
             if (value is Entity entity)
             {
                 return entity;
+            }
+            else if (typeCode > 0 && value is Guid uuid)
+            {
+                return new Entity(typeCode, uuid);
             }
 
             return Entity.Undefined;

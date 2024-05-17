@@ -268,6 +268,10 @@ namespace DaJet.Scripting
                 //TODO: IsVersion is int64 (bigint) hack
                 union.IsVersion = true; return;
             }
+            else if (name == "NEWUUID")
+            {
+                union.IsUuid = true; return;
+            }
 
             foreach (SyntaxNode parameter in function.Parameters)
             {

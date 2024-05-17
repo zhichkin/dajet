@@ -228,7 +228,8 @@ namespace DaJet.Scripting
             { "LAG", TokenType.LAG },
             { "LEAD", TokenType.LEAD },
             { "FIRST_VALUE", TokenType.FIRST_VALUE },
-            { "LAST_VALUE", TokenType.LAST_VALUE }
+            { "LAST_VALUE", TokenType.LAST_VALUE },
+            { "NEWUUID", TokenType.NEWUUID }
         };
         private static Dictionary<string, TokenType> _function_ru = new()
         {

@@ -311,7 +311,11 @@ namespace DaJet.Scripting
 
             string pg_name = null;
 
-            if (name == "TYPEOF" || name == "UUIDOF")
+            if (name == "NEWUUID")
+            {
+                script.Append($"CAST(E'\\\\x{ParserHelper.GetUuidHexLiteral(Guid.NewGuid())}' AS bytea)"); return;
+            }
+            else if (name == "TYPEOF" || name == "UUIDOF")
             {
                 base.Visit(in node, in script); return;
             }

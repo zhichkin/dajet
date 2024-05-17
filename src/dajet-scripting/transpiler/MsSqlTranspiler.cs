@@ -138,6 +138,10 @@ namespace DaJet.Scripting
                 Visit(node.Parameters[0], in script);
                 script.Append(')');
             }
+            else if (name == "NEWUUID")
+            {
+                script.Append("NEWID()");
+            }
             else
             {
                 base.Visit(in node, in script);

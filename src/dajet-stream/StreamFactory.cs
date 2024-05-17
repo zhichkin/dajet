@@ -2,6 +2,7 @@
 using DaJet.Metadata;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
+using System;
 using System.Data;
 
 namespace DaJet.Stream
@@ -449,11 +450,11 @@ namespace DaJet.Stream
 
             database.ConfigureDbParameters(in select_parameters);
 
-            if (declare.Type.Binding is Entity empty)
+            if (declare.Type.Binding is Entity binding)
             {
-                Entity entity = SelectEntityValue(in database, in statement, in select_parameters);
+                Entity entity = SelectEntityValue(in database, in statement, in select_parameters, binding.TypeCode);
 
-                return entity.IsUndefined ? empty : entity;
+                return entity.IsUndefined ? binding : entity;
             }
             else if (declare.Type.Token == TokenType.Array)
             {
@@ -501,7 +502,7 @@ namespace DaJet.Stream
 
             throw new InvalidOperationException("Entity parameters configuration error");
         }
-        private static Entity SelectEntityValue(in IMetadataProvider context, in SqlStatement statement, in Dictionary<string, object> parameters)
+        private static Entity SelectEntityValue(in IMetadataProvider context, in SqlStatement statement, in Dictionary<string, object> parameters, int code)
         {
             object value = null;
 
@@ -515,6 +516,10 @@ namespace DaJet.Stream
             if (value is Entity entity)
             {
                 return entity;
+            }
+            else if (code > 0 && value is Guid uuid)
+            {
+                return new Entity(code, uuid);
             }
 
             return Entity.Undefined;

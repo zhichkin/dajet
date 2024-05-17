@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>DaJet.Metadata</RootNamespace>
     <AssemblyName>DaJet.Metadata</AssemblyName>
-    <Version>4.5.4</Version>
+    <Version>4.5.5</Version>
     <Authors>Zhichkin</Authors>
     <Description>Library to read 1C:Enterprise 8 metadata from Microsoft SQL Server or PostgreSQL databases.</Description>
     <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>

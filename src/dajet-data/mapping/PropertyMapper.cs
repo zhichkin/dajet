@@ -342,7 +342,22 @@ namespace DaJet.Data
                 return null;
             }
 
-            return new Guid((byte[])reader.GetValue(ordinal));
+            Type type = reader.GetFieldType(ordinal);
+
+            if (type == typeof(byte[]))
+            {
+                byte[] buffer = new byte[16];
+
+                _ = reader.GetBytes(ordinal, 0, buffer, 0, 16);
+
+                return new Guid(buffer);
+            }
+            else if (type == typeof(Guid))
+            {
+                return reader.GetGuid(ordinal);
+            }
+
+            throw new InvalidOperationException("Invalid UUID value");
         }
         private object GetEntity(in IDataReader reader)
         {

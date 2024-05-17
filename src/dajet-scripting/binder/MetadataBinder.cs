@@ -215,13 +215,21 @@ namespace DaJet.Scripting
                 {
                     Bind(in select);
 
-                    node.Type.Binding = select.Columns;
+                    if (type == typeof(Guid))
+                    {
+                        //TODO: validate SELECT expression for different simple data types
+                        //EXAMPLE: DECLARE @uuid uuid = SELECT NEWUUID()
+                    }
+                    else
+                    {
+                        node.Type.Binding = select.Columns; // object schema
+                    }
                 }
                 else if (node.Initializer is TableUnionOperator union)
                 {
                     Bind(in union);
 
-                    node.Type.Binding = (union.Expression1 as SelectExpression).Columns;
+                    node.Type.Binding = (union.Expression1 as SelectExpression).Columns; // object schema
                 }
             }
             else if (node.Type.Binding is Entity) // DECLARE @Ссылка Справочник.Номенклатура
