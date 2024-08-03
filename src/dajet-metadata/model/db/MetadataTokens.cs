@@ -47,6 +47,12 @@
         public const string Const = "Const";
         ///<summary>Регистр сведений (значимый тип данных)</summary>
         public const string InfoRg = "InfoRg";
+        ///<summary>Таблица настроек регистра сведений</summary>
+        public const string InfoRgOpt = "InfoRgOpt";
+        ///<summary>Таблица итогов (срез первых) периодического регистра сведений</summary>
+        public const string InfoRgSF = "InfoRgSF";
+        ///<summary>Таблица итогов (срез последних) периодического регистра сведений</summary>
+        public const string InfoRgSL = "InfoRgSL";
         ///<summary>План счетов (ссылочный тип данных)</summary>
         public const string Acc = "Acc";
         ///<summary>Регистр бухгалтерии (значимый тип данных)</summary>
@@ -55,8 +61,10 @@
         public const string AccRgED = "AccRgED";
         ///<summary>Регистр накопления (значимый тип данных)</summary>
         public const string AccumRg = "AccumRg";
-        ///<summary>Таблица итогов регистра накопления (зависимый значимый тип данных)</summary>
+        ///<summary>Таблица итогов регистра накопления остатков (зависимый значимый тип данных)</summary>
         public const string AccumRgT = "AccumRgT";
+        ///<summary>Таблица итогов регистра накопления оборотов (зависимый значимый тип данных)</summary>
+        public const string AccumRgTn = "AccumRgTn";
         ///<summary>Таблица настроек регистра накопления (зависимый значимый тип данных)</summary>
         public const string AccumRgOpt = "AccumRgOpt";
         ///<summary>Таблица изменений регистра накопления (зависимый значимый тип данных)</summary>

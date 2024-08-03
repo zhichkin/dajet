@@ -1324,6 +1324,115 @@ namespace DaJet.Metadata.Core
 
             register.Properties.Add(property);
         }
+
+        internal static void ConfigureInfoRegisterSettingsTable(in OneDbMetadataProvider cache, in RegisterSettingsTable table)
+        {
+            if (table.Entity is not ApplicationObject entity)
+            {
+                return;
+            }
+
+            if (!cache.TryGetInfoRgOpt(entity.Uuid, out DbName dbn))
+            {
+                return;
+            }
+
+            table.Uuid = table.Entity.Uuid;
+            table.Name = table.Entity.Name + ".Настройки";
+            table.Alias = "Таблица настроек регистра сведений";
+            table.TypeCode = table.Entity.TypeCode;
+            table.TableName = $"_{dbn.Name}{dbn.Code}";
+
+            ConfigurePropertySliceUsing(in table); // _SliceUsing binary(1) boolean
+        }
+        private static void ConfigurePropertySliceUsing(in RegisterSettingsTable table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "SliceUsing",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_SliceUsing"
+            };
+            property.PropertyType.CanBeBoolean = true;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 1,
+                TypeName = "binary"
+            });
+
+            table.Properties.Add(property);
+        }
+
+        internal static void ConfigureInfoRegisterSliceLastTable(in OneDbMetadataProvider cache, in RegisterTotalsTable table)
+        {
+            if (table.Entity is not InformationRegister register)
+            {
+                return;
+            }
+
+            if (!cache.TryGetInfoRgSL(register.Uuid, out DbName dbn))
+            {
+                return;
+            }
+
+            table.Uuid = register.Uuid;
+            table.Name = register.Name + ".СрезПоследних";
+            table.Alias = "Таблица итогов регистра сведений (срез последних)";
+            table.TypeCode = register.TypeCode;
+            table.TableName = $"_{dbn.Name}{dbn.Code}";
+
+            foreach (MetadataProperty property in register.Properties)
+            {
+                if (property.Purpose == PropertyPurpose.System)
+                {
+                    if (property.Name == "Период" || property.Name == "Регистратор")
+                    {
+                        table.Properties.Add(property);
+                    }
+                    
+                    continue;
+                }
+
+                table.Properties.Add(property);
+            }
+        }
+        internal static void ConfigureInfoRegisterSliceFirstTable(in OneDbMetadataProvider cache, in RegisterTotalsTable table)
+        {
+            if (table.Entity is not InformationRegister register)
+            {
+                return;
+            }
+
+            if (!cache.TryGetInfoRgSF(register.Uuid, out DbName dbn))
+            {
+                return;
+            }
+
+            table.Uuid = register.Uuid;
+            table.Name = register.Name + ".СрезПервых";
+            table.Alias = "Таблица итогов регистра сведений (срез первых)";
+            table.TypeCode = register.TypeCode;
+            table.TableName = $"_{dbn.Name}{dbn.Code}";
+
+            foreach (MetadataProperty property in register.Properties)
+            {
+                if (property.Purpose == PropertyPurpose.System)
+                {
+                    if (property.Name == "Период" || property.Name == "Регистратор")
+                    {
+                        table.Properties.Add(property);
+                    }
+
+                    continue;
+                }
+
+                table.Properties.Add(property);
+            }
+        }
+
         #endregion
 
         #region "ACCUMULATION REGISTER"
@@ -1394,6 +1503,308 @@ namespace DaJet.Metadata.Core
             });
 
             register.Properties.Add(property);
+        }
+        ///<summary>
+        ///Разделитель итогов. Включается специальной настройкой "Разрешить разделение итогов" в конфигураторе.
+        ///<br>Используется для параллельной записи документов в таблицу итогов регистра по одинаковым значениям измерений.</br>
+        ///</summary>
+        private static void ConfigurePropertySplitter(in RegisterTotalsTable table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "Splitter",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Splitter"
+            };
+
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericPrecision = 10;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 9,
+                Precision = 10,
+                TypeName = "numeric"
+            });
+
+            table.Properties.Add(property);
+        }
+        internal static void ConfigureRegisterTotalsTable(in OneDbMetadataProvider cache, in RegisterTotalsTable table)
+        {
+            if (table.Entity is not ApplicationObject entity)
+            {
+                return;
+            }
+
+            if (!cache.TryGetAccumRgT(table.Entity.Uuid, out DbName dbn))
+            {
+                return;
+            }
+
+            table.Uuid = table.Entity.Uuid;
+            table.Name = table.Entity.Name + ".Итоги";
+            table.Alias = "Таблица итогов регистра накопления";
+            table.TypeCode = table.Entity.TypeCode;
+            table.TableName = $"_{dbn.Name}{dbn.Code}";
+
+            ConfigurePropertyПериод(table);
+
+            foreach (MetadataProperty property in entity.Properties)
+            {
+                if (property.Purpose == PropertyPurpose.Dimension)
+                {
+                    table.Properties.Add(property);
+                }
+            }
+
+            foreach (MetadataProperty property in entity.Properties)
+            {
+                if (property.Purpose == PropertyPurpose.Measure)
+                {
+                    table.Properties.Add(property);
+                }
+            }
+
+            if (entity is not AccumulationRegister register)
+            {
+                return;
+            }
+
+            if (register.UseSplitter) // Разрешить разделение итогов
+            {
+                ConfigurePropertySplitter(in table);
+            }
+        }
+        internal static void ConfigureRegisterSettingsTable(in OneDbMetadataProvider cache, in RegisterSettingsTable table)
+        {
+            if (table.Entity is not ApplicationObject entity)
+            {
+                return;
+            }
+
+            if (!cache.TryGetAccumRgOpt(entity.Uuid, out DbName dbn))
+            {
+                return;
+            }
+
+            table.Uuid = table.Entity.Uuid;
+            table.Name = table.Entity.Name + ".Настройки";
+            table.Alias = "Таблица настроек регистра накопления";
+            table.TypeCode = table.Entity.TypeCode;
+            table.TableName = $"_{dbn.Name}{dbn.Code}";
+
+            ConfigurePropertyRegID(in table);               // _RegID               binary(16)        Идентификатор объекта метаданных
+            ConfigurePropertyPeriod(in table);              // _Period              datetime          Периодичность хранения итогов (не используется)
+            ConfigurePropertyActualPeriod(in table);        // _ActualPeriod        binary(1) boolean Использовать текущие итоги
+            ConfigurePropertyPeriodicity(in table);         // _Periodicity         numeric(2,0)      Периодичность регистра
+            ConfigurePropertyRepetitionFactor(in table);    // _RepetitionFactor    numeric(2,0)      Кратность (не используется)
+            ConfigurePropertyUseTotals(in table);           // _UseTotals           numeric(1,0)      Использовать итоги
+            ConfigurePropertyMinPeriod(in table);           // _MinPeriod           datetime          Период расчитанных итогов
+            ConfigurePropertyUseSplitter(in table);         // _UseSplitter         binary(1) boolean Разрешить разделение итогов
+            ConfigurePropertyMinCalculatedPeriod(in table); // _MinCalculatedPeriod datetime          Минимальный период (не используется - ?)
+        }
+        private static void ConfigurePropertyRegID(in RegisterSettingsTable table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "RegID",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_RegID"
+            };
+
+            property.PropertyType.IsUuid = true;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 16,
+                TypeName = "binary"
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void ConfigurePropertyPeriod(in RegisterSettingsTable table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "Period",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Period"
+            };
+
+            property.PropertyType.CanBeDateTime = true;
+            property.PropertyType.DateTimePart = DateTimePart.DateTime;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 6,
+                Precision = 19,
+                TypeName = "datetime2"
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void ConfigurePropertyActualPeriod(in RegisterSettingsTable table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "ActualPeriod",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_ActualPeriod"
+            };
+            property.PropertyType.CanBeBoolean = true;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 1,
+                TypeName = "binary"
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void ConfigurePropertyPeriodicity(in RegisterSettingsTable table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "Periodicity",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Periodicity"
+            };
+
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericPrecision = 2;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 5,
+                Precision = 2,
+                TypeName = "numeric"
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void ConfigurePropertyRepetitionFactor(in RegisterSettingsTable table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "RepetitionFactor",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_RepetitionFactor"
+            };
+
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericPrecision = 2;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 5,
+                Precision = 2,
+                TypeName = "numeric"
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void ConfigurePropertyUseTotals(in RegisterSettingsTable table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "UseTotals",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_UseTotals"
+            };
+
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericPrecision = 1;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 5,
+                Precision = 1,
+                TypeName = "numeric"
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void ConfigurePropertyMinPeriod(in RegisterSettingsTable table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "MinPeriod",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_MinPeriod"
+            };
+
+            property.PropertyType.CanBeDateTime = true;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 6,
+                Precision = 19,
+                TypeName = "datetime2"
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void ConfigurePropertyUseSplitter(in RegisterSettingsTable table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "UseSplitter",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_UseSplitter"
+            };
+            property.PropertyType.CanBeBoolean = true;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 1,
+                TypeName = "binary"
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void ConfigurePropertyMinCalculatedPeriod(in RegisterSettingsTable table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "MinCalculatedPeriod",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_MinCalculatedPeriod"
+            };
+
+            property.PropertyType.CanBeDateTime = true;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 6,
+                Precision = 19,
+                TypeName = "datetime2"
+            });
+
+            table.Properties.Add(property);
         }
 
         #endregion

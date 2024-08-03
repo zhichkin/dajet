@@ -201,6 +201,103 @@ namespace DaJet.Metadata
 
             return false;
         }
+        internal bool TryGetAccumRgT(Guid uuid, out DbName entry)
+        {
+            if (!_database.TryGet(uuid, out entry))
+            {
+                return false;
+            }
+
+            foreach (DbName child in entry.Children)
+            {
+                // Таблица итогов регистра накопления (остатков или оборотов)
+                if (child.Name == MetadataTokens.AccumRgT ||
+                    child.Name == MetadataTokens.AccumRgTn)
+                {
+                    entry = child;
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        internal bool TryGetAccumRgOpt(Guid uuid, out DbName entry)
+        {
+            if (!_database.TryGet(uuid, out entry))
+            {
+                return false;
+            }
+
+            foreach (DbName child in entry.Children)
+            {
+                if (child.Name == MetadataTokens.AccumRgOpt)
+                {
+                    entry = child;
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        internal bool TryGetInfoRgOpt(Guid uuid, out DbName entry)
+        {
+            if (!_database.TryGet(uuid, out entry))
+            {
+                return false;
+            }
+
+            foreach (DbName child in entry.Children)
+            {
+                if (child.Name == MetadataTokens.InfoRgOpt)
+                {
+                    entry = child;
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        internal bool TryGetInfoRgSF(Guid uuid, out DbName entry)
+        {
+            if (!_database.TryGet(uuid, out entry))
+            {
+                return false;
+            }
+
+            foreach (DbName child in entry.Children)
+            {
+                if (child.Name == MetadataTokens.InfoRgSF)
+                {
+                    entry = child;
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        internal bool TryGetInfoRgSL(Guid uuid, out DbName entry)
+        {
+            if (!_database.TryGet(uuid, out entry))
+            {
+                return false;
+            }
+
+            foreach (DbName child in entry.Children)
+            {
+                if (child.Name == MetadataTokens.InfoRgSL)
+                {
+                    entry = child;
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         private void AddName(Guid type, Guid uuid, string name)
         {
@@ -915,6 +1012,52 @@ namespace DaJet.Metadata
                 }
             }
 
+            if (metadata is AccumulationRegister register)
+            {
+                if (tableName == "Итоги")
+                {
+                    return GetRegisterTotalsTable(in register);
+                }
+                else if (tableName == "Настройки")
+                {
+                    return GetRegisterSettingsTable(in register);
+                }
+                else
+                {
+                    return null; // not found error
+                }
+            }
+
+            if (InfoBase.CompatibilityVersion >= 80302)
+            {
+                if (metadata is InformationRegister inforeg)
+                {
+                    if (inforeg.UseSliceFirst || inforeg.UseSliceLast)
+                    {
+                        if (tableName == "Настройки")
+                        {
+                            return GetInfoRegisterSettingsTable(in inforeg);
+                        }
+                        else if (tableName == "СрезПервых")
+                        {
+                            return GetInfoRegisterSliceFirstTable(in inforeg);
+                        }
+                        else if (tableName == "СрезПоследних")
+                        {
+                            return GetInfoRegisterSliceLastTable(in inforeg);
+                        }
+                        else
+                        {
+                            return null; // not found error
+                        }
+                    }
+                    else
+                    {
+                        return null; // not found error
+                    }
+                }
+            }
+
             if (metadata is not ITablePartOwner owner)
             {
                 return null;
@@ -946,6 +1089,73 @@ namespace DaJet.Metadata
 
             reference.SetTarget(metadata);
         }
+        
+        private RegisterTotalsTable GetRegisterTotalsTable(in AccumulationRegister register)
+        {
+            if (!TryGetAccumRgT(register.Uuid, out _))
+            {
+                return null;
+            }
+
+            RegisterTotalsTable table = new(register);
+
+            Configurator.ConfigureRegisterTotalsTable(this, in table);
+
+            return table;
+        }
+        private RegisterSettingsTable GetRegisterSettingsTable(in AccumulationRegister register)
+        {
+            if (!TryGetAccumRgOpt(register.Uuid, out _))
+            {
+                return null;
+            }
+
+            RegisterSettingsTable table = new(register);
+
+            Configurator.ConfigureRegisterSettingsTable(this, in table);
+
+            return table;
+        }
+        
+        private RegisterSettingsTable GetInfoRegisterSettingsTable(in InformationRegister register)
+        {
+            if (!TryGetInfoRgOpt(register.Uuid, out _))
+            {
+                return null;
+            }
+
+            RegisterSettingsTable table = new(register);
+
+            Configurator.ConfigureInfoRegisterSettingsTable(this, in table);
+
+            return table;
+        }
+        private RegisterTotalsTable GetInfoRegisterSliceLastTable(in InformationRegister register)
+        {
+            if (!TryGetInfoRgSL(register.Uuid, out _))
+            {
+                return null;
+            }
+
+            RegisterTotalsTable table = new(register);
+
+            Configurator.ConfigureInfoRegisterSliceLastTable(this, in table);
+
+            return table;
+        }
+        private RegisterTotalsTable GetInfoRegisterSliceFirstTable(in InformationRegister register)
+        {
+            if (!TryGetInfoRgSF(register.Uuid, out _))
+            {
+                return null;
+            }
+
+            RegisterTotalsTable table = new(register);
+
+            Configurator.ConfigureInfoRegisterSliceFirstTable(this, in table);
+
+            return table;
+        }
 
         private MetadataObject GetTypeDefinitionCached(in string identifier)
         {
@@ -955,6 +1165,7 @@ namespace DaJet.Metadata
             
             return configurator.GetTypeDefinition(in identifier);
         }
+
         #endregion
 
         #region "INTERNAL METHODS USED BY CONFIGURATOR"

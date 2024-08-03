@@ -1,5 +1,6 @@
 using DaJet.Data;
 using DaJet.Metadata.Core;
+using DaJet.Metadata.Model;
 using DaJet.Metadata.Parsers;
 
 namespace DaJet.Metadata.Test
@@ -29,6 +30,23 @@ namespace DaJet.Metadata.Test
             {
                 ConfigObject config = parser.Parse(in reader);
                 writer.Write(config, @"C:\temp\1c-dump\config.txt");
+            }
+
+            Console.WriteLine("Done");
+        }
+        [TestMethod] public void DumpConfigFile()
+        {
+            IMetadataProvider metadata = new OneDbMetadataProvider(MS_CONNECTION);
+
+            MetadataObject entity = metadata.GetMetadataObject("РегистрСведений.Тестовый");
+
+            ConfigFileParser parser = new();
+            ConfigFileWriter writer = new();
+
+            using (ConfigFileReader reader = new(metadata.DatabaseProvider, metadata.ConnectionString, ConfigTables.Config, entity.Uuid))
+            {
+                ConfigObject config = parser.Parse(in reader);
+                writer.Write(config, @"C:\temp\1c-dump\РегистрСведений.Тестовый.dump.txt");
             }
 
             Console.WriteLine("Done");

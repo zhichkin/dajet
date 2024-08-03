@@ -5,6 +5,8 @@
         public bool UseRecorder { get; set; }
         public RegisterPeriodicity Periodicity { get; set; } = RegisterPeriodicity.None;
         public bool UsePeriodForChangeTracking { get; set; }
+        public bool UseSliceLast { get; set; } // Разрешить итоги: срез последних
+        public bool UseSliceFirst { get; set; } // Разрешить итоги: срез первых
     }
     
     // периодический регистр сведений

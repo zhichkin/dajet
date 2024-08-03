@@ -107,7 +107,12 @@ namespace DaJet.Metadata.Parsers
             _converter[1][18] += Periodicity;
             _converter[1][19] += UseRecorder;
             _converter[1][23] += UsePeriodForChangeTracking;
-            //TODO: Основной отбор по периоду для таблиц регистрации изменений планов обмена !!!
+
+            if (_cache is not null && _cache.InfoBase is not null && _cache.InfoBase.CompatibilityVersion >= 80302)
+            {
+                _converter[1][34] += UseSliceLast;
+                _converter[1][35] += UseSliceFirst;
+            }
 
             ConfigurePropertyConverters();
         }
@@ -174,6 +179,24 @@ namespace DaJet.Metadata.Parsers
             {
                 _target.Parent = source.GetUuid();
             }
+        }
+        private void UseSliceLast(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            if (_target.Periodicity == RegisterPeriodicity.None)
+            {
+                return;
+            }
+
+            _target.UseSliceLast = (source.GetInt32() != 0);
+        }
+        private void UseSliceFirst(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            if (_target.Periodicity == RegisterPeriodicity.None)
+            {
+                return;
+            }
+
+            _target.UseSliceFirst = (source.GetInt32() != 0);
         }
     }
 }
