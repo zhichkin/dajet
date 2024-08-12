@@ -2100,6 +2100,7 @@ namespace DaJet.Metadata.Core
                 }
                 else
                 {
+                    tablePart.TypeCode = entry.Code;
                     tablePart.TableName = entity.TableName + CreateDbName(entry.Name, entry.Code);
                 }
 
