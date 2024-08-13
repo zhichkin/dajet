@@ -78,7 +78,7 @@ namespace DaJet.Scripting
 
             ExecuteImportStatements(in model, in context, in sql_parameters); // execute: IMPORT script INTO @tvp
 
-            ConfigureMetadataTable(in model, in context, in sql_parameters);
+            ConfigureMetadataTables(in model, in context, in sql_parameters);
 
             result.Parameters = sql_parameters;
 
@@ -525,7 +525,7 @@ namespace DaJet.Scripting
             }
         }
 
-        private static void ConfigureMetadataTable(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)
+        private static void ConfigureMetadataTables(in ScriptModel model, in IMetadataProvider context, in Dictionary<string, object> parameters)
         {
             List<TableReference> tables = new MetadataTableExtractor().Extract(model);
 
@@ -547,10 +547,10 @@ namespace DaJet.Scripting
         {
             List<Dictionary<string, object>> table = new();
 
-            GetMetadataTables(MetadataTypes.Catalog, in context, in table);
-            GetMetadataTables(MetadataTypes.Document, in context, in table);
-            GetMetadataTables(MetadataTypes.InformationRegister, in context, in table);
-            GetMetadataTables(MetadataTypes.AccumulationRegister, in context, in table);
+            GetMetadataObjects(MetadataTypes.Catalog, in context, in table);
+            GetMetadataObjects(MetadataTypes.Document, in context, in table);
+            GetMetadataObjects(MetadataTypes.InformationRegister, in context, in table);
+            GetMetadataObjects(MetadataTypes.AccumulationRegister, in context, in table);
 
             parameters["md_object"] = new TableValuedParameter()
             {
@@ -559,7 +559,7 @@ namespace DaJet.Scripting
                 DbName = "dajet_md_object" //NOTE: prefix 'dajet' is very important for PostgreSQL !!!
             };
         }
-        private static void GetMetadataTables(Guid type, in IMetadataProvider context, in List<Dictionary<string, object>> table)
+        private static void GetMetadataObjects(Guid type, in IMetadataProvider context, in List<Dictionary<string, object>> table)
         {
             foreach (MetadataItem item in context.GetMetadataItems(type))
             {
@@ -601,23 +601,61 @@ namespace DaJet.Scripting
         {
             List<Dictionary<string, object>> table = new();
 
-            Dictionary<string, object> entity = new();
+            GetMetadataProperties(MetadataTypes.Catalog, in context, in table);
+            GetMetadataProperties(MetadataTypes.Document, in context, in table);
+            GetMetadataProperties(MetadataTypes.InformationRegister, in context, in table);
+            GetMetadataProperties(MetadataTypes.AccumulationRegister, in context, in table);
 
-            entity.Add("__oid_U", Guid.Empty);
-            entity.Add("__type_U", Guid.Empty);
-            entity.Add("__code_N", 12M);
-            entity.Add("__name_S", "test");
-            entity.Add("__table_S", "_table12");
-            entity.Add("__owner_U", Guid.Empty);
-
-            table.Add(entity);
-
-            parameters["md_object"] = new TableValuedParameter()
+            parameters["md_property"] = new TableValuedParameter()
             {
-                Name = "md_object",
+                Name = "md_property",
                 Value = table,
-                DbName = "udt_md_object"
+                DbName = "dajet_md_property" //NOTE: prefix 'dajet' is very important for PostgreSQL !!!
             };
+        }
+        private static void GetMetadataProperties(Guid type, in IMetadataProvider context, in List<Dictionary<string, object>> table)
+        {
+            foreach (MetadataItem item in context.GetMetadataItems(type))
+            {
+                MetadataObject metadata = context.GetMetadataObject(item.Type, item.Uuid);
+
+                Dictionary<string, object> record;
+
+                if (metadata is ApplicationObject entity)
+                {
+                    foreach (MetadataProperty property in entity.Properties)
+                    {
+                        record = new Dictionary<string, object>()
+                        {
+                            { "Ссылка",   property.Uuid },
+                            { "Тип",      property.PropertyType.ToString() },
+                            { "Имя",      property.Name },
+                            { "Колонка",  property.DbName },
+                            { "Владелец", entity.Uuid }
+                        };
+                        table.Add(record);
+                    }
+
+                    if (entity is ITablePartOwner owner)
+                    {
+                        foreach (TablePart tablePart in owner.TableParts)
+                        {
+                            foreach (MetadataProperty property in tablePart.Properties)
+                            {
+                                record = new Dictionary<string, object>()
+                                {
+                                    { "Ссылка",   property.Uuid },
+                                    { "Тип",      property.PropertyType.ToString() },
+                                    { "Имя",      property.Name },
+                                    { "Колонка",  property.DbName },
+                                    { "Владелец", tablePart.Uuid }
+                                };
+                                table.Add(record);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         public static bool TryBind(in ScriptModel script, in IMetadataProvider database, out string error)
