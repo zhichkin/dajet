@@ -6,6 +6,8 @@ using DaJet.Model;
 using DaJet.Scripting.Model;
 using System.Data;
 using System.Globalization;
+using System.Text;
+using System.Web;
 
 namespace DaJet.Scripting
 {
@@ -468,7 +470,7 @@ namespace DaJet.Scripting
             {
                 IQueryExecutor executor = importContext.CreateQueryExecutor(); //TODO: use OneDbConnection ?
 
-                foreach (IDataReader reader in executor.ExecuteReader(statement.Script, 10, importParameters))
+                foreach (IDataReader reader in executor.ExecuteReader(statement.Script, 10, result.Parameters))
                 {
                     Dictionary<string, object> entity = new();
 
@@ -514,8 +516,11 @@ namespace DaJet.Scripting
                 {
                     string[] replace = parameter.Split('=', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
-                    string parameterName = replace[0];
-                    string variableName = (replace.Length > 1) ? replace[1] : parameterName;
+                    string parameterName = HttpUtility.UrlDecode(replace[0], Encoding.UTF8); 
+                    
+                    string variableName = (replace.Length > 1)
+                        ? HttpUtility.UrlDecode(replace[1], Encoding.UTF8)
+                        : parameterName;
 
                     if (parameters.TryGetValue(variableName, out object value))
                     {
