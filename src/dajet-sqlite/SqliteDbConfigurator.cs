@@ -471,5 +471,10 @@ namespace DaJet.Sqlite
         {
             //TODO: create primary key clustered index
         }
+
+        public TableDefinition GetTableDefinition(in string identifier)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

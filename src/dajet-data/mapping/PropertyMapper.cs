@@ -250,6 +250,10 @@ namespace DaJet.Data
             {
                 return new decimal(reader.GetInt64(ordinal));
             }
+            else if (type == typeof(byte))
+            {
+                return new decimal(reader.GetByte(ordinal));
+            }
             else
             {
                 return reader.GetDecimal(ordinal);

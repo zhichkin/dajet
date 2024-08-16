@@ -13,7 +13,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -1158,35 +1157,35 @@ namespace DaJet.Metadata
             return table;
         }
 
-        private MetadataObject GetTypeDefinitionCached(in string identifier)
+        private ApplicationObject GetTypeOrTableDefinitionCached(in string identifier)
         {
             //TODO: try get type definition from cache first
 
             IDbConfigurator configurator = GetDbConfigurator();
 
-            string[] identifiers = GetIdentifiers(identifier);
+            ApplicationObject udt = null;
 
-            if (identifiers[0].SequenceEqual("Метаданные"))
+            if (identifier == "Метаданные.Объекты")
             {
-                UserDefinedType udt = null;
+                udt = configurator.GetTypeDefinition("dajet_md_object");
 
-                if (identifiers[1].SequenceEqual("Объекты"))
-                {
-                    udt = configurator.GetTypeDefinition("dajet_md_object");
+                if (udt is not null) { udt.TableName = "@md_object"; }
+            }
+            else if (identifier == "Метаданные.Свойства")
+            {
+                udt = configurator.GetTypeDefinition("dajet_md_property");
 
-                    if (udt is not null) { udt.TableName = "@md_object"; }
-                }
-                else if (identifiers[1].SequenceEqual("Свойства"))
-                {
-                    udt = configurator.GetTypeDefinition("dajet_md_property");
-                    
-                    if (udt is not null) { udt.TableName = "@md_property"; }
-                }
+                if (udt is not null) { udt.TableName = "@md_property"; }
+            }
 
+            if (udt is not null)
+            {
                 return udt;
             }
 
-            return configurator.GetTypeDefinition(in identifier);
+            udt = configurator.GetTypeDefinition(in identifier);
+
+            return udt ?? configurator.GetTableDefinition(in identifier);
         }
 
         #endregion
@@ -1514,7 +1513,7 @@ namespace DaJet.Metadata
 
             if (type == Guid.Empty)
             {
-                return GetTypeDefinitionCached(in metadataName);
+                return GetTypeOrTableDefinitionCached(in metadataName);
             }
 
             if (identifiers.Length > 2)

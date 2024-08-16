@@ -26,6 +26,13 @@ namespace DaJet.Data
             "WHERE c.relkind = 'c' AND c.relname = '{0}' AND pg_catalog.pg_table_is_visible(c.oid))" +
             "ORDER BY a.attnum ASC;";
 
+        private const string SELECT_INFORMATION_SCHEMA_COLUMNS =
+            "SELECT ORDINAL_POSITION, COLUMN_NAME, CHARACTER_OCTET_LENGTH, " +
+            "CASE WHEN DATA_TYPE = 'USER-DEFINED' THEN UDT_NAME ELSE DATA_TYPE END AS DATA_TYPE, " +
+            "CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, " +
+            "CASE WHEN IS_NULLABLE = 'NO' THEN FALSE ELSE TRUE END AS IS_NULLABLE " +
+            "FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @TABLE_NAME";
+
         private static readonly Dictionary<string, Dictionary<string, Type>> _types = new();
         public static Type GetUserDefinedType(in string database, in string typeName)
         {
@@ -347,6 +354,328 @@ namespace DaJet.Data
             }
 
             return type;
+        }
+        public TableDefinition GetTableDefinition(in string identifier)
+        {
+            if (identifier == "INFORMATION_SCHEMA.TABLES")
+            {
+                return GetInformationSchemaTables();
+            }
+
+            if (identifier == "INFORMATION_SCHEMA.COLUMNS")
+            {
+                return GetInformationSchemaColumns();
+            }
+
+            return GetDatabaseMetadata(in identifier);
+        }
+        private static TableDefinition GetInformationSchemaTables()
+        {
+            TableDefinition table = new()
+            {
+                Name = "INFORMATION_SCHEMA.TABLES",
+                TableName = "INFORMATION_SCHEMA.TABLES"
+            };
+
+            ConfigureTableCatalogProperty(in table);
+            ConfigureTableSchemaProperty(in table);
+            ConfigureTableNameProperty(in table);
+            ConfigureTableTypeProperty(in table);
+
+            return table;
+        }
+        private static void ConfigureTableCatalogProperty(in TableDefinition table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "TABLE_CATALOG",
+                DbName = "TABLE_CATALOG",
+                IsDbGenerated = true,
+                Purpose = PropertyPurpose.System
+            };
+
+            property.PropertyType.CanBeString = true;
+            property.PropertyType.StringLength = 64;
+            property.PropertyType.StringKind = StringKind.Variable;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = "TABLE_CATALOG",
+                Length = 64,
+                TypeName = "character varying",
+                IsNullable = false
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void ConfigureTableSchemaProperty(in TableDefinition table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "TABLE_SCHEMA",
+                DbName = "TABLE_SCHEMA",
+                IsDbGenerated = true,
+                Purpose = PropertyPurpose.System
+            };
+
+            property.PropertyType.CanBeString = true;
+            property.PropertyType.StringLength = 64;
+            property.PropertyType.StringKind = StringKind.Variable;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = "TABLE_SCHEMA",
+                Length = 64,
+                TypeName = "character varying",
+                IsNullable = false
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void ConfigureTableNameProperty(in TableDefinition table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "TABLE_NAME",
+                DbName = "TABLE_NAME",
+                IsDbGenerated = true,
+                Purpose = PropertyPurpose.System
+            };
+
+            property.PropertyType.CanBeString = true;
+            property.PropertyType.StringLength = 64;
+            property.PropertyType.StringKind = StringKind.Variable;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = "TABLE_NAME",
+                Length = 64,
+                TypeName = "character varying",
+                IsNullable = false
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void ConfigureTableTypeProperty(in TableDefinition table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "TABLE_TYPE",
+                DbName = "TABLE_TYPE",
+                IsDbGenerated = true,
+                Purpose = PropertyPurpose.System
+            };
+
+            property.PropertyType.CanBeString = true;
+            property.PropertyType.StringLength = 10;
+            property.PropertyType.StringKind = StringKind.Variable;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = "TABLE_TYPE",
+                Length = 10,
+                TypeName = "character varying",
+                IsNullable = false
+            });
+
+            table.Properties.Add(property);
+        }
+        private TableDefinition GetInformationSchemaColumns()
+        {
+            TableDefinition table = new()
+            {
+                Name = "INFORMATION_SCHEMA.COLUMNS",
+                TableName = "INFORMATION_SCHEMA.COLUMNS"
+            };
+
+            ConfigureTableCatalogProperty(in table);
+            ConfigureTableSchemaProperty(in table);
+            ConfigureTableNameProperty(in table);
+            ConfigureTableCatalogProperty(in table);
+            ConfigureTableSchemaProperty(in table);
+            ConfigureTableNameProperty(in table);
+            Configure_ORDINAL_POSITION(in table);
+            Configure_COLUMN_NAME(in table);
+            Configure_DATA_TYPE(in table);
+            Configure_CHARACTER_MAXIMUM_LENGTH(in table);
+            Configure_NUMERIC_PRECISION(in table);
+            Configure_NUMERIC_SCALE(in table);
+            Configure_IS_NULLABLE(in table);
+
+            return table;
+        }
+        private static void Configure_ORDINAL_POSITION(in TableDefinition table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "ORDINAL_POSITION",
+                DbName = "ORDINAL_POSITION",
+                IsDbGenerated = true,
+                Purpose = PropertyPurpose.System
+            };
+
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericPrecision = 10;
+            property.PropertyType.NumericScale = 0;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = "ORDINAL_POSITION",
+                TypeName = "integer",
+                IsNullable = false
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void Configure_COLUMN_NAME(in TableDefinition table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "COLUMN_NAME",
+                DbName = "COLUMN_NAME",
+                IsDbGenerated = true,
+                Purpose = PropertyPurpose.System
+            };
+
+            property.PropertyType.CanBeString = true;
+            property.PropertyType.StringLength = 128;
+            property.PropertyType.StringKind = StringKind.Variable;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = "COLUMN_NAME",
+                Length = 64,
+                TypeName = "character varying",
+                IsNullable = false
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void Configure_DATA_TYPE(in TableDefinition table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "DATA_TYPE",
+                DbName = "DATA_TYPE",
+                IsDbGenerated = true,
+                Purpose = PropertyPurpose.System
+            };
+
+            property.PropertyType.CanBeString = true;
+            property.PropertyType.StringLength = 128;
+            property.PropertyType.StringKind = StringKind.Variable;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = "DATA_TYPE",
+                Length = 64,
+                TypeName = "character varying",
+                IsNullable = false
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void Configure_CHARACTER_MAXIMUM_LENGTH(in TableDefinition table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "CHARACTER_MAXIMUM_LENGTH",
+                DbName = "CHARACTER_MAXIMUM_LENGTH",
+                IsDbGenerated = true,
+                Purpose = PropertyPurpose.System
+            };
+
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericPrecision = 10;
+            property.PropertyType.NumericScale = 0;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = "CHARACTER_MAXIMUM_LENGTH",
+                TypeName = "integer",
+                IsNullable = false
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void Configure_NUMERIC_PRECISION(in TableDefinition table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "NUMERIC_PRECISION",
+                DbName = "NUMERIC_PRECISION",
+                IsDbGenerated = true,
+                Purpose = PropertyPurpose.System
+            };
+
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericPrecision = 3;
+            property.PropertyType.NumericScale = 0;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = "NUMERIC_PRECISION",
+                TypeName = "integer",
+                IsNullable = false
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void Configure_NUMERIC_SCALE(in TableDefinition table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "NUMERIC_SCALE",
+                DbName = "NUMERIC_SCALE",
+                IsDbGenerated = true,
+                Purpose = PropertyPurpose.System
+            };
+
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericPrecision = 10;
+            property.PropertyType.NumericScale = 0;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = "NUMERIC_SCALE",
+                TypeName = "integer",
+                IsNullable = false
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void Configure_IS_NULLABLE(in TableDefinition table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "IS_NULLABLE",
+                DbName = "IS_NULLABLE",
+                IsDbGenerated = true,
+                Purpose = PropertyPurpose.System
+            };
+
+            property.PropertyType.CanBeString = true;
+            property.PropertyType.StringLength = 3;
+            property.PropertyType.StringKind = StringKind.Variable;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = "IS_NULLABLE",
+                Length = 3,
+                TypeName = "character varying",
+                IsNullable = false
+            });
+
+            table.Properties.Add(property);
+        }
+
+        private TableDefinition GetDatabaseMetadata(in string identifier)
+        {
+            throw new NotImplementedException();
         }
     }
 }

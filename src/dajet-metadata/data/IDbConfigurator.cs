@@ -7,5 +7,6 @@ namespace DaJet.Data
         bool TryConfigureDatabase(out string error);
         bool TryCreateType(in UserDefinedType type);
         UserDefinedType GetTypeDefinition(in string identifier);
+        TableDefinition GetTableDefinition(in string identifier);
     }
 }
