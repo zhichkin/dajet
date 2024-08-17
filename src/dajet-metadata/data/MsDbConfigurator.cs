@@ -482,7 +482,129 @@ namespace DaJet.Data
 
         private TableDefinition GetDatabaseMetadata(in string identifier)
         {
-            throw new NotImplementedException();
+            TableDefinition table = new()
+            {
+                Name = identifier,
+                TableName = identifier
+            };
+
+            Dictionary<string, object> parameters = new()
+            {
+                { "TABLE_NAME", identifier }
+            };
+
+            MetadataProperty property = null;
+            
+            foreach (IDataReader reader in _executor.ExecuteReader(SELECT_INFORMATION_SCHEMA_COLUMNS, 5, parameters))
+            {
+                int ORDINAL_POSITION = reader.GetInt32(0);
+                string COLUMN_NAME = reader.GetString(1);
+                string DATA_TYPE = reader.GetString(2);
+                int CHARACTER_MAXIMUM_LENGTH = reader.IsDBNull(3) ? 0 : reader.GetInt32(3);
+                int NUMERIC_PRECISION = reader.IsDBNull(4) ? 0 : reader.GetByte(4);
+                int NUMERIC_SCALE = reader.IsDBNull(5) ? 0 : reader.GetInt32(5);
+                bool IS_NULLABLE = reader.GetBoolean(6);
+
+                property = new MetadataProperty()
+                {
+                    Name = COLUMN_NAME,
+                    DbName = COLUMN_NAME,
+                    PrimaryKey = 0,
+                    IsDbGenerated = true
+                };
+
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = COLUMN_NAME,
+                    TypeName = DATA_TYPE,
+                    IsNullable = IS_NULLABLE,
+                    Length = CHARACTER_MAXIMUM_LENGTH,
+                    Precision = NUMERIC_PRECISION,
+                    Scale = NUMERIC_SCALE,
+                    IsPrimaryKey = false,
+                    KeyOrdinal = 0
+                });
+
+                if (DATA_TYPE == "binary" && CHARACTER_MAXIMUM_LENGTH == 1)
+                {
+                    if (COLUMN_NAME.EndsWith("_TYPE"))
+                    {
+                        property.PropertyType.CanBeNumeric = true;
+                        property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+                        property.PropertyType.NumericPrecision = 1;
+                        property.PropertyType.NumericScale = 0;
+                    }
+                    else
+                    {
+                        property.PropertyType.CanBeBoolean = true;
+                    }
+                }
+                else if (DATA_TYPE == "numeric")
+                {
+                    property.PropertyType.CanBeNumeric = true;
+                    property.PropertyType.NumericKind = NumericKind.CanBeNegative;
+                    property.PropertyType.NumericPrecision = NUMERIC_PRECISION;
+                    property.PropertyType.NumericScale = NUMERIC_SCALE;
+                }
+                else if (DATA_TYPE == "binary" && CHARACTER_MAXIMUM_LENGTH == 4)
+                {
+                    property.PropertyType.CanBeNumeric = true;
+                    property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+                    property.PropertyType.NumericPrecision = 10;
+                    property.PropertyType.NumericScale = 0;
+                }
+                else if (DATA_TYPE == "datetime2")
+                {
+                    property.PropertyType.CanBeDateTime = true;
+                    property.PropertyType.DateTimePart = DateTimePart.DateTime;
+                }
+                else if (DATA_TYPE == "char" || DATA_TYPE == "nchar")
+                {
+                    property.PropertyType.CanBeString = true;
+                    property.PropertyType.StringKind = StringKind.Fixed;
+                    property.PropertyType.StringLength = CHARACTER_MAXIMUM_LENGTH;
+                }
+                else if (DATA_TYPE == "varchar" || DATA_TYPE == "nvarchar")
+                {
+                    property.PropertyType.CanBeString = true;
+                    property.PropertyType.StringKind = StringKind.Variable;
+                    property.PropertyType.StringLength = CHARACTER_MAXIMUM_LENGTH;
+                }
+                else if (DATA_TYPE == "varbinary")
+                {
+                    property.PropertyType.IsBinary = true;
+                    property.PropertyType.StringLength = CHARACTER_MAXIMUM_LENGTH;
+                }
+                else if (DATA_TYPE == "binary" && CHARACTER_MAXIMUM_LENGTH == 16)
+                {
+                    property.PropertyType.IsUuid = true;
+                }
+                else if (DATA_TYPE == "uniqueidentifier")
+                {
+                    property.PropertyType.IsUuid = true;
+                }
+                else if (DATA_TYPE == "timestamp" || DATA_TYPE == "rowversion")
+                {
+                    property.PropertyType.IsBinary = true;
+                    property.PropertyType.StringLength = 8;
+                }
+                else if (DATA_TYPE == "int") // tinyint smallint bigint
+                {
+                    property.PropertyType.CanBeNumeric = true;
+                    property.PropertyType.NumericKind = NumericKind.CanBeNegative;
+                    property.PropertyType.NumericPrecision = 10;
+                    property.PropertyType.NumericScale = 0;
+                }
+
+                table.Properties.Add(property);
+            }
+
+            if (table.Properties is null || table.Properties.Count == 0)
+            {
+                return null; // table not found error
+            }
+
+            return table;
         }
     }
 }

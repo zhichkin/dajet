@@ -27,7 +27,7 @@ namespace DaJet.Data
             "ORDER BY a.attnum ASC;";
 
         private const string SELECT_INFORMATION_SCHEMA_COLUMNS =
-            "SELECT ORDINAL_POSITION, COLUMN_NAME, CHARACTER_OCTET_LENGTH, " +
+            "SELECT ORDINAL_POSITION, COLUMN_NAME, " +
             "CASE WHEN DATA_TYPE = 'USER-DEFINED' THEN UDT_NAME ELSE DATA_TYPE END AS DATA_TYPE, " +
             "CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, " +
             "CASE WHEN IS_NULLABLE = 'NO' THEN FALSE ELSE TRUE END AS IS_NULLABLE " +
@@ -675,7 +675,105 @@ namespace DaJet.Data
 
         private TableDefinition GetDatabaseMetadata(in string identifier)
         {
-            throw new NotImplementedException();
+            TableDefinition table = new()
+            {
+                Name = identifier,
+                TableName = identifier
+            };
+
+            Dictionary<string, object> parameters = new()
+            {
+                { "TABLE_NAME", identifier }
+            };
+
+            MetadataProperty property = null;
+
+            IQueryExecutor executor = new PgQueryExecutor(_provider.ConnectionString);
+
+            foreach (IDataReader reader in executor.ExecuteReader(SELECT_INFORMATION_SCHEMA_COLUMNS, 5, parameters))
+            {
+                int ORDINAL_POSITION = reader.GetInt32(0);
+                string COLUMN_NAME = reader.GetString(1);
+                string DATA_TYPE = reader.GetString(2);
+                int CHARACTER_MAXIMUM_LENGTH = reader.IsDBNull(3) ? 0 : reader.GetInt32(3);
+                int NUMERIC_PRECISION = reader.IsDBNull(4) ? 0 : reader.GetByte(4);
+                int NUMERIC_SCALE = reader.IsDBNull(5) ? 0 : reader.GetInt32(5);
+                bool IS_NULLABLE = reader.GetBoolean(6);
+
+                property = new MetadataProperty()
+                {
+                    Name = COLUMN_NAME,
+                    DbName = COLUMN_NAME,
+                    PrimaryKey = 0,
+                    IsDbGenerated = true
+                };
+
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = COLUMN_NAME,
+                    TypeName = DATA_TYPE,
+                    IsNullable = IS_NULLABLE,
+                    Length = CHARACTER_MAXIMUM_LENGTH,
+                    Precision = NUMERIC_PRECISION,
+                    Scale = NUMERIC_SCALE,
+                    IsPrimaryKey = false,
+                    KeyOrdinal = 0
+                });
+
+                if (DATA_TYPE == "boolean")
+                {
+                    property.PropertyType.CanBeBoolean = true;
+                }
+                else if (DATA_TYPE == "numeric")
+                {
+                    property.PropertyType.CanBeNumeric = true;
+                    property.PropertyType.NumericKind = NumericKind.CanBeNegative;
+                    property.PropertyType.NumericPrecision = NUMERIC_PRECISION;
+                    property.PropertyType.NumericScale = NUMERIC_SCALE;
+                }
+                else if (DATA_TYPE.StartsWith("timestamp"))
+                {
+                    property.PropertyType.CanBeDateTime = true;
+                    property.PropertyType.DateTimePart = DateTimePart.DateTime;
+                }
+                else if (DATA_TYPE == "mchar" || DATA_TYPE == "character" || DATA_TYPE == "char")
+                {
+                    property.PropertyType.CanBeString = true;
+                    property.PropertyType.StringKind = StringKind.Fixed;
+                    property.PropertyType.StringLength = CHARACTER_MAXIMUM_LENGTH;
+                }
+                else if (DATA_TYPE == "mvarchar" || DATA_TYPE == "character varying" || DATA_TYPE == "varchar" || DATA_TYPE == "text")
+                {
+                    property.PropertyType.CanBeString = true;
+                    property.PropertyType.StringKind = StringKind.Variable;
+                    property.PropertyType.StringLength = CHARACTER_MAXIMUM_LENGTH;
+                }
+                else if (DATA_TYPE == "bytea")
+                {
+                    property.PropertyType.IsBinary = true;
+                    property.PropertyType.StringLength = CHARACTER_MAXIMUM_LENGTH;
+                }
+                else if (DATA_TYPE == "uuid")
+                {
+                    property.PropertyType.IsUuid = true;
+                }
+                else if (DATA_TYPE == "integer")
+                {
+                    property.PropertyType.CanBeNumeric = true;
+                    property.PropertyType.NumericKind = NumericKind.CanBeNegative;
+                    property.PropertyType.NumericPrecision = 10;
+                    property.PropertyType.NumericScale = 0;
+                }
+
+                table.Properties.Add(property);
+            }
+
+            if (table.Properties is null || table.Properties.Count == 0)
+            {
+                return null; // table not found error
+            }
+
+            return table;
         }
     }
 }

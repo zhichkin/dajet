@@ -2,7 +2,6 @@
 using DaJet.Metadata;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
-using System;
 using System.Data;
 
 namespace DaJet.Stream
