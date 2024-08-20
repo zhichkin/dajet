@@ -2,7 +2,7 @@
 {
     public enum TokenType
     {
-        Ignore, Script, Comment, Comma, EndOfStatement, USE,
+        Ignore, Script, Comment, Comma, EndOfStatement, USE, IF, WHILE, BREAK, CONTINUE, RETURN, PRINT,
 
         SELECT, INTO, DISTINCT, TOP, FROM, WHERE, GROUP, HAVING, ORDER, BY, ASC, DESC,
         AND, OR, AS, NOT,
@@ -13,7 +13,7 @@
         ROW, ROWS, ONLY, OFFSET, FETCH, FIRST, NEXT,
         SUM, MAX, MIN, AVG, COUNT, STRING_AGG, ROW_NUMBER, LAG, LEAD, FIRST_VALUE, LAST_VALUE,
         OVER, PARTITION, RANGE, BETWEEN, UNBOUNDED, PRECEDING, CURRENT, FOLLOWING,
-        CASE, WHEN, THEN, ELSE, END, EXISTS,
+        CASE, WHEN, THEN, ELSE, BEGIN, END, EXISTS, EXECUTE,
         SUBSTRING,
         NOW,
 

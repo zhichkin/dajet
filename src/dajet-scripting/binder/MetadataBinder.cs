@@ -96,6 +96,13 @@ namespace DaJet.Scripting
             else if (node is CreateTypeStatement udt) { Bind(in udt); }
             else if (node is ApplySequenceStatement apply_sequence) { Bind(in apply_sequence); }
             else if (node is RevokeSequenceStatement revoke_sequence) { Bind(in revoke_sequence); }
+            else if (node is AssignmentStatement assignment) { Bind(in assignment); }
+            else if (node is CaseStatement case_statement) { Bind(in case_statement); }
+            else if (node is IfStatement if_statement) { Bind(in if_statement); }
+            else if (node is WhileStatement while_statement) { Bind(in while_statement); }
+            else if (node is StatementBlock statement_block) { Bind(in statement_block); }
+            else if (node is PrintStatement print) { Bind(in print); }
+            else if (node is ExecuteStatement execute) { Bind(in execute); }
         }
         private void RegisterBindingError(TokenType token, string identifier)
         {
@@ -1187,6 +1194,57 @@ namespace DaJet.Scripting
                     throw new FormatException("[APPEND] INTO variable reference expected.");
                 }
             }
+        }
+
+        private void Bind(in AssignmentStatement node)
+        {
+            Bind(node.Target);
+            Bind(node.Initializer);
+        }
+        private void Bind(in StatementBlock node)
+        {
+            if (node is null) { return; }
+
+            foreach (SyntaxNode statement in node.Statements)
+            {
+                Bind(in statement);
+            }
+        }
+        private void Bind(in IfStatement node)
+        {
+            Bind(node.Condition);
+            
+            Bind(node.THEN);
+
+            if (node.ELSE is not null)
+            {
+                Bind(node.ELSE);
+            }
+        }
+        private void Bind(in CaseStatement node)
+        {
+            foreach (WhenClause when in node.CASE)
+            {
+                Bind(in when);
+            }
+
+            if (node.ELSE is not null)
+            {
+                Bind(node.ELSE);
+            }
+        }
+        private void Bind(in WhileStatement node)
+        {
+            Bind(node.Condition);
+            Bind(node.Statements);
+        }
+        public void Bind(in PrintStatement node)
+        {
+            Bind(node.Expression);
+        }
+        public void Bind(in ExecuteStatement node)
+        {
+            throw new NotImplementedException();
         }
     }
 }

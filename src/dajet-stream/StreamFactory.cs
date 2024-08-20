@@ -63,7 +63,13 @@ namespace DaJet.Stream
             {
                 return CreateMessageBrokerProcessor(in scope);
             }
-            
+            else if (scope.Owner is PrintStatement) { return new PrintProcessor(in scope); }
+            else if (scope.Owner is IfStatement) { return new IfProcessor(in scope); }
+            else if (scope.Owner is CaseStatement) { return new CaseProcessor(in scope); }
+            else if (scope.Owner is WhileStatement) { return new WhileProcessor(in scope); }
+            else if (scope.Owner is AssignmentStatement) { return new SetProcessor(in scope); }
+            else if (scope.Owner is ExecuteStatement) { return new ExecuteProcessor(in scope); }
+
             return CreateDatabaseProcessor(in scope);
         }
         internal static IProcessor CreateDatabaseProcessor(in StreamScope scope)

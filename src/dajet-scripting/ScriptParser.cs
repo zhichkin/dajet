@@ -174,6 +174,26 @@ namespace DaJet.Scripting
 
             return declare;
         }
+        private SyntaxNode assignment()
+        {
+            AssignmentStatement statement = new();
+
+            if (!Match(TokenType.Variable) || variable() is not VariableReference _variable)
+            {
+                throw new FormatException("[ASSIGNMENT] variable identifier expected");
+            }
+
+            statement.Target = _variable;
+
+            if (!Match(TokenType.Equals))
+            {
+                throw new FormatException("Assignment operator expected");
+            }
+
+            statement.Initializer = expression();
+
+            return statement;
+        }
         private SyntaxNode use()
         {
             if (!Match(TokenType.String))
@@ -243,8 +263,12 @@ namespace DaJet.Scripting
         {
             if (Match(TokenType.Comment)) { return comment(); }
             else if (Match(TokenType.DECLARE)) { return declare(); }
+            else if (Match(TokenType.SET)) { return assignment(); }
             else if (Match(TokenType.USE)) { return use(); }
             else if (Match(TokenType.FOR)) { return for_each(); }
+            else if (Match(TokenType.IF)) { return if_statement(); }
+            else if (Match(TokenType.CASE)) { return case_statement(); }
+            else if (Match(TokenType.WHILE)) { return while_statement(); }
             else if (Match(TokenType.CREATE)) { return create_statement(); }
             else if (Check(TokenType.SELECT)) { return select_statement(); }
             else if (Check(TokenType.INSERT)) { return insert_statement(); }
@@ -259,11 +283,155 @@ namespace DaJet.Scripting
             else if (Match(TokenType.DROP)) { return drop_statement(); }
             else if (Match(TokenType.APPLY)) { return apply_statement(); }
             else if (Match(TokenType.REVOKE)) { return revoke_statement(); }
+            else if (Match(TokenType.PRINT)) { return print_statement(); }
+            else if (Match(TokenType.BREAK)) { return new BreakStatement(); }
+            else if (Match(TokenType.CONTINUE)) { return new ContinueStatement(); }
+            else if (Match(TokenType.RETURN)) { return new ReturnStatement(); }
+            else if (Match(TokenType.EXECUTE)) { return execute_statement(); }
             else if (Match(TokenType.EndOfStatement)) { return null; }
 
             Ignore();
 
             throw new FormatException($"Unknown statement: {Previous()}");
+        }
+        private SyntaxNode print_statement() { return new PrintStatement() { Expression = expression() }; }
+        private StatementBlock statement_block()
+        {
+            Skip(TokenType.Comment);
+
+            StatementBlock block = new();
+
+            SyntaxNode node;
+
+            while (!Match(TokenType.END))
+            {
+                if (Check(TokenType.WHEN) || Check(TokenType.ELSE))
+                {
+                    return block;
+                }
+
+                node = statement();
+
+                if (node is not null)
+                {
+                    block.Statements.Add(node);
+                }
+
+                Skip(TokenType.Comment);
+            }
+
+            Skip(TokenType.Comment);
+
+            return block;
+        }
+        private SyntaxNode if_statement()
+        {
+            IfStatement statement = new();
+
+            bool expect_close = Match(TokenType.OpenRoundBracket);
+
+            statement.Condition = predicate();
+
+            if (expect_close && !Match(TokenType.CloseRoundBracket))
+            {
+                throw new FormatException("IF: close round bracket expected");
+            }
+
+            Skip(TokenType.Comment);
+
+            if (!Match(TokenType.THEN))
+            {
+                throw new FormatException("IF: THEN keyword expected");
+            }
+
+            statement.THEN = statement_block();
+
+            if (statement.THEN is null || statement.THEN.Statements is null || statement.THEN.Statements.Count == 0)
+            {
+                throw new FormatException("IF: THEN statement block is empty");
+            }
+
+            if (Match(TokenType.ELSE)) // optional
+            {
+                statement.ELSE = statement_block();
+
+                if (statement.ELSE is null || statement.ELSE.Statements is null || statement.ELSE.Statements.Count == 0)
+                {
+                    throw new FormatException("IF: ELSE statement block is empty");
+                }
+            }
+
+            return statement;
+        }
+        private SyntaxNode case_statement()
+        {
+            CaseStatement statement = new();
+
+            while (Match(TokenType.WHEN))
+            {
+                bool expect_close = Match(TokenType.OpenRoundBracket);
+
+                WhenClause when = new() { WHEN = predicate() };
+
+                if (expect_close && !Match(TokenType.CloseRoundBracket))
+                {
+                    throw new FormatException("[CASE] WHEN close round bracket expected");
+                }
+
+                if (!Match(TokenType.THEN))
+                {
+                    throw new FormatException($"[CASE] THEN keyword expected");
+                }
+
+                StatementBlock block = statement_block();
+
+                if (block is null || block.Statements is null || block.Statements.Count == 0)
+                {
+                    throw new FormatException("[CASE] THEN statement block is empty");
+                }
+
+                when.THEN = block;
+                
+                statement.CASE.Add(when);
+            }
+
+            if (statement.CASE is null || statement.CASE.Count == 0)
+            {
+                throw new FormatException("[CASE] WHEN ... THEN expected");
+            }
+
+            if (Match(TokenType.ELSE))
+            {
+                statement.ELSE = statement_block();
+
+                if (statement.ELSE is null || statement.ELSE.Statements is null || statement.ELSE.Statements.Count == 0)
+                {
+                    throw new FormatException("[CASE] ELSE statement block is empty");
+                }
+            }
+
+            return statement;
+        }
+        private SyntaxNode while_statement()
+        {
+            WhileStatement statement = new();
+
+            bool expect_close = Match(TokenType.OpenRoundBracket);
+
+            statement.Condition = predicate();
+
+            if (expect_close && !Match(TokenType.CloseRoundBracket))
+            {
+                throw new FormatException("[WHILE] close round bracket expected");
+            }
+
+            statement.Statements = statement_block();
+
+            return statement;
+        }
+        private SyntaxNode execute_statement()
+        {
+            throw new NotImplementedException();
         }
         private SyntaxNode create_statement()
         {

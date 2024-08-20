@@ -124,6 +124,7 @@ namespace DaJet.Scripting
             { "WHEN", TokenType.WHEN },
             { "THEN", TokenType.THEN },
             { "ELSE", TokenType.ELSE },
+            { "BEGIN", TokenType.BEGIN },
             { "END", TokenType.END },
             { "EXISTS", TokenType.EXISTS },
             { "UNION", TokenType.UNION },
@@ -161,7 +162,14 @@ namespace DaJet.Scripting
             { "STREAM", TokenType.STREAM },
             { "REQUEST", TokenType.REQUEST },
             { "REVOKE", TokenType.REVOKE },
-            { "RECALCULATE", TokenType.RECALCULATE }
+            { "RECALCULATE", TokenType.RECALCULATE },
+            { "IF", TokenType.IF },
+            { "WHILE", TokenType.WHILE },
+            { "PRINT", TokenType.PRINT },
+            { "RETURN", TokenType.RETURN },
+            { "BREAK", TokenType.BREAK },
+            { "CONTINUE", TokenType.CONTINUE },
+            { "EXECUTE", TokenType.EXECUTE }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {

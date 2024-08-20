@@ -117,6 +117,37 @@ namespace DaJet.Stream
 
             return scope;
         }
+        public StreamScope Create(in StatementBlock statements)
+        {
+            StreamScope scope = new(statements, this);
+
+            Children.Add(scope);
+
+            StreamScope _current = scope;
+
+            for (int i = 0; i < statements.Statements.Count; i++)
+            {
+                SyntaxNode statement = statements.Statements[i];
+
+                if (statement is CommentStatement) { continue; }
+
+                if (statement is DeclareStatement declare)
+                {
+                    _current.Variables.Add(declare.Name, null);
+                    _current.Declarations.Add(declare);
+                }
+                else if (IsStreamScope(in statement))
+                {
+                    _current = _current.Open(in statement); // open new scope
+                }
+                else
+                {
+                    _ = _current.Open(in statement); // join current scope
+                }
+            }
+
+            return scope;
+        }
         public StreamScope Close() { return Parent; }
         public StreamScope Clone()
         {
