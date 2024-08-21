@@ -34,22 +34,24 @@ namespace DaJet.Stream
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Process()
         {
-            if (StreamFactory.TryEvaluate(in _scope, _statement.Condition, out object value))
+            if (ConditionIsTrue())
             {
-                if (value is bool condition)
-                {
-                    if (condition)
-                    {
-                        _next_then.Process();
-                    }
-                    else
-                    {
-                        _next_else?.Process();
-                    }
-                }
+                _next_then.Process();
+            }
+            else
+            {
+                _next_else?.Process();
             }
 
             _next?.Process();
+        }
+        private bool ConditionIsTrue()
+        {
+            if (_statement.Condition is null) { return true; }
+
+            SyntaxNode expression = _statement.Condition;
+
+            return StreamFactory.Evaluate(in _scope, in expression);
         }
     }
 }

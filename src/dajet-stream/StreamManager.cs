@@ -1,6 +1,4 @@
-﻿using DaJet.Scripting;
-using DaJet.Scripting.Model;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text;
 
 namespace DaJet.Stream
@@ -50,7 +48,7 @@ namespace DaJet.Stream
 
             watch.Start();
 
-            if (TryCreateStream(in script, out IProcessor stream, out string error))
+            if (StreamFactory.TryCreateStream(in script, out IProcessor stream, out string error))
             {
                 _ = Task.Factory.StartNew(stream.Process, TaskCreationOptions.LongRunning);
 
@@ -65,32 +63,6 @@ namespace DaJet.Stream
                 FileLogger.Default.Write($"[ERROR] {file}");
                 FileLogger.Default.Write(error);
             }
-        }
-        public static bool TryCreateStream(in string script, out IProcessor stream, out string error)
-        {
-            error = null;
-            stream = null;
-
-            ScriptModel model;
-
-            using (ScriptParser parser = new())
-            {
-                if (!parser.TryParse(in script, out model, out error))
-                {
-                    return false;
-                }
-            }
-
-            try
-            {
-                stream = StreamFactory.Create(in model);
-            }
-            catch (Exception exception)
-            {
-                error = ExceptionHelper.GetErrorMessageAndStackTrace(exception);
-            }
-
-            return stream is not null;
         }
         public static void Dispose()
         {

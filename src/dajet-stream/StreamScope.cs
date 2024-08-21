@@ -117,6 +117,30 @@ namespace DaJet.Stream
 
             return scope;
         }
+        
+        public StreamScope Close() { return Parent; }
+        public StreamScope Clone()
+        {
+            StreamScope clone = new(Owner, this);
+
+            foreach (StreamScope child in Children)
+            {
+                clone.Children.Add(child.Clone(in clone));
+            }
+
+            return clone;
+        }
+        private StreamScope Clone(in StreamScope parent)
+        {
+            StreamScope clone = new(Owner, parent);
+
+            foreach (StreamScope child in Children)
+            {
+                clone.Children.Add(child.Clone(in clone));
+            }
+
+            return clone;
+        }
         public StreamScope Create(in StatementBlock statements)
         {
             StreamScope scope = new(statements, this);
@@ -148,32 +172,11 @@ namespace DaJet.Stream
 
             return scope;
         }
-        public StreamScope Close() { return Parent; }
-        public StreamScope Clone()
+        public static StreamScope Create(in ScriptModel script, in StreamScope parent)
         {
-            StreamScope clone = new(Owner, this);
+            StreamScope scope = parent is null ? new(script) : new(script, parent);
 
-            foreach (StreamScope child in Children)
-            {
-                clone.Children.Add(child.Clone(in clone));
-            }
-
-            return clone;
-        }
-        private StreamScope Clone(in StreamScope parent)
-        {
-            StreamScope clone = new(Owner, parent);
-
-            foreach (StreamScope child in Children)
-            {
-                clone.Children.Add(child.Clone(in clone));
-            }
-
-            return clone;
-        }
-        public static StreamScope Create(in ScriptModel script)
-        {
-            StreamScope scope = new(script);
+            parent?.Children.Add(scope);
 
             StreamScope _current = scope;
 
@@ -200,6 +203,7 @@ namespace DaJet.Stream
 
             return scope;
         }
+        public StreamScope Create(in ScriptModel script) { return Create(in script, this); }
         public static bool IsStreamScope(in SyntaxNode statement)
         {
             return statement is UseStatement

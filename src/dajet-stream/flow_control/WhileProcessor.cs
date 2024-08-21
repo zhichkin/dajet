@@ -28,26 +28,20 @@ namespace DaJet.Stream
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Process()
         {
-            while (EvaluateCondition())
+            while (ConditionIsTrue())
             {
-                _body.Process();
+                _body.Process(); //TODO: break/continue
             }
 
             _next?.Process();
         }
-        private bool EvaluateCondition()
+        private bool ConditionIsTrue()
         {
-            if (!StreamFactory.TryEvaluate(in _scope, _statement.Condition, out object value))
-            {
-                return false;
-            }
+            if (_statement.Condition is null) { return true; }
 
-            if (value is not bool condition)
-            {
-                return false;
-            }
+            SyntaxNode expression = _statement.Condition;
 
-            return condition;
+            return StreamFactory.Evaluate(in _scope, in expression);
         }
     }
 }

@@ -431,7 +431,15 @@ namespace DaJet.Scripting
         }
         private SyntaxNode execute_statement()
         {
-            throw new NotImplementedException();
+            if (!Match(TokenType.String))
+            {
+                throw new FormatException("[EXECUTE] uri expected");
+            }
+
+            return new ExecuteStatement()
+            {
+                Uri = Previous().Lexeme
+            };
         }
         private SyntaxNode create_statement()
         {

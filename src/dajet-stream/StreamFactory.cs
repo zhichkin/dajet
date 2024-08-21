@@ -6,13 +6,35 @@ using System.Data;
 
 namespace DaJet.Stream
 {
-    internal static class StreamFactory
+    public static class StreamFactory
     {
-        internal static IProcessor Create(in ScriptModel script)
+        public static bool TryCreateStream(in string script, out IProcessor stream, out string error)
         {
-            StreamScope scope = StreamScope.Create(in script);
+            error = null;
+            stream = null;
 
-            return new DataStream(in scope);
+            ScriptModel model;
+
+            using (ScriptParser parser = new())
+            {
+                if (!parser.TryParse(in script, out model, out error))
+                {
+                    return false;
+                }
+            }
+
+            try
+            {
+                StreamScope scope = StreamScope.Create(in model, null);
+
+                stream = new DataStream(in scope);
+            }
+            catch (Exception exception)
+            {
+                error = ExceptionHelper.GetErrorMessageAndStackTrace(exception);
+            }
+
+            return string.IsNullOrEmpty(error);
         }
         internal static IProcessor CreateStream(in StreamScope parent)
         {
@@ -1118,8 +1140,19 @@ namespace DaJet.Stream
                 return false;
             }
 
-            value = (left is null ? string.Empty : left.ToString())
-                + (right is null ? string.Empty : right.ToString());
+            if (left is int int1 && right is int int2)
+            {
+                value = expression.Token == TokenType.Plus ? int1 + int2 : int1 - int2;
+            }
+            else if (left is decimal dec1 && right is decimal dec2)
+            {
+                value = expression.Token == TokenType.Plus ? dec1 + dec2 : dec1 - dec2;
+            }
+            else
+            {
+                value = (left is null ? string.Empty : left.ToString())
+                      + (right is null ? string.Empty : right.ToString());
+            }
 
             return true;
         }
@@ -1159,6 +1192,22 @@ namespace DaJet.Stream
             else if (node is ComparisonOperator comparison)
             {
                 return Evaluate(in scope, in comparison);
+            }
+            else if (node is ScalarExpression scalar)
+            {
+                return scalar.Token == TokenType.Boolean
+                    && scalar.Literal.Equals("true", StringComparison.InvariantCultureIgnoreCase);
+            }
+            else if (node is VariableReference variable)
+            {
+                if (scope.TryGetValue(variable.Identifier, out object value) && value is bool result)
+                {
+                    return result;
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Variable {variable} value is not boolean");
+                }
             }
             else
             {
@@ -1210,6 +1259,15 @@ namespace DaJet.Stream
                 right = null;
             }
 
+            if (left is int intlv && right is int intrv)
+            {
+                return CompareNumbers(comparison.Token, intlv, intrv);
+            }
+            else if (left is decimal declv && right is decimal decrv)
+            {
+                return CompareNumbers(comparison.Token, declv, decrv);
+            }
+
             string first = left is null ? string.Empty : left.ToString();
             string second = right is null ? string.Empty : right.ToString();
 
@@ -1224,6 +1282,32 @@ namespace DaJet.Stream
             else
             {
                 throw new InvalidOperationException($"Unknown comparison operator [{comparison.Token}]");
+            }
+        }
+        private static bool CompareNumbers(TokenType _operator, int left, int right)
+        {
+            if (_operator == TokenType.Equals) { return left == right; }
+            else if (_operator == TokenType.Less) { return left < right; }
+            else if (_operator == TokenType.Greater) { return left > right; }
+            else if (_operator == TokenType.NotEquals) { return left != right; }
+            else if (_operator == TokenType.LessOrEquals) { return left <= right; }
+            else if (_operator == TokenType.GreaterOrEquals) { return left >= right; }
+            else
+            {
+                throw new InvalidOperationException($"Unknown comparison operator [{_operator}]");
+            }
+        }
+        private static bool CompareNumbers(TokenType _operator, decimal left, decimal right)
+        {
+            if (_operator == TokenType.Equals) { return left == right; }
+            else if (_operator == TokenType.Less) { return left < right; }
+            else if (_operator == TokenType.Greater) { return left > right; }
+            else if (_operator == TokenType.NotEquals) { return left != right; }
+            else if (_operator == TokenType.LessOrEquals) { return left <= right; }
+            else if (_operator == TokenType.GreaterOrEquals) { return left >= right; }
+            else
+            {
+                throw new InvalidOperationException($"Unknown comparison operator [{_operator}]");
             }
         }
     }

@@ -48,7 +48,7 @@ namespace DaJet.Stream
 
             foreach (var item in _case)
             {
-                if (EvaluateCondition(item.Key))
+                if (StreamFactory.Evaluate(in _scope, item.Key))
                 {
                     do_else = false;
 
@@ -64,20 +64,6 @@ namespace DaJet.Stream
             }
 
             _next?.Process();
-        }
-        private bool EvaluateCondition(in SyntaxNode expression)
-        {
-            if (!StreamFactory.TryEvaluate(in _scope, in expression, out object value))
-            {
-                return false;
-            }
-
-            if (value is not bool condition)
-            {
-                return false;
-            }
-
-            return condition;
         }
     }
 }
