@@ -20,8 +20,6 @@ namespace DaJet.Stream
             }
 
             _statement = statement;
-
-            _stream = PrepareScript();
         }
         public void Dispose() { _next?.Dispose(); }
         public void Synchronize() { _next?.Synchronize(); }
@@ -30,6 +28,8 @@ namespace DaJet.Stream
         {
             try
             {
+                _stream ??= PrepareScript(); //NOTE: avoid recursive script invocation !!!
+
                 _stream?.Process();
             }
             catch (Exception error)
@@ -76,7 +76,7 @@ namespace DaJet.Stream
 
             StreamFactory.InitializeVariables(in child); //NOTE: DECLARE @variable = SELECT ...
 
-            return StreamFactory.CreateStream(in child);
+            return StreamFactory.CreateStream(in child); //NOTE: avoid recursive script invocation !!!
         }
     }
 }

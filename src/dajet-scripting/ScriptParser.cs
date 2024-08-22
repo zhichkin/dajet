@@ -286,9 +286,10 @@ namespace DaJet.Scripting
             else if (Match(TokenType.PRINT)) { return print_statement(); }
             else if (Match(TokenType.BREAK)) { return new BreakStatement(); }
             else if (Match(TokenType.CONTINUE)) { return new ContinueStatement(); }
-            else if (Match(TokenType.RETURN)) { return new ReturnStatement(); }
             else if (Match(TokenType.EXECUTE)) { return execute_statement(); }
             else if (Match(TokenType.EndOfStatement)) { return null; }
+            
+            //THINK: else if (Match(TokenType.RETURN)) { return new ReturnStatement(); }
 
             Ignore();
 

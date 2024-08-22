@@ -30,7 +30,12 @@ namespace DaJet.Stream
         {
             while (ConditionIsTrue())
             {
-                _body.Process(); //TODO: break/continue
+                try
+                {
+                    _body.Process(); //THINK: break/continue - avoid exception hack !?
+                }
+                catch (BreakException) { break; }
+                catch (ContinueException) { continue; }
             }
 
             _next?.Process();
