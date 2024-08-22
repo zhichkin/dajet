@@ -519,5 +519,12 @@ namespace DaJet.Http.Client
 
             return result;
         }
+
+        public async Task<List<CodeItem>> GetCodeItems(string url)
+        {
+            HttpResponseMessage response = await _client.GetAsync(url);
+
+            return await response.Content.ReadFromJsonAsync<List<CodeItem>>();
+        }
     }
 }

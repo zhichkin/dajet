@@ -8,7 +8,7 @@
     <AssemblyName>DaJet.Http.Client</AssemblyName>
     <Authors>Zhichkin</Authors>
     <Copyright>Zhichkin © 2022</Copyright>
-    <Version>1.1.2</Version>
+    <Version>3.4.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

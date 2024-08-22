@@ -38,6 +38,7 @@ namespace DaJet.Studio.Components
         [Inject] private ExchangeTreeViewController ExchangeTreeViewController { get; set; }
         protected override async Task OnInitializedAsync()
         {
+            Nodes.Add(CreateCodeRootNode());
             Nodes.Add(CreateDbmsRootNode());
 
             var nodes = await DataSource.QueryAsync<TreeNodeRecord>();
@@ -76,6 +77,56 @@ namespace DaJet.Studio.Components
             {
                 //TODO: handle error
             }
+        }
+
+        private TreeNodeModel CreateCodeRootNode()
+        {
+            return new TreeNodeModel()
+            {
+                Url = "/code",
+                Title = "code",
+                OpenNodeHandler = OpenCodeNodeHandler
+            };
+        }
+        private async Task OpenCodeNodeHandler(TreeNodeModel parent)
+        {
+            if (parent is null) { return; }
+
+            try
+            {
+                parent.Nodes.Clear();
+
+                List<CodeItem> list = await DataSource.GetCodeItems(parent.Url);
+
+                foreach (CodeItem item in list)
+                {
+                    TreeNodeModel child = new()
+                    {
+                        Parent = parent
+                    };
+
+                    ConfigureCodeItemNode(in child, in item);
+
+                    parent.Nodes.Add(child);
+                }
+            }
+            catch
+            {
+                parent.Nodes.Add(new TreeNodeModel()
+                {
+                    UseToggle = false,
+                    Title = "Ошибка загрузки данных!"
+                });
+            }
+        }
+        public void ConfigureCodeItemNode(in TreeNodeModel node, in CodeItem model)
+        {
+            node.Tag = model;
+            node.Title = model.Name;
+            node.Url = $"{node.Parent.Url}/{model.Name}";
+            node.UseToggle = model.IsFolder;
+            node.OpenNodeHandler = OpenCodeNodeHandler;
+            //TODO: node.ContextMenuHandler = CodeItemContextMenuHandler;
         }
 
         private TreeNodeModel CreateDbmsRootNode()

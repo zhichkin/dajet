@@ -7,7 +7,7 @@
     <RootNamespace>DaJet.Studio</RootNamespace>
     <PackageId>$(AssemblyName)</PackageId>
     <AssemblyName>DaJet.Studio</AssemblyName>
-    <Version>3.3.6</Version>
+    <Version>3.4.0</Version>
     <Authors>Zhichkin</Authors>
     <Copyright>Zhichkin © 2022</Copyright>
     <Description>DaJet HTTP server Blazor UI</Description>
