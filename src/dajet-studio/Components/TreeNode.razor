@@ -3,11 +3,20 @@
 
 <li style="white-space:nowrap; margin: 0px; padding: 0px 0px 0px 15px; @(Model.IsVisible ? "display: block;" : "display: none;")">
 
-    @if (Model != null && Model.UseToggle)
+    @if (Model.UseToggle)
     {
         <span style="display:inline; margin-right:3px; padding: 0px; cursor:pointer; user-select:none;" @onclick="ToggleClick">
             @(Model.IsExpanded ? "-" : "+")
         </span>
+    }
+    else
+    {
+        <span style="display:inline; margin-right:3px; padding: 0px; user-select:none;">&nbsp;&nbsp;</span>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.Icon))
+    {
+        <img src="@Model.Icon" alt="" style="width:16px;height:16px;vertical-align:middle;" />
     }
 
     @if (Model.CanBeEdited && Model.IsInEditMode)
@@ -26,6 +35,7 @@
     else
     {
         <span class="tree-node-span" style="@DropStyle" draggable="@(Model.IsDraggable ? "true" : "false")"
+            @onclick="NodeClick" @onclick:preventDefault="true"
             @ondblclick="DoubleClick" @ondblclick:preventDefault="true"
             @oncontextmenu="OpenContextMenu" @oncontextmenu:preventDefault="true"
             ondragover="event.preventDefault();"

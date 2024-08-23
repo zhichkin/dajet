@@ -1,6 +1,8 @@
 ﻿@inject HttpClient Http;
 @inject AppState AppState;
 @inject ISnackbar Snackbar;
+@inject IJSRuntime JSRuntime;
+@inject NavigationManager Navigator;
 
 <div>
     <MudTextField Label="Фильтр" Variant="Variant.Outlined" Margin="Margin.Dense" T="string"

@@ -1,0 +1,45 @@
+﻿@page "/dajet-code-editor/{**FilePath}"
+
+@inject IJSRuntime JSRuntime;
+@inject DaJetHttpClient DaJetClient;
+@inject NavigationManager Navigator;
+
+<div class="script-editor-layout">
+
+    <div class="script-editor-action">
+        
+        <div style="margin:5px;">
+            <span style="font-weight:bold;">@FilePath</span>
+            <input type="button" value="✕" class="script-editor-close-button" @onclick="NavigateToHomePage">
+        </div>
+
+        <div>
+            <input type="button" class="script-editor-button" value="Выполнить" @onclick="ExecuteScript" />
+            
+            @if (ScriptIsChanged)
+            {
+                <input type="button" class="script-editor-button" value="Сохранить" @onclick="SaveScript" />
+            }
+        </div>
+    </div>
+
+    <div class="script-editor-script">
+        <textarea rows="10" @oninput="OnScriptChanged" style="border: 1px solid black; padding: 3px; white-space: nowrap; font-family: monospace">
+            @SourceCode
+        </textarea>
+    </div>
+
+    <div class="script-editor-result">
+        
+        @if (!string.IsNullOrEmpty(ErrorText))
+        {
+            <span style="color:red;margin:5px">@ErrorText</span>
+        }
+        else if (!string.IsNullOrEmpty(ResultText))
+        {
+            <textarea style="border:none; margin:5px;" rows="10">@ResultText</textarea>
+        }
+        
+    </div>
+
+</div>

@@ -43,6 +43,15 @@ namespace DaJet.Studio.Components
         {
             await Model?.ContextMenuCommand(DialogService);
         }
+        private async Task NodeClick(MouseEventArgs args)
+        {
+            if (Model is null || Model.IsInEditMode)
+            {
+                return;
+            }
+            
+            await Model.NodeClickCommand();
+        }
         private void DoubleClick(MouseEventArgs args)
         {
             if (Model.CanBeEdited && !Model.IsInEditMode)

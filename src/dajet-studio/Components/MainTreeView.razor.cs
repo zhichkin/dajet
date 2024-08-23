@@ -4,7 +4,9 @@ using DaJet.Studio.Controllers;
 using DaJet.Studio.Model;
 using DaJet.Studio.Pages;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using MudBlazor;
+using System.ComponentModel;
 using System.Globalization;
 using System.Net.Http.Json;
 
@@ -31,7 +33,7 @@ namespace DaJet.Studio.Components
         #endregion
         protected string FilterValue { get; set; } = string.Empty;
         protected List<TreeNodeModel> Nodes { get; set; } = new();
-        [Inject] private DaJetHttpClient DataSource { get; set; }
+        [Inject] private DaJetHttpClient DaJetClient { get; set; }
         [Inject] private FlowTreeViewController FlowController { get; set; }
         [Inject] private DbViewController DbViewController { get; set; }
         [Inject] private ApiTreeViewController ApiTreeViewController { get; set; }
@@ -41,7 +43,7 @@ namespace DaJet.Studio.Components
             Nodes.Add(CreateCodeRootNode());
             Nodes.Add(CreateDbmsRootNode());
 
-            var nodes = await DataSource.QueryAsync<TreeNodeRecord>();
+            var nodes = await DaJetClient.QueryAsync<TreeNodeRecord>();
 
             foreach (TreeNodeRecord node in nodes)
             {
@@ -79,6 +81,7 @@ namespace DaJet.Studio.Components
             }
         }
 
+        #region "CODE NODE - STREAM PROCESSOR"
         private TreeNodeModel CreateCodeRootNode()
         {
             return new TreeNodeModel()
@@ -88,6 +91,19 @@ namespace DaJet.Studio.Components
                 OpenNodeHandler = OpenCodeNodeHandler
             };
         }
+        public void ConfigureCodeItemNode(in TreeNodeModel node, in CodeItem model)
+        {
+            node.Tag = model;
+            node.Title = model.Name;
+            node.Url = $"{node.Parent.Url}/{model.Name}";
+            node.Icon = model.IsFolder ? (node.IsExpanded ? "/img/folder-opened.png" : "/img/folder-closed.png") : "/img/script.png";
+            node.UseToggle = model.IsFolder;
+            node.CanBeEdited = true;
+            node.OpenNodeHandler = OpenCodeNodeHandler;
+            node.NodeClickHandler = CodeItemClickHandler;
+            node.UpdateTitleCommand = UpdateNodeTitleHandler;
+            node.ContextMenuHandler = CodeItemContextMenuHandler;
+        }
         private async Task OpenCodeNodeHandler(TreeNodeModel parent)
         {
             if (parent is null) { return; }
@@ -96,7 +112,7 @@ namespace DaJet.Studio.Components
             {
                 parent.Nodes.Clear();
 
-                List<CodeItem> list = await DataSource.GetCodeItems(parent.Url);
+                List<CodeItem> list = await DaJetClient.GetCodeItems(parent.Url);
 
                 foreach (CodeItem item in list)
                 {
@@ -119,16 +135,83 @@ namespace DaJet.Studio.Components
                 });
             }
         }
-        public void ConfigureCodeItemNode(in TreeNodeModel node, in CodeItem model)
+        private Task CodeItemClickHandler(TreeNodeModel node)
         {
-            node.Tag = model;
-            node.Title = model.Name;
-            node.Url = $"{node.Parent.Url}/{model.Name}";
-            node.UseToggle = model.IsFolder;
-            node.OpenNodeHandler = OpenCodeNodeHandler;
-            //TODO: node.ContextMenuHandler = CodeItemContextMenuHandler;
-        }
+            if (node is null || node.Tag is not CodeItem item || item.IsFolder)
+            {
+                return Task.CompletedTask;
+            }
 
+            try
+            {
+                Navigator.NavigateTo($"/dajet-code-editor{node.Url}");
+            }
+            catch (Exception error)
+            {
+                Snackbar.Add(error.Message, Severity.Error);
+            }
+
+            return Task.CompletedTask;
+        }
+        private async Task UpdateNodeTitleHandler(TreeNodeModel node, CancelEventArgs args)
+        {
+            if (node.Tag is not CodeItem model)
+            {
+                return;
+            }
+
+            bool success = true;
+
+            try
+            {
+                //TODO: update name only command !? Script property may be changed by script editor !!!
+
+                //script = await DaJetClient.SelectAsync<ScriptRecord>(script.Identity);
+
+                //script.Name = node.Title;
+
+                //await DaJetClient.UpdateAsync(script);
+
+                //node.Tag = script; // commit transaction =)
+            }
+            catch
+            {
+                success = false;
+            }
+
+            if (success)
+            {
+                //if (node.Parent is not null)
+                //{
+                //    if (node.Parent.Tag is InfoBaseRecord infobase)
+                //    {
+                //        node.Url = $"/api/{infobase.Name}/{script.Name}";
+                //    }
+                //    else
+                //    {
+                //        node.Url = $"{node.Parent.Url}/{script.Name}";
+                //    }
+                //}
+            }
+            else
+            {
+                args.Cancel = true; // rollback edit title operation
+            }
+        }
+        private async Task CodeItemContextMenuHandler(TreeNodeModel node, IDialogService dialogService)
+        {
+            if (node.Tag is not CodeItem model)
+            {
+                return;
+            }
+
+            await JSRuntime.InvokeVoidAsync("OpenCodeItemContextMenu", node.Url);
+
+            Snackbar.Add($"Контекстное меню [{model.Name}]", Severity.Success);
+        }
+        #endregion
+
+        #region "DATA NODE - METADATA TREE"
         private TreeNodeModel CreateDbmsRootNode()
         {
             return new TreeNodeModel()
@@ -146,7 +229,7 @@ namespace DaJet.Studio.Components
             {
                 root.Nodes.Clear();
 
-                IEnumerable<InfoBaseRecord> list = await DataSource.QueryAsync<InfoBaseRecord>();
+                IEnumerable<InfoBaseRecord> list = await DaJetClient.QueryAsync<InfoBaseRecord>();
 
                 foreach (InfoBaseRecord model in list)
                 {
@@ -538,6 +621,7 @@ namespace DaJet.Studio.Components
                 node.Nodes.Add(model);
             }
         }
+        #endregion
 
         #region "FILTER TREE VIEW"
         protected async Task FilterTreeView(string filter)

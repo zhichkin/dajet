@@ -1,6 +1,7 @@
 ﻿using DaJet.Data;
 using DaJet.Json;
 using DaJet.Model;
+using System.IO;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
@@ -520,11 +521,23 @@ namespace DaJet.Http.Client
             return result;
         }
 
-        public async Task<List<CodeItem>> GetCodeItems(string url)
+        #region "DAJET CODE EDITOR"
+        public async Task<List<CodeItem>> GetCodeItems(string path)
         {
+            string url = "/code/dir" + path;
+
             HttpResponseMessage response = await _client.GetAsync(url);
 
             return await response.Content.ReadFromJsonAsync<List<CodeItem>>();
         }
+        public async Task<string> GetSourceCode(string path)
+        {
+            string url = "/code/src" + path;
+
+            HttpResponseMessage response = await _client.GetAsync(url);
+
+            return await response.Content.ReadAsStringAsync();
+        }
+        #endregion
     }
 }

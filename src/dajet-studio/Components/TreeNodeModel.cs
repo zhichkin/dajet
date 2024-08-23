@@ -51,6 +51,7 @@ namespace DaJet.Studio.Components
         public TreeNodeModel()
         {
             ToggleCommand = new(ToggleCommandHandler);
+            NodeClickCommand = new(NodeClickCommandHandler);
             ContextMenuCommand = new(ContextMenuCommandHandler);
         }
         public event Action StateHasChanged;
@@ -68,10 +69,12 @@ namespace DaJet.Studio.Components
         public TreeNodeModel Parent { get; set; }
         public List<TreeNodeModel> Nodes { get; set; } = new();
         public Func<Task> ToggleCommand { get; private set; }
+        public Func<Task> NodeClickCommand { get; private set; }
         public Func<TreeNodeModel, TreeNodeModel, Task> DropDataHandler { get; set; }
         public Func<TreeNodeModel, TreeNodeModel, bool> CanAcceptDropData { get; set; }
         public Func<IDialogService, Task> ContextMenuCommand { get; private set; }
         public Func<TreeNodeModel, Task> OpenNodeHandler { get; set; }
+        public Func<TreeNodeModel, Task> NodeClickHandler { get; set; }
         public Func<TreeNodeModel, IDialogService, Task> ContextMenuHandler { get; set; }
         public Func<TreeNodeModel, CancelEventArgs, Task> UpdateTitleCommand { get; set; }
         private async Task ToggleCommandHandler()
@@ -81,6 +84,13 @@ namespace DaJet.Studio.Components
             if (IsExpanded && OpenNodeHandler != null)
             {
                 await OpenNodeHandler(this);
+            }
+        }
+        private async Task NodeClickCommandHandler()
+        {
+            if (NodeClickCommand is not null)
+            {
+                await NodeClickHandler(this);
             }
         }
         private async Task ContextMenuCommandHandler(IDialogService dialogService)

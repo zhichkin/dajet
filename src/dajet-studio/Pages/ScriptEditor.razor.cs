@@ -133,7 +133,5 @@ namespace DaJet.Studio.Pages
                 ErrorText = response.Error;
             }
         }
-
-        
     }
 }
