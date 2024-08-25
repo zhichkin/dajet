@@ -4,6 +4,7 @@ using DaJet.Studio.Components;
 using DaJet.Studio.Pages;
 using DaJet.Studio.Pages.Exchange;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using MudBlazor;
 using System.Net;
 using System.Net.Http.Json;
@@ -16,12 +17,14 @@ namespace DaJet.Studio.Controllers
         private AppState AppState { get; set; }
         private DaJetHttpClient DataSource { get; set; }
         private NavigationManager Navigator { get; set; }
-        public ExchangeTreeViewController(AppState appState, DaJetHttpClient client, NavigationManager navigator, HttpClient http)
+        private IDialogService DialogService { get; set; }
+        public ExchangeTreeViewController(AppState appState, DaJetHttpClient client, NavigationManager navigator, HttpClient http, IDialogService dialogService)
         {
             Http = http;
             AppState = appState;
             DataSource = client;
             Navigator = navigator;
+            DialogService = dialogService;
         }
         public TreeNodeModel CreateRootNode(InfoBaseRecord model)
         {
@@ -57,28 +60,28 @@ namespace DaJet.Studio.Controllers
                 root.Nodes.Add(node);
             }
         }
-        private async Task ContextMenuHandler(TreeNodeModel node, IDialogService dialogService)
+        private async Task ContextMenuHandler(TreeNodeModel node, ElementReference element)
         {
             if (node.Tag is InfoBaseRecord)
             {
-                await OpenExchangeRootContextMenu(node, dialogService);
+                await OpenExchangeRootContextMenu(node, DialogService);
             }
             else if (node.Parent is not null && node.Parent.Tag is InfoBaseRecord)
             {
-                await OpenExchangeNodeContextMenu(node, dialogService);
+                await OpenExchangeNodeContextMenu(node, DialogService);
             }
             else if (node.Title == "Документ" || node.Title == "Справочник" || node.Title == "РегистрСведений")
             {
-                await OpenArticleTypeContextMenu(node, dialogService);
+                await OpenArticleTypeContextMenu(node, DialogService);
             }
             else if (node.Parent is not null
                 && (node.Parent.Title == "Документ" || node.Parent.Title == "Справочник" || node.Parent.Title == "РегистрСведений"))
             {
-                await OpenArticleContextMenu(node, dialogService);
+                await OpenArticleContextMenu(node, DialogService);
             }
             else if (node.Tag is ScriptRecord script && !script.IsFolder)
             {
-                await OpenScriptContextMenu(node, dialogService);
+                await OpenScriptContextMenu(node, DialogService);
             }
         }
         private async Task<TreeNodeModel> CreateScriptNodeTree(TreeNodeModel parent, ScriptRecord model)
@@ -123,7 +126,7 @@ namespace DaJet.Studio.Controllers
                 DisableBackdropClick = false,
                 Position = DialogPosition.Center
             };
-            var dialog = dialogService.Show<ExchangeRootDialog>(node.Url, parameters, options);
+            var dialog = DialogService.Show<ExchangeRootDialog>(node.Url, parameters, options);
             var result = await dialog.Result;
             if (result.Canceled) { return; }
 
@@ -160,7 +163,7 @@ namespace DaJet.Studio.Controllers
                 DisableBackdropClick = false,
                 Position = DialogPosition.Center
             };
-            var dialog = dialogService.Show<ExchangeNodeDialog>(node.Url, parameters, options);
+            var dialog = DialogService.Show<ExchangeNodeDialog>(node.Url, parameters, options);
             var result = await dialog.Result;
             if (result.Canceled) { return; }
 
@@ -171,15 +174,15 @@ namespace DaJet.Studio.Controllers
 
             if (dialogResult.CommandType == ExchangeDialogCommand.CreatePipeline)
             {
-                NavigateToCreatePipelinePage(node, dialogService);
+                NavigateToCreatePipelinePage(node, DialogService);
             }
             else if (dialogResult.CommandType == ExchangeDialogCommand.ConfigureRabbitMQ)
             {
-                NavigateToConfigureRabbitMQPage(node, dialogService);
+                NavigateToConfigureRabbitMQPage(node, DialogService);
             }
             else if (dialogResult.CommandType == ExchangeDialogCommand.DeleteExchange)
             {
-                await DeleteExchange(node, dialogService);
+                await DeleteExchange(node, DialogService);
             }
         }
         private void NavigateToCreatePipelinePage(TreeNodeModel node, IDialogService dialogService)

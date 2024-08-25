@@ -8,6 +8,7 @@ namespace DaJet.Studio.Components
     public partial class TreeNode : ComponentBase
     {
         private ElementReference TitleInput;
+        private ElementReference TreeNodeSpan;
         private string _title = string.Empty;
         [Parameter] public TreeNodeModel Model { get; set; }
         protected override void OnParametersSet()
@@ -32,25 +33,23 @@ namespace DaJet.Studio.Components
                 await JSRuntime.InvokeVoidAsync("BlazorFocusElement", TitleInput);
             }
         }
+        private async Task NodeClick(MouseEventArgs args)
+        {
+            if (Model is not null && !Model.IsInEditMode)
+            {
+                await Model.NodeClickCommand();
+            }
+        }
         private async Task ToggleClick(MouseEventArgs args)
         {
-            if (Model != null && Model.UseToggle)
+            if (Model is not null && Model.UseToggle)
             {
-                await Model?.ToggleCommand();
+                await Model.ToggleCommand();
             }
         }
         private async Task OpenContextMenu(MouseEventArgs args)
         {
-            await Model?.ContextMenuCommand(DialogService);
-        }
-        private async Task NodeClick(MouseEventArgs args)
-        {
-            if (Model is null || Model.IsInEditMode)
-            {
-                return;
-            }
-            
-            await Model.NodeClickCommand();
+            await Model?.ContextMenuCommand(TreeNodeSpan);
         }
         private void DoubleClick(MouseEventArgs args)
         {

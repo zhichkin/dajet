@@ -72,5 +72,140 @@ namespace DaJet.Http.Controllers
 
             return Content(content, "text/plain", Encoding.UTF8);
         }
+        [HttpPost("script/{**path}")] public ActionResult CreateScript([FromRoute] string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return BadRequest();
+            }
+
+            IFileInfo file = _fileProvider.GetFileInfo(path);
+
+            if (file.Exists)
+            {
+                return BadRequest();
+            }
+
+            if (_fileProvider is not PhysicalFileProvider provider)
+            {
+                return BadRequest();
+            }
+
+            string filePath = Path.Combine(provider.Root, path);
+
+            try
+            {
+                using (StreamWriter writer = System.IO.File.CreateText(filePath))
+                {
+                    writer.WriteLine("// Write DaJet code here");
+                }
+            }
+            catch (Exception error)
+            {
+                return Problem(ExceptionHelper.GetErrorMessageAndStackTrace(error));
+            }
+            
+            return Created(path, path);
+        }
+        [HttpDelete("script/{**path}")] public ActionResult DeleteScript([FromRoute] string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return BadRequest();
+            }
+
+            IFileInfo file = _fileProvider.GetFileInfo(path);
+
+            if (!file.Exists)
+            {
+                return BadRequest();
+            }
+
+            if (_fileProvider is not PhysicalFileProvider provider)
+            {
+                return BadRequest();
+            }
+
+            string filePath = Path.Combine(provider.Root, path);
+
+            try
+            {
+                System.IO.File.Delete(filePath);
+            }
+            catch (Exception error)
+            {
+                return Problem(ExceptionHelper.GetErrorMessageAndStackTrace(error));
+            }
+
+            return Ok();
+        }
+        [HttpPut("script/{**path}")] public ActionResult RenameScript([FromRoute] string path, [FromBody] string name)
+        {
+            return Ok();
+        }
+        [HttpPost("folder/{**path}")] public ActionResult CreateFolder([FromRoute] string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return BadRequest();
+            }
+
+            IFileInfo file = _fileProvider.GetFileInfo(path);
+
+            if (file.Exists)
+            {
+                return BadRequest();
+            }
+
+            if (_fileProvider is not PhysicalFileProvider provider)
+            {
+                return BadRequest();
+            }
+
+            try
+            {
+                string fullPath = Path.Combine(provider.Root, path);
+
+                _ = Directory.CreateDirectory(fullPath);
+            }
+            catch (Exception error)
+            {
+                return Problem(ExceptionHelper.GetErrorMessageAndStackTrace(error));
+            }
+
+            return Created(path, path);
+        }
+        [HttpDelete("folder/{**path}")] public ActionResult DeleteFolder([FromRoute] string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return BadRequest();
+            }
+
+            IDirectoryContents folder = _fileProvider.GetDirectoryContents(path);
+
+            if (!folder.Exists)
+            {
+                return BadRequest();
+            }
+
+            if (_fileProvider is not PhysicalFileProvider provider)
+            {
+                return BadRequest();
+            }
+
+            try
+            {
+                string fullPath = Path.Combine(provider.Root, path);
+
+                Directory.Delete(fullPath, true);
+            }
+            catch (Exception error)
+            {
+                return Problem(ExceptionHelper.GetErrorMessageAndStackTrace(error));
+            }
+
+            return Ok();
+        }
     }
 }

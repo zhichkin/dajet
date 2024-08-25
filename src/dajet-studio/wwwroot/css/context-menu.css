@@ -1,0 +1,33 @@
+﻿
+.dajet-context-menu {
+    position: absolute;
+    padding: 5px;
+    border: 1px solid black;
+}
+
+.dajet-context-menu-title {
+    margin: 0px;
+    padding: 0px 0px 1px 4px;
+}
+
+.dajet-context-menu-close-button {
+    cursor: pointer;
+    margin-left: 2px;
+}
+
+.dajet-context-menu-item-icon {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+}
+
+.dajet-context-menu-item {
+    cursor: pointer;
+    display: inline;
+    margin: 0px;
+    padding: 1px 3px 1px 3px;
+}
+
+    .dajet-context-menu-item:hover {
+        background: #D3D3D3;
+    }

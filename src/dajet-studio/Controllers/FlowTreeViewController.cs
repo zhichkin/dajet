@@ -16,12 +16,14 @@ namespace DaJet.Studio.Controllers
         private IDomainModel DomainModel { get; set; }
         private DaJetHttpClient DataSource { get; set; }
         private NavigationManager Navigator { get; set; }
-        public FlowTreeViewController(IDomainModel domain, DaJetHttpClient client, NavigationManager navigator, IJSRuntime js)
+        private IDialogService DialogService { get; set; }
+        public FlowTreeViewController(IDomainModel domain, DaJetHttpClient client, NavigationManager navigator, IJSRuntime js, IDialogService dialogService)
         {
             JS = js;
             DomainModel = domain;
             DataSource = client;
             Navigator = navigator;
+            DialogService = dialogService;
         }
         public TreeNodeModel CreateRootNode(TreeNodeRecord root)
         {
@@ -97,7 +99,7 @@ namespace DaJet.Studio.Controllers
                 record.Name = name;
             }
         }
-        private async Task ContextMenuHandler(TreeNodeModel node, IDialogService dialogService)
+        private async Task ContextMenuHandler(TreeNodeModel node, ElementReference element)
         {
             DialogParameters parameters = new()
             {
@@ -111,7 +113,7 @@ namespace DaJet.Studio.Controllers
                 DisableBackdropClick = false,
                 Position = DialogPosition.Center
             };
-            var dialog = dialogService.Show<FlowTreeNodeDialog>(node.Title, parameters, options);
+            var dialog = DialogService.Show<FlowTreeNodeDialog>(node.Title, parameters, options);
             var result = await dialog.Result;
             if (result.Canceled) { return; }
 

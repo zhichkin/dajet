@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
-using System.Xml.Linq;
 
 namespace DaJet.Studio.Pages.Code
 {
@@ -33,7 +32,7 @@ namespace DaJet.Studio.Pages.Code
         }
         private void Navigator_LocationChanged(object sender, LocationChangedEventArgs args)
         {
-            JSRuntime.InvokeVoidAsync("OpenCodeItemContextMenu", args.Location);
+            //JSRuntime.InvokeVoidAsync("OpenCodeItemContextMenu", args.Location);
         }
         public void Dispose()
         {

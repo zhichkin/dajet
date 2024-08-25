@@ -1,7 +1,6 @@
 ﻿using DaJet.Data;
 using DaJet.Json;
 using DaJet.Model;
-using System.IO;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
@@ -537,6 +536,81 @@ namespace DaJet.Http.Client
             HttpResponseMessage response = await _client.GetAsync(url);
 
             return await response.Content.ReadAsStringAsync();
+        }
+        public async Task<string> CreateScriptFile(string path)
+        {
+            string url = "/code/script" + path;
+
+            HttpResponseMessage response = await _client.PostAsync(url, null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                return response.ReasonPhrase;
+            }
+        }
+        public async Task<string> DeleteScriptFile(string path)
+        {
+            string url = "/code/script" + path;
+
+            HttpResponseMessage response = await _client.DeleteAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                return response.ReasonPhrase;
+            }
+        }
+        public async Task<string> RenameScriptFile(string path, string name)
+        {
+            string url = "/code/script" + path;
+
+            HttpResponseMessage response = await _client.PutAsync(url, new StringContent(name));
+
+            if (response.IsSuccessStatusCode)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                return response.ReasonPhrase;
+            }
+        }
+        public async Task<string> CreateScriptFolder(string path)
+        {
+            string url = "/code/folder" + path;
+
+            HttpResponseMessage response = await _client.PostAsync(url, null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                return response.ReasonPhrase;
+            }
+        }
+        public async Task<string> DeleteScriptFolder(string path)
+        {
+            string url = "/code/folder" + path;
+
+            HttpResponseMessage response = await _client.DeleteAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                return response.ReasonPhrase;
+            }
         }
         #endregion
     }

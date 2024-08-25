@@ -1,8 +1,8 @@
 ﻿using DaJet.Model;
 using DaJet.Studio.Components;
-using DaJet.Studio.Model;
 using DaJet.Studio.Pages;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 using MudBlazor;
 using System.Net;
@@ -26,12 +26,14 @@ namespace DaJet.Studio.Controllers
         private IJSRuntime JSRuntime { get; set; }
         private AppState AppState { get; set; }
         private NavigationManager Navigator { get; set; }
-        public DbViewController(HttpClient http, IJSRuntime js, AppState state, NavigationManager navigator)
+        private IDialogService DialogService { get; set; }
+        public DbViewController(HttpClient http, IJSRuntime js, AppState state, NavigationManager navigator, IDialogService dialogService)
         {
             Http = http;
             JSRuntime = js;
             AppState = state;
             Navigator = navigator;
+            DialogService = dialogService;
         }
         public TreeNodeModel CreateRootNode(InfoBaseRecord model)
         {
@@ -97,7 +99,7 @@ namespace DaJet.Studio.Controllers
                 root.Nodes.Add(CreateSchemaNode(root, schema));
             }
         }
-        private async Task DbViewContextMenuHandler(TreeNodeModel node, IDialogService dialogService)
+        private async Task DbViewContextMenuHandler(TreeNodeModel node, ElementReference element)
         {
             DialogParameters parameters = new()
             {
@@ -111,7 +113,7 @@ namespace DaJet.Studio.Controllers
                 DisableBackdropClick = false,
                 Position = DialogPosition.Center
             };
-            var dialog = dialogService.Show<DbViewDialog>(node.Url, parameters, options);
+            var dialog = DialogService.Show<DbViewDialog>(node.Url, parameters, options);
             var result = await dialog.Result;
             if (result.Canceled) { return; }
 
@@ -188,7 +190,7 @@ namespace DaJet.Studio.Controllers
                 node.Nodes.Add(child);
             }
         }
-        private async Task DbSchemaContextMenuHandler(TreeNodeModel node, IDialogService dialogService)
+        private async Task DbSchemaContextMenuHandler(TreeNodeModel node, ElementReference element)
         {
             DialogParameters parameters = new()
             {
@@ -202,7 +204,7 @@ namespace DaJet.Studio.Controllers
                 DisableBackdropClick = false,
                 Position = DialogPosition.Center
             };
-            var dialog = dialogService.Show<DbSchemaDialog>(node.Url, parameters, options);
+            var dialog = DialogService.Show<DbSchemaDialog>(node.Url, parameters, options);
             var result = await dialog.Result;
             if (result.Canceled) { return; }
 

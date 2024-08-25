@@ -12,11 +12,13 @@ namespace DaJet.Studio.Controllers
     {
         private DaJetHttpClient DataSource { get; set; }
         private NavigationManager Navigator { get; set; }
+        private IDialogService DialogService { get; set; }
         private readonly Func<TreeNodeModel, CancelEventArgs, Task> _updateTitleCommandHandler;
-        public ApiTreeViewController(DaJetHttpClient client, NavigationManager navigator)
+        public ApiTreeViewController(DaJetHttpClient client, NavigationManager navigator, IDialogService dialogService)
         {
             DataSource = client;
             Navigator = navigator;
+            DialogService = dialogService;
 
             _updateTitleCommandHandler = new(UpdateTitleCommandHandler);
         }
@@ -31,9 +33,9 @@ namespace DaJet.Studio.Controllers
                 ContextMenuHandler = ContextMenuHandler
             };
         }
-        private async Task ContextMenuHandler(TreeNodeModel root, IDialogService dialogService)
+        private async Task ContextMenuHandler(TreeNodeModel root, ElementReference element)
         {
-            await OpenContextMenu(root, dialogService);
+            await OpenContextMenu(root, element);
         }
         private async Task OpenRootNodeHandler(TreeNodeModel root)
         {
@@ -97,7 +99,7 @@ namespace DaJet.Studio.Controllers
 
             return node;
         }
-        private async Task OpenContextMenu(TreeNodeModel node, IDialogService dialogService)
+        private async Task OpenContextMenu(TreeNodeModel node, ElementReference element)
         {
             DialogParameters parameters = new()
             {
@@ -111,7 +113,7 @@ namespace DaJet.Studio.Controllers
                 DisableBackdropClick = false,
                 Position = DialogPosition.Center
             };
-            var dialog = dialogService.Show<ScriptTreeNodeDialog>(node.Url, parameters, options);
+            var dialog = DialogService.Show<ScriptTreeNodeDialog>(node.Url, parameters, options);
             var result = await dialog.Result;
             if (result.Canceled) { return; }
 

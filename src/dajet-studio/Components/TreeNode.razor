@@ -34,15 +34,16 @@
     }
     else
     {
-        <span class="tree-node-span" style="@DropStyle" draggable="@(Model.IsDraggable ? "true" : "false")"
-            @onclick="NodeClick" @onclick:preventDefault="true"
-            @ondblclick="DoubleClick" @ondblclick:preventDefault="true"
-            @oncontextmenu="OpenContextMenu" @oncontextmenu:preventDefault="true"
-            ondragover="event.preventDefault();"
-            @ondrop="DropHandler"
-            @ondragstart="DragStartHandler"
-            @ondragenter="DragEnterHandler"
-            @ondragleave="DragLeaveHandler">
+        <span @ref="TreeNodeSpan" class="tree-node-span"
+              style="@DropStyle" draggable="@(Model.IsDraggable ? "true" : "false")"
+              @onclick="NodeClick" @onclick:preventDefault="true"
+              @ondblclick="DoubleClick" @ondblclick:preventDefault="true"
+              @oncontextmenu="OpenContextMenu" @oncontextmenu:preventDefault="true"
+              ondragover="event.preventDefault();"
+              @ondrop="DropHandler"
+              @ondragstart="DragStartHandler"
+              @ondragenter="DragEnterHandler"
+              @ondragleave="DragLeaveHandler">
             @(Model == null ? string.Empty : Model.Title)
         </span>
     }

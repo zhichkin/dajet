@@ -4,7 +4,6 @@ using DaJet.Studio.Controllers;
 using DaJet.Studio.Model;
 using DaJet.Studio.Pages;
 using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
 using MudBlazor;
 using System.ComponentModel;
 using System.Globalization;
@@ -34,13 +33,15 @@ namespace DaJet.Studio.Components
         protected string FilterValue { get; set; } = string.Empty;
         protected List<TreeNodeModel> Nodes { get; set; } = new();
         [Inject] private DaJetHttpClient DaJetClient { get; set; }
+        [Inject] private DaJetCodeController CodeController { get; set; }
         [Inject] private FlowTreeViewController FlowController { get; set; }
         [Inject] private DbViewController DbViewController { get; set; }
         [Inject] private ApiTreeViewController ApiTreeViewController { get; set; }
         [Inject] private ExchangeTreeViewController ExchangeTreeViewController { get; set; }
         protected override async Task OnInitializedAsync()
         {
-            Nodes.Add(CreateCodeRootNode());
+            Nodes.Add(CodeController.CreateRootNode());
+
             Nodes.Add(CreateDbmsRootNode());
 
             var nodes = await DaJetClient.QueryAsync<TreeNodeRecord>();
@@ -81,137 +82,6 @@ namespace DaJet.Studio.Components
             }
         }
 
-        #region "CODE NODE - STREAM PROCESSOR"
-        private TreeNodeModel CreateCodeRootNode()
-        {
-            return new TreeNodeModel()
-            {
-                Url = "/code",
-                Title = "code",
-                OpenNodeHandler = OpenCodeNodeHandler
-            };
-        }
-        public void ConfigureCodeItemNode(in TreeNodeModel node, in CodeItem model)
-        {
-            node.Tag = model;
-            node.Title = model.Name;
-            node.Url = $"{node.Parent.Url}/{model.Name}";
-            node.Icon = model.IsFolder ? (node.IsExpanded ? "/img/folder-opened.png" : "/img/folder-closed.png") : "/img/script.png";
-            node.UseToggle = model.IsFolder;
-            node.CanBeEdited = true;
-            node.OpenNodeHandler = OpenCodeNodeHandler;
-            node.NodeClickHandler = CodeItemClickHandler;
-            node.UpdateTitleCommand = UpdateNodeTitleHandler;
-            node.ContextMenuHandler = CodeItemContextMenuHandler;
-        }
-        private async Task OpenCodeNodeHandler(TreeNodeModel parent)
-        {
-            if (parent is null) { return; }
-
-            try
-            {
-                parent.Nodes.Clear();
-
-                List<CodeItem> list = await DaJetClient.GetCodeItems(parent.Url);
-
-                foreach (CodeItem item in list)
-                {
-                    TreeNodeModel child = new()
-                    {
-                        Parent = parent
-                    };
-
-                    ConfigureCodeItemNode(in child, in item);
-
-                    parent.Nodes.Add(child);
-                }
-            }
-            catch
-            {
-                parent.Nodes.Add(new TreeNodeModel()
-                {
-                    UseToggle = false,
-                    Title = "Ошибка загрузки данных!"
-                });
-            }
-        }
-        private Task CodeItemClickHandler(TreeNodeModel node)
-        {
-            if (node is null || node.Tag is not CodeItem item || item.IsFolder)
-            {
-                return Task.CompletedTask;
-            }
-
-            try
-            {
-                Navigator.NavigateTo($"/dajet-code-editor{node.Url}");
-            }
-            catch (Exception error)
-            {
-                Snackbar.Add(error.Message, Severity.Error);
-            }
-
-            return Task.CompletedTask;
-        }
-        private async Task UpdateNodeTitleHandler(TreeNodeModel node, CancelEventArgs args)
-        {
-            if (node.Tag is not CodeItem model)
-            {
-                return;
-            }
-
-            bool success = true;
-
-            try
-            {
-                //TODO: update name only command !? Script property may be changed by script editor !!!
-
-                //script = await DaJetClient.SelectAsync<ScriptRecord>(script.Identity);
-
-                //script.Name = node.Title;
-
-                //await DaJetClient.UpdateAsync(script);
-
-                //node.Tag = script; // commit transaction =)
-            }
-            catch
-            {
-                success = false;
-            }
-
-            if (success)
-            {
-                //if (node.Parent is not null)
-                //{
-                //    if (node.Parent.Tag is InfoBaseRecord infobase)
-                //    {
-                //        node.Url = $"/api/{infobase.Name}/{script.Name}";
-                //    }
-                //    else
-                //    {
-                //        node.Url = $"{node.Parent.Url}/{script.Name}";
-                //    }
-                //}
-            }
-            else
-            {
-                args.Cancel = true; // rollback edit title operation
-            }
-        }
-        private async Task CodeItemContextMenuHandler(TreeNodeModel node, IDialogService dialogService)
-        {
-            if (node.Tag is not CodeItem model)
-            {
-                return;
-            }
-
-            await JSRuntime.InvokeVoidAsync("OpenCodeItemContextMenu", node.Url);
-
-            Snackbar.Add($"Контекстное меню [{model.Name}]", Severity.Success);
-        }
-        #endregion
-
-        #region "DATA NODE - METADATA TREE"
         private TreeNodeModel CreateDbmsRootNode()
         {
             return new TreeNodeModel()
@@ -441,7 +311,7 @@ namespace DaJet.Studio.Components
             });
         }
 
-        private async Task InfoBaseContextMenuHandler(TreeNodeModel node, IDialogService dialogService)
+        private async Task InfoBaseContextMenuHandler(TreeNodeModel node, ElementReference element)
         {
             if (node.Tag is not InfoBaseRecord model)
             {
@@ -457,7 +327,7 @@ namespace DaJet.Studio.Components
                 { "MainTreeView", this }
             };
             DialogOptions options = new() { CloseButton = true };
-            var dialog = dialogService.Show<InfoBaseDialog>("DaJet Studio", parameters, options);
+            var dialog = DialogService.Show<InfoBaseDialog>("DaJet Studio", parameters, options);
             var result = await dialog.Result;
             if (result.Canceled)
             {
@@ -621,8 +491,7 @@ namespace DaJet.Studio.Components
                 node.Nodes.Add(model);
             }
         }
-        #endregion
-
+        
         #region "FILTER TREE VIEW"
         protected async Task FilterTreeView(string filter)
         {

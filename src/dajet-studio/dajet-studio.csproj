@@ -16,18 +16,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Remove="wwwroot\css\script-editor.css" />
-    <Content Remove="wwwroot\css\tree-view.css" />
-    <Content Remove="wwwroot\js\dajet-editor.js" />
+    <None Remove="Components\DaJetContextMenu.razor.css" />
+    <None Remove="Components\DaJetContextMenu.razor.js" />
   </ItemGroup>
 
   <ItemGroup>
     <None Include="Pages\Flow\PipelinePage.razor" />
-    <None Include="wwwroot\css\tree-view.css" />
-    <None Include="wwwroot\css\script-editor.css" />
     <None Include="wwwroot\css\app.css" />
     <None Include="wwwroot\index.html" />
-    <None Include="wwwroot\js\dajet-editor.js" />
   </ItemGroup>
 
   <ItemGroup>
@@ -48,6 +44,21 @@
 
   <ItemGroup>
     <_ContentIncludedByDefault Remove="Pages\Flow\PipelinePage.razor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="wwwroot\css\context-menu.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="wwwroot\css\script-editor.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="wwwroot\css\tree-view.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="wwwroot\js\context-menu.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

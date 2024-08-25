@@ -1,4 +1,4 @@
-﻿using MudBlazor;
+﻿using Microsoft.AspNetCore.Components;
 using System.ComponentModel;
 
 namespace DaJet.Studio.Components
@@ -70,13 +70,13 @@ namespace DaJet.Studio.Components
         public List<TreeNodeModel> Nodes { get; set; } = new();
         public Func<Task> ToggleCommand { get; private set; }
         public Func<Task> NodeClickCommand { get; private set; }
+        public Func<ElementReference, Task> ContextMenuCommand { get; private set; }
         public Func<TreeNodeModel, TreeNodeModel, Task> DropDataHandler { get; set; }
         public Func<TreeNodeModel, TreeNodeModel, bool> CanAcceptDropData { get; set; }
-        public Func<IDialogService, Task> ContextMenuCommand { get; private set; }
         public Func<TreeNodeModel, Task> OpenNodeHandler { get; set; }
         public Func<TreeNodeModel, Task> NodeClickHandler { get; set; }
-        public Func<TreeNodeModel, IDialogService, Task> ContextMenuHandler { get; set; }
         public Func<TreeNodeModel, CancelEventArgs, Task> UpdateTitleCommand { get; set; }
+        public Func<TreeNodeModel, ElementReference, Task> ContextMenuHandler { get; set; }
         private async Task ToggleCommandHandler()
         {
             IsExpanded = !IsExpanded;
@@ -93,11 +93,11 @@ namespace DaJet.Studio.Components
                 await NodeClickHandler(this);
             }
         }
-        private async Task ContextMenuCommandHandler(IDialogService dialogService)
+        private async Task ContextMenuCommandHandler(ElementReference element)
         {
-            if (ContextMenuHandler != null)
+            if (ContextMenuHandler is not null)
             {
-                await ContextMenuHandler(this, dialogService);
+                await ContextMenuHandler(this, element);
             }
         }
         public override string ToString()

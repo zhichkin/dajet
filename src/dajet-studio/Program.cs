@@ -41,11 +41,12 @@ namespace DaJet.Studio
 
             builder.Services.AddMudServices();
             builder.Services.AddSingleton<AppState>();
-            builder.Services.AddSingleton<FlowTreeViewController>();
-            builder.Services.AddSingleton<DbViewController>();
-            builder.Services.AddSingleton<ApiTreeViewController>();
-            builder.Services.AddSingleton<ExchangeTreeViewController>();
-
+            builder.Services.AddSingleton<DaJetCodeController>();
+            builder.Services.AddScoped<FlowTreeViewController>();
+            builder.Services.AddScoped<DbViewController>();
+            builder.Services.AddScoped<ApiTreeViewController>();
+            builder.Services.AddScoped<ExchangeTreeViewController>();
+            
             await builder.Build().RunAsync();
         }
     }
