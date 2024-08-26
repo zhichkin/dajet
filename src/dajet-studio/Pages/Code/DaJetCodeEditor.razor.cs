@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Routing;
 
 namespace DaJet.Studio.Pages.Code
 {
@@ -11,7 +10,6 @@ namespace DaJet.Studio.Pages.Code
         protected string ErrorText { get; set; } = string.Empty;
         protected string ResultText { get; set; } = string.Empty;
         protected void NavigateToHomePage() { Navigator.NavigateTo("/"); }
-        
         protected override async Task OnParametersSetAsync()
         {
             if (!string.IsNullOrEmpty(FilePath))
@@ -22,48 +20,34 @@ namespace DaJet.Studio.Pages.Code
         protected void OnScriptChanged(ChangeEventArgs args)
         {
             ScriptIsChanged = true;
-            //Model.Script = args.Value.ToString();
-        }
-        protected override void OnInitialized()
-        {
-            base.OnInitialized();
-            Navigator.LocationChanged += Navigator_LocationChanged;
-        }
-        private void Navigator_LocationChanged(object sender, LocationChangedEventArgs args)
-        {
-            //JSRuntime.InvokeVoidAsync("OpenCodeItemContextMenu", args.Location);
+            SourceCode = args.Value.ToString();
         }
         public void Dispose()
         {
             //NOTE: check for unsaved changes here
-            Navigator.LocationChanged -= Navigator_LocationChanged;
         }
-        private async Task SaveScript()
+        private async Task SaveSourceCode()
         {
-            //try
-            //{
-            //    if (Model.IsNew())
-            //    {
-            //        await DataSource.CreateAsync(Model);
-            //    }
-            //    else if (Model.IsChanged())
-            //    {
-            //        await DataSource.UpdateAsync(Model);
-            //    }
+            try
+            {
+                string result = await DaJetClient.SaveSourceCode($"/{FilePath}", SourceCode);
 
-            //    ScriptIsChanged = !Model.IsOriginal();
-            //}
-            //catch (Exception error)
-            //{
-            //    AppState.FooterText = error.Message;
-            //}
+                if (string.IsNullOrEmpty(result))
+                {
+                    ScriptIsChanged = false;
+                }
+            }
+            catch (Exception error)
+            {
+                ErrorText = error.Message;
+            }
         }
-        protected async Task ExecuteScript()
+        private async Task ExecuteScript()
         {
             ErrorText = string.Empty;
             ResultText = string.Empty;
 
-            //QueryResponse result = await DaJetClient.ExecuteScriptSql(Model);
+            string result = await DaJetClient.ExecuteScript($"/{FilePath}", SourceCode);
 
             //if (result.Success)
             //{

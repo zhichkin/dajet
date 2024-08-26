@@ -9,8 +9,8 @@
     <div class="script-editor-action">
         
         <div style="margin:5px;">
-            <span style="font-weight:bold;">@FilePath</span>
             <input type="button" value="✕" class="script-editor-close-button" @onclick="NavigateToHomePage">
+            <span style="font-weight:bold;">@FilePath</span>
         </div>
 
         <div>
@@ -18,7 +18,7 @@
             
             @if (ScriptIsChanged)
             {
-                <input type="button" class="script-editor-button" value="Сохранить" @onclick="SaveScript" />
+                <input type="button" class="script-editor-button" value="Сохранить" @onclick="SaveSourceCode" />
             }
         </div>
     </div>

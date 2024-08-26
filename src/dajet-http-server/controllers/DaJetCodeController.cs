@@ -73,6 +73,41 @@ namespace DaJet.Http.Controllers
 
             return Content(content, "text/plain", Encoding.UTF8);
         }
+        [HttpPut("src/{**path}")] public async Task<ActionResult> SaveSourceCode([FromRoute] string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return BadRequest();
+            }
+
+            if (_fileProvider is not PhysicalFileProvider provider)
+            {
+                return BadRequest();
+            }
+
+            string filePath = Path.Combine(provider.Root, path);
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound();
+            }
+
+            string sourceCode = await GetRequestBodyAsString(HttpContext.Request) ?? string.Empty;
+
+            try
+            {
+                using (StreamWriter writer = System.IO.File.CreateText(filePath))
+                {
+                    writer.Write(sourceCode);
+                }
+            }
+            catch (Exception error)
+            {
+                return Problem(ExceptionHelper.GetErrorMessageAndStackTrace(error));
+            }
+
+            return Ok();
+        }
         private static async Task<string> GetRequestBodyAsString(HttpRequest request)
         {
             if (request.ContentLength == 0) { return null; }
@@ -377,6 +412,15 @@ namespace DaJet.Http.Controllers
             targetPath = Path.Combine(targetPath, Path.GetFileName(sourcePath));
 
             Directory.Move(sourcePath, targetPath);
+
+            return Ok();
+        }
+
+        [HttpPost("src/{**path}")] public async Task<ActionResult> ExecuteScript([FromRoute] string path)
+        {
+            string sourceCode = await GetRequestBodyAsString(HttpContext.Request) ?? string.Empty;
+
+            //TODO: execute DaJet Stream script
 
             return Ok();
         }

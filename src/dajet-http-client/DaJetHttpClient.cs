@@ -537,6 +537,14 @@ namespace DaJet.Http.Client
 
             return await response.Content.ReadAsStringAsync();
         }
+        public async Task<string> SaveSourceCode(string path, string code)
+        {
+            string url = "/code/src" + path;
+
+            HttpResponseMessage response = await _client.PutAsync(url, new StringContent(code));
+
+            return await response.Content.ReadAsStringAsync();
+        }
         public async Task<string> CreateScriptFile(string path)
         {
             string url = "/code/script" + path;
@@ -656,6 +664,16 @@ namespace DaJet.Http.Client
             {
                 return response.ReasonPhrase;
             }
+        }
+        public async Task<string> ExecuteScript(string path, string code)
+        {
+            string url = "/code/src" + path;
+
+            //TODO: send DaJet Stream script to server for execution
+
+            HttpResponseMessage response = await _client.PostAsync(url, new StringContent(code));
+
+            return await response.Content.ReadAsStringAsync();
         }
         #endregion
     }
