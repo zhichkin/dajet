@@ -8,13 +8,11 @@ namespace DaJet.Studio.Controllers
 {
     public sealed class DaJetCodeController
     {
-        private readonly AppState AppState;
         private readonly DaJetHttpClient DaJetClient;
         private readonly NavigationManager Navigator;
         public Func<TreeNodeModel, ElementReference, Task> OpenContextMenuHandler { get; set; }
-        public DaJetCodeController(AppState state, DaJetHttpClient client, NavigationManager navigator)
+        public DaJetCodeController(DaJetHttpClient client, NavigationManager navigator)
         {
-            AppState = state ?? throw new ArgumentNullException(nameof(state));
             DaJetClient = client ?? throw new ArgumentNullException(nameof(client));
             Navigator = navigator ?? throw new ArgumentNullException(nameof(navigator));
         }
@@ -41,7 +39,9 @@ namespace DaJet.Studio.Controllers
                 Url = "/code",
                 Title = "code",
                 OpenNodeHandler = OpenCodeNodeHandler,
-                ContextMenuHandler = ShowContextMenu
+                ContextMenuHandler = ShowContextMenu,
+                DropDataHandler = DropDataHandler,
+                CanAcceptDropData = CanAcceptDropData
             };
         }
         public void ConfigureCodeItemNode(in TreeNodeModel node, in CodeItem model)
@@ -52,10 +52,13 @@ namespace DaJet.Studio.Controllers
             node.Icon = model.IsFolder ? (node.IsExpanded ? "/img/folder-opened.png" : "/img/folder-closed.png") : "/img/script.png";
             node.UseToggle = model.IsFolder;
             node.CanBeEdited = true;
+            node.IsDraggable = true;
             node.OpenNodeHandler = OpenCodeNodeHandler;
             node.NodeClickHandler = CodeItemClickHandler;
             node.UpdateTitleCommand = UpdateNodeTitleHandler;
             node.ContextMenuHandler = ShowContextMenu;
+            node.DropDataHandler = DropDataHandler;
+            node.CanAcceptDropData = CanAcceptDropData;
         }
         public async Task OpenCodeNodeHandler(TreeNodeModel parent)
         {
@@ -114,10 +117,20 @@ namespace DaJet.Studio.Controllers
             }
 
             bool success = true;
+            string result = string.Empty;
 
             try
             {
-                await DaJetClient.RenameScriptFile(node.Url, node.Title);
+                if (model.IsFolder)
+                {
+                    result = await DaJetClient.RenameScriptFolder(node.Url, node.Title);
+                }
+                else
+                {
+                    result = await DaJetClient.RenameScriptFile(node.Url, node.Title);
+                }
+
+                success = string.IsNullOrEmpty(result);
             }
             catch
             {
@@ -132,6 +145,71 @@ namespace DaJet.Studio.Controllers
             else
             {
                 args.Cancel = true; // rollback edit title operation
+            }
+        }
+        public bool CanAcceptDropData(TreeNodeModel source, TreeNodeModel target)
+        {
+            if (source is null || target is null) { return false; }
+
+            if (target.HasAncestor(source)) { return false; }
+
+            if (target.Nodes.Contains(source)) { return false; }
+
+            if (target.Tag is CodeItem item && !item.IsFolder) { return false; }
+
+            return true;
+        }
+        public async Task DropDataHandler(TreeNodeModel source, TreeNodeModel target)
+        {
+            if (!CanAcceptDropData(source, target)) { return; }
+
+            TreeNodeModel parent = source.Parent;
+
+            if (source.Tag is CodeItem item)
+            {
+                string result = string.Empty;
+                
+                if (item.IsFolder)
+                {
+                    result = await DaJetClient.MoveScriptFolder(source.Url, target.Url);
+                }
+                else
+                {
+                    result = await DaJetClient.MoveScriptFile(source.Url, target.Url);
+                }
+
+                if (string.IsNullOrEmpty(result))
+                {
+                    source.Parent = target;
+                    target.Nodes.Add(source);
+
+                    if (item.IsFolder)
+                    {
+                        RebuildUrlsRecursively(in source);
+                    }
+                    else
+                    {
+                        source.Url = $"{target.Url}/{item.Name}";
+                    }
+
+                    if (parent is not null)
+                    {
+                        parent.Nodes.Remove(source);
+                        parent.NotifyStateChanged();
+                    }
+                }
+            }
+        }
+        private static void RebuildUrlsRecursively(in TreeNodeModel node)
+        {
+            if (node.Parent is not null)
+            {
+                node.Url = $"{node.Parent.Url}/{node.Title}";
+            }
+
+            foreach (TreeNodeModel child in node.Nodes)
+            {
+                RebuildUrlsRecursively(in child);
             }
         }
     }

@@ -2,6 +2,7 @@
 using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.FileProviders;
+using System.Buffers;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -72,6 +73,23 @@ namespace DaJet.Http.Controllers
 
             return Content(content, "text/plain", Encoding.UTF8);
         }
+        private static async Task<string> GetRequestBodyAsString(HttpRequest request)
+        {
+            if (request.ContentLength == 0) { return null; }
+
+            int size = (int)request.ContentLength.Value;
+
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(size);
+
+            _ = await request.Body.ReadAsync(buffer, 0, size);
+
+            string value = Encoding.UTF8.GetString(buffer, 0, size);
+
+            ArrayPool<byte>.Shared.Return(buffer);
+
+            return value;
+        }
+        
         [HttpPost("script/{**path}")] public ActionResult CreateScript([FromRoute] string path)
         {
             if (string.IsNullOrWhiteSpace(path))
@@ -139,10 +157,86 @@ namespace DaJet.Http.Controllers
 
             return Ok();
         }
-        [HttpPut("script/{**path}")] public ActionResult RenameScript([FromRoute] string path, [FromBody] string name)
+        [HttpPut("script/{**path}")] public async Task<ActionResult> RenameScript([FromRoute] string path)
         {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return BadRequest();
+            }
+
+            if (_fileProvider is not PhysicalFileProvider provider)
+            {
+                return BadRequest();
+            }
+
+            string filePath = Path.Combine(provider.Root, path);
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound();
+            }
+
+            string name = await GetRequestBodyAsString(HttpContext.Request);
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return BadRequest();
+            }
+
+            string folder = Path.GetDirectoryName(filePath);
+            string newPath = Path.Combine(folder, name);
+
+            if (System.IO.File.Exists(newPath))
+            {
+                return BadRequest();
+            }
+
+            System.IO.File.Move(filePath, newPath);
+
             return Ok();
         }
+        [HttpPatch("script/{**path}")] public async Task<ActionResult> MoveScript([FromRoute] string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return BadRequest();
+            }
+
+            if (_fileProvider is not PhysicalFileProvider provider)
+            {
+                return BadRequest();
+            }
+
+            string sourcePath = Path.Combine(provider.Root, path);
+
+            if (!System.IO.File.Exists(sourcePath))
+            {
+                return NotFound();
+            }
+
+            string target = await GetRequestBodyAsString(HttpContext.Request);
+
+            if (string.IsNullOrWhiteSpace(target))
+            {
+                return BadRequest();
+            }
+
+            target = target.StartsWith('/') ? target[1..] : target;
+
+            string targetPath = Path.Combine(provider.Root, target);
+
+            if (!Directory.Exists(targetPath))
+            {
+                return NotFound();
+            }
+
+            targetPath = Path.Combine(targetPath, Path.GetFileName(sourcePath));
+
+            System.IO.File.Move(sourcePath, targetPath);
+
+            return Ok();
+        }
+        
         [HttpPost("folder/{**path}")] public ActionResult CreateFolder([FromRoute] string path)
         {
             if (string.IsNullOrWhiteSpace(path))
@@ -204,6 +298,85 @@ namespace DaJet.Http.Controllers
             {
                 return Problem(ExceptionHelper.GetErrorMessageAndStackTrace(error));
             }
+
+            return Ok();
+        }
+        [HttpPut("folder/{**path}")] public async Task<ActionResult> RenameFolder([FromRoute] string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return BadRequest();
+            }
+
+            if (_fileProvider is not PhysicalFileProvider provider)
+            {
+                return BadRequest();
+            }
+
+            string fullPath = Path.Combine(provider.Root, path);
+
+            if (!Directory.Exists(fullPath))
+            {
+                return NotFound();
+            }
+
+            string name = await GetRequestBodyAsString(HttpContext.Request);
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return BadRequest();
+            }
+
+            string folder = Path.GetDirectoryName(fullPath);
+            string newPath = Path.Combine(folder, name);
+
+            if (Directory.Exists(newPath))
+            {
+                return BadRequest();
+            }
+
+            Directory.Move(fullPath, newPath);
+
+            return Ok();
+        }
+        [HttpPatch("folder/{**path}")] public async Task<ActionResult> MoveFolder([FromRoute] string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return BadRequest();
+            }
+
+            if (_fileProvider is not PhysicalFileProvider provider)
+            {
+                return BadRequest();
+            }
+
+            string sourcePath = Path.Combine(provider.Root, path);
+
+            if (!Directory.Exists(sourcePath))
+            {
+                return NotFound();
+            }
+
+            string target = await GetRequestBodyAsString(HttpContext.Request);
+
+            if (string.IsNullOrWhiteSpace(target))
+            {
+                return BadRequest();
+            }
+
+            target = target.StartsWith('/') ? target[1..] : target;
+
+            string targetPath = Path.Combine(provider.Root, target);
+
+            if (!Directory.Exists(targetPath))
+            {
+                return NotFound();
+            }
+
+            targetPath = Path.Combine(targetPath, Path.GetFileName(sourcePath));
+
+            Directory.Move(sourcePath, targetPath);
 
             return Ok();
         }

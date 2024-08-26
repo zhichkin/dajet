@@ -74,9 +74,12 @@ namespace DaJet.Studio.Components
                     Icon = "/img/folder-closed.png",
                     UseToggle = true,
                     CanBeEdited = true,
+                    IsDraggable = true,
                     NodeClickHandler = CodeController.CodeItemClickHandler,
                     UpdateTitleCommand = CodeController.UpdateNodeTitleHandler,
-                    ContextMenuHandler = CodeController.ShowContextMenu
+                    ContextMenuHandler = CodeController.ShowContextMenu,
+                    DropDataHandler = CodeController.DropDataHandler,
+                    CanAcceptDropData = CodeController.CanAcceptDropData
                 });
 
                 parent.NotifyStateChanged();
@@ -135,9 +138,12 @@ namespace DaJet.Studio.Components
                     Icon = "/img/script.png",
                     UseToggle = false,
                     CanBeEdited = true,
+                    IsDraggable = true,
                     NodeClickHandler = CodeController.CodeItemClickHandler,
                     UpdateTitleCommand = CodeController.UpdateNodeTitleHandler,
-                    ContextMenuHandler = CodeController.ShowContextMenu
+                    ContextMenuHandler = CodeController.ShowContextMenu,
+                    DropDataHandler = CodeController.DropDataHandler,
+                    CanAcceptDropData = CodeController.CanAcceptDropData
                 });
 
                 parent.NotifyStateChanged();

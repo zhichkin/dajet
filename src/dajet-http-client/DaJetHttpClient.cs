@@ -582,6 +582,21 @@ namespace DaJet.Http.Client
                 return response.ReasonPhrase;
             }
         }
+        public async Task<string> MoveScriptFile(string path, string target)
+        {
+            string url = "/code/script" + path;
+
+            HttpResponseMessage response = await _client.PatchAsync(url, new StringContent(target));
+
+            if (response.IsSuccessStatusCode)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                return response.ReasonPhrase;
+            }
+        }
         public async Task<string> CreateScriptFolder(string path)
         {
             string url = "/code/folder" + path;
@@ -602,6 +617,36 @@ namespace DaJet.Http.Client
             string url = "/code/folder" + path;
 
             HttpResponseMessage response = await _client.DeleteAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                return response.ReasonPhrase;
+            }
+        }
+        public async Task<string> RenameScriptFolder(string path, string name)
+        {
+            string url = "/code/folder" + path;
+
+            HttpResponseMessage response = await _client.PutAsync(url, new StringContent(name));
+
+            if (response.IsSuccessStatusCode)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                return response.ReasonPhrase;
+            }
+        }
+        public async Task<string> MoveScriptFolder(string path, string target)
+        {
+            string url = "/code/folder" + path;
+
+            HttpResponseMessage response = await _client.PatchAsync(url, new StringContent(target));
 
             if (response.IsSuccessStatusCode)
             {

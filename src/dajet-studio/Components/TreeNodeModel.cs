@@ -88,7 +88,7 @@ namespace DaJet.Studio.Components
         }
         private async Task NodeClickCommandHandler()
         {
-            if (NodeClickCommand is not null)
+            if (NodeClickHandler is not null)
             {
                 await NodeClickHandler(this);
             }
