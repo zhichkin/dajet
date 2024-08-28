@@ -49,14 +49,14 @@ namespace DaJet.Studio.Pages.Code
 
             string result = await DaJetClient.ExecuteScript($"/{FilePath}", SourceCode);
 
-            //if (result.Success)
-            //{
-            //    ResultText = result.Script;
-            //}
-            //else
-            //{
-            //    ErrorText = result.Error;
-            //}
+            if (string.IsNullOrEmpty(result))
+            {
+                ResultText = "Выполнено успешно";
+            }
+            else
+            {
+                ErrorText = result;
+            }
         }
     }
 }

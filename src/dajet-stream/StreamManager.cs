@@ -112,5 +112,38 @@ namespace DaJet.Stream
                 }
             }
         }
+
+        public static void Execute(in string script)
+        {
+            if (!StreamFactory.TryCreateStream(in script, out IProcessor stream, out string error))
+            {
+                throw new Exception(error);
+            }
+
+            stream.Process();
+        }
+        public static bool TryExecute(in string filePath, out string error)
+        {
+            error = null;
+            string script;
+
+            try
+            {
+                using (StreamReader reader = new(filePath, Encoding.UTF8))
+                {
+                    script = reader.ReadToEnd();
+                }
+
+                Execute(in script);
+            }
+            catch (Exception exception)
+            {
+                error = ExceptionHelper.GetErrorMessage(exception);
+
+                FileLogger.Default.Write(error);
+            }
+
+            return string.IsNullOrEmpty(error);
+        }
     }
 }

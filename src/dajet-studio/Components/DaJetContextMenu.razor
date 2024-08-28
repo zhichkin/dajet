@@ -22,7 +22,14 @@
                 <img src="/img/script-create.png" alt="" class="dajet-context-menu-item-icon" />
                 <span class="dajet-context-menu-item" @onclick="CreateScriptFile">Создать скрипт</span>
             </li>
-            @if (Title != "/code")
+            @if (Title == "/code")
+            {
+                <li>
+                    <img src="/img/log.png" alt="" class="dajet-context-menu-item-icon" />
+                    <span class="dajet-context-menu-item" @onclick="OpenServerLogPage">Открыть журнал</span>
+                </li>
+            }
+            else
             {
                 <li>
                     <img src="/img/folder-delete.png" alt="" class="dajet-context-menu-item-icon" />

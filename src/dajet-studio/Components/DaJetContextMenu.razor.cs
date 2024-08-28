@@ -43,6 +43,12 @@ namespace DaJet.Studio.Components
         {
             await JSRuntime.InvokeVoidAsync("CloseCodeItemContextMenu");
         }
+        private async Task OpenServerLogPage(MouseEventArgs args)
+        {
+            await CloseContextMenu();
+
+            CodeController.NavigateToServerLogPage();
+        }
         private async Task CreateScriptFolder(MouseEventArgs args)
         {
             await CloseContextMenu();

@@ -22,8 +22,8 @@
     @if (Model.CanBeEdited && Model.IsInEditMode)
     {
         <div class="tree-node-container">
-            
-            <input type="text" class="tree-node-input" @ref="TitleInput"
+
+            <input type="text" class="tree-node-input" spellcheck="false" @ref="TitleInput"
                @bind-value="@Model.Title" @bind-value:event="oninput" @onkeyup="KeyPress" @onblur="LostFocus" />
 
             <MudTooltip Text="Отменить редактирование">

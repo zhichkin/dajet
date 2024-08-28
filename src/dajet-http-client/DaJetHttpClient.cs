@@ -529,6 +529,14 @@ namespace DaJet.Http.Client
 
             return await response.Content.ReadFromJsonAsync<List<CodeItem>>();
         }
+        public async Task<string> GetServerLog()
+        {
+            string url = "/code/log";
+
+            HttpResponseMessage response = await _client.GetAsync(url);
+
+            return await response.Content.ReadAsStringAsync();
+        }
         public async Task<string> GetSourceCode(string path)
         {
             string url = "/code/src" + path;
@@ -669,9 +677,7 @@ namespace DaJet.Http.Client
         {
             string url = "/code/src" + path;
 
-            //TODO: send DaJet Stream script to server for execution
-
-            HttpResponseMessage response = await _client.PostAsync(url, new StringContent(code));
+            HttpResponseMessage response = await _client.PostAsync(url, null);
 
             return await response.Content.ReadAsStringAsync();
         }

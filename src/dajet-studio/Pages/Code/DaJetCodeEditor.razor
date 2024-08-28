@@ -24,7 +24,9 @@
     </div>
 
     <div class="script-editor-script">
-        <textarea rows="10" @oninput="OnScriptChanged" style="border: 1px solid black; padding: 3px; white-space: nowrap; font-family: monospace">
+        <textarea rows="10" @oninput="OnScriptChanged"
+                  style="border: 1px solid black; padding: 3px; white-space: nowrap; font-family: monospace;"
+                  spellcheck="false"  autocapitalize="off" autocomplete="off" autocorrect="off">
             @SourceCode
         </textarea>
     </div>

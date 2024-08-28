@@ -1,5 +1,6 @@
 ﻿using DaJet.Json;
 using DaJet.Model;
+using DaJet.Stream;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.FileProviders;
 using System.Buffers;
@@ -23,6 +24,19 @@ namespace DaJet.Http.Controllers
             _fileProvider = fileProvider ?? throw new ArgumentNullException(nameof(fileProvider));
 
             JsonOptions.Converters.Add(new DictionaryJsonConverter());
+        }
+        [HttpGet("log")] public ActionResult GetServerLog()
+        {
+            IFileInfo file = _fileProvider.GetFileInfo("dajet.log");
+
+            string content = string.Empty;
+
+            if (file.Exists)
+            {
+                content = System.IO.File.ReadAllText(file.PhysicalPath, Encoding.UTF8);
+            }
+
+            return Content(content, "text/plain", Encoding.UTF8);
         }
         [HttpGet("dir/{**path}")] public ActionResult GetCodeItems([FromRoute] string path)
         {
@@ -55,6 +69,7 @@ namespace DaJet.Http.Controllers
 
             return Content(json);
         }
+        
         [HttpGet("src/{**path}")] public ActionResult GetSourceCode([FromRoute] string path)
         {
             if (string.IsNullOrWhiteSpace(path))
@@ -416,11 +431,26 @@ namespace DaJet.Http.Controllers
             return Ok();
         }
 
-        [HttpPost("src/{**path}")] public async Task<ActionResult> ExecuteScript([FromRoute] string path)
+        [HttpPost("src/{**path}")] public ActionResult ExecuteScript([FromRoute] string path)
         {
-            string sourceCode = await GetRequestBodyAsString(HttpContext.Request) ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return BadRequest();
+            }
 
-            //TODO: execute DaJet Stream script
+            IFileInfo file = _fileProvider.GetFileInfo(path);
+
+            if (!file.Exists)
+            {
+                return NotFound();
+            }
+
+            //string content = System.IO.File.ReadAllText(file.PhysicalPath, Encoding.UTF8);
+
+            if (!StreamManager.TryExecute(file.PhysicalPath, out string error))
+            {
+                return UnprocessableEntity(error); // 422
+            }
 
             return Ok();
         }

@@ -1,0 +1,22 @@
+﻿@page "/dajet-server-log"
+
+@inject DaJetHttpClient DaJetClient;
+@inject NavigationManager Navigator;
+
+<div class="dajet-log-layout">
+
+    <div class="dajet-log-caption">
+        <div style="margin:5px;">
+            <input type="button" value="✕" style="cursor:pointer;border:none;background:none;" @onclick="NavigateToHomePage">
+            <span style="font-weight:bold;">Журнал сервера DaJet</span>
+        </div>
+    </div>
+
+    <div class="dajet-log-content">
+        <textarea rows="10" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"
+                  style="border: 1px solid black; padding: 3px; white-space: nowrap; font-family: monospace; resize: none;">
+            @Content
+    </textarea>
+    </div>
+
+</div>

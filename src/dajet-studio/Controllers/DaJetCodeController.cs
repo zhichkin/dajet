@@ -16,6 +16,7 @@ namespace DaJet.Studio.Controllers
             DaJetClient = client ?? throw new ArgumentNullException(nameof(client));
             Navigator = navigator ?? throw new ArgumentNullException(nameof(navigator));
         }
+        public void NavigateToServerLogPage() { Navigator.NavigateTo("/dajet-server-log"); }
         public Task ShowContextMenu(TreeNodeModel node, ElementReference source)
         {
             if (node.Tag is not CodeItem)

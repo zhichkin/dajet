@@ -1,0 +1,24 @@
+﻿.dajet-log-layout {
+    display: grid;
+    gap: 1px;
+    padding: 1px;
+    border: 1px solid black;
+    align-content: start;
+    height: calc(100vh - 60px);
+    grid-template:
+        "dajet-log-caption" min-content
+        "dajet-log-content" auto
+}
+
+.dajet-log-caption {
+    display: grid;
+    grid-area: dajet-log-caption;
+}
+
+.dajet-log-content {
+    display: grid;
+    grid-area: dajet-log-content;
+    height: 85vh;
+    overflow: hidden;
+    border: 1px solid black;
+}

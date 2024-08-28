@@ -25,8 +25,8 @@ namespace DaJet.Stream
         {
             if (StreamFactory.TryEvaluate(in _scope, _statement.Expression, out object value))
             {
-                Console.WriteLine(value.ToString());
-                //FileLogger.Default.Write(value.ToString());
+                //Console.WriteLine(value.ToString());
+                FileLogger.Default.Write(value.ToString());
             }
 
             _next?.Process();
