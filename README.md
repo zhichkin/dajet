@@ -150,8 +150,6 @@ REQUEST '{@request.Адрес}' -- URL метода web API
 
 Подробное описание установки, настройки и запуска скриптов DaJet при помощи утилиты dajet находится [здесь](https://github.com/zhichkin/dajet/releases/tag/dajet-stream-svc-1.0.0)
 
-[Наверх](#dajet---язык-интеграции)
-
 [Документация DaJet](https://zhichkin.github.io/)
 
 [Школа DaJet на YouTube](https://www.youtube.com/playlist?list=PLyBbhdsc7InutmVxyUszw-ZNJ5zKVBot2)
