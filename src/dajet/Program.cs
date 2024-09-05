@@ -3,22 +3,72 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using System.Diagnostics;
 
 namespace DaJet
 {
     public static class Program
     {
+        private const string DEFAULT_ROOT_PATH = "scripts";
+        private const string DAJET_SCRIPT_FILE_EXTENSION = ".djs";
         private static HostConfig Config { get; set; } = new();
         public static void Main(string[] args)
         {
             if (args is not null && args.Length > 0)
             {
-                RunHost(args[0]);
+                string extension = Path.GetExtension(args[0]);
+
+                if (string.IsNullOrEmpty(extension))
+                {
+                    Console.WriteLine($"[400][BAD REQUEST] {args[0]}");
+                }
+                else if (!File.Exists(args[0]))
+                {
+                    Console.WriteLine($"[404][NOT FOUND] {args[0]}");
+                }
+                else if (extension == ".json")
+                {
+                    RunHost(args[0]);
+                }
+                else if (extension == DAJET_SCRIPT_FILE_EXTENSION)
+                {
+                    RunScript(args[0]);
+                }
+                else
+                {
+                    Console.WriteLine($"[422][UNPROCESSABLE ENTITY] {args[0]}");
+                }
             }
             else
             {
-                RunHost(null);
+                RunHost(null); // default host settings
             }
+        }
+        private static void RunScript(in string filePath)
+        {
+            StreamManager.LogToConsole();
+
+            Stopwatch watch = new();
+
+            watch.Start();
+
+            bool success = StreamManager.TryExecute(in filePath, out string error);
+
+            watch.Stop();
+
+            long elapsed = watch.ElapsedMilliseconds;
+
+            if (success)
+            {
+                Console.WriteLine($"[200][TIME {elapsed} ms]");
+            }
+            else
+            {
+                Console.WriteLine("[500][INTERNAL SERVER ERROR]");
+                Console.WriteLine(error);
+            }
+
+            StreamManager.LogToFile();
         }
         private static void RunHost(in string configFilePath)
         {
@@ -33,7 +83,7 @@ namespace DaJet
             FileLogger.Default.Write($"[CONFIG] {configFilePath}");
             FileLogger.Default.Write($"[LOG PATH] {Config.LogPath}");
             FileLogger.Default.Write($"[LOG FILE] {Config.LogFile}");
-            FileLogger.Default.Write($"[LOG SIZE] {Config.LogSize} Kb");
+            FileLogger.Default.Write($"[LOG SIZE] {Config.LogSize} bytes");
             FileLogger.Default.Write($"[ROOT] {Config.RootPath}");
             FileLogger.Default.Write($"[REFRESH] {Config.Refresh} seconds");
 
@@ -66,7 +116,7 @@ namespace DaJet
 
             if (string.IsNullOrWhiteSpace(Config.RootPath))
             {
-                Config.RootPath = Path.Combine(AppContext.BaseDirectory, "stream");
+                Config.RootPath = Path.Combine(AppContext.BaseDirectory, DEFAULT_ROOT_PATH);
             }
         }
         private static IHostBuilder CreateHostBuilder()
@@ -82,7 +132,7 @@ namespace DaJet
         {
             services.AddOptions().AddSingleton(Options.Create(Config));
 
-            services.AddHostedService<DaJetStreamService>();
+            services.AddHostedService<DaJetScriptingService>();
         }
     }
 }

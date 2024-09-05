@@ -207,7 +207,6 @@ namespace DaJet.Stream
         public static bool IsStreamScope(in SyntaxNode statement)
         {
             return statement is UseStatement
-                || statement is ForEachStatement
                 || statement is ConsumeStatement
                 || statement is ProduceStatement
                 || statement is RequestStatement

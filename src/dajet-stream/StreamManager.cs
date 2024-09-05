@@ -5,6 +5,12 @@ namespace DaJet.Stream
 {
     public static class StreamManager
     {
+        private const string DAJET_SCRIPT_FILE_EXTENSION = "*.djs";
+
+        public static int LOG_MODE = 0; // 0 - file (default), 1 - console
+        public static void LogToFile() { LOG_MODE = 0; }
+        public static void LogToConsole() { LOG_MODE = 1; }
+
         private static readonly Dictionary<string, IProcessor> _streams = new();
         public static void Serve(in string path)
         {
@@ -21,7 +27,7 @@ namespace DaJet.Stream
         }
         private static void ActivateStreams(in string path)
         {
-            foreach (string file in Directory.EnumerateFiles(path, "*.sql"))
+            foreach (string file in Directory.EnumerateFiles(path, DAJET_SCRIPT_FILE_EXTENSION))
             {
                 ActivateStream(in file);
             }
@@ -140,7 +146,7 @@ namespace DaJet.Stream
             {
                 error = ExceptionHelper.GetErrorMessage(exception);
 
-                FileLogger.Default.Write(error);
+                if (LOG_MODE == 0) { FileLogger.Default.Write(error); }
             }
 
             return string.IsNullOrEmpty(error);

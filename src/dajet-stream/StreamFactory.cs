@@ -852,7 +852,7 @@ namespace DaJet.Stream
 
             foreach (FunctionExpression function in functions)
             {
-                if (function.Name != "DaJet.Json")
+                if (function.Name != "JSON")
                 {
                     throw new InvalidOperationException($"Unknown function name: [{function.Name}]");
                 }
@@ -999,7 +999,7 @@ namespace DaJet.Stream
                     }
                 }
                 else if (value is FunctionExpression function
-                    && function.Name == "DaJet.Json"
+                    && function.Name == "JSON"
                     && function.Parameters.Count > 0
                     && function.Parameters[0] is VariableReference parameter)
                 {
@@ -1052,7 +1052,7 @@ namespace DaJet.Stream
                     scope.Variables.Add(column.Alias, member);
                 }
                 else if (column.Expression is FunctionExpression function
-                    && function.Name == "DaJet.Json"
+                    && function.Name == "JSON"
                     && function.Parameters.Count > 0
                     && function.Parameters[0] is VariableReference parameter
                     && parameter.Binding is TypeIdentifier)
@@ -1112,7 +1112,7 @@ namespace DaJet.Stream
         }
         private static bool TryEvaluate(in StreamScope scope, in FunctionExpression expression, out object value)
         {
-            if (expression.Name == "DaJet.Json" &&
+            if (expression.Name == "JSON" &&
                 expression.Parameters.Count > 0 &&
                 expression.Parameters[0] is VariableReference variable)
             {

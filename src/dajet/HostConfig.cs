@@ -2,7 +2,7 @@
 {
     internal sealed class HostConfig
     {
-        public uint LogSize { get; set; } = 1024U * 1024U; // kilobytes
+        public uint LogSize { get; set; } = 1024U * 1024U; // bytes
         public string LogFile { get; set; } = "dajet.log";
         public string LogPath { get; set; } = string.Empty;
         public string RootPath { get; set; } = string.Empty;

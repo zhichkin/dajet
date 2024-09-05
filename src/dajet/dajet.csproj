@@ -8,11 +8,11 @@
     <RootNamespace>DaJet</RootNamespace>
     <Authors>Zhichkin</Authors>
     <Copyright>Zhichkin © 2024</Copyright>
-    <Version>1.0.5</Version>
-    <Title>DaJet Stream Service</Title>
-    <PackageId>DaJet.Stream.Service</PackageId>
-    <Product>DaJet Stream Service</Product>
-    <Description>DaJet Stream is a service for executing integration scripts</Description>
+    <Version>1.0.6</Version>
+    <Title>DaJet Scripting Utility</Title>
+    <PackageId>DaJet.Scripting.Utility</PackageId>
+    <Product>DaJet Scripting Utility</Product>
+    <Description>DaJet Script execution utility</Description>
     <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/zhichkin/dajet/tree/main/src/dajet</RepositoryUrl>
   </PropertyGroup>

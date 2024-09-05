@@ -210,9 +210,9 @@ namespace DaJet.Scripting
         {
             ForEachStatement statement = new();
 
-            if (!Match(TokenType.EACH))
+            if (Match(TokenType.EACH))
             {
-                throw new FormatException("[FOR] EACH keyword expected");
+                // do nothing - optional keyword
             }
 
             if (!Match(TokenType.Variable) || variable() is not VariableReference _variable)
@@ -255,6 +255,13 @@ namespace DaJet.Scripting
                 }
 
                 Skip(TokenType.Comment);
+            }
+
+            statement.Statements = statement_block();
+
+            if (statement.Statements is null || statement.Statements.Statements is null || statement.Statements.Statements.Count == 0)
+            {
+                throw new FormatException("[FOR] statement block is empty");
             }
 
             return statement;
@@ -427,6 +434,11 @@ namespace DaJet.Scripting
             }
 
             statement.Statements = statement_block();
+
+            if (statement.Statements is null || statement.Statements.Statements is null || statement.Statements.Statements.Count == 0)
+            {
+                throw new FormatException("WHILE: statement block is empty");
+            }
 
             return statement;
         }

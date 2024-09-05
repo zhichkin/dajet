@@ -6,11 +6,13 @@ namespace DaJet.Stream
     public sealed class Parallelizer : IProcessor
     {
         private IProcessor _next;
-        private readonly StreamScope _scope;
         private readonly int _maxdop;
         private readonly string _item;
         private readonly string _iterator;
         private readonly List<string> _closure;
+        private readonly ForEachStatement _statement;
+        private readonly StreamScope _body;
+        private readonly StreamScope _scope;
         private readonly List<IProcessor> _streams = new();
         private static int GetMaxDopValue(in ForEachStatement statement)
         {
@@ -49,13 +51,17 @@ namespace DaJet.Stream
                 throw new ArgumentException(nameof(ForEachStatement));
             }
 
+            _statement = statement;
+
             StreamFactory.ConfigureIteratorSchema(in _scope, out _item, out _iterator);
 
-            _maxdop = GetMaxDopValue(in statement);
+            _maxdop = GetMaxDopValue(in _statement);
+
+            _body = _scope.Create(_statement.Statements); // NOTE: create child scope
 
             _closure = StreamFactory.GetClosureVariables(in _scope);
 
-            _ = StreamFactory.CreateStream(in _scope); // transpile and cache SQL statements 
+            _ = StreamFactory.CreateStream(in _body); //NOTE: transpile and cache SQL statements 
         }
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Process()
@@ -94,11 +100,11 @@ namespace DaJet.Stream
         }
         private void ProcessSingleThread(in List<DataObject> iterator)
         {
-            IProcessor stream = StreamFactory.CreateStream(in _scope);
+            IProcessor stream = StreamFactory.CreateStream(in _body);
 
             foreach (DataObject item in iterator)
             {
-                if (_scope.TrySetValue(_item, item))
+                if (_body.TrySetValue(_item, item))
                 {
                     stream?.Process();
                 }
@@ -106,11 +112,11 @@ namespace DaJet.Stream
         }
         private IProcessor CloneStreamTemplate(in DataObject item)
         {
-            StreamScope clone = _scope.Clone();
+            StreamScope clone = _body.Clone();
 
             foreach (string variable in _closure)
             {
-                if (_scope.TryGetValue(in variable, out object value))
+                if (_body.TryGetValue(in variable, out object value))
                 {
                     clone.Variables.Add(variable, value);
                 }
@@ -152,7 +158,7 @@ namespace DaJet.Stream
             }
         }
 
-        public void Synchronize() { /* IGNORE */ }
+        public void Synchronize() { _next?.Synchronize(); }
         public void Dispose()
         {
             foreach (IProcessor stream in _streams)
@@ -168,6 +174,8 @@ namespace DaJet.Stream
             }
 
             _streams.Clear();
+
+            _next?.Dispose();
         }
     }
 }
