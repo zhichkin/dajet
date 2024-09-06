@@ -31,7 +31,7 @@ FOR EACH @page IN @iterator --MAXDOP 4
   SELECT НомерСообщения = VECTOR('so_incoming_queue')
        , Отправитель    = @message.Код
        , ТипСообщения   = "Справочник.Номенклатура"
-       , ТелоСообщения  = DaJet.Json(@message)
+       , ТелоСообщения  = JSON(@message)
        , ОтметкаВремени = NOW()
 
 END -- FOR
