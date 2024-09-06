@@ -34,7 +34,7 @@ PRINT 'Hello from DaJet!'
 
 |**Параметр**|**Windows**|**Linux**|**Описание**|
 |---------------|-------|-------|---|
-| Нет | dajet | dotnet ./dajet.dll | Хостинг скриптов DaJet с настройками по умолчанию |
+| Нет | dajet | dotnet ./dajet.dll | Хостинг скриптов с настройками по умолчанию |
 | Да | dajet ./script.djs | dotnet ./dajet.dll ./script.djs | Выполнение отдельно взятого скрипта |
 | Да | dajet ./config.json | dotnet ./dajet.dll ./config.json | Хостинг скриптов с указанием настроек |
 
