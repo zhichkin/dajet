@@ -3,11 +3,11 @@ using Microsoft.Extensions.Options;
 
 namespace DaJet.Stream
 {
-    internal sealed class DaJetScriptingService : BackgroundService
+    internal sealed class DaJetScriptService : BackgroundService
     {
         private readonly HostConfig _config;
         private CancellationToken _cancellationToken;
-        public DaJetScriptingService(IOptions<HostConfig> config)
+        public DaJetScriptService(IOptions<HostConfig> config)
         {
             ArgumentNullException.ThrowIfNull(config);
 

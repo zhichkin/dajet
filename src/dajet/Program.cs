@@ -132,7 +132,7 @@ namespace DaJet
         {
             services.AddOptions().AddSingleton(Options.Create(Config));
 
-            services.AddHostedService<DaJetScriptingService>();
+            services.AddHostedService<DaJetScriptService>();
         }
     }
 }

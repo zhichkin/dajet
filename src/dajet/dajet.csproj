@@ -8,10 +8,10 @@
     <RootNamespace>DaJet</RootNamespace>
     <Authors>Zhichkin</Authors>
     <Copyright>Zhichkin © 2024</Copyright>
-    <Version>1.0.6</Version>
-    <Title>DaJet Scripting Utility</Title>
-    <PackageId>DaJet.Scripting.Utility</PackageId>
-    <Product>DaJet Scripting Utility</Product>
+    <Version>1.1.0</Version>
+    <Title>DaJet Script Utility</Title>
+    <PackageId>DaJet.Script.Utility</PackageId>
+    <Product>DaJet Script Utility</Product>
     <Description>DaJet Script execution utility</Description>
     <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/zhichkin/dajet/tree/main/src/dajet</RepositoryUrl>
