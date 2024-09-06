@@ -4,10 +4,16 @@
 
 1. Установить [Microsoft .NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
 2. Скачать [дистрибутив утилиты DaJet](https://github.com/zhichkin/dajet/releases)
-3. Создать рабочий каталог и распаковать дистрибутив, например, C:\dajet-utility
-4. Перейти в каталог установки и выполнить тестовый скрипт test.djs
+3. Создать рабочий каталог и распаковать дистрибутив, например, ```C:\dajet-utility```
+4. Перейти в каталог установки и выполнить тестовый скрипт ```./scripts/test.djs```
+```SQL
+PRINT 'Hello from DaJet!'
+```
+В случае, если тестовый скрипт по указанному пути отстутствует, то создайте его самостоятельно.
 
-![Тестовый скрипт DaJet](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-utility-test.png)
+Результат выполнения скрипта должен быть следующим:
+
+![Тестовый скрипт DaJet](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-utility-test-windows.png)
 
 ### Описание
 
