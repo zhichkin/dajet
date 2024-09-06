@@ -5,6 +5,7 @@
 - [Трансформация](#трансформация-данных)
 - [Маршрутизация](#маршрутизация-сообщений)
 - [Утилита выполнения скриптов](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/README.md)
+- [Примеры скриптов DaJet](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/scripts)
 
 ### Введение
 
