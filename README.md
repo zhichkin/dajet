@@ -4,7 +4,7 @@
 - [Транспорт](#транспорт-сообщений)
 - [Трансформация](#трансформация-данных)
 - [Маршрутизация](#маршрутизация-сообщений)
-- [Утилита dajet для выполнения скриптов](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility)
+- [Утилита выполнения скриптов](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/README.md)
 
 ### Введение
 
