@@ -4,7 +4,7 @@
 - [Транспорт](#транспорт-сообщений)
 - [Трансформация](#трансформация-данных)
 - [Маршрутизация](#маршрутизация-сообщений)
-- [Утилита dajet](#утилита-dajet)
+- [Утилита dajet для выполнения скриптов](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility)
 
 ### Введение
 
@@ -146,9 +146,7 @@ REQUEST '{@request.Адрес}' -- URL метода web API
 
 [Наверх](#dajet---язык-интеграции)
 
-### Утилита dajet
 
-Подробное описание установки, настройки и запуска скриптов DaJet при помощи утилиты dajet находится [здесь](https://github.com/zhichkin/dajet/releases/tag/dajet-stream-svc-1.0.0)
 
 [Документация DaJet](https://zhichkin.github.io/)
 
