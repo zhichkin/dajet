@@ -1,71 +1,13 @@
 ﻿using DaJet.Data;
-using DaJet.Json;
 using DaJet.Metadata;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
-using System.Text;
-using System.Text.Encodings.Web;
-using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Text.Unicode;
 
 namespace DaJet.Stream
 {
-    public sealed class StreamScope
+    public sealed class StreamScope : IScriptRuntime
     {
-        private static readonly JsonWriterOptions JsonWriterOptions = new()
-        {
-            Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-        };
-        private static readonly JsonSerializerOptions SerializerOptions = new()
-        {
-            Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-        };
-        private static readonly DataObjectJsonConverter JsonConverter = new();
-        static StreamScope()
-        {
-            SerializerOptions.Converters.Add(new DataObjectJsonConverter());
-        }
-        public static string ToJson(in DataObject record)
-        {
-            using (MemoryStream memory = new())
-            {
-                using (Utf8JsonWriter writer = new(memory, JsonWriterOptions))
-                {
-                    JsonConverter.Write(writer, record, null);
-
-                    writer.Flush();
-
-                    string json = Encoding.UTF8.GetString(memory.ToArray());
-
-                    return json;
-                }
-            }
-        }
-        public static string ToJson(in List<DataObject> table)
-        {
-            return JsonSerializer.Serialize(table, SerializerOptions);
-        }
-        public static object FromJson(in string json)
-        {
-            Utf8JsonReader reader = new(Encoding.UTF8.GetBytes(json), true, default);
-
-            if (json[0] == '{')
-            {
-                return JsonConverter.Read(ref reader, typeof(DataObject), SerializerOptions);
-            }
-            else if (json[0] == '[')
-            {
-                return JsonSerializer.Deserialize(json, typeof(List<DataObject>), SerializerOptions);
-            }
-            else
-            {
-                throw new FormatException(nameof(json));
-            }
-        }
-
-        // ***
-
         public StreamScope(SyntaxNode owner)
         {
             Owner = owner ?? throw new ArgumentNullException(nameof(owner));
@@ -293,7 +235,7 @@ namespace DaJet.Stream
             }
             else if (target is string json)
             {
-                target = FromJson(in json);
+                target = ScriptRuntimeFunctions.FromJson(this, in json); //TODO: call function via IScriptRuntime !?
 
                 return TryGetMemberValue(in member, ref target);
             }

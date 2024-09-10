@@ -1,6 +1,6 @@
 ﻿using DaJet.Data;
-using DaJet.Scripting.Model;
 using DaJet.Scripting;
+using DaJet.Scripting.Model;
 
 namespace DaJet.Stream
 {
@@ -13,9 +13,9 @@ namespace DaJet.Stream
         protected SqlStatement _statement;
         protected readonly int _yearOffset;
         protected readonly IDbConnectionFactory _factory;
-        protected readonly Dictionary<string, string> _variables = new();
-        protected readonly Dictionary<string, string> _functions = new();
         protected readonly Dictionary<string, object> _parameters = new();
+        protected readonly Dictionary<string, string> _variables = new();
+        protected readonly Dictionary<string, FunctionExpression> _functions = new();
         public OneDbProcessor(in StreamScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
@@ -52,9 +52,9 @@ namespace DaJet.Stream
 
             foreach (var map in _functions)
             {
-                if (!_parameters.ContainsKey(map.Value))
+                if (!_parameters.ContainsKey(map.Key))
                 {
-                    _parameters.Add(map.Value, null);
+                    _parameters.Add(map.Key, null);
                 }
             }
         }
@@ -70,21 +70,9 @@ namespace DaJet.Stream
 
             foreach (var map in _functions)
             {
-                if (_scope.TryGetValue(map.Key, out object value))
-                {
-                    if (value is DataObject record)
-                    {
-                        _parameters[map.Value] = StreamScope.ToJson(in record);
-                    }
-                    else if (value is List<DataObject> table)
-                    {
-                        _parameters[map.Value] = StreamScope.ToJson(in table);
-                    }
-                    else
-                    {
-                        _parameters[map.Value] = string.Empty;
-                    }
-                }
+                object result = StreamFactory.InvokeFunction(in _scope, map.Value);
+
+                _parameters[map.Key] = result ?? string.Empty;
             }
         }
     }

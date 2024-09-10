@@ -8,6 +8,10 @@ namespace DaJet.Model
     //NOTE: if (type.IsPublic && type.IsAbstract && type.IsSealed) /* that means static class */
     public static class ReflectionExtensions
     {
+        public static bool IsStaticClass(this Type type)
+        {
+            return type.IsPublic && type.IsAbstract && type.IsSealed;
+        }
         public static bool IsOption(this Type type)
         {
             return type.IsSubclassOf(typeof(OptionsBase));

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace DaJet.Model
+namespace DaJet
 {
     public interface IAssemblyManager
     {

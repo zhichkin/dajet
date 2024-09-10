@@ -1,13 +1,230 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata;
+using DaJet.Model;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using System.Data;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace DaJet.Stream
 {
     public static class StreamFactory
     {
+        #region "UDF - USER DEFINED FUNCTIONS"
+
+        private static AssemblyManager AssemblyManager { get; set; }
+
+        static StreamFactory()
+        {
+            AssemblyManager = new();
+            AssemblyManager.Register(typeof(ScriptRuntimeFunctions).Assembly);
+            AssemblyManager.Register("udfunc"); // user-defined function
+            AssemblyManager.Register("udproc"); // user-defined processor
+            AssemblyManager.Register("proto");
+
+            RegisterRuntimeFunctions();
+        }
+        private static readonly List<MethodInfo> _functions = new();
+        private static void RegisterRuntimeFunctions()
+        {
+            foreach (Assembly assembly in AssemblyManager.Assemblies)
+            {
+                if (assembly.GetCustomAttribute<ExtensionAttribute>() is null)
+                {
+                    continue;
+                }
+
+                foreach (Type type in assembly.GetTypes())
+                {
+                    if (type.GetCustomAttribute<ExtensionAttribute>() is null)
+                    {
+                        continue;
+                    }
+
+                    if (type.IsStaticClass())
+                    {
+                        foreach (MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.Static))
+                        {
+                            if (method.GetCustomAttributes<ExtensionAttribute>() is null)
+                            {
+                                continue;
+                            }
+
+                            if (method.GetParameters()[0].ParameterType == typeof(IScriptRuntime))
+                            {
+                                FunctionAttribute attribute = method.GetCustomAttribute<FunctionAttribute>();
+
+                                if (attribute is not null)
+                                {
+                                    if (method.ReturnType is not null)
+                                    {
+                                        _functions.Add(method);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        public static bool TryGetFunction(in StreamScope scope, in FunctionExpression function, out MethodInfo method)
+        {
+            method = null;
+
+            foreach (MethodInfo item in _functions)
+            {
+                FunctionAttribute attribute = item.GetCustomAttribute<FunctionAttribute>();
+
+                if (attribute is null)
+                {
+                    continue;
+                }
+
+                if (attribute.Name == function.Name)
+                {
+                    int count = function.Parameters.Count;
+
+                    ParameterInfo[] parameters = item.GetParameters(); //NOTE: the first parameter is IScriptRuntime !!!
+
+                    if (parameters.Length != count + 1)
+                    {
+                        continue; //TODO: support default values for missing parameters ???
+                    }
+
+                    bool success = true;
+
+                    for (int i = 0; i < count; i++)
+                    {
+                        SyntaxNode parameter = function.Parameters[i];
+
+                        Type type = GetFunctionParameterType(in scope, in parameter);
+
+                        Type parameterType = parameters[i + 1].ParameterType;
+
+                        if (parameterType.IsByRef) //NOTE: ref, in or out parameter
+                        {
+                            parameterType = parameterType.GetElementType();
+                        }
+
+                        if (parameterType != type)
+                        {
+                            success = false; break; // support for the overloaded methods
+                        }
+                    }
+
+                    if (success)
+                    {
+                        method = item; break; // a method matching the signature is found
+                    }
+                }
+            }
+
+            return method is not null;
+        }
+        public static object InvokeFunction(in StreamScope scope, in FunctionExpression function)
+        {
+            //TODO: move this code to IScriptRuntime !?
+
+            if (scope is not IScriptRuntime runtime)
+            {
+                return null; //TODO: throw exception ???
+            }
+
+            if (!TryGetFunction(in scope, in function, out MethodInfo method))
+            {
+                throw new InvalidOperationException($"Unknown function: {function.Name}");
+            }
+
+            int count = function.Parameters.Count;
+
+            object[] parameters = new object[count + 1];
+
+            parameters[0] = runtime;
+
+            for (int i = 0; i < count; i++)
+            {
+                SyntaxNode parameter = function.Parameters[i];
+
+                if (TryEvaluate(in scope, in parameter, out object value))
+                {
+                    parameters[i + 1] = value;
+                }
+            }
+
+            return method.Invoke(null, parameters); //NOTE: IScriptRuntime extension method
+        }
+
+        private static Type GetFunctionParameterType(in StreamScope scope, in SyntaxNode expression)
+        {
+            if (expression is ScalarExpression scalar)
+            {
+                return InferReturnType(in scope, in scalar);
+            }
+            else if (expression is VariableReference variable)
+            {
+                return InferReturnType(in scope, in variable);
+            }
+            else if (expression is MemberAccessExpression member)
+            {
+                return InferReturnType(in scope, in member);
+            }
+
+            return null; // not found
+        }
+        private static Type InferReturnType(in StreamScope scope, in ScalarExpression expression)
+        {
+            return ParserHelper.GetTokenDataType(expression.Token);
+        }
+        private static Type InferReturnType(in StreamScope scope, in VariableReference expression)
+        {
+            if (scope.TryGetDeclaration(expression.Identifier, out _, out DeclareStatement declare))
+            {
+                if (declare.Type.Token == TokenType.Object)
+                {
+                    return typeof(DataObject);
+                }
+                else
+                {
+                    return ParserHelper.GetTokenDataType(declare.Type.Token);
+                }
+            }
+
+            return null; // not found
+        }
+        private static Type InferReturnType(in StreamScope scope, in MemberAccessExpression expression)
+        {
+            string variable = expression.GetVariableName();
+
+            if (scope.TryGetDeclaration(in variable, out _, out DeclareStatement declare))
+            {
+                if (declare.Type.Token == TokenType.Object || declare.Type.Token == TokenType.Array)
+                {
+                    if (declare.Type.Binding is List<ColumnExpression> schema)
+                    {
+                        List<string> members = ParserHelper.GetAccessMembers(expression.Identifier);
+
+                        if (members.Count > 1)
+                        {
+                            string member = members[members.Count - 1]; //NOTE: take the last member !?
+
+                            foreach (ColumnExpression column in schema)
+                            {
+                                if (column.Alias == member)
+                                {
+                                    return GetFunctionParameterType(in scope, column.Expression);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return null; // not found
+        }
+
+        #endregion
+
         public static bool TryCreateStream(in string script, out IProcessor stream, out string error)
         {
             error = null;
@@ -844,7 +1061,7 @@ namespace DaJet.Stream
                 }
             }
         }
-        internal static void ConfigureFunctionsMap(in StreamScope scope, in Dictionary<string, string> map)
+        internal static void ConfigureFunctionsMap(in StreamScope scope, in Dictionary<string, FunctionExpression> map)
         {
             SyntaxNode node = scope.Owner;
 
@@ -852,34 +1069,15 @@ namespace DaJet.Stream
 
             foreach (FunctionExpression function in functions)
             {
-                if (function.Name != "JSON")
+                if (TryGetFunction(in scope, in function, out MethodInfo method))
                 {
-                    throw new InvalidOperationException($"Unknown function name: [{function.Name}]");
-                }
+                    string parameterName = function.GetVariableIdentifier();
 
-                if (function.Parameters.Count == 0 ||
-                    function.Parameters[0] is not VariableReference variable)
-                {
-                    throw new InvalidOperationException($"Invalid parameter type: [{function.Name}]");
-                }
-
-                if (scope.TryGetDeclaration(variable.Identifier, out _, out DeclareStatement declare))
-                {
-                    if (declare.Type.Token == TokenType.Object || declare.Type.Token == TokenType.Array)
-                    {
-                        if (!map.ContainsKey(variable.Identifier))
-                        {
-                            map.Add(variable.Identifier, function.GetVariableIdentifier());
-                        }
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException($"Invalid parameter type: [{function.Name}]");
-                    }
+                    _ = map.TryAdd(parameterName, function);
                 }
                 else
                 {
-                    throw new InvalidOperationException($"Declaration of [{variable.Identifier}] is not found");
+                    throw new InvalidOperationException($"Invalid function call: [{function.Name}]");
                 }
             }
         }
@@ -998,20 +1196,9 @@ namespace DaJet.Stream
                         return true;
                     }
                 }
-                else if (value is FunctionExpression function
-                    && function.Name == "JSON"
-                    && function.Parameters.Count > 0
-                    && function.Parameters[0] is VariableReference parameter)
+                else if (value is FunctionExpression function)
                 {
-                    if (scope.TryGetValue(parameter.Identifier, out value))
-                    {
-                        if (value is DataObject record)
-                        {
-                            value = StreamScope.ToJson(in record);
-                            
-                            return true;
-                        }
-                    }
+                    value = InvokeFunction(in scope, in function); return true;
                 }
                 else
                 {
@@ -1039,6 +1226,11 @@ namespace DaJet.Stream
         {
             foreach (ColumnExpression column in columns)
             {
+                if (scope.Variables.ContainsKey(column.Alias))
+                {
+                    continue;
+                }
+
                 if (column.Expression is ScalarExpression scalar)
                 {
                     scope.Variables.Add(column.Alias, ParserHelper.GetScalarValue(in scalar));
@@ -1051,11 +1243,7 @@ namespace DaJet.Stream
                 {
                     scope.Variables.Add(column.Alias, member);
                 }
-                else if (column.Expression is FunctionExpression function
-                    && function.Name == "JSON"
-                    && function.Parameters.Count > 0
-                    && function.Parameters[0] is VariableReference parameter
-                    && parameter.Binding is TypeIdentifier)
+                else if (column.Expression is FunctionExpression function)
                 {
                     scope.Variables.Add(column.Alias, function);
                 }
@@ -1112,21 +1300,7 @@ namespace DaJet.Stream
         }
         private static bool TryEvaluate(in StreamScope scope, in FunctionExpression expression, out object value)
         {
-            if (expression.Name == "JSON" &&
-                expression.Parameters.Count > 0 &&
-                expression.Parameters[0] is VariableReference variable)
-            {
-                if (scope.TryGetValue(variable.Identifier, out object parameter))
-                {
-                    if (parameter is DataObject record)
-                    {
-                        value = StreamScope.ToJson(in record); return true;
-                    }
-                }
-            }
-
-            value = null;
-            return false;
+            value = InvokeFunction(in scope, in expression); return true;
         }
         private static bool TryEvaluate(in StreamScope scope, in AdditionOperator expression, out object value)
         {

@@ -1,8 +1,10 @@
-﻿using DaJet.Model;
+﻿using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using System.Runtime.Loader;
+using System;
 
-namespace DaJet.Flow
+namespace DaJet
 {
     public sealed class AssemblyManager : IAssemblyManager
     {
@@ -31,9 +33,12 @@ namespace DaJet.Flow
             }
             else // load from directory
             {
-                foreach (string filePath in Directory.GetFiles(location, "*.dll", SearchOption.AllDirectories))
+                if (Directory.Exists(location))
                 {
-                    Load(filePath);
+                    foreach (string filePath in Directory.GetFiles(location, "*.dll", SearchOption.AllDirectories))
+                    {
+                        Load(filePath);
+                    }
                 }
             }
         }
