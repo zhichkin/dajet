@@ -44,5 +44,5 @@ PRODUCE 'kafka'
       , MessageTimeoutMs  = 30000                  -- message.timeout.ms
       , EnableIdempotence = false                  -- enable.idempotence
  SELECT Key   = 'Справочник.Номенклатура' -- Ключ сообщения
-      , Value = DaJet.Json(@message)      -- Тело сообщения
+      , Value = JSON(@message)      -- Тело сообщения
       , Topic = @Приёмник                 -- Топик Apache Kafka
