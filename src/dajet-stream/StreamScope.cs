@@ -441,5 +441,27 @@ namespace DaJet.Stream
 
             throw new InvalidOperationException("Owner UseStatement is not found");
         }
+
+        private const string RETURN_VALUE_KEY = "_RETURN_VALUE_";
+        internal void SetReturnValue(in object value)
+        {
+            StreamScope root = GetRoot();
+
+            if (!root.Variables.TryAdd(RETURN_VALUE_KEY, value))
+            {
+                root.Variables[RETURN_VALUE_KEY] = value;
+            }
+        }
+        internal object GetReturnValue()
+        {
+            StreamScope root = GetRoot();
+
+            if (root.TryGetValue(RETURN_VALUE_KEY, out object value))
+            {
+                return value;
+            }
+
+            return null;
+        }
     }
 }

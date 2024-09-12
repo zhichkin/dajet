@@ -43,9 +43,12 @@ namespace DaJet.Stream
         {
             Uri uri = _scope.GetUri(_statement.Uri);
 
-            string file = string.Concat(".", uri.LocalPath.AsSpan(1));
+            string file = Path.Combine(AppContext.BaseDirectory, uri.LocalPath[2..]);
 
-            file = file.Replace('\\', '/'); // Linux compliant path
+            if (Environment.OSVersion.Platform == PlatformID.Unix)
+            {
+                file = file.Replace('\\', '/'); // Linux compliant path
+            }
 
             if (!File.Exists(file))
             {

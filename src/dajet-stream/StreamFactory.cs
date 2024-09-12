@@ -24,8 +24,10 @@ namespace DaJet.Stream
             AssemblyManager.Register("proto");
 
             RegisterRuntimeFunctions();
+            RegisterUserDefinedProcessors();
         }
         private static readonly List<MethodInfo> _functions = new();
+        private static readonly Dictionary<string, ConstructorInfo> _processors = new();
         private static void RegisterRuntimeFunctions()
         {
             foreach (Assembly assembly in AssemblyManager.Assemblies)
@@ -68,6 +70,25 @@ namespace DaJet.Stream
                 }
             }
         }
+        private static void RegisterUserDefinedProcessors()
+        {
+            foreach (Assembly assembly in AssemblyManager.Assemblies)
+            {
+                foreach (Type type in assembly.GetTypes())
+                {
+                    if (type.IsProcessor())
+                    {
+                        ConstructorInfo constructor = type.GetProcessorConstructor();
+
+                        if (constructor is not null)
+                        {
+                            _ = _processors.TryAdd(type.FullName, constructor);
+                        }
+                    }
+                }
+            }
+        }
+
         public static bool TryGetFunction(in StreamScope scope, in FunctionExpression function, out MethodInfo method)
         {
             method = null;
@@ -152,7 +173,7 @@ namespace DaJet.Stream
                 }
             }
 
-            return method.Invoke(null, parameters); //NOTE: IScriptRuntime extension method
+            return method.Invoke(null, parameters); //NOTE: this is IScriptRuntime extension method
         }
 
         private static Type GetFunctionParameterType(in StreamScope scope, in SyntaxNode expression)
@@ -244,7 +265,7 @@ namespace DaJet.Stream
             {
                 StreamScope scope = StreamScope.Create(in model, null);
 
-                stream = new DataStream(in scope);
+                stream = new RootProcessor(in scope);
             }
             catch (Exception exception)
             {
@@ -308,8 +329,13 @@ namespace DaJet.Stream
             else if (scope.Owner is CaseStatement) { return new CaseProcessor(in scope); }
             else if (scope.Owner is WhileStatement) { return new WhileProcessor(in scope); }
             else if (scope.Owner is BreakStatement) { return new BreakProcessor(in scope); }
+            else if (scope.Owner is ReturnStatement) { return new ReturnProcessor(in scope); }
             else if (scope.Owner is ContinueStatement) { return new ContinueProcessor(in scope); }
             else if (scope.Owner is AssignmentStatement) { return new SetProcessor(in scope); }
+            else if (scope.Owner is ProcessStatement)
+            {
+                return CreateUserDefinedProcessor(in scope);
+            }
 
             return CreateDatabaseProcessor(in scope);
         }
@@ -509,6 +535,23 @@ namespace DaJet.Stream
             }
 
             throw new InvalidOperationException("Unsupported service");
+        }
+
+        internal static IProcessor CreateUserDefinedProcessor(in StreamScope scope)
+        {
+            if (scope.Owner is not ProcessStatement statement)
+            {
+                throw new InvalidOperationException();
+            }
+
+            if (!_processors.TryGetValue(statement.Processor, out ConstructorInfo constructor))
+            {
+                throw new InvalidOperationException($"[PROCESS] Constructor not found: {statement.Processor}");
+            }
+
+            object processor = constructor.Invoke(new object[] { scope });
+
+            return processor as IProcessor;
         }
 
         // ***

@@ -169,7 +169,8 @@ namespace DaJet.Scripting
             { "RETURN", TokenType.RETURN },
             { "BREAK", TokenType.BREAK },
             { "CONTINUE", TokenType.CONTINUE },
-            { "EXECUTE", TokenType.EXECUTE }
+            { "EXECUTE", TokenType.EXECUTE },
+            { "PROCESS", TokenType.PROCESS }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {

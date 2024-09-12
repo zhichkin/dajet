@@ -47,15 +47,15 @@ namespace DaJet.Studio.Pages.Code
             ErrorText = string.Empty;
             ResultText = string.Empty;
 
-            string result = await DaJetClient.ExecuteScript($"/{FilePath}", SourceCode);
+            try
+            {
+                string result = await DaJetClient.ExecuteScript($"/{FilePath}", SourceCode);
 
-            if (string.IsNullOrEmpty(result))
-            {
-                ResultText = "Выполнено успешно";
+                ResultText = string.IsNullOrEmpty(result) ? "Выполнено успешно" : result;
             }
-            else
+            catch (Exception error)
             {
-                ErrorText = result;
+                ErrorText = ExceptionHelper.GetErrorMessage(error);
             }
         }
     }

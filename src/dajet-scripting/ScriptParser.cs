@@ -293,10 +293,10 @@ namespace DaJet.Scripting
             else if (Match(TokenType.PRINT)) { return print_statement(); }
             else if (Match(TokenType.BREAK)) { return new BreakStatement(); }
             else if (Match(TokenType.CONTINUE)) { return new ContinueStatement(); }
+            else if (Match(TokenType.RETURN)) { return return_statement(); }
             else if (Match(TokenType.EXECUTE)) { return execute_statement(); }
+            else if (Match(TokenType.PROCESS)) { return process_statement(); }
             else if (Match(TokenType.EndOfStatement)) { return null; }
-            
-            //THINK: else if (Match(TokenType.RETURN)) { return new ReturnStatement(); }
 
             Ignore();
 
@@ -439,6 +439,17 @@ namespace DaJet.Scripting
             {
                 throw new FormatException("WHILE: statement block is empty");
             }
+
+            return statement;
+        }
+        private SyntaxNode return_statement()
+        {
+            ReturnStatement statement = new()
+            {
+                Expression = expression()
+            };
+
+            Skip(TokenType.Comment);
 
             return statement;
         }
@@ -1794,6 +1805,33 @@ namespace DaJet.Scripting
 
             return values;
         }
+        private List<VariableReference> array_of_variables()
+        {
+            if (!Match(TokenType.Variable) || variable() is not VariableReference var_0)
+            {
+                throw new FormatException("Variable identifier expected");
+            }
+
+            List<VariableReference> variables = new() { var_0 };
+
+            Skip(TokenType.Comment);
+
+            while (Match(TokenType.Comma))
+            {
+                Skip(TokenType.Comment);
+
+                if (!Match(TokenType.Variable) || variable() is not VariableReference var_N)
+                {
+                    throw new FormatException("Variable identifier expected");
+                }
+
+                variables.Add(var_N);
+
+                Skip(TokenType.Comment);
+            }
+
+            return variables;
+        }
         #endregion
 
         #region "FUNCTION"
@@ -2689,6 +2727,49 @@ namespace DaJet.Scripting
             Skip(TokenType.Comment);
 
             return request;
+        }
+        #endregion
+
+        #region "PROCESS STATEMENT"
+        private SyntaxNode process_statement()
+        {
+            ProcessStatement statement = new()
+            {
+                Variables = array_of_variables()
+            };
+
+            if (!Match(TokenType.WITH))
+            {
+                throw new FormatException($"[PROCESS] WITH keyword expected");
+            }
+
+            if (!Match(TokenType.Identifier))
+            {
+                throw new FormatException("[PROCESS] processor identifier expected");
+            }
+
+            statement.Processor = Previous().Lexeme;
+
+            Skip(TokenType.Comment);
+
+            if (Match(TokenType.INTO)) // optional
+            {
+                if (!Match(TokenType.Variable) || variable() is not VariableReference into)
+                {
+                    throw new FormatException($"[PROCESS] INTO variable identifier expected");
+                }
+
+                statement.Return = into;
+
+                Skip(TokenType.Comment);
+            }
+
+            if (Match(TokenType.SELECT)) // optional
+            {
+                parse_columns(statement.Options);
+            }
+
+            return statement;
         }
         #endregion
     }

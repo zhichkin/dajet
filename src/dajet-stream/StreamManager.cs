@@ -151,5 +151,40 @@ namespace DaJet.Stream
 
             return string.IsNullOrEmpty(error);
         }
+        public static bool TryExecute(in string filePath, out object result, out string error)
+        {
+            error = null;
+            result = null;
+            
+            try
+            {
+                string script;
+
+                using (StreamReader reader = new(filePath, Encoding.UTF8))
+                {
+                    script = reader.ReadToEnd();
+                }
+
+                if (!StreamFactory.TryCreateStream(in script, out IProcessor stream, out error))
+                {
+                    return false;
+                }
+
+                stream.Process();
+
+                if (stream is RootProcessor root)
+                {
+                    result = root.GetReturnValue();
+                }
+            }
+            catch (Exception exception)
+            {
+                error = ExceptionHelper.GetErrorMessage(exception);
+
+                if (LOG_MODE == 0) { FileLogger.Default.Write(error); }
+            }
+
+            return string.IsNullOrEmpty(error);
+        }
     }
 }

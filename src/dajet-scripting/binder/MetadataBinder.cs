@@ -100,9 +100,11 @@ namespace DaJet.Scripting
             else if (node is CaseStatement case_statement) { Bind(in case_statement); }
             else if (node is IfStatement if_statement) { Bind(in if_statement); }
             else if (node is WhileStatement while_statement) { Bind(in while_statement); }
+            else if (node is ReturnStatement return_statement) { Bind(in return_statement); }
             else if (node is StatementBlock statement_block) { Bind(in statement_block); }
             else if (node is PrintStatement print) { Bind(in print); }
-            else if (node is ExecuteStatement execute) { Bind(in execute); }
+            else if (node is ProcessStatement process) { Bind(in process); }
+            else if (node is ExecuteStatement execute) { Bind(in execute); } // nothing to bind
         }
         private void RegisterBindingError(TokenType token, string identifier)
         {
@@ -1238,13 +1240,31 @@ namespace DaJet.Scripting
             Bind(node.Condition);
             Bind(node.Statements);
         }
-        public void Bind(in PrintStatement node)
+        private void Bind(in ReturnStatement node)
         {
             Bind(node.Expression);
         }
-        public void Bind(in ExecuteStatement node)
+        private void Bind(in PrintStatement node)
         {
-            throw new NotImplementedException();
+            Bind(node.Expression);
+        }
+        private void Bind(in ExecuteStatement node) { /* nothing to bind */ }
+        private void Bind(in ProcessStatement node)
+        {
+            for (int i = 0; i < node.Variables.Count; i++)
+            {
+                Bind(node.Variables[i]);
+            }
+
+            if (node.Return is not null) { Bind(node.Return); }
+
+            if (node.Options is not null) // optional
+            {
+                for (int i = 0; i < node.Options.Count; i++)
+                {
+                    Bind(node.Options[i]);
+                }
+            }
         }
     }
 }

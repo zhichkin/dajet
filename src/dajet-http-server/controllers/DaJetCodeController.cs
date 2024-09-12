@@ -23,6 +23,7 @@ namespace DaJet.Http.Controllers
         {
             _fileProvider = fileProvider ?? throw new ArgumentNullException(nameof(fileProvider));
 
+            JsonOptions.Converters.Add(new DataObjectJsonConverter());
             JsonOptions.Converters.Add(new DictionaryJsonConverter());
         }
         [HttpGet("log")] public ActionResult GetServerLog()
@@ -445,14 +446,19 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            //string content = System.IO.File.ReadAllText(file.PhysicalPath, Encoding.UTF8);
-
-            if (!StreamManager.TryExecute(file.PhysicalPath, out string error))
+            if (!StreamManager.TryExecute(file.PhysicalPath, out object result, out string error))
             {
                 return UnprocessableEntity(error); // 422
             }
 
-            return Ok();
+            if (result is null)
+            {
+                return Ok();
+            }
+
+            string json = JsonSerializer.Serialize(result, result.GetType(), JsonOptions);
+
+            return Content(json);
         }
     }
 }

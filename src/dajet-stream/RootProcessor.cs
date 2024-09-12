@@ -2,11 +2,11 @@
 
 namespace DaJet.Stream
 {
-    public sealed class DataStream : IProcessor
+    public sealed class RootProcessor : IProcessor
     {
         private readonly IProcessor _next;
         private readonly StreamScope _scope;
-        public DataStream(in StreamScope scope)
+        public RootProcessor(in StreamScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
@@ -14,7 +14,7 @@ namespace DaJet.Stream
             {
                 throw new ArgumentException(nameof(ScriptModel));
             }
-
+            
             StreamFactory.InitializeVariables(in _scope);
 
             _next = StreamFactory.CreateStream(in _scope);
@@ -28,10 +28,18 @@ namespace DaJet.Stream
             {
                 _next?.Process();
             }
+            catch (ReturnException)
+            {
+                return; //TODO: avoid exception hack !?
+            }
             catch (Exception error)
             {
                 FileLogger.Default.Write(error);
             }
+        }
+        public object GetReturnValue()
+        {
+            return _scope.GetReturnValue();
         }
     }
 }

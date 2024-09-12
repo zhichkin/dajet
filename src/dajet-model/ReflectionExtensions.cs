@@ -5,13 +5,8 @@ using System.Reflection;
 
 namespace DaJet.Model
 {
-    //NOTE: if (type.IsPublic && type.IsAbstract && type.IsSealed) /* that means static class */
     public static class ReflectionExtensions
     {
-        public static bool IsStaticClass(this Type type)
-        {
-            return type.IsPublic && type.IsAbstract && type.IsSealed;
-        }
         public static bool IsOption(this Type type)
         {
             return type.IsSubclassOf(typeof(OptionsBase));
@@ -153,6 +148,27 @@ namespace DaJet.Model
                 || type == typeof(Guid)
                 || type == typeof(DateTime)
                 || type == typeof(decimal);
+        }
+        public static bool IsStaticClass(this Type type)
+        {
+            return type.IsPublic && type.IsAbstract && type.IsSealed;
+        }
+        public static bool Implements<Interface>(this Type type)
+        {
+            if (type.IsClass && !type.IsAbstract)
+            {
+                Type[] faces = type.GetInterfaces();
+
+                for (int i = 0; i < faces.Length; i++)
+                {
+                    if (faces[i] == typeof(Interface))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
     }
 }

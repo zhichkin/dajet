@@ -45,6 +45,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-stream", "dajet-strea
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-sqlite", "dajet-sqlite\dajet-sqlite.csproj", "{0DFD96D9-EEEB-45E8-8E3C-B7E1EA90F400}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-tutorial", "dajet-tutorial\dajet-tutorial.csproj", "{2AF168AC-1CD2-499D-8A91-A1463993F7FB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -135,6 +137,10 @@ Global
 		{0DFD96D9-EEEB-45E8-8E3C-B7E1EA90F400}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0DFD96D9-EEEB-45E8-8E3C-B7E1EA90F400}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0DFD96D9-EEEB-45E8-8E3C-B7E1EA90F400}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2AF168AC-1CD2-499D-8A91-A1463993F7FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2AF168AC-1CD2-499D-8A91-A1463993F7FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2AF168AC-1CD2-499D-8A91-A1463993F7FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2AF168AC-1CD2-499D-8A91-A1463993F7FB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
