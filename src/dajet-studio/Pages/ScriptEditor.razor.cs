@@ -1,10 +1,11 @@
 ﻿using DaJet.Http.Client;
 using DaJet.Model;
 using Microsoft.AspNetCore.Components;
+using System.Text.Json;
 
 namespace DaJet.Studio.Pages
 {
-    public partial class ScriptEditor : ComponentBase
+    public partial class ScriptEditor : ComponentBase, IScriptEditor
     {
         [Parameter] public Guid Uuid { get; set; } = Guid.Empty;
         protected ScriptRecord Model { get; set; }
@@ -31,6 +32,8 @@ namespace DaJet.Studio.Pages
                 ScriptUrl = Model.Name;
             }
 
+            await MonacoEditor.CreateMonacoEditor(this, Model.Script);
+
             InfoBaseRecord database = await DataSource.SelectAsync<InfoBaseRecord>(Model.Owner);
             
             DatabaseName = (database is null ? "База данных не определена" : database.Name);
@@ -40,11 +43,19 @@ namespace DaJet.Studio.Pages
             ResultTable = null;
             ScriptIsChanged = false;
         }
-        protected void OnScriptChanged(ChangeEventArgs args)
+        public async ValueTask DisposeAsync()
         {
-            Model.Script = args.Value.ToString();
-            ScriptIsChanged = true;
+            await MonacoEditor.DisposeMonacoEditor();
         }
+        public async Task OnScriptChanged(JsonElement element)
+        {
+            Model.Script = await MonacoEditor.GetMonacoEditorValue();
+
+            ScriptIsChanged = true;
+
+            StateHasChanged();
+        }
+        
         private async Task SaveScriptCommand()
         {
             try

@@ -1,6 +1,7 @@
 ﻿@page "/script-editor/{uuid:guid?}"
 
 @inject AppState AppState;
+@inject MonacoEditor MonacoEditor;
 @inject DaJetHttpClient DataSource;
 @inject NavigationManager Navigator;
 
@@ -32,11 +33,7 @@
         </div>
     </div>
 
-    <div class="script-editor-script">
-        <textarea rows="10" @oninput="OnScriptChanged" style="border: 1px solid black; padding: 3px; white-space: nowrap; font-family: monospace">
-            @Model?.Script
-        </textarea>
-    </div>
+    <div id="monaco-editor" class="script-editor-script"></div>
 
     <div class="script-editor-result">
         

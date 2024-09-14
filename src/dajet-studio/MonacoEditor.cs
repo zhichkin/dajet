@@ -1,17 +1,17 @@
-﻿using DaJet.Studio.Pages.Code;
-using Microsoft.JSInterop;
+﻿using Microsoft.JSInterop;
 using System.Text.Json;
 
 namespace DaJet.Studio
 {
     public sealed class MonacoEditor
     {
+        private static IScriptEditor _editor;
         private IJSRuntime Runtime { get; }
         public MonacoEditor(IJSRuntime runtime)
         {
             Runtime = runtime;
         }
-        internal async Task CreateMonacoEditor(DaJetCodeEditor editor, string code)
+        internal async Task CreateMonacoEditor(IScriptEditor editor, string code)
         {
             await Runtime.InvokeVoidAsync("CreateMonacoEditor", code);
 
@@ -27,12 +27,9 @@ namespace DaJet.Studio
         {
             return await Runtime.InvokeAsync<string>("GetMonacoEditorValue");
         }
-        private static DaJetCodeEditor _editor;
         [JSInvokable] public static Task MonacoEditor_OnValueChanged(JsonElement element)
         {
-            _editor?.OnScriptChanged(element);
-            
-            return Task.CompletedTask;
+            return _editor?.OnScriptChanged(element);
         }
     }
 }

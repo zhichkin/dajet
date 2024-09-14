@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace DaJet.Studio.Pages.Code
 {
-    public partial class DaJetCodeEditor : ComponentBase, IAsyncDisposable
+    public partial class DaJetCodeEditor : ComponentBase, IScriptEditor
     {
         [Parameter] public string FilePath { get; set; }
         protected bool ScriptIsChanged { get; set; } = false;
@@ -25,11 +25,13 @@ namespace DaJet.Studio.Pages.Code
         {
             await MonacoEditor.DisposeMonacoEditor();
         }
-        public void OnScriptChanged(JsonElement element)
+        public Task OnScriptChanged(JsonElement element)
         {
             ScriptIsChanged = true;
 
             StateHasChanged();
+            
+            return Task.CompletedTask;
         }
         private async Task SaveSourceCode()
         {
