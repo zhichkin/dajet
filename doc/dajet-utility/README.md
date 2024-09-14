@@ -2,6 +2,8 @@
 
 [Исходный код утилиты](https://github.com/zhichkin/dajet/tree/main/src/dajet)
 
+[Примеры скриптов DaJet Script](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/scripts)
+
 ### Установка
 
 1. Установить [Microsoft .NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
