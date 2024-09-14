@@ -124,7 +124,7 @@ namespace DaJet.Studio.Components
 
             TreeNodeModel parent = item.IsFolder ? Model : Model.Parent;
 
-            string name = "new_script.sql";
+            string name = "new_script.djs";
             string url = $"{parent.Url}/{name}";
 
             string response = await DaJetClient.CreateScriptFile(url);

@@ -53,20 +53,32 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            int count = folder.Count();
-
-            List<CodeItem> items = new(count);
-
+            List<CodeItem> files = new();
+            List<CodeItem> catalogs = new();
+            
             foreach (IFileInfo info in folder)
             {
-                items.Add(new CodeItem()
+                if (info.IsDirectory)
                 {
-                    Name = info.Name,
-                    IsFolder = info.IsDirectory
-                });
+                    catalogs.Add(new CodeItem()
+                    {
+                        Name = info.Name,
+                        IsFolder = info.IsDirectory
+                    });
+                }
+                else
+                {
+                    files.Add(new CodeItem()
+                    {
+                        Name = info.Name,
+                        IsFolder = info.IsDirectory
+                    });
+                }
             }
 
-            string json = JsonSerializer.Serialize(items, JsonOptions);
+            files.AddRange(catalogs);
+
+            string json = JsonSerializer.Serialize(files, JsonOptions);
 
             return Content(json);
         }

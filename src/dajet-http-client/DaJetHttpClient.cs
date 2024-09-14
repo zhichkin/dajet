@@ -30,6 +30,8 @@ namespace DaJet.Http.Client
             _client = client ?? throw new ArgumentNullException(nameof(client));
         }
         public IDomainModel Model { get { return _domain; } }
+
+        #region "DAJET ODATA INTERFACE"
         public async Task CreateAsync(EntityObject entity)
         {
             string url = $"/data/{entity.TypeCode}";
@@ -207,7 +209,6 @@ namespace DaJet.Http.Client
 
             return list;
         }
-
         public async Task<List<DataObject>> QueryAsync(string query, Dictionary<string, object> parameters)
         {
             string url = $"/data/query";
@@ -220,7 +221,9 @@ namespace DaJet.Http.Client
 
             return result;
         }
+        #endregion
 
+        #region "DAJET FLOW API"
         public async Task<List<PipelineInfo>> GetPipelineInfo()
         {
             List<PipelineInfo> list;
@@ -356,7 +359,9 @@ namespace DaJet.Http.Client
 
             return list;
         }
+        #endregion
 
+        #region "DEPRICATED CODE EDITOR"
         public async Task<string> GetScriptUrl(Guid uuid)
         {
             string url = $"/api/url/{uuid}";
@@ -519,6 +524,7 @@ namespace DaJet.Http.Client
 
             return result;
         }
+        #endregion
 
         #region "DAJET CODE EDITOR"
         public async Task<List<CodeItem>> GetCodeItems(string path)
@@ -673,13 +679,35 @@ namespace DaJet.Http.Client
                 return response.ReasonPhrase;
             }
         }
-        public async Task<string> ExecuteScript(string path, string code)
+        public async Task<object> ExecuteScript(string path, string code)
         {
             string url = "/code/src" + path;
 
             HttpResponseMessage response = await _client.PostAsync(url, null);
 
-            return await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+            {
+                return response.ReasonPhrase;
+            }
+
+            string content = await response.Content.ReadAsStringAsync();
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return string.Empty;
+            }
+            else if (content.StartsWith('{'))
+            {
+                return await response.Content.ReadFromJsonAsync<DataObject>(JsonOptions);
+            }
+            else if (content.StartsWith('['))
+            {
+                return await response.Content.ReadFromJsonAsync<List<DataObject>>(JsonOptions);
+            }
+            else
+            {
+                return content;
+            }
         }
         #endregion
     }

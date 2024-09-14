@@ -1,6 +1,6 @@
 ﻿@page "/dajet-code-editor/{**FilePath}"
 
-@inject IJSRuntime JSRuntime;
+@inject MonacoEditor MonacoEditor;
 @inject DaJetHttpClient DaJetClient;
 @inject NavigationManager Navigator;
 
@@ -23,13 +23,7 @@
         </div>
     </div>
 
-    <div class="script-editor-script">
-        <textarea rows="10" @oninput="OnScriptChanged"
-                  style="border: 1px solid black; padding: 3px; white-space: nowrap; font-family: monospace;"
-                  spellcheck="false"  autocapitalize="off" autocomplete="off" autocorrect="off">
-            @SourceCode
-        </textarea>
-    </div>
+    <div id="monaco-editor" class="script-editor-script"></div>
 
     <div class="script-editor-result">
         
@@ -40,6 +34,29 @@
         else if (!string.IsNullOrEmpty(ResultText))
         {
             <textarea style="border:none; margin:5px;" rows="10">@ResultText</textarea>
+        }
+        else if (ResultTable is not null && ResultTable.Count > 0)
+        {
+            <table style="border: 1px solid black">
+
+                <tr>
+                    @for (int i = 0; i < ResultTable[0].Count(); i++)
+                    {
+                        <td style="padding: 2px; border: 1px solid black; font-weight: bold;">@(ResultTable[0].GetName(i))</td>
+                    }
+                </tr>
+
+                @foreach (DataObject row in ResultTable)
+                {
+                    <tr>
+                        @for (int i = 0; i < row.Count(); i++)
+                        {
+                            <td style="padding: 2px; border: 1px solid black;">@(row.GetValue(i))</td>
+                        }
+                    </tr>
+                }
+
+            </table>
         }
         
     </div>

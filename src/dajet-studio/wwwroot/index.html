@@ -13,6 +13,7 @@
     <link href="css/context-menu.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+    <link href="monaco/vs/editor/editor.main.css" rel="stylesheet" data-name="vs/editor/editor.main" />
 </head>
 <body>
     <div id="app">Загрузка...</div>
@@ -49,10 +50,108 @@
         }
     </script>
 
-
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="js/context-menu.js"></script>
+
+    <script src="monaco/vs/loader.js"></script>
+    <script src="monaco/vs/editor/editor.main.js"></script>
+    <script src="monaco/vs/editor/editor.main.nls.js"></script>
+    <script>require.config({ paths: { 'vs': 'monaco/vs' } });</script>
+
+    <script>
+
+        let monaco_editor = null;
+
+        function DisposeMonacoEditor() {
+            if (monaco_editor !== null) {
+                monaco_editor.dispose();
+                monaco_editor = null;
+            }
+        }
+
+        function GetMonacoEditorValue() {
+            if (monaco_editor === null) {
+                return null;
+            }
+            return monaco_editor.getValue();
+        }
+
+        function CreateMonacoEditor(source_code) {
+
+            DisposeMonacoEditor();
+
+            var container = document.getElementById('monaco-editor');
+
+            var options = {
+                theme: 'vs',
+                language: 'sql',
+                value: source_code,
+                automaticLayout: true,
+                minimap: { enabled: false }
+            };
+
+            if (container !== null) {
+                monaco_editor = monaco.editor.create(container, options);
+                monaco_editor.onDidChangeModelContent(function (data) {
+                    DotNet.invokeMethodAsync('DaJet.Studio', 'MonacoEditor_OnValueChanged', data);
+                });
+            }
+        }
+
+    </script>
+
+    <script>
+
+        var languages = monaco.languages.getLanguages();
+
+        var language = languages.find((item) => item.id === 'sql');
+
+        if (language !== undefined) {
+            language.loader().then((sql) => {
+                sql.language.keywords.push('STREAM');
+                sql.language.keywords.push('CONSUME');
+                sql.language.keywords.push('PRODUCE');
+                sql.language.keywords.push('REQUEST');
+                sql.language.keywords.push('PROCESS');
+
+                sql.language.builtinFunctions.push('JSON');
+
+                sql.language.typeIdentifiers = ['boolean','number','datetime','string','binary','uuid','entity','object','array'];
+
+                sql.language.tokenizer.typeIdentifiers = [[/[\w@#$]+/,
+                    {
+                        cases: {
+                            "@operators": "operator", "@builtinVariables": "predefined",
+                            "@builtinFunctions": "predefined", "@keywords": "keyword",
+                            "@typeIdentifiers": "number", "@default": "identifier"
+                        }
+                    }]];
+
+                var rules = sql.language.tokenizer.root;
+
+                for (var i = 0; i < rules.length; i++) {
+                    if (rules[i] instanceof Object &&
+                        rules[i].hasOwnProperty('include') &&
+                        rules[i].include === '@numbers') {
+                        rules.splice(i + 1, 0, { include: "@typeIdentifiers" });
+                        break;
+                    }
+                }
+
+                //for (var i = 0; i < rules.length; i++) {
+                //    if (rules[i] instanceof Array &&
+                //        rules[i][0] instanceof RegExp &&
+                //        rules[i][0].source === /[\w@#$]+/.source) {
+                //        rules[i][1].cases['@typeIdentifiers'] = 'number';
+                //        break;
+                //    }
+                //}
+            });
+        }
+
+    </script>
+
 </body>
 
 </html>

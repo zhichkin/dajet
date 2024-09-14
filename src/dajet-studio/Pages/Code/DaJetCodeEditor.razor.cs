@@ -1,36 +1,43 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using DaJet.Data;
+using Microsoft.AspNetCore.Components;
+using System.Text.Json;
 
 namespace DaJet.Studio.Pages.Code
 {
-    public partial class DaJetCodeEditor : ComponentBase, IDisposable
+    public partial class DaJetCodeEditor : ComponentBase, IAsyncDisposable
     {
         [Parameter] public string FilePath { get; set; }
-        protected string SourceCode { get; set; } = string.Empty;
         protected bool ScriptIsChanged { get; set; } = false;
         protected string ErrorText { get; set; } = string.Empty;
         protected string ResultText { get; set; } = string.Empty;
+        protected List<DataObject> ResultTable { get; set; } = null;
         protected void NavigateToHomePage() { Navigator.NavigateTo("/"); }
         protected override async Task OnParametersSetAsync()
         {
             if (!string.IsNullOrEmpty(FilePath))
             {
-                SourceCode = await DaJetClient.GetSourceCode($"/{FilePath}");
+                string value = await DaJetClient.GetSourceCode($"/{FilePath}");
+
+                await MonacoEditor.CreateMonacoEditor(this, value);
             }
         }
-        protected void OnScriptChanged(ChangeEventArgs args)
+        public async ValueTask DisposeAsync()
+        {
+            await MonacoEditor.DisposeMonacoEditor();
+        }
+        public void OnScriptChanged(JsonElement element)
         {
             ScriptIsChanged = true;
-            SourceCode = args.Value.ToString();
-        }
-        public void Dispose()
-        {
-            //NOTE: check for unsaved changes here
+
+            StateHasChanged();
         }
         private async Task SaveSourceCode()
         {
             try
             {
-                string result = await DaJetClient.SaveSourceCode($"/{FilePath}", SourceCode);
+                string value = await MonacoEditor.GetMonacoEditorValue();
+
+                string result = await DaJetClient.SaveSourceCode($"/{FilePath}", value);
 
                 if (string.IsNullOrEmpty(result))
                 {
@@ -46,12 +53,26 @@ namespace DaJet.Studio.Pages.Code
         {
             ErrorText = string.Empty;
             ResultText = string.Empty;
+            ResultTable = null;
 
             try
             {
-                string result = await DaJetClient.ExecuteScript($"/{FilePath}", SourceCode);
+                string value = await MonacoEditor.GetMonacoEditorValue();
 
-                ResultText = string.IsNullOrEmpty(result) ? "Выполнено успешно" : result;
+                object result = await DaJetClient.ExecuteScript($"/{FilePath}", value);
+
+                if (result is string content)
+                {
+                    ResultText = string.IsNullOrEmpty(content) ? "Выполнено успешно" : content;
+                }
+                else if (result is DataObject row)
+                {
+                    ResultTable = new List<DataObject>() { row };
+                }
+                else if (result is List<DataObject> table)
+                {
+                    ResultTable = table;
+                }
             }
             catch (Exception error)
             {

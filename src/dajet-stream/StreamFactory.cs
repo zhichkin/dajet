@@ -205,6 +205,10 @@ namespace DaJet.Stream
                 {
                     return typeof(DataObject);
                 }
+                else if (declare.Type.Token == TokenType.Array)
+                {
+                    return typeof(List<DataObject>);
+                }
                 else
                 {
                     return ParserHelper.GetTokenDataType(declare.Type.Token);

@@ -41,6 +41,7 @@ namespace DaJet.Studio
 
             builder.Services.AddMudServices();
             builder.Services.AddSingleton<AppState>();
+            builder.Services.AddSingleton<MonacoEditor>();
             builder.Services.AddSingleton<DaJetCodeController>();
             builder.Services.AddScoped<FlowTreeViewController>();
             builder.Services.AddScoped<DbViewController>();
