@@ -4,6 +4,7 @@ using DaJet.Model;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using System.Data;
+using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
@@ -249,7 +250,7 @@ namespace DaJet.Stream
 
         #endregion
 
-        public static bool TryCreateStream(in string script, out IProcessor stream, out string error)
+        public static bool TryCreateStream(in string script, in Dictionary<string, object> parameters, out IProcessor stream, out string error)
         {
             error = null;
             stream = null;
@@ -264,10 +265,10 @@ namespace DaJet.Stream
                 }
             }
 
-            //TODO: pass user-specified parameters to the script !!!
-
             try
             {
+                ApplyInputParameters(in model, in parameters);
+
                 StreamScope scope = StreamScope.Create(in model, null);
 
                 stream = new RootProcessor(in scope);
@@ -278,6 +279,109 @@ namespace DaJet.Stream
             }
 
             return string.IsNullOrEmpty(error);
+        }
+        private static void ApplyInputParameters(in ScriptModel script, in Dictionary<string, object> parameters)
+        {
+            for (int i = 0; i < script.Statements.Count; i++)
+            {
+                SyntaxNode statement = script.Statements[i];
+
+                if (statement is CommentStatement) { continue; }
+
+                if (statement is DeclareStatement declare)
+                {
+                    if (parameters.TryGetValue(declare.Name[1..], out object value))
+                    {
+                        if (value is not null)
+                        {
+                            if (value is bool boolean)
+                            {
+                                if (declare.Type.Identifier != "boolean")
+                                {
+                                    throw new ArgumentException("Type mismatch", declare.Name[1..]);
+                                }
+                                declare.Initializer = new ScalarExpression()
+                                {
+                                    Token = TokenType.Boolean,
+                                    Literal = boolean ? "true" : "false"
+                                };
+                            }
+                            else if (value is int integer)
+                            {
+                                if (declare.Type.Identifier != "number")
+                                {
+                                    throw new ArgumentException("Type mismatch", declare.Name[1..]);
+                                }
+                                declare.Initializer = new ScalarExpression()
+                                {
+                                    Token = TokenType.Number,
+                                    Literal = integer.ToString()
+                                };
+                            }
+                            else if (value is decimal number)
+                            {
+                                if (declare.Type.Identifier != "number")
+                                {
+                                    throw new ArgumentException("Type mismatch", declare.Name[1..]);
+                                }
+                                declare.Initializer = new ScalarExpression()
+                                {
+                                    Token = TokenType.Number,
+                                    Literal = number.ToString(CultureInfo.InvariantCulture)
+                                };
+                            }
+                            else if (value is DateTime datetime)
+                            {
+                                if (declare.Type.Identifier != "datetime")
+                                {
+                                    throw new ArgumentException("Type mismatch", declare.Name[1..]);
+                                }
+                                declare.Initializer = new ScalarExpression()
+                                {
+                                    Token = TokenType.DateTime,
+                                    Literal = datetime.ToString("yyyy-MM-ddTHH:mm:ss")
+                                };
+                            }
+                            else if (value is string text)
+                            {
+                                if (declare.Type.Identifier != "string")
+                                {
+                                    throw new ArgumentException("Type mismatch", declare.Name[1..]);
+                                }
+                                declare.Initializer = new ScalarExpression()
+                                {
+                                    Token = TokenType.String,
+                                    Literal = text
+                                };
+                            }
+                            else if (value is byte[] binary)
+                            {
+                                //TODO
+                            }
+                            else if (value is Guid uuid)
+                            {
+                                if (declare.Type.Identifier != "uuid")
+                                {
+                                    throw new ArgumentException("Type mismatch", declare.Name[1..]);
+                                }
+                                declare.Initializer = new ScalarExpression()
+                                {
+                                    Token = TokenType.Uuid,
+                                    Literal = uuid.ToString().ToLowerInvariant()
+                                };
+                            }
+                            else if (value is Entity entity)
+                            {
+                                //TODO
+                            }
+                            else if (value is List<Dictionary<string, object>> list)
+                            {
+                                //TODO
+                            }
+                        }
+                    }
+                }
+            }
         }
         internal static IProcessor CreateStream(in StreamScope parent)
         {

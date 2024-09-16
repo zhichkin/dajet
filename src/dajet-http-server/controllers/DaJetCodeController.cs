@@ -1,4 +1,5 @@
-﻿using DaJet.Json;
+﻿using DaJet.Http.Server;
+using DaJet.Json;
 using DaJet.Model;
 using DaJet.Stream;
 using Microsoft.AspNetCore.Mvc;
@@ -444,7 +445,7 @@ namespace DaJet.Http.Controllers
             return Ok();
         }
 
-        [HttpPost("src/{**path}")] public ActionResult ExecuteScript([FromRoute] string path)
+        [HttpPost("src/{**path}")] public async Task<ActionResult> ExecuteScriptAsync([FromRoute] string path)
         {
             if (string.IsNullOrWhiteSpace(path))
             {
@@ -458,7 +459,9 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            if (!StreamManager.TryExecute(file.PhysicalPath, out object result, out string error))
+            Dictionary<string, object> parameters = await HttpContext.Request.GetParametersFromBody();
+
+            if (!StreamManager.TryExecute(file.PhysicalPath, in parameters, out object result, out string error))
             {
                 return UnprocessableEntity(error); // 422
             }

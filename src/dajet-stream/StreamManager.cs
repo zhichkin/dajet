@@ -54,7 +54,9 @@ namespace DaJet.Stream
 
             watch.Start();
 
-            if (StreamFactory.TryCreateStream(in script, out IProcessor stream, out string error))
+            Dictionary<string, object> parameters = new();
+
+            if (StreamFactory.TryCreateStream(in script, in parameters, out IProcessor stream, out string error))
             {
                 _ = Task.Factory.StartNew(stream.Process, TaskCreationOptions.LongRunning);
 
@@ -119,16 +121,16 @@ namespace DaJet.Stream
             }
         }
 
-        public static void Execute(in string script)
+        public static void Execute(in string script, in Dictionary<string, object> parameters)
         {
-            if (!StreamFactory.TryCreateStream(in script, out IProcessor stream, out string error))
+            if (!StreamFactory.TryCreateStream(in script, in parameters, out IProcessor stream, out string error))
             {
                 throw new Exception(error);
             }
 
             stream.Process();
         }
-        public static bool TryExecute(in string filePath, out string error)
+        public static bool TryExecute(in string filePath, in Dictionary<string, object> parameters, out string error)
         {
             error = null;
             string script;
@@ -140,7 +142,7 @@ namespace DaJet.Stream
                     script = reader.ReadToEnd();
                 }
 
-                Execute(in script);
+                Execute(in script, in parameters);
             }
             catch (Exception exception)
             {
@@ -151,7 +153,7 @@ namespace DaJet.Stream
 
             return string.IsNullOrEmpty(error);
         }
-        public static bool TryExecute(in string filePath, out object result, out string error)
+        public static bool TryExecute(in string filePath, in Dictionary<string, object> parameters, out object result, out string error)
         {
             error = null;
             result = null;
@@ -165,7 +167,7 @@ namespace DaJet.Stream
                     script = reader.ReadToEnd();
                 }
 
-                if (!StreamFactory.TryCreateStream(in script, out IProcessor stream, out error))
+                if (!StreamFactory.TryCreateStream(in script, in parameters, out IProcessor stream, out error))
                 {
                     return false;
                 }

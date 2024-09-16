@@ -1,5 +1,6 @@
 ﻿using DaJet.Data;
 using DaJet.Data.Client;
+using DaJet.Http.Server;
 using DaJet.Json;
 using DaJet.Metadata;
 using DaJet.Model;
@@ -136,7 +137,7 @@ namespace DaJet.Http.Controllers
                 return BadRequest(error);
             }
 
-            Dictionary<string, object> parameters = await ParseScriptParametersFromBody();
+            Dictionary<string, object> parameters = await HttpContext.Request.GetParametersFromBody();
 
             List<Dictionary<string, object>> table = new();
 
@@ -177,23 +178,6 @@ namespace DaJet.Http.Controllers
             string json = JsonSerializer.Serialize(table, JsonOptions);
 
             return Content(json);
-        }
-        private async Task<Dictionary<string, object>> ParseScriptParametersFromBody()
-        {
-            HttpRequest request = HttpContext.Request;
-
-            if (request.ContentLength == 0)
-            {
-                return null;
-            }
-
-            JsonSerializerOptions options = new()
-            {
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
-                Converters = { new DictionaryJsonConverter() }
-            };
-
-            return await JsonSerializer.DeserializeAsync<Dictionary<string, object>>(request.Body, options);
         }
     }
 }

@@ -52,7 +52,9 @@ namespace DaJet
 
             watch.Start();
 
-            bool success = StreamManager.TryExecute(in filePath, out string error);
+            Dictionary<string, object> parameters = new();
+
+            bool success = StreamManager.TryExecute(in filePath, in parameters, out string error);
 
             watch.Stop();
 
