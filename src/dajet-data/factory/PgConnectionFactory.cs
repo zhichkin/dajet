@@ -17,7 +17,7 @@ namespace DaJet.Data.PostgreSql
             {
                 Host = uri.Host,
                 Port = uri.Port,
-                Database = uri.AbsolutePath.Remove(0, 1)
+                Database = uri.Segments[1].TrimEnd('/') //uri.AbsolutePath.Remove(0, 1)
             };
 
             string[] userpass = uri.UserInfo.Split(':');

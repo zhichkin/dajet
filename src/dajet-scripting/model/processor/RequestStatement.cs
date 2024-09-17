@@ -2,7 +2,7 @@
 {
     public sealed class RequestStatement : SyntaxNode
     {
-        // REQUEST <uri> [WHEN <condition>] [WITH <headers>] SELECT <options> INTO <response>
+        // REQUEST <uri> [WHEN <condition>] [WITH <headers>] [SELECT <options>] INTO <response>
         public RequestStatement() { Token = TokenType.REQUEST; }
         public string Target { get; set; } // uri template string
         public SyntaxNode When { get; set; } // WHEN clause

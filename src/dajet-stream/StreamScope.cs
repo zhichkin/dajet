@@ -151,7 +151,6 @@ namespace DaJet.Stream
             return statement is UseStatement
                 || statement is ConsumeStatement
                 || statement is ProduceStatement
-                || statement is RequestStatement
                 || statement is SelectStatement select && select.IsStream
                 || statement is UpdateStatement update && update.Output?.Into?.Value is not null;
         }

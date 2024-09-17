@@ -42,8 +42,6 @@ namespace DaJet.Stream.Http
             }
 
             declare.Type.Binding = CreateResponseSchema(); //NOTE: used by processors down the stream
-
-            _next = StreamFactory.CreateStream(in scope);
         }
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Synchronize() { _next?.Synchronize(); }

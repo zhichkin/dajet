@@ -420,9 +420,16 @@ namespace DaJet.Stream
             {
                 return new Parallelizer(in scope);
             }
-            else if (scope.Owner is RequestStatement)
+            else if (scope.Owner is RequestStatement request)
             {
-                return new Http.Request(in scope);
+                if (request.Target.StartsWith("mssql") || request.Target.StartsWith("pgsql"))
+                {
+                    return new ProcedureProcessor(in scope);
+                }
+                else
+                {
+                    return new Http.Request(in scope);
+                }
             }
             else if (scope.Owner is ConsumeStatement consume && !string.IsNullOrEmpty(consume.Target))
             {

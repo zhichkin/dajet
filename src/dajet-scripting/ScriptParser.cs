@@ -2690,7 +2690,7 @@ namespace DaJet.Scripting
 
             Skip(TokenType.Comment);
 
-            if (Match(TokenType.WHEN))
+            if (Match(TokenType.WHEN)) // optional
             {
                 request.When = predicate();
             }
@@ -2700,13 +2700,9 @@ namespace DaJet.Scripting
                 parse_columns(request.Headers);
             }
 
-            if (Match(TokenType.SELECT))
+            if (Match(TokenType.SELECT)) // optional
             {
                 parse_columns(request.Options);
-            }
-            else
-            {
-                throw new FormatException($"REQUEST: SELECT keyword expected");
             }
 
             if (!Match(TokenType.INTO))

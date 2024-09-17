@@ -17,7 +17,7 @@ namespace DaJet.Data.SqlServer
             {
                 Encrypt = false,
                 DataSource = uri.Host,
-                InitialCatalog = uri.AbsolutePath.Remove(0, 1) // slash
+                InitialCatalog = uri.Segments[1].TrimEnd('/') //uri.AbsolutePath.Remove(0, 1) // slash
             };
 
             string[] userpass = uri.UserInfo.Split(':');
