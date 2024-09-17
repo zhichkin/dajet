@@ -1,6 +1,7 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata;
 using DaJet.Model;
+using DaJet.Runtime;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using System.Data;
@@ -209,9 +210,9 @@ namespace DaJet.Stream
                 {
                     return typeof(List<DataObject>);
                 }
-                else
+                else if (declare.Type.Binding is Type type)
                 {
-                    return ParserHelper.GetTokenDataType(declare.Type.Token);
+                    return type;
                 }
             }
 

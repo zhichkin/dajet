@@ -1,11 +1,16 @@
 ﻿using DaJet.Data;
 using DaJet.Json;
+using DaJet.Metadata;
+using DaJet.Metadata.Model;
+using DaJet.Scripting;
+using DaJet.Stream;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
+using static System.Formats.Asn1.AsnWriter;
 
-namespace DaJet.Stream
+namespace DaJet.Runtime
 {
     public static class ScriptRuntimeFunctions
     {
@@ -58,6 +63,26 @@ namespace DaJet.Stream
         [Function("JSON")] public static string ToJson(this IScriptRuntime runtime, in List<DataObject> table)
         {
             return JsonSerializer.Serialize(table, SerializerOptions);
+        }
+
+        [Function("METADATA")] public static DataObject GetMetadataObject(this IScriptRuntime runtime, in string name)
+        {
+            if (runtime is StreamScope scope)
+            {
+                if (!scope.TryGetMetadataProvider(out IMetadataProvider provider, out string error))
+                {
+                    throw new InvalidOperationException(error);
+                }
+
+                MetadataObject metadata = provider.GetMetadataObject(name);
+
+                if (metadata is not null)
+                {
+                    return metadata.ToDataObject();
+                }
+            }
+
+            return null;
         }
     }
 }

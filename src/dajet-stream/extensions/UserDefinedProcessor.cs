@@ -1,7 +1,8 @@
 ﻿using DaJet.Scripting;
 using DaJet.Scripting.Model;
+using DaJet.Stream;
 
-namespace DaJet.Stream
+namespace DaJet.Runtime
 {
     public abstract class UserDefinedProcessor : IProcessor
     {

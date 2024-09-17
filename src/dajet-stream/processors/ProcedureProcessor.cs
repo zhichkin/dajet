@@ -118,23 +118,21 @@ namespace DaJet.Stream
         {
             command.Parameters.Clear();
 
-            foreach (ColumnExpression accessor in _statement.Headers)
+            foreach (ColumnExpression item in _statement.Headers)
             {
-                if (accessor.Expression is VariableReference input)
+                if (item.Expression is VariableReference input)
                 {
                     if (_scope.TryGetValue(input.Identifier, out object value))
                     {
                         value ??= DBNull.Value;
 
-                        string name = string.IsNullOrEmpty(accessor.Alias) ? input.Identifier[1..] : accessor.Alias;
+                        string name = string.IsNullOrEmpty(item.Alias) ? input.Identifier[1..] : item.Alias;
 
                         AddWithValueDelegate(name, value);
                     }
                 }
             }
-
-            //TODO: output parameters !!!
-
+            
             output.Clear();
 
             if (_statement.Response is VariableReference variable)

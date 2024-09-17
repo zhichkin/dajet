@@ -109,6 +109,9 @@
 
         if (language !== undefined) {
             language.loader().then((sql) => {
+
+                sql.language.ignoreCase = false;
+
                 sql.language.keywords.push('STREAM');
                 sql.language.keywords.push('CONSUME');
                 sql.language.keywords.push('PRODUCE');
@@ -116,6 +119,7 @@
                 sql.language.keywords.push('PROCESS');
 
                 sql.language.builtinFunctions.push('JSON');
+                sql.language.builtinFunctions.push('METADATA');
 
                 sql.language.typeIdentifiers = ['boolean','number','datetime','string','binary','uuid','entity','object','array'];
 

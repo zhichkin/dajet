@@ -685,12 +685,12 @@ namespace DaJet.Http.Client
 
             HttpResponseMessage response = await _client.PostAsync(url, null);
 
+            string content = await response.Content.ReadAsStringAsync();
+
             if (!response.IsSuccessStatusCode)
             {
-                return response.ReasonPhrase;
+                return $"{response.ReasonPhrase}{Environment.NewLine}{content}";
             }
-
-            string content = await response.Content.ReadAsStringAsync();
 
             if (string.IsNullOrWhiteSpace(content))
             {

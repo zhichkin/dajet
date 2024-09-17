@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using DaJet.Runtime;
+using System.Reflection;
 
 namespace DaJet.Stream
 {

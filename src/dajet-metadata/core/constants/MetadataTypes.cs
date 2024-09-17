@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DaJet.Metadata.Model;
+using System;
 using System.Collections.Generic;
 
 namespace DaJet.Metadata.Core
@@ -222,6 +223,21 @@ namespace DaJet.Metadata.Core
             if (uuid == NamedDataTypeDescriptor) return EN_NAMED_DATA_TYPE;
 
             return string.Empty;
+        }
+
+        public static string ResolveNameRu(Type type)
+        {
+            if (type == typeof(Catalog)) { return RU_CATALOG; }
+            else if (type == typeof(Document)) { return RU_DOCUMENT; }
+            else if (type == typeof(Constant)) { return RU_CONSTANT; }
+            else if (type == typeof(Publication)) { return RU_PUBLICATION; }
+            else if (type == typeof(Enumeration)) { return RU_ENUMERATION; }
+            else if (type == typeof(Characteristic)) { return RU_CHARACTERISTIC; }
+            else if (type == typeof(InformationRegister)) { return RU_INFORMATION_REGISTER; }
+            else if (type == typeof(AccumulationRegister)) { return RU_ACCUMULATION_REGISTER; }
+            else if (type == typeof(SharedProperty)) { return RU_SHARED_PROPERTY; }
+            else if (type == typeof(NamedDataTypeDescriptor)) { return RU_NAMED_DATA_TYPE; }
+            return "UNKNOWN";
         }
 
         #endregion

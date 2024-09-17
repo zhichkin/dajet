@@ -1,4 +1,4 @@
-﻿namespace DaJet.Stream
+﻿namespace DaJet.Runtime
 {
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
     public sealed class FunctionAttribute : Attribute
