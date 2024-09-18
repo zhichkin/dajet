@@ -526,102 +526,32 @@ namespace DaJet.Http.Client
         }
         #endregion
 
-        #region "DAJET CODE EDITOR"
-        public async Task<List<CodeItem>> GetCodeItems(string path)
+        #region "DAJET SCRIPT SERVICES"
+
+        private const string URL_DAJET_LOG = "/dajet/log";
+        private const string URL_DAJET_DIR = "/dajet/dir";
+        private const string URL_DAJET_SRC = "/dajet/src";
+        private const string URL_DAJET_EXE = "/dajet/exe";
+        public async Task<string> GetServerLog()
         {
-            string url = "/code/dir" + path;
+            string url = URL_DAJET_LOG;
+
+            HttpResponseMessage response = await _client.GetAsync(url);
+
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        public async Task<List<CodeItem>> GetFolderItems(string path)
+        {
+            string url = URL_DAJET_DIR + path;
 
             HttpResponseMessage response = await _client.GetAsync(url);
 
             return await response.Content.ReadFromJsonAsync<List<CodeItem>>();
         }
-        public async Task<string> GetServerLog()
-        {
-            string url = "/code/log";
-
-            HttpResponseMessage response = await _client.GetAsync(url);
-
-            return await response.Content.ReadAsStringAsync();
-        }
-        public async Task<string> GetSourceCode(string path)
-        {
-            string url = "/code/src" + path;
-
-            HttpResponseMessage response = await _client.GetAsync(url);
-
-            return await response.Content.ReadAsStringAsync();
-        }
-        public async Task<string> SaveSourceCode(string path, string code)
-        {
-            string url = "/code/src" + path;
-
-            HttpResponseMessage response = await _client.PutAsync(url, new StringContent(code));
-
-            return await response.Content.ReadAsStringAsync();
-        }
-        public async Task<string> CreateScriptFile(string path)
-        {
-            string url = "/code/script" + path;
-
-            HttpResponseMessage response = await _client.PostAsync(url, null);
-
-            if (response.IsSuccessStatusCode)
-            {
-                return string.Empty;
-            }
-            else
-            {
-                return response.ReasonPhrase;
-            }
-        }
-        public async Task<string> DeleteScriptFile(string path)
-        {
-            string url = "/code/script" + path;
-
-            HttpResponseMessage response = await _client.DeleteAsync(url);
-
-            if (response.IsSuccessStatusCode)
-            {
-                return string.Empty;
-            }
-            else
-            {
-                return response.ReasonPhrase;
-            }
-        }
-        public async Task<string> RenameScriptFile(string path, string name)
-        {
-            string url = "/code/script" + path;
-
-            HttpResponseMessage response = await _client.PutAsync(url, new StringContent(name));
-
-            if (response.IsSuccessStatusCode)
-            {
-                return string.Empty;
-            }
-            else
-            {
-                return response.ReasonPhrase;
-            }
-        }
-        public async Task<string> MoveScriptFile(string path, string target)
-        {
-            string url = "/code/script" + path;
-
-            HttpResponseMessage response = await _client.PatchAsync(url, new StringContent(target));
-
-            if (response.IsSuccessStatusCode)
-            {
-                return string.Empty;
-            }
-            else
-            {
-                return response.ReasonPhrase;
-            }
-        }
         public async Task<string> CreateScriptFolder(string path)
         {
-            string url = "/code/folder" + path;
+            string url = URL_DAJET_DIR + path;
 
             HttpResponseMessage response = await _client.PostAsync(url, null);
 
@@ -636,7 +566,7 @@ namespace DaJet.Http.Client
         }
         public async Task<string> DeleteScriptFolder(string path)
         {
-            string url = "/code/folder" + path;
+            string url = URL_DAJET_DIR + path;
 
             HttpResponseMessage response = await _client.DeleteAsync(url);
 
@@ -651,7 +581,7 @@ namespace DaJet.Http.Client
         }
         public async Task<string> RenameScriptFolder(string path, string name)
         {
-            string url = "/code/folder" + path;
+            string url = URL_DAJET_DIR + path;
 
             HttpResponseMessage response = await _client.PutAsync(url, new StringContent(name));
 
@@ -666,7 +596,7 @@ namespace DaJet.Http.Client
         }
         public async Task<string> MoveScriptFolder(string path, string target)
         {
-            string url = "/code/folder" + path;
+            string url = URL_DAJET_DIR + path;
 
             HttpResponseMessage response = await _client.PatchAsync(url, new StringContent(target));
 
@@ -679,9 +609,87 @@ namespace DaJet.Http.Client
                 return response.ReasonPhrase;
             }
         }
+
+        public async Task<string> GetSourceCode(string path)
+        {
+            string url = URL_DAJET_SRC + path;
+
+            HttpResponseMessage response = await _client.GetAsync(url);
+
+            return await response.Content.ReadAsStringAsync();
+        }
+        public async Task<string> SaveSourceCode(string path, string code)
+        {
+            string url = URL_DAJET_SRC + path;
+
+            HttpResponseMessage response = await _client.PostAsync(url, new StringContent(code));
+
+            return await response.Content.ReadAsStringAsync();
+        }
+        public async Task<string> CreateScriptFile(string path)
+        {
+            string url = URL_DAJET_SRC + path;
+
+            HttpResponseMessage response = await _client.PostAsync(url, null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                return response.ReasonPhrase;
+            }
+        }
+        public async Task<string> DeleteScriptFile(string path)
+        {
+            string url = URL_DAJET_SRC + path;
+
+            HttpResponseMessage response = await _client.DeleteAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                return response.ReasonPhrase;
+            }
+        }
+        public async Task<string> RenameScriptFile(string path, string name)
+        {
+            string url = URL_DAJET_SRC + path;
+
+            HttpResponseMessage response = await _client.PutAsync(url, new StringContent(name));
+
+            if (response.IsSuccessStatusCode)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                return response.ReasonPhrase;
+            }
+        }
+        public async Task<string> MoveScriptFile(string path, string target)
+        {
+            string url = URL_DAJET_SRC + path;
+
+            HttpResponseMessage response = await _client.PatchAsync(url, new StringContent(target));
+
+            if (response.IsSuccessStatusCode)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                return response.ReasonPhrase;
+            }
+        }
+
         public async Task<object> ExecuteScript(string path, string code)
         {
-            string url = "/code/src" + path;
+            string url = URL_DAJET_EXE + path;
 
             HttpResponseMessage response = await _client.PostAsync(url, null);
 

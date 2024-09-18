@@ -14,7 +14,7 @@ namespace DaJet.Http.Server
         private static readonly string DATABASE_FILE_NAME = "dajet.db";
         private static readonly string[] webapi =
         [
-            "/md", "/mdex", "/api", "/code", "/query", "/data", "/flow", "/db", "/exchange"
+            "/dajet", "/md", "/mdex", "/api", "/query", "/data", "/flow", "/db", "/exchange"
         ];
         private static string OptionsFileConnectionString
         {

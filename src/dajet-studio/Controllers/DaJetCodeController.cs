@@ -37,7 +37,6 @@ namespace DaJet.Studio.Controllers
                     Name = "code",
                     IsFolder = true
                 },
-                Url = "/code",
                 Title = "code",
                 OpenNodeHandler = OpenCodeNodeHandler,
                 ContextMenuHandler = ShowContextMenu,
@@ -50,7 +49,7 @@ namespace DaJet.Studio.Controllers
             node.Tag = model;
             node.Title = model.Name;
             node.Url = $"{node.Parent.Url}/{model.Name}";
-            node.Icon = model.IsFolder ? (node.IsExpanded ? "/img/folder-opened.png" : "/img/folder-closed.png") : "/img/script.png";
+            node.Icon = model.IsFolder ? "/img/folder-closed.png" : "/img/script.png";
             node.UseToggle = model.IsFolder;
             node.CanBeEdited = true;
             node.IsDraggable = true;
@@ -69,7 +68,7 @@ namespace DaJet.Studio.Controllers
             {
                 parent.Nodes.Clear();
 
-                List<CodeItem> list = await DaJetClient.GetCodeItems(parent.Url);
+                List<CodeItem> list = await DaJetClient.GetFolderItems(parent.Url);
 
                 foreach (CodeItem item in list)
                 {

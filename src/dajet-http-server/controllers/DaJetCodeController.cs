@@ -12,8 +12,10 @@ using System.Text.Unicode;
 
 namespace DaJet.Http.Controllers
 {
-    [ApiController][Route("code")] public class DaJetCodeController : ControllerBase
+    [ApiController][Route("dajet")] public class DaJetCodeController : ControllerBase
     {
+        private const string DAJET_SCRIPT_ROOT_FOLDER = "code";
+
         private readonly JsonSerializerOptions JsonOptions = new()
         {
             WriteIndented = true,
@@ -40,103 +42,6 @@ namespace DaJet.Http.Controllers
 
             return Content(content, "text/plain", Encoding.UTF8);
         }
-        [HttpGet("dir/{**path}")] public ActionResult GetCodeItems([FromRoute] string path)
-        {
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                return BadRequest();
-            }
-
-            IDirectoryContents folder = _fileProvider.GetDirectoryContents(path);
-
-            if (!folder.Exists)
-            {
-                return NotFound();
-            }
-
-            List<CodeItem> files = new();
-            List<CodeItem> catalogs = new();
-            
-            foreach (IFileInfo info in folder)
-            {
-                if (info.IsDirectory)
-                {
-                    catalogs.Add(new CodeItem()
-                    {
-                        Name = info.Name,
-                        IsFolder = info.IsDirectory
-                    });
-                }
-                else
-                {
-                    files.Add(new CodeItem()
-                    {
-                        Name = info.Name,
-                        IsFolder = info.IsDirectory
-                    });
-                }
-            }
-
-            files.AddRange(catalogs);
-
-            string json = JsonSerializer.Serialize(files, JsonOptions);
-
-            return Content(json);
-        }
-        
-        [HttpGet("src/{**path}")] public ActionResult GetSourceCode([FromRoute] string path)
-        {
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                return BadRequest();
-            }
-
-            IFileInfo file = _fileProvider.GetFileInfo(path);
-
-            if (!file.Exists)
-            {
-                return NotFound();
-            }
-            
-            string content = System.IO.File.ReadAllText(file.PhysicalPath, Encoding.UTF8);
-
-            return Content(content, "text/plain", Encoding.UTF8);
-        }
-        [HttpPut("src/{**path}")] public async Task<ActionResult> SaveSourceCode([FromRoute] string path)
-        {
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                return BadRequest();
-            }
-
-            if (_fileProvider is not PhysicalFileProvider provider)
-            {
-                return BadRequest();
-            }
-
-            string filePath = Path.Combine(provider.Root, path);
-
-            if (!System.IO.File.Exists(filePath))
-            {
-                return NotFound();
-            }
-
-            string sourceCode = await GetRequestBodyAsString(HttpContext.Request) ?? string.Empty;
-
-            try
-            {
-                using (StreamWriter writer = System.IO.File.CreateText(filePath))
-                {
-                    writer.Write(sourceCode);
-                }
-            }
-            catch (Exception error)
-            {
-                return Problem(ExceptionHelper.GetErrorMessageAndStackTrace(error));
-            }
-
-            return Ok();
-        }
         private static async Task<string> GetRequestBodyAsString(HttpRequest request)
         {
             if (request.ContentLength == 0) { return null; }
@@ -153,20 +58,35 @@ namespace DaJet.Http.Controllers
 
             return value;
         }
-        
-        [HttpPost("script/{**path}")] public ActionResult CreateScript([FromRoute] string path)
+
+        [HttpGet("src/{**path}")] public ActionResult GetSourceCode([FromRoute] string path)
         {
             if (string.IsNullOrWhiteSpace(path))
             {
                 return BadRequest();
             }
 
+            path = DAJET_SCRIPT_ROOT_FOLDER + "/" + path;
+
             IFileInfo file = _fileProvider.GetFileInfo(path);
 
-            if (file.Exists)
+            if (!file.Exists)
+            {
+                return NotFound();
+            }
+            
+            string content = System.IO.File.ReadAllText(file.PhysicalPath, Encoding.UTF8);
+
+            return Content(content, "text/plain", Encoding.UTF8);
+        }
+        [HttpPost("src/{**path}")] public async Task<ActionResult> CreateOrSaveScript([FromRoute] string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
             {
                 return BadRequest();
             }
+
+            path = DAJET_SCRIPT_ROOT_FOLDER + "/" + path;
 
             if (_fileProvider is not PhysicalFileProvider provider)
             {
@@ -175,26 +95,32 @@ namespace DaJet.Http.Controllers
 
             string filePath = Path.Combine(provider.Root, path);
 
+            bool created = !System.IO.File.Exists(filePath);
+
+            string sourceCode = await GetRequestBodyAsString(HttpContext.Request) ?? string.Empty;
+
             try
             {
                 using (StreamWriter writer = System.IO.File.CreateText(filePath))
                 {
-                    writer.WriteLine("// Write DaJet code here");
+                    writer.Write(sourceCode);
                 }
             }
             catch (Exception error)
             {
                 return Problem(ExceptionHelper.GetErrorMessageAndStackTrace(error));
             }
-            
-            return Created(path, path);
+
+            return created ? Created(path, path) : Ok();
         }
-        [HttpDelete("script/{**path}")] public ActionResult DeleteScript([FromRoute] string path)
+        [HttpDelete("src/{**path}")] public ActionResult DeleteScript([FromRoute] string path)
         {
             if (string.IsNullOrWhiteSpace(path))
             {
                 return BadRequest();
             }
+
+            path = DAJET_SCRIPT_ROOT_FOLDER + "/" + path;
 
             IFileInfo file = _fileProvider.GetFileInfo(path);
 
@@ -221,12 +147,14 @@ namespace DaJet.Http.Controllers
 
             return Ok();
         }
-        [HttpPut("script/{**path}")] public async Task<ActionResult> RenameScript([FromRoute] string path)
+        [HttpPut("src/{**path}")] public async Task<ActionResult> RenameScript([FromRoute] string path)
         {
             if (string.IsNullOrWhiteSpace(path))
             {
                 return BadRequest();
             }
+
+            path = DAJET_SCRIPT_ROOT_FOLDER + "/" + path;
 
             if (_fileProvider is not PhysicalFileProvider provider)
             {
@@ -259,12 +187,14 @@ namespace DaJet.Http.Controllers
 
             return Ok();
         }
-        [HttpPatch("script/{**path}")] public async Task<ActionResult> MoveScript([FromRoute] string path)
+        [HttpPatch("src/{**path}")] public async Task<ActionResult> MoveScript([FromRoute] string path)
         {
             if (string.IsNullOrWhiteSpace(path))
             {
                 return BadRequest();
             }
+
+            path = DAJET_SCRIPT_ROOT_FOLDER + "/" + path;
 
             if (_fileProvider is not PhysicalFileProvider provider)
             {
@@ -282,10 +212,12 @@ namespace DaJet.Http.Controllers
 
             if (string.IsNullOrWhiteSpace(target))
             {
-                return BadRequest();
+                target = DAJET_SCRIPT_ROOT_FOLDER;
             }
-
-            target = target.StartsWith('/') ? target[1..] : target;
+            else
+            {
+                target = DAJET_SCRIPT_ROOT_FOLDER + (target.StartsWith('/') ? target : '/' + target);
+            }
 
             string targetPath = Path.Combine(provider.Root, target);
 
@@ -300,13 +232,60 @@ namespace DaJet.Http.Controllers
 
             return Ok();
         }
-        
-        [HttpPost("folder/{**path}")] public ActionResult CreateFolder([FromRoute] string path)
+
+        [HttpGet("dir/{**path}")] public ActionResult GetFolderItems([FromRoute] string path)
+        {
+            string root = DAJET_SCRIPT_ROOT_FOLDER;
+
+            if (!string.IsNullOrWhiteSpace(path))
+            {
+                root += "/" + path;
+            }
+
+            IDirectoryContents folder = _fileProvider.GetDirectoryContents(root);
+
+            if (!folder.Exists)
+            {
+                return NotFound();
+            }
+
+            List<CodeItem> files = new();
+            List<CodeItem> catalogs = new();
+
+            foreach (IFileInfo info in folder)
+            {
+                if (info.IsDirectory)
+                {
+                    catalogs.Add(new CodeItem()
+                    {
+                        Name = info.Name,
+                        IsFolder = info.IsDirectory
+                    });
+                }
+                else
+                {
+                    files.Add(new CodeItem()
+                    {
+                        Name = info.Name,
+                        IsFolder = info.IsDirectory
+                    });
+                }
+            }
+
+            files.AddRange(catalogs);
+
+            string json = JsonSerializer.Serialize(files, JsonOptions);
+
+            return Content(json);
+        }
+        [HttpPost("dir/{**path}")] public ActionResult CreateFolder([FromRoute] string path)
         {
             if (string.IsNullOrWhiteSpace(path))
             {
                 return BadRequest();
             }
+
+            path = DAJET_SCRIPT_ROOT_FOLDER + "/" + path;
 
             IFileInfo file = _fileProvider.GetFileInfo(path);
 
@@ -333,12 +312,14 @@ namespace DaJet.Http.Controllers
 
             return Created(path, path);
         }
-        [HttpDelete("folder/{**path}")] public ActionResult DeleteFolder([FromRoute] string path)
+        [HttpDelete("dir/{**path}")] public ActionResult DeleteFolder([FromRoute] string path)
         {
             if (string.IsNullOrWhiteSpace(path))
             {
                 return BadRequest();
             }
+
+            path = DAJET_SCRIPT_ROOT_FOLDER + "/" + path;
 
             IDirectoryContents folder = _fileProvider.GetDirectoryContents(path);
 
@@ -365,12 +346,14 @@ namespace DaJet.Http.Controllers
 
             return Ok();
         }
-        [HttpPut("folder/{**path}")] public async Task<ActionResult> RenameFolder([FromRoute] string path)
+        [HttpPut("dir/{**path}")] public async Task<ActionResult> RenameFolder([FromRoute] string path)
         {
             if (string.IsNullOrWhiteSpace(path))
             {
                 return BadRequest();
             }
+
+            path = DAJET_SCRIPT_ROOT_FOLDER + "/" + path;
 
             if (_fileProvider is not PhysicalFileProvider provider)
             {
@@ -403,12 +386,14 @@ namespace DaJet.Http.Controllers
 
             return Ok();
         }
-        [HttpPatch("folder/{**path}")] public async Task<ActionResult> MoveFolder([FromRoute] string path)
+        [HttpPatch("dir/{**path}")] public async Task<ActionResult> MoveFolder([FromRoute] string path)
         {
             if (string.IsNullOrWhiteSpace(path))
             {
                 return BadRequest();
             }
+
+            path = DAJET_SCRIPT_ROOT_FOLDER + "/" + path;
 
             if (_fileProvider is not PhysicalFileProvider provider)
             {
@@ -426,10 +411,12 @@ namespace DaJet.Http.Controllers
 
             if (string.IsNullOrWhiteSpace(target))
             {
-                return BadRequest();
+                target = DAJET_SCRIPT_ROOT_FOLDER;
             }
-
-            target = target.StartsWith('/') ? target[1..] : target;
+            else
+            {
+                target = DAJET_SCRIPT_ROOT_FOLDER + (target.StartsWith('/') ? target : '/' + target);
+            }
 
             string targetPath = Path.Combine(provider.Root, target);
 
@@ -445,12 +432,14 @@ namespace DaJet.Http.Controllers
             return Ok();
         }
 
-        [HttpPost("src/{**path}")] public async Task<ActionResult> ExecuteScriptAsync([FromRoute] string path)
+        [HttpPost("exe/{**path}")] public async Task<ActionResult> ExecuteScriptAsync([FromRoute] string path)
         {
             if (string.IsNullOrWhiteSpace(path))
             {
                 return BadRequest();
             }
+
+            path = DAJET_SCRIPT_ROOT_FOLDER + "/" + path;
 
             IFileInfo file = _fileProvider.GetFileInfo(path);
 
