@@ -5,7 +5,7 @@
   - [Трансформация данных](#трансформация-данных)
   - [Маршрутизация сообщений](#маршрутизация-сообщений)
 - [Утилита выполнения скриптов](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/README.md)
-- [Web сервер и редактор кода](https://github.com/zhichkin/dajet/tree/main/doc/dajet-studio/README.md)
+- [Http-сервер и редактор кода](https://github.com/zhichkin/dajet/tree/main/doc/dajet-studio/README.md)
 - [Документация DaJet Script](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/README.md)
 
 ### Общее описание
