@@ -1,7 +1,7 @@
 ## DaJet Script
 
 - [Общее описание](#общее-описание)
-- Система типов данных DaJet Script
+- [Система типов данных DaJet Script](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/%D0%A1%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D0%B0%20%D1%82%D0%B8%D0%BF%D0%BE%D0%B2%20%D0%B4%D0%B0%D0%BD%D0%BD%D1%8B%D1%85%20DaJet%20Script/README.md)
 - Объявление и использование переменных
 
 [Примеры скриптов DaJet](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/scripts)
