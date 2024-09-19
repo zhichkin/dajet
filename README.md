@@ -1,12 +1,12 @@
 ## DaJet - язык интеграции
 
 - [Общее описание](#общее-описание)
-- [Транспорт сообщений](#транспорт-сообщений)
-- [Трансформация данных](#трансформация-данных)
-- [Маршрутизация сообщений](#маршрутизация-сообщений)
+  - [Транспорт сообщений](#транспорт-сообщений)
+  - [Трансформация данных](#трансформация-данных)
+  - [Маршрутизация сообщений](#маршрутизация-сообщений)
 - [Утилита выполнения скриптов](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/README.md)
-- [Примеры скриптов DaJet](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/scripts)
 - [Web сервер и редактор кода](https://github.com/zhichkin/dajet/tree/main/doc/dajet-studio/README.md)
+- [Примеры скриптов DaJet](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/scripts)
 
 ### Общее описание
 
