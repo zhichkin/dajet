@@ -6,7 +6,7 @@
   - [Маршрутизация сообщений](#маршрутизация-сообщений)
 - [Утилита выполнения скриптов](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/README.md)
 - [Web сервер и редактор кода](https://github.com/zhichkin/dajet/tree/main/doc/dajet-studio/README.md)
-- [Примеры скриптов DaJet](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/scripts)
+- [Документация DaJet Script](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/README.md)
 
 ### Общее описание
 
@@ -169,9 +169,8 @@ namespace DaJet.Script.Services
     }
 }
 ```
-
-[Документация DaJet](https://zhichkin.github.io/)
+[Канал DaJet в Телеграм](https://t.me/dajet_studio)
 
 [Школа DaJet на YouTube](https://www.youtube.com/playlist?list=PLyBbhdsc7InutmVxyUszw-ZNJ5zKVBot2)
 
-[Канал DaJet в Телеграм](https://t.me/dajet_studio)
+[Дополнительные материалы](https://zhichkin.github.io/)
