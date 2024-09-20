@@ -1,10 +1,8 @@
 ## DaJet Script
 
 - [Общее описание](#общее-описание)
-- [Система типов данных DaJet Script](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/%D0%A1%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D0%B0%20%D1%82%D0%B8%D0%BF%D0%BE%D0%B2%20%D0%B4%D0%B0%D0%BD%D0%BD%D1%8B%D1%85%20DaJet%20Script/README.md)
+- [Система типов данных](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/%D0%A1%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D0%B0%20%D1%82%D0%B8%D0%BF%D0%BE%D0%B2%20%D0%B4%D0%B0%D0%BD%D0%BD%D1%8B%D1%85%20DaJet%20Script/README.md)
 - Объявление и использование переменных
-
-[Примеры скриптов DaJet](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/scripts)
 
 ### Общее описание
 
@@ -18,4 +16,4 @@ DaJet Script является расширяемым языком програм
 
 Средой выполнения DaJet Script является платформа Microsoft .NET 8. Выполнение скриптов DaJet может осуществляться при помощи консольной утилиты [dajet](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/README.md), специализированного [http-сервера](https://github.com/zhichkin/dajet/tree/main/doc/dajet-studio/README.md) или [программно](https://github.com/zhichkin/dajet/blob/main/src/dajet/Program.cs). Любой скрипт можно вызвать как web api метод http-сервера DaJet. Утилита dajet может использоваться как сервис Windows или демон Linux (поддерживается systemd) для регулярного выполнения скриптов (хостинга). Ну и, наконец, процессор скриптов DaJet предоставляет удобный API на C#, что позволяет интегрировать его практически в любую программную оболочку.
 
-Раздел будет дополняться...
+[Примеры скриптов DaJet](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/scripts)
