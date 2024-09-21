@@ -170,7 +170,11 @@ namespace DaJet.Scripting
             { "BREAK", TokenType.BREAK },
             { "CONTINUE", TokenType.CONTINUE },
             { "EXECUTE", TokenType.EXECUTE },
-            { "PROCESS", TokenType.PROCESS }
+            { "PROCESS", TokenType.PROCESS },
+            { "TRY", TokenType.TRY },
+            { "CATCH", TokenType.CATCH },
+            { "FINALLY", TokenType.FINALLY },
+            { "SLEEP", TokenType.SLEEP }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {

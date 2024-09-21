@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DaJet Studio © 3.6.0</title>
+    <title>DaJet Studio © 3.7.0</title>
     <link rel="icon" href="/img/vuk.png" type="image/png">
     <base href="/" />
     <link href="css/app.css" rel="stylesheet" />
@@ -112,12 +112,17 @@
 
                 sql.language.ignoreCase = false;
 
+                sql.language.keywords.push('SLEEP');
+                sql.language.keywords.push('TRY');
+                sql.language.keywords.push('CATCH');
+                sql.language.keywords.push('FINALLY');
                 sql.language.keywords.push('STREAM');
                 sql.language.keywords.push('CONSUME');
                 sql.language.keywords.push('PRODUCE');
                 sql.language.keywords.push('REQUEST');
                 sql.language.keywords.push('PROCESS');
 
+                sql.language.builtinFunctions.push('NOW');
                 sql.language.builtinFunctions.push('JSON');
                 sql.language.builtinFunctions.push('METADATA');
 

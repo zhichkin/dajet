@@ -34,7 +34,14 @@ namespace DaJet.Stream
             }
             catch (Exception error)
             {
-                FileLogger.Default.Write(error);
+                if (StreamManager.IGNORE_ERRORS)
+                {
+                    throw; //NOTE: the script should handle errors itself
+                }
+                else
+                {
+                    FileLogger.Default.Write(error);
+                }
             }
         }
         public object GetReturnValue()

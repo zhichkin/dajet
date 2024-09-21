@@ -1,8 +1,8 @@
 ﻿namespace DaJet.Scripting.Model
 {
-    public sealed class ForEachStatement : SyntaxNode
+    public sealed class ForStatement : SyntaxNode
     {
-        public ForEachStatement() { Token = TokenType.FOR; }
+        public ForStatement() { Token = TokenType.FOR; }
         public VariableReference Variable { get; set; }
         public VariableReference Iterator { get; set; }
         public int DegreeOfParallelism { get; set; } = 1;

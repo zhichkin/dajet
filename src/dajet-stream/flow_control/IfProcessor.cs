@@ -47,9 +47,9 @@ namespace DaJet.Stream
         }
         private bool ConditionIsTrue()
         {
-            if (_statement.Condition is null) { return true; }
+            if (_statement.IF is null) { return true; }
 
-            SyntaxNode expression = _statement.Condition;
+            SyntaxNode expression = _statement.IF;
 
             return StreamFactory.Evaluate(in _scope, in expression);
         }

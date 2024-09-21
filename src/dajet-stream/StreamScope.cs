@@ -20,6 +20,7 @@ namespace DaJet.Stream
         public SyntaxNode Owner { get; set; }
         public StreamScope Parent { get; set; }
         public List<StreamScope> Children { get; } = new();
+        public string ErrorMessage { get; set; } = string.Empty;
         public override string ToString() { return $"Owner: {Owner}"; }
         public StreamScope GetRoot()
         {
@@ -60,7 +61,7 @@ namespace DaJet.Stream
 
             return scope;
         }
-        
+
         public StreamScope Close() { return Parent; }
         public StreamScope Clone()
         {
@@ -90,8 +91,6 @@ namespace DaJet.Stream
 
             Children.Add(scope);
 
-            StreamScope _current = scope;
-
             for (int i = 0; i < statements.Statements.Count; i++)
             {
                 SyntaxNode statement = statements.Statements[i];
@@ -100,16 +99,15 @@ namespace DaJet.Stream
 
                 if (statement is DeclareStatement declare)
                 {
-                    _current.Variables.Add(declare.Name, null);
-                    _current.Declarations.Add(declare);
-                }
-                else if (IsStreamScope(in statement))
-                {
-                    _current = _current.Open(in statement); // open new scope
+                    scope.Variables.Add(declare.Name, null);
+                    
+                    scope.Declarations.Add(declare);
                 }
                 else
                 {
-                    _ = _current.Open(in statement); // join current scope
+                    StreamScope child = new(statement, scope);
+
+                    scope.Children.Add(child);
                 }
             }
 
@@ -121,8 +119,6 @@ namespace DaJet.Stream
 
             parent?.Children.Add(scope);
 
-            StreamScope _current = scope;
-
             for (int i = 0; i < script.Statements.Count; i++)
             {
                 SyntaxNode statement = script.Statements[i];
@@ -131,30 +127,21 @@ namespace DaJet.Stream
 
                 if (statement is DeclareStatement declare)
                 {
-                    _current.Variables.Add(declare.Name, null);
-                    _current.Declarations.Add(declare);
-                }
-                else if (IsStreamScope(in statement))
-                {
-                    _current = _current.Open(in statement); // open new scope
+                    scope.Variables.Add(declare.Name, null);
+                    
+                    scope.Declarations.Add(declare);
                 }
                 else
                 {
-                    _ = _current.Open(in statement); // join current scope
+                    StreamScope child = new(statement, scope);
+                    
+                    scope.Children.Add(child);
                 }
             }
 
             return scope;
         }
         public StreamScope Create(in ScriptModel script) { return Create(in script, this); }
-        public static bool IsStreamScope(in SyntaxNode statement)
-        {
-            return statement is UseStatement
-                || statement is ConsumeStatement
-                || statement is ProduceStatement
-                || statement is SelectStatement select && select.IsStream
-                || statement is UpdateStatement update && update.Output?.Into?.Value is not null;
-        }
         public List<DeclareStatement> Declarations { get; } = new(); // order is important for binding
         public Dictionary<string, object> Variables { get; } = new(); // scope variables and their values
         public Dictionary<SyntaxNode, SqlStatement> Transpilations { get; } = new(); // script transpilations cache

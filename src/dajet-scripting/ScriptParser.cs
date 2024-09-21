@@ -194,21 +194,39 @@ namespace DaJet.Scripting
 
             return statement;
         }
-        private SyntaxNode use()
+        private SyntaxNode use_statement()
         {
+            UseStatement statement = new();
+
             if (!Match(TokenType.String))
             {
                 throw new FormatException("[USE] uri expected");
             }
 
-            return new UseStatement()
+            statement.Uri = Previous().Lexeme;
+
+            statement.Statements = statement_block(TokenType.END);
+
+            if (statement.Statements is null || statement.Statements.Statements is null || statement.Statements.Statements.Count == 0)
             {
-                Uri = Previous().Lexeme
-            };
+                throw new FormatException("[USE] statement block is empty");
+            }
+
+            if (!Match(TokenType.END))
+            {
+                throw new FormatException("[USE] END keyword expected");
+            }
+
+            if (Match(TokenType.USE))
+            {
+                // optional : END USE
+            }
+
+            return statement;
         }
-        private SyntaxNode for_each()
+        private SyntaxNode for_statement()
         {
-            ForEachStatement statement = new();
+            ForStatement statement = new();
 
             if (Match(TokenType.EACH))
             {
@@ -257,12 +275,86 @@ namespace DaJet.Scripting
                 Skip(TokenType.Comment);
             }
 
-            statement.Statements = statement_block();
+            statement.Statements = statement_block(TokenType.END);
 
             if (statement.Statements is null || statement.Statements.Statements is null || statement.Statements.Statements.Count == 0)
             {
                 throw new FormatException("[FOR] statement block is empty");
             }
+
+            if (!Match(TokenType.END))
+            {
+                throw new FormatException("[FOR] END keyword expected");
+            }
+
+            if (Match(TokenType.FOR))
+            {
+                // optional : END FOR
+            }
+
+            return statement;
+        }
+        private SyntaxNode try_statement()
+        {
+            TryStatement statement = new();
+
+            statement.TRY = statement_block(TokenType.CATCH, TokenType.FINALLY);
+
+            if (statement.TRY is null || statement.TRY.Statements is null || statement.TRY.Statements.Count == 0)
+            {
+                throw new FormatException("[TRY]: statement block is empty");
+            }
+
+            if (Match(TokenType.CATCH)) // optional if FINALLY is present
+            {
+                statement.CATCH = statement_block(TokenType.FINALLY, TokenType.END);
+
+                if (statement.CATCH is null || statement.CATCH.Statements is null || statement.CATCH.Statements.Count == 0)
+                {
+                    throw new FormatException("[TRY] CATCH block is empty");
+                }
+            }
+
+            if (Match(TokenType.FINALLY)) // optional if CATCH is present
+            {
+                statement.FINALLY = statement_block(TokenType.END);
+
+                if (statement.FINALLY is null || statement.FINALLY.Statements is null || statement.FINALLY.Statements.Count == 0)
+                {
+                    throw new FormatException("[TRY] FINALLY block is empty");
+                }
+            }
+
+            bool catch_is_missing = statement.CATCH is null || statement.CATCH.Statements is null || statement.CATCH.Statements.Count == 0;
+            bool finally_is_missing = statement.FINALLY is null || statement.FINALLY.Statements is null || statement.FINALLY.Statements.Count == 0;
+
+            if (catch_is_missing && finally_is_missing) // either CATCH or FINALLY block must be present
+            {
+                throw new FormatException("[TRY] CATCH or FINALLY block expected");
+            }
+
+            if (!Match(TokenType.END))
+            {
+                throw new FormatException("[TRY] END keyword expected");
+            }
+
+            if (Match(TokenType.TRY))
+            {
+                // optional : END TRY
+            }
+
+            return statement;
+        }
+        private SyntaxNode sleep_statement()
+        {
+            SleepStatement statement = new();
+
+            if (!Match(TokenType.Number) || scalar() is not ScalarExpression timeout)
+            {
+                throw new FormatException("[SLEEP] timeout value expected");
+            }
+
+            statement.Timeout = int.Parse(timeout.Literal);
 
             return statement;
         }
@@ -271,8 +363,10 @@ namespace DaJet.Scripting
             if (Match(TokenType.Comment)) { return comment(); }
             else if (Match(TokenType.DECLARE)) { return declare(); }
             else if (Match(TokenType.SET)) { return assignment(); }
-            else if (Match(TokenType.USE)) { return use(); }
-            else if (Match(TokenType.FOR)) { return for_each(); }
+            else if (Match(TokenType.USE)) { return use_statement(); }
+            else if (Match(TokenType.FOR)) { return for_statement(); }
+            else if (Match(TokenType.TRY)) { return try_statement(); }
+            else if (Match(TokenType.SLEEP)) { return sleep_statement(); }
             else if (Match(TokenType.IF)) { return if_statement(); }
             else if (Match(TokenType.CASE)) { return case_statement(); }
             else if (Match(TokenType.WHILE)) { return while_statement(); }
@@ -303,21 +397,16 @@ namespace DaJet.Scripting
             throw new FormatException($"Unknown statement: {Previous()}");
         }
         private SyntaxNode print_statement() { return new PrintStatement() { Expression = expression() }; }
-        private StatementBlock statement_block()
+        private StatementBlock statement_block(params TokenType[] terminals)
         {
-            Skip(TokenType.Comment);
+            SyntaxNode node;
+
+            bool expect_statement = true;
 
             StatementBlock block = new();
 
-            SyntaxNode node;
-
-            while (!Match(TokenType.END))
+            while (!EndOfStream() && expect_statement)
             {
-                if (Check(TokenType.WHEN) || Check(TokenType.ELSE))
-                {
-                    return block;
-                }
-
                 node = statement();
 
                 if (node is not null)
@@ -325,10 +414,14 @@ namespace DaJet.Scripting
                     block.Statements.Add(node);
                 }
 
-                Skip(TokenType.Comment);
+                for (int i = 0; i < terminals.Length; i++)
+                {
+                    if (Check(terminals[i]))
+                    {
+                        expect_statement = false; break;
+                    }
+                }
             }
-
-            Skip(TokenType.Comment);
 
             return block;
         }
@@ -338,7 +431,7 @@ namespace DaJet.Scripting
 
             bool expect_close = Match(TokenType.OpenRoundBracket);
 
-            statement.Condition = predicate();
+            statement.IF = predicate();
 
             if (expect_close && !Match(TokenType.CloseRoundBracket))
             {
@@ -352,7 +445,7 @@ namespace DaJet.Scripting
                 throw new FormatException("IF: THEN keyword expected");
             }
 
-            statement.THEN = statement_block();
+            statement.THEN = statement_block(TokenType.ELSE, TokenType.END);
 
             if (statement.THEN is null || statement.THEN.Statements is null || statement.THEN.Statements.Count == 0)
             {
@@ -361,12 +454,22 @@ namespace DaJet.Scripting
 
             if (Match(TokenType.ELSE)) // optional
             {
-                statement.ELSE = statement_block();
+                statement.ELSE = statement_block(TokenType.END);
 
                 if (statement.ELSE is null || statement.ELSE.Statements is null || statement.ELSE.Statements.Count == 0)
                 {
                     throw new FormatException("IF: ELSE statement block is empty");
                 }
+            }
+
+            if (!Match(TokenType.END))
+            {
+                throw new FormatException("[IF] END keyword expected");
+            }
+
+            if (Match(TokenType.IF))
+            {
+                // optional : END IF
             }
 
             return statement;
@@ -391,7 +494,7 @@ namespace DaJet.Scripting
                     throw new FormatException($"[CASE] THEN keyword expected");
                 }
 
-                StatementBlock block = statement_block();
+                StatementBlock block = statement_block(TokenType.WHEN, TokenType.ELSE, TokenType.END);
 
                 if (block is null || block.Statements is null || block.Statements.Count == 0)
                 {
@@ -410,12 +513,22 @@ namespace DaJet.Scripting
 
             if (Match(TokenType.ELSE))
             {
-                statement.ELSE = statement_block();
+                statement.ELSE = statement_block(TokenType.END);
 
                 if (statement.ELSE is null || statement.ELSE.Statements is null || statement.ELSE.Statements.Count == 0)
                 {
                     throw new FormatException("[CASE] ELSE statement block is empty");
                 }
+            }
+
+            if (!Match(TokenType.END))
+            {
+                throw new FormatException("[CASE] END keyword expected");
+            }
+
+            if (Match(TokenType.CASE))
+            {
+                // optional : END CASE
             }
 
             return statement;
@@ -433,11 +546,21 @@ namespace DaJet.Scripting
                 throw new FormatException("[WHILE] close round bracket expected");
             }
 
-            statement.Statements = statement_block();
+            statement.Statements = statement_block(TokenType.END);
 
             if (statement.Statements is null || statement.Statements.Statements is null || statement.Statements.Statements.Count == 0)
             {
-                throw new FormatException("WHILE: statement block is empty");
+                throw new FormatException("[WHILE] statement block is empty");
+            }
+
+            if (!Match(TokenType.END))
+            {
+                throw new FormatException("[WHILE] END keyword expected");
+            }
+
+            if (Match(TokenType.WHILE))
+            {
+                // optional : END WHILE
             }
 
             return statement;

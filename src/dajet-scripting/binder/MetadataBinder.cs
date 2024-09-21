@@ -92,14 +92,17 @@ namespace DaJet.Scripting
             else if (node is ProduceStatement produce_statement) { Bind(in produce_statement); }
             else if (node is RequestStatement request_statement) { Bind(in request_statement); }
             else if (node is ImportStatement import_statement) { Bind(in import_statement); }
-            else if (node is ForEachStatement for_each) { Bind(in for_each); }
+            else if (node is UseStatement use_statement) { Bind(in use_statement); }
+            else if (node is ForStatement for_each) { Bind(in for_each); }
             else if (node is CreateTypeStatement udt) { Bind(in udt); }
             else if (node is ApplySequenceStatement apply_sequence) { Bind(in apply_sequence); }
             else if (node is RevokeSequenceStatement revoke_sequence) { Bind(in revoke_sequence); }
             else if (node is AssignmentStatement assignment) { Bind(in assignment); }
             else if (node is CaseStatement case_statement) { Bind(in case_statement); }
             else if (node is IfStatement if_statement) { Bind(in if_statement); }
+            else if (node is TryStatement try_statement) { Bind(in try_statement); }
             else if (node is WhileStatement while_statement) { Bind(in while_statement); }
+            else if (node is SleepStatement sleep_statement) { Bind(in sleep_statement); }
             else if (node is ReturnStatement return_statement) { Bind(in return_statement); }
             else if (node is StatementBlock statement_block) { Bind(in statement_block); }
             else if (node is PrintStatement print) { Bind(in print); }
@@ -260,7 +263,7 @@ namespace DaJet.Scripting
                 _scope.Variables.Add(node.Name, node.Type.Binding);
             }
         }
-        private void Bind(in ForEachStatement node)
+        private void Bind(in ForStatement node)
         {
             Bind(node.Iterator); // bind to array variable
             Bind(node.Variable); // bind to object variable
@@ -1198,6 +1201,10 @@ namespace DaJet.Scripting
             }
         }
 
+        private void Bind(in UseStatement node)
+        {
+            Bind(node.Statements);
+        }
         private void Bind(in AssignmentStatement node)
         {
             Bind(node.Target);
@@ -1214,7 +1221,7 @@ namespace DaJet.Scripting
         }
         private void Bind(in IfStatement node)
         {
-            Bind(node.Condition);
+            Bind(node.IF);
             
             Bind(node.THEN);
 
@@ -1222,6 +1229,14 @@ namespace DaJet.Scripting
             {
                 Bind(node.ELSE);
             }
+        }
+        private void Bind(in TryStatement node)
+        {
+            Bind(node.TRY);
+
+            if (node.CATCH is not null) { Bind(node.CATCH); }
+
+            if (node.FINALLY is not null) { Bind(node.FINALLY); }
         }
         private void Bind(in CaseStatement node)
         {
@@ -1244,6 +1259,7 @@ namespace DaJet.Scripting
         {
             Bind(node.Expression);
         }
+        private void Bind(in SleepStatement node) { /* nothing to bind */ }
         private void Bind(in PrintStatement node)
         {
             Bind(node.Expression);

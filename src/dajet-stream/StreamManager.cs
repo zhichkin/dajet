@@ -11,6 +11,9 @@ namespace DaJet.Stream
         public static void LogToFile() { LOG_MODE = 0; }
         public static void LogToConsole() { LOG_MODE = 1; }
 
+        public static bool IGNORE_ERRORS = false; // false - log to file (default), true - the script should handle errors itself
+        public static void IgnoreErrors(bool value) { IGNORE_ERRORS = value; }
+
         private static readonly Dictionary<string, IProcessor> _streams = new();
         public static void Serve(in string path)
         {
@@ -121,37 +124,28 @@ namespace DaJet.Stream
             }
         }
 
-        public static void Execute(in string script, in Dictionary<string, object> parameters)
+        public static void Execute(in string filePath, in Dictionary<string, object> parameters, out object result)
         {
+            result = null;
+
+            string script;
+
+            using (StreamReader reader = new(filePath, Encoding.UTF8))
+            {
+                script = reader.ReadToEnd();
+            }
+
             if (!StreamFactory.TryCreateStream(in script, in parameters, out IProcessor stream, out string error))
             {
                 throw new Exception(error);
             }
 
             stream.Process();
-        }
-        public static bool TryExecute(in string filePath, in Dictionary<string, object> parameters, out string error)
-        {
-            error = null;
-            string script;
 
-            try
+            if (stream is RootProcessor root)
             {
-                using (StreamReader reader = new(filePath, Encoding.UTF8))
-                {
-                    script = reader.ReadToEnd();
-                }
-
-                Execute(in script, in parameters);
+                result = root.GetReturnValue();
             }
-            catch (Exception exception)
-            {
-                error = ExceptionHelper.GetErrorMessage(exception);
-
-                if (LOG_MODE == 0) { FileLogger.Default.Write(error); }
-            }
-
-            return string.IsNullOrEmpty(error);
         }
         public static bool TryExecute(in string filePath, in Dictionary<string, object> parameters, out object result, out string error)
         {
@@ -160,24 +154,7 @@ namespace DaJet.Stream
             
             try
             {
-                string script;
-
-                using (StreamReader reader = new(filePath, Encoding.UTF8))
-                {
-                    script = reader.ReadToEnd();
-                }
-
-                if (!StreamFactory.TryCreateStream(in script, in parameters, out IProcessor stream, out error))
-                {
-                    return false;
-                }
-
-                stream.Process();
-
-                if (stream is RootProcessor root)
-                {
-                    result = root.GetReturnValue();
-                }
+                Execute(in filePath, in parameters, out result);
             }
             catch (Exception exception)
             {

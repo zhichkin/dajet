@@ -2,13 +2,12 @@
 using DaJet.Json;
 using DaJet.Metadata;
 using DaJet.Metadata.Model;
-using DaJet.Scripting;
+using DaJet.Scripting.Model;
 using DaJet.Stream;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
-using static System.Formats.Asn1.AsnWriter;
 
 namespace DaJet.Runtime
 {
@@ -83,6 +82,21 @@ namespace DaJet.Runtime
             }
 
             return null;
+        }
+        [Function("NOW")] public static DateTime GetCurrentDateTime(this IScriptRuntime runtime)
+        {
+            return DateTime.Now;
+        }
+        [Function("ERROR_MESSAGE")] public static string GetLastErrorMessage(this IScriptRuntime runtime)
+        {
+            if (runtime is StreamScope scope
+                && scope.Parent is not null && scope.Parent.Owner is StatementBlock
+                && scope.Parent.Parent is not null && scope.Parent.Parent.Owner is TryStatement)
+            {
+                return scope.Parent.Parent.ErrorMessage; // this is only useful in the CATCH block
+            }
+
+            return string.Empty;
         }
     }
 }

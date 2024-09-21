@@ -6,7 +6,9 @@ namespace DaJet.Stream
     public sealed class UseProcessor : IProcessor
     {
         private IProcessor _next;
+        private IProcessor _block;
         private readonly StreamScope _scope;
+        private readonly UseStatement _statement;
         public UseProcessor(in StreamScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
@@ -16,18 +18,34 @@ namespace DaJet.Stream
                 throw new ArgumentException(nameof(UseStatement));
             }
 
-            if (!scope.TryGetMetadataProvider(out IMetadataProvider database, out string error))
+            _statement = statement;
+
+            if (!_scope.TryGetMetadataProvider(out IMetadataProvider database, out string error))
             {
                 throw new InvalidOperationException(error);
             }
+            
+            StreamScope block_scope = _scope.Create(_statement.Statements);
 
-            StreamFactory.InitializeVariables(in _scope, in database);
+            StreamFactory.InitializeVariables(in block_scope, in database);
 
-            _next = StreamFactory.CreateStream(in _scope);
+            _block = StreamFactory.CreateStream(in block_scope);
         }
         public void LinkTo(in IProcessor next) { _next = next; }
-        public void Synchronize() { _next?.Synchronize(); }
-        public void Dispose() { _next?.Dispose(); }
-        public void Process() { _next?.Process(); }
+        public void Process()
+        {
+            _block.Process();
+            _next?.Process();
+        }
+        public void Synchronize()
+        {
+            _block.Synchronize();
+            _next?.Synchronize();
+        }
+        public void Dispose()
+        {
+            _block.Dispose();
+            _next?.Dispose();
+        }
     }
 }

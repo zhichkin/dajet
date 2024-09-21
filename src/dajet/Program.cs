@@ -46,7 +46,11 @@ namespace DaJet
         }
         private static void RunScript(in string filePath)
         {
+            Console.WriteLine("[HOST] Running");
+            Console.WriteLine($"[SCRIPT] {filePath}");
+
             StreamManager.LogToConsole();
+            StreamManager.IgnoreErrors(true);
 
             Stopwatch watch = new();
 
@@ -54,7 +58,28 @@ namespace DaJet
 
             Dictionary<string, object> parameters = new();
 
-            bool success = StreamManager.TryExecute(in filePath, in parameters, out string error);
+            bool success = true;
+
+            try
+            {
+                StreamManager.Execute(in filePath, in parameters, out object result);
+
+                if (result is not null)
+                {
+                    Console.WriteLine(result.ToString()); // RETURN statement
+                }
+            }
+            catch (Exception error)
+            {
+                success = false;
+                Console.WriteLine("[500][INTERNAL SERVER ERROR]");
+                Console.WriteLine(ExceptionHelper.GetErrorMessage(error));
+            }
+            finally
+            {
+                StreamManager.LogToFile();
+                StreamManager.IgnoreErrors(false);
+            }
 
             watch.Stop();
 
@@ -64,13 +89,8 @@ namespace DaJet
             {
                 Console.WriteLine($"[200][TIME {elapsed} ms]");
             }
-            else
-            {
-                Console.WriteLine("[500][INTERNAL SERVER ERROR]");
-                Console.WriteLine(error);
-            }
 
-            StreamManager.LogToFile();
+            Console.WriteLine("[HOST] Stopped");
         }
         private static void RunHost(in string configFilePath)
         {

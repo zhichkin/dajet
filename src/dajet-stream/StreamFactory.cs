@@ -417,7 +417,7 @@ namespace DaJet.Stream
             {
                 return new UseProcessor(in scope);
             }
-            else if (scope.Owner is ForEachStatement)
+            else if (scope.Owner is ForStatement)
             {
                 return new Parallelizer(in scope);
             }
@@ -441,6 +441,7 @@ namespace DaJet.Stream
                 return CreateMessageBrokerProcessor(in scope);
             }
             else if (scope.Owner is PrintStatement) { return new PrintProcessor(in scope); }
+            else if (scope.Owner is SleepStatement) { return new SleepProcessor(in scope); }
             else if (scope.Owner is ExecuteStatement) { return new ExecuteProcessor(in scope); }
             else if (scope.Owner is IfStatement) { return new IfProcessor(in scope); }
             else if (scope.Owner is CaseStatement) { return new CaseProcessor(in scope); }
@@ -448,6 +449,7 @@ namespace DaJet.Stream
             else if (scope.Owner is BreakStatement) { return new BreakProcessor(in scope); }
             else if (scope.Owner is ReturnStatement) { return new ReturnProcessor(in scope); }
             else if (scope.Owner is ContinueStatement) { return new ContinueProcessor(in scope); }
+            else if (scope.Owner is TryStatement) { return new TryProcessor(in scope); }
             else if (scope.Owner is AssignmentStatement) { return new SetProcessor(in scope); }
             else if (scope.Owner is ProcessStatement)
             {
@@ -671,8 +673,7 @@ namespace DaJet.Stream
             return processor as IProcessor;
         }
 
-        // ***
-
+        #region "DECLARE INITIALIZE VARIABLES"
         internal static void InitializeVariables(in StreamScope scope)
         {
             InitializeVariables(in scope, null);
@@ -973,8 +974,7 @@ namespace DaJet.Stream
 
             return table;
         }
-
-        // ***
+        #endregion
 
         internal static ScriptModel CreateProcessorScript(in StreamScope scope)
         {
@@ -1244,7 +1244,7 @@ namespace DaJet.Stream
 
         internal static void ConfigureIteratorSchema(in StreamScope scope, out string item, out string iterator)
         {
-            if (scope.Owner is not ForEachStatement statement)
+            if (scope.Owner is not ForStatement statement)
             {
                 throw new ArgumentException(nameof(ConfigureIteratorSchema));
             }
@@ -1268,7 +1268,7 @@ namespace DaJet.Stream
         }
         internal static List<string> GetClosureVariables(in StreamScope scope)
         {
-            if (scope.Owner is not ForEachStatement statement)
+            if (scope.Owner is not ForStatement statement)
             {
                 throw new ArgumentException(nameof(GetClosureVariables));
             }
@@ -1410,6 +1410,7 @@ namespace DaJet.Stream
             }
         }
 
+        #region "EVALUATE VALUE EXPRESSION"
         ///<summary>
         ///Функция вычисляет значение синтаксического выражения <b>accessor</b>
         ///<br/>для текущей области видимости контекста выполнения <b>scope</b>
@@ -1511,6 +1512,9 @@ namespace DaJet.Stream
 
             return true;
         }
+        #endregion
+
+        #region "EVALUATE BOOLEAN EXPRESSION"
         internal static bool Evaluate(in StreamScope scope, in SyntaxNode node)
         {
             if (node is GroupOperator group)
@@ -1646,6 +1650,7 @@ namespace DaJet.Stream
                 throw new InvalidOperationException($"Unknown comparison operator [{_operator}]");
             }
         }
+        #endregion
     }
 }
 

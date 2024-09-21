@@ -10,11 +10,11 @@ namespace DaJet.Stream
         private readonly string _item;
         private readonly string _iterator;
         private readonly List<string> _closure;
-        private readonly ForEachStatement _statement;
+        private readonly ForStatement _statement;
         private readonly StreamScope _body;
         private readonly StreamScope _scope;
         private readonly List<IProcessor> _streams = new();
-        private static int GetMaxDopValue(in ForEachStatement statement)
+        private static int GetMaxDopValue(in ForStatement statement)
         {
             int maxdop = statement.DegreeOfParallelism;
 
@@ -46,9 +46,9 @@ namespace DaJet.Stream
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
-            if (_scope.Owner is not ForEachStatement statement)
+            if (_scope.Owner is not ForStatement statement)
             {
-                throw new ArgumentException(nameof(ForEachStatement));
+                throw new ArgumentException(nameof(ForStatement));
             }
 
             _statement = statement;
