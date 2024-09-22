@@ -69,9 +69,9 @@ namespace DaJet.Stream.Kafka
                 _target = variable.Identifier;
             }
 
-            if (!_scope.Variables.ContainsKey(_target))
+            if (!_scope.TrySetValue(_target, new DataObject(3))) // buffer message
             {
-                _scope.Variables.Add(_target, new DataObject(3));
+                throw new InvalidOperationException($"Variable {_target} is not found");
             }
 
             if (!_scope.TryGetDeclaration(in _target, out _, out DeclareStatement declare))
@@ -86,8 +86,6 @@ namespace DaJet.Stream.Kafka
             _topic = GetTopic();
             _logHandler = LogHandler;
             _errorHandler = ErrorHandler;
-
-            _next = StreamFactory.CreateStream(in scope);
         }
         public void LinkTo(in IProcessor next) { _next = next; }
         private string GetTopic()

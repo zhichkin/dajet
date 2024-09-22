@@ -113,7 +113,7 @@ namespace DaJet.Stream.Kafka
                 {
                     return binary;
                 }
-                else if(value is string text && !string.IsNullOrEmpty(text))
+                else if (value is string text && !string.IsNullOrEmpty(text))
                 {
                     return Encoding.UTF8.GetBytes(text);
                 }

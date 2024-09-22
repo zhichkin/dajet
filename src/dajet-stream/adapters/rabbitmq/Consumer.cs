@@ -54,9 +54,9 @@ namespace DaJet.Stream.RabbitMQ
                 _target = variable.Identifier;
             }
 
-            if (!_scope.Variables.ContainsKey(_target))
+            if (!_scope.TrySetValue(_target, new DataObject(8))) // buffer message
             {
-                _scope.Variables.Add(_target, new DataObject(8));
+                throw new InvalidOperationException($"Variable {_target} is not found");
             }
 
             if (!_scope.TryGetDeclaration(in _target, out _, out DeclareStatement declare))
@@ -67,8 +67,6 @@ namespace DaJet.Stream.RabbitMQ
             declare.Type.Binding = CreateMessageSchema();
 
             StreamFactory.MapOptions(in _scope);
-
-            _next = StreamFactory.CreateStream(in _scope);
         }
         public void Synchronize() { /* do nothing */ }
         public void LinkTo(in IProcessor next) { _next = next; }
