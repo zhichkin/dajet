@@ -34,4 +34,8 @@ FOR EACH @page IN @iterator --MAXDOP 4
        , ТелоСообщения  = JSON(@message)
        , ОтметкаВремени = NOW()
 
+  END USE -- Контекст базы данных приёмника
+
 END -- FOR
+
+END USE -- Контекст базы данных источника
