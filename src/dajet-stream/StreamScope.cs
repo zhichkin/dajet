@@ -237,6 +237,7 @@ namespace DaJet.Stream
                         if (array.Count > index)
                         {
                             target = array[index];
+                            return true;
                         }
                         else
                         {
@@ -254,12 +255,9 @@ namespace DaJet.Stream
                     throw new FormatException(nameof(member));
                 }
             }
-            else
-            {
-                throw new ArgumentOutOfRangeException(nameof(target));
-            }
-
-            return true;
+            
+            target = null;
+            return false;
         }
         private bool TryGetValueByFilter(in List<DataObject> array, in string filter, out object value)
         {

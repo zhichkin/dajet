@@ -10,8 +10,6 @@ namespace DaJet.Stream
         public StreamProcessor(in StreamScope scope) : base(in scope)
         {
             _append = StreamFactory.CreateAppendStream(in scope, in _into);
-
-            _next = StreamFactory.CreateStream(in _scope);
         }
         public override void Process()
         {

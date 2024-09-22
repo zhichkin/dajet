@@ -539,6 +539,8 @@ namespace DaJet.Stream
 
                 StreamScope scope = new(statement, parent);
 
+                parent.Children.Add(scope); // SELECT INTO @object or STREAM statement
+
                 if (append.Modifier == TokenType.Array)
                 {
                     return new AppendArrayProcessor(in scope, in target, subquery.Alias);
@@ -1177,6 +1179,10 @@ namespace DaJet.Stream
         internal static void ConfigureVariablesMap(in StreamScope scope, in Dictionary<string, string> map)
         {
             SyntaxNode node = scope.Owner;
+
+            //FIXME: when processing SELECT INTO<object> or STREAM statements,
+            //       the extractor gets variables from child APPEND statements,
+            //       this should not happen, since APPEND is a completely separate thing !!!
 
             List<VariableReference> variables = new VariableReferenceExtractor().Extract(in node);
 

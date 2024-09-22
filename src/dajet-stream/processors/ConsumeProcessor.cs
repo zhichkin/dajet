@@ -15,15 +15,7 @@ namespace DaJet.Stream
         private bool CanDispose { get { return Interlocked.CompareExchange(ref _state, STATE_DISPOSING, STATE_ACTIVE) == STATE_ACTIVE; } }
 
         private AutoResetEvent _sleep;
-        public ConsumeProcessor(in StreamScope scope) : base(in scope)
-        {
-            _next = StreamFactory.CreateStream(in _scope);
-
-            if (_next is null)
-            {
-                throw new InvalidOperationException($"[{nameof(ConsumeProcessor)}] Continuation processor is missing!");
-            }
-        }
+        public ConsumeProcessor(in StreamScope scope) : base(in scope) { }
         public override void Process()
         {
             if (CanExecute) // STATE_IDLE -> STATE_ACTIVE

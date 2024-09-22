@@ -112,20 +112,39 @@
 
                 sql.language.ignoreCase = false;
 
+                sql.language.keywords.push('APPEND');
+                sql.language.keywords.push('ARRAY');
+                sql.language.keywords.push('OBJECT');
                 sql.language.keywords.push('SLEEP');
                 sql.language.keywords.push('TRY');
                 sql.language.keywords.push('CATCH');
                 sql.language.keywords.push('FINALLY');
+                sql.language.keywords.push('IMPORT');
+                sql.language.keywords.push('COMPUTED');
+                sql.language.keywords.push('VARIABLE');
+                sql.language.keywords.push('UPSERT');
                 sql.language.keywords.push('STREAM');
+                sql.language.keywords.push('MAXDOP');
                 sql.language.keywords.push('CONSUME');
                 sql.language.keywords.push('PRODUCE');
                 sql.language.keywords.push('REQUEST');
                 sql.language.keywords.push('PROCESS');
+                sql.language.keywords.push('SEQUENCE');
+
+                sql.language.operators.push('deleted');
+                sql.language.operators.push('inserted');
 
                 sql.language.builtinFunctions.push('NOW');
                 sql.language.builtinFunctions.push('JSON');
+                sql.language.builtinFunctions.push('TYPEOF');
+                sql.language.builtinFunctions.push('UUIDOF');
+                sql.language.builtinFunctions.push('VECTOR');
+                sql.language.builtinFunctions.push('NEWUUID');
                 sql.language.builtinFunctions.push('METADATA');
-
+                sql.language.builtinFunctions.push('CONCAT_WS');
+                sql.language.builtinFunctions.push('CHARLENGTH');
+                sql.language.builtinFunctions.push('STRING_AGG');
+                
                 sql.language.typeIdentifiers = ['boolean','number','datetime','string','binary','uuid','entity','object','array'];
 
                 sql.language.tokenizer.typeIdentifiers = [[/[\w@#$]+/,
