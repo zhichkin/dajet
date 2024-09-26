@@ -1,6 +1,6 @@
 ﻿namespace DaJet.Scripting
 {
-    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
     public sealed class FunctionAttribute : Attribute
     {
         public FunctionAttribute(string name)

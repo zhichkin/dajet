@@ -7,7 +7,7 @@ namespace DaJet.Scripting
         private static Dictionary<string, IUserDefinedFunction> _functions = new();
         static UDF()
         {
-            Register("TYPEOF", new TYPEOF_FunctionTranspiler());
+            Register(UDF_TYPEOF.Name, new UDF_TYPEOF());
         }
         public static void Register(in string name, in IUserDefinedFunction transpiler)
         {

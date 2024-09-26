@@ -1,7 +1,6 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata;
 using DaJet.Model;
-using DaJet.Runtime;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using System.Data;
@@ -1231,27 +1230,7 @@ namespace DaJet.Runtime
                 }
             }
         }
-        internal static void ConfigureFunctionsMap(in StreamScope scope, in Dictionary<string, FunctionExpression> map)
-        {
-            SyntaxNode node = scope.Owner;
-
-            List<FunctionExpression> functions = new DaJetFunctionExtractor().Extract(in node);
-
-            foreach (FunctionExpression function in functions)
-            {
-                if (TryGetFunction(in scope, in function, out MethodInfo method))
-                {
-                    string parameterName = function.GetVariableIdentifier();
-
-                    _ = map.TryAdd(parameterName, function);
-                }
-                else
-                {
-                    throw new InvalidOperationException($"Invalid function call: [{function.Name}]");
-                }
-            }
-        }
-
+        
         internal static void ConfigureIteratorSchema(in StreamScope scope, out string item, out string iterator)
         {
             if (scope.Owner is not ForStatement statement)

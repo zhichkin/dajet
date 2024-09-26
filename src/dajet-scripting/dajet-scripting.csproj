@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="udf\PostgreSql\" />
     <Folder Include="udf\SqlServer\" />
   </ItemGroup>
 

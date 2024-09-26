@@ -5,10 +5,12 @@ using System.Text;
 
 namespace DaJet.Scripting.PostgreSql
 {
-    public sealed class TYPEOF_FunctionTranspiler : IUserDefinedFunction
+    [Function(UDF_TYPEOF.Name)]
+    public sealed class UDF_TYPEOF : IUserDefinedFunction
     {
+        public const string Name = "TYPEOF";
         public Type ReturnType { get { return typeof(int); } }
-        public void Transpile(in ISqlTranspiler owner, in FunctionExpression node, in StringBuilder script)
+        public void Transpile(in ISqlTranspiler transpiler, in FunctionExpression node, in StringBuilder script)
         {
             if (node.Name != "TYPEOF")
             {
@@ -29,26 +31,26 @@ namespace DaJet.Scripting.PostgreSql
 
             if (parameter is ColumnReference column)
             {
-                Transpile(in owner, in column, in script);
+                Transpile(in transpiler, in column, in script);
             }
             else if (parameter is ScalarExpression scalar)
             {
-                Transpile(in owner, in scalar, in script);
+                Transpile(in transpiler, in scalar, in script);
             }
             else if (parameter is VariableReference variable)
             {
-                Transpile(in owner, in variable, in script);
+                Transpile(in transpiler, in variable, in script);
             }
             else if (parameter is MemberAccessExpression accessor)
             {
-                Transpile(in owner, in accessor, in script);
+                Transpile(in transpiler, in accessor, in script);
             }
             else
             {
                 throw new FormatException("[TYPEOF] invalid parameter type");
             }
         }
-        private void Transpile(in ISqlTranspiler owner, in ColumnReference column, in StringBuilder script)
+        private void Transpile(in ISqlTranspiler transpiler, in ColumnReference column, in StringBuilder script)
         {
             if (column.Mapping is null || column.Mapping.Count == 0)
             {
@@ -57,14 +59,14 @@ namespace DaJet.Scripting.PostgreSql
 
             if (column.Mapping.Count == 1)
             {
-                TranspileSingleColumn(in owner, in column, in script);
+                TranspileSingleColumn(in transpiler, in column, in script);
             }
             else
             {
-                TranspileMultipleColumn(in owner, in column, in script);
+                TranspileMultipleColumn(in transpiler, in column, in script);
             }
         }
-        private void TranspileSingleColumn(in ISqlTranspiler owner, in ColumnReference column, in StringBuilder script)
+        private void TranspileSingleColumn(in ISqlTranspiler transpiler, in ColumnReference column, in StringBuilder script)
         {
             if (column.Binding is not MetadataProperty property)
             {
@@ -82,9 +84,9 @@ namespace DaJet.Scripting.PostgreSql
                 Literal = property.PropertyType.TypeCode.ToString()
             };
 
-            owner.Visit(scalar, in script);
+            transpiler.Visit(scalar, in script);
         }
-        private void TranspileMultipleColumn(in ISqlTranspiler owner, in ColumnReference column, in StringBuilder script)
+        private void TranspileMultipleColumn(in ISqlTranspiler transpiler, in ColumnReference column, in StringBuilder script)
         {
             ColumnMapper map = null;
 
@@ -104,27 +106,46 @@ namespace DaJet.Scripting.PostgreSql
             column.Mapping.Clear();
             column.Mapping.Add(map);
 
-            owner.Visit(column, in script);
+            transpiler.Visit(column, in script);
         }
-        private void Transpile(in ISqlTranspiler owner, in ScalarExpression scalar, in StringBuilder script)
+        private void Transpile(in ISqlTranspiler transpiler, in ScalarExpression scalar, in StringBuilder script)
         {
             if (scalar.Token != TokenType.Entity)
             {
                 throw new FormatException("[TYPEOF] invalid scalar type");
             }
 
-            owner.Visit(scalar, in script);
+            transpiler.Visit(scalar, in script);
         }
-        private void Transpile(in ISqlTranspiler owner, in VariableReference variable, in StringBuilder script)
+        private void Transpile(in ISqlTranspiler transpiler, in VariableReference variable, in StringBuilder script)
         {
             if (variable.Binding is not Entity)
             {
                 throw new FormatException("[TYPEOF] invalid variable type");
             }
 
-            script.Append("@TYPEOF_").Append(variable.Identifier[1..]);
+            string parameterName = $"@TYPEOF_" + variable.Identifier[1..];
+
+            script.Append(parameterName);
+
+            FunctionDescriptor function = new()
+            {
+                Name = UDF_TYPEOF.Name,
+                Target = parameterName,
+                ReturnType = ReturnType
+            };
+
+            function.Parameters.Add(variable.Identifier);
+
+
+
+            //TODO: add function descriptor to results
+            // - function name to invoke
+            // - function parameters ...
+            // - variable name to store function return
+            // - return type !?
         }
-        private void Transpile(in ISqlTranspiler owner, in MemberAccessExpression accessor, in StringBuilder script)
+        private void Transpile(in ISqlTranspiler transpiler, in MemberAccessExpression accessor, in StringBuilder script)
         {
             if (accessor.Binding is not Type type)
             {
