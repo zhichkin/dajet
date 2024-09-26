@@ -223,7 +223,32 @@ namespace DaJet.Scripting
         {
             if (function.Token == TokenType.UDF)
             {
-                union.IsString = true; return; //TODO: how to infer return data type of an user-defined function  ???
+                if (!UDF.TryGet(function.Name, out IUserDefinedFunction transpiler))
+                {
+                    throw new InvalidOperationException($"Invalid function name: {function.Name}");
+                }
+
+                Type returnType = transpiler.ReturnType;
+
+                if (returnType == typeof(bool)) { union.IsBoolean = true; }
+                else if (returnType == typeof(int)) { union.IsNumeric = true; }
+                else if (returnType == typeof(long)) { union.IsNumeric = true; }
+                else if (returnType == typeof(decimal)) { union.IsNumeric = true; }
+                else if (returnType == typeof(DateTime)) { union.IsDateTime = true; }
+                else if (returnType == typeof(string)) { union.IsString = true; }
+                else if (returnType == typeof(byte[])) { union.IsBinary = true; }
+                else if (returnType == typeof(Guid)) { union.IsUuid = true; }
+                else if (returnType == typeof(Entity)) { union.IsEntity = true; }
+                else if (returnType is null)
+                {
+                    throw new InvalidOperationException($"Function return type must not be NULL: {function.Name}");
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Unsupported function return type [{returnType}]: {function.Name}");
+                }
+
+                return;
             }
 
             string name = function.Name.ToUpperInvariant();
@@ -257,10 +282,6 @@ namespace DaJet.Scripting
             else if (name == "UUIDOF")
             {
                 union.IsUuid = true; return;
-            }
-            else if (name == "TYPEOF")
-            {
-                union.IsInteger = true; return;
             }
             else if (name == "VECTOR")
             {

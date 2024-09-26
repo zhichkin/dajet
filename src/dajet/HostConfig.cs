@@ -1,4 +1,4 @@
-﻿namespace DaJet.Stream
+﻿namespace DaJet.Runtime
 {
     internal sealed class HostConfig
     {

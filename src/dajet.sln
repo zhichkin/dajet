@@ -41,11 +41,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-test", "dajet-test\da
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet", "dajet\dajet.csproj", "{B8C18931-FDBB-4036-9783-F101BC5B49BD}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-stream", "dajet-stream\dajet-stream.csproj", "{C746C245-607A-4514-B463-DF049A787B90}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-runtime", "dajet-runtime\dajet-runtime.csproj", "{C746C245-607A-4514-B463-DF049A787B90}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-sqlite", "dajet-sqlite\dajet-sqlite.csproj", "{0DFD96D9-EEEB-45E8-8E3C-B7E1EA90F400}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-tutorial", "dajet-tutorial\dajet-tutorial.csproj", "{2AF168AC-1CD2-499D-8A91-A1463993F7FB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-tutorial", "dajet-tutorial\dajet-tutorial.csproj", "{2AF168AC-1CD2-499D-8A91-A1463993F7FB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

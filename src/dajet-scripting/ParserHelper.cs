@@ -226,7 +226,6 @@ namespace DaJet.Scripting
             { "SUBSTRING", TokenType.SUBSTRING },
             { "DATALENGTH", TokenType.DATALENGTH },
             { "NOW", TokenType.NOW },
-            { "TYPEOF", TokenType.TYPEOF },
             { "UUIDOF", TokenType.UUIDOF },
             { "VECTOR", TokenType.VECTOR },
             { "STRING_AGG", TokenType.STRING_AGG },

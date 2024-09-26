@@ -11,6 +11,38 @@ namespace DaJet.Scripting
     {
         protected IMetadataProvider Metadata { get; private set; }
         public int YearOffset { get; set; } = 0;
+        public void Visit(in SyntaxNode expression, in StringBuilder script)
+        {
+            if (expression is GroupOperator group) { Visit(in group, in script); }
+            else if (expression is UnaryOperator unary) { Visit(in unary, in script); }
+            else if (expression is BinaryOperator binary) { Visit(in binary, in script); }
+            else if (expression is AdditionOperator addition) { Visit(in addition, in script); }
+            else if (expression is MultiplyOperator multiply) { Visit(in multiply, in script); }
+            else if (expression is ComparisonOperator comparison) { Visit(in comparison, in script); }
+            else if (expression is CaseExpression case_when) { Visit(in case_when, in script); }
+            else if (expression is ScalarExpression scalar) { Visit(in scalar, in script); }
+            else if (expression is VariableReference variable) { Visit(in variable, in script); }
+            else if (expression is MemberAccessExpression member) { Visit(in member, in script); }
+            else if (expression is SelectExpression select) { Visit(in select, in script); }
+            else if (expression is TableJoinOperator join) { Visit(in join, in script); }
+            else if (expression is TableUnionOperator union) { Visit(in union, in script); }
+            else if (expression is TableExpression derived) { Visit(in derived, in script); }
+            else if (expression is TableReference table) { Visit(in table, in script); }
+            else if (expression is ColumnReference column) { Visit(in column, in script); }
+            else if (expression is FunctionExpression function) { Visit(in function, in script); }
+            else if (expression is TableVariableExpression table_variable) { Visit(in table_variable, in script); }
+            else if (expression is TemporaryTableExpression temporary_table) { Visit(in temporary_table, in script); }
+            else if (expression is StarExpression star) { Visit(in star, in script); }
+            else if (expression is SetExpression set) { Visit(in set, in script); }
+            else if (expression is InsertStatement insert) { Visit(in insert, in script); }
+            else if (expression is UpdateStatement update) { Visit(in update, in script); }
+            else if (expression is DeleteStatement delete) { Visit(in delete, in script); }
+            else if (expression is CreateTypeStatement type) { Visit(in type, in script); }
+            else if (expression is CreateSequenceStatement sequence) { Visit(in sequence, in script); }
+            else if (expression is DropSequenceStatement drop_sequence) { Visit(in drop_sequence, in script); }
+            else if (expression is ApplySequenceStatement apply_sequence) { Visit(in apply_sequence, in script); }
+            else if (expression is RevokeSequenceStatement revoke_sequence) { Visit(in revoke_sequence, in script); }
+        }
         public bool TryTranspile(in ScriptModel model, in IMetadataProvider metadata, out TranspilerResult result, out string error)
         {
             Metadata = metadata;
@@ -283,39 +315,7 @@ namespace DaJet.Scripting
                 DataMapper.Map(in column, in mapper);
             }
         }
-        protected void Visit(in SyntaxNode expression, in StringBuilder script)
-        {
-            if (expression is GroupOperator group) { Visit(in group, in script); }
-            else if (expression is UnaryOperator unary) { Visit(in unary, in script); }
-            else if (expression is BinaryOperator binary) { Visit(in binary, in script); }
-            else if (expression is AdditionOperator addition) { Visit(in addition, in script); }
-            else if (expression is MultiplyOperator multiply) { Visit(in multiply, in script); }
-            else if (expression is ComparisonOperator comparison) { Visit(in comparison, in script); }
-            else if (expression is CaseExpression case_when) { Visit(in case_when, in script); }
-            else if (expression is ScalarExpression scalar) { Visit(in scalar, in script); }
-            else if (expression is VariableReference variable) { Visit(in variable, in script); }
-            else if (expression is MemberAccessExpression member) { Visit(in member, in script); }
-            else if (expression is SelectExpression select) { Visit(in select, in script); }
-            else if (expression is TableJoinOperator join) { Visit(in join, in script); }
-            else if (expression is TableUnionOperator union) { Visit(in union, in script); }
-            else if (expression is TableExpression derived) { Visit(in derived, in script); }
-            else if (expression is TableReference table) { Visit(in table, in script); }
-            else if (expression is ColumnReference column) { Visit(in column, in script); }
-            else if (expression is FunctionExpression function) { Visit(in function, in script); }
-            else if (expression is TableVariableExpression table_variable) { Visit(in table_variable, in script); }
-            else if (expression is TemporaryTableExpression temporary_table) { Visit(in temporary_table, in script); }
-            else if (expression is StarExpression star) { Visit(in star, in script); }
-            else if (expression is SetExpression set) { Visit(in set, in script); }
-            else if (expression is InsertStatement insert) { Visit(in insert, in script); }
-            else if (expression is UpdateStatement update) { Visit(in update, in script); }
-            else if (expression is DeleteStatement delete) { Visit(in delete, in script); }
-            else if (expression is CreateTypeStatement type) { Visit(in type, in script); }
-            else if (expression is CreateSequenceStatement sequence) { Visit(in sequence, in script); }
-            else if (expression is DropSequenceStatement drop_sequence) { Visit(in drop_sequence, in script); }
-            else if (expression is ApplySequenceStatement apply_sequence) { Visit(in apply_sequence, in script); }
-            else if (expression is RevokeSequenceStatement revoke_sequence) { Visit(in revoke_sequence, in script); }
-        }
-
+        
         public abstract void Visit(in CreateTypeStatement node, in StringBuilder script);
 
         #region "SELECT STATEMENT"
@@ -842,7 +842,7 @@ namespace DaJet.Scripting
         {
             if (node.Token == TokenType.UDF)
             {
-                script.Append(node.GetVariableIdentifier()); return;
+                throw new InvalidOperationException($"Invalid function name: {node.Name}");
             }
 
             string name = node.Name.ToUpperInvariant();
@@ -850,10 +850,6 @@ namespace DaJet.Scripting
             if (name == "UUIDOF")
             {
                 VisitUuidOf(in node, in script);
-            }
-            else if (name == "TYPEOF")
-            {
-                VisitTypeOf(in node, in script);
             }
             else
             {
@@ -1433,9 +1429,21 @@ namespace DaJet.Scripting
                 throw new FormatException($"Function {node.Name}: missing parameter.");
             }
 
-            if (node.Parameters[0] is not ColumnReference column)
+            SyntaxNode parameter = node.Parameters[0];
+
+            if (parameter is VariableReference variable && variable.Binding is Entity entity)
             {
-                throw new FormatException($"Function {node.Name}: invalid parameter (must be column reference).");
+                ScalarExpression scalar = new()
+                {
+                    Token = TokenType.Uuid,
+                    Literal = entity.Identity.ToString()
+                };
+                Visit(in scalar, in script); return;
+            }
+
+            if (parameter is not ColumnReference column)
+            {
+                throw new FormatException($"Function {node.Name}: invalid parameter (column reference expected).");
             }
 
             if (column.Mapping is not null)
@@ -1471,77 +1479,7 @@ namespace DaJet.Scripting
             
             Visit(in column, in script);
         }
-        protected void VisitTypeOf(in FunctionExpression node, in StringBuilder script)
-        {
-            if (node.Parameters.Count == 0)
-            {
-                throw new FormatException($"Function {node.Name}: missing parameter.");
-            }
-
-            SyntaxNode parameter = node.Parameters[0];
-
-            if (parameter is VariableReference variable && variable.Binding is Entity entity)
-            {
-                ScalarExpression scalar = new()
-                {
-                    Token = TokenType.Number,
-                    Literal = entity.TypeCode.ToString()
-                };
-                Visit(in scalar, in script); return;
-            }
-            
-            if (parameter is not ColumnReference column)
-            {
-                throw new FormatException($"Function {node.Name}: invalid parameter.");
-            }
-
-            if (column.Mapping is not null)
-            {
-                if (column.Mapping.Count == 1)
-                {
-                    if (column.Mapping[0].Type != UnionTag.Entity)
-                    {
-                        throw new FormatException($"Function {node.Name}: invalid parameter data type.");
-                    }
-                    
-                    if (column.Binding is not MetadataProperty property)
-                    {
-                        throw new FormatException($"Function {node.Name}: invalid parameter binding.");
-                    }
-
-                    ScalarExpression scalar = new()
-                    {
-                        Token = TokenType.Number,
-                        Literal = property.PropertyType.TypeCode.ToString()
-                    };
-                    Visit(in scalar, in script);
-                    return;
-                }
-                else
-                {
-                    ColumnMapper map = null;
-
-                    for (int i = 0; i < column.Mapping.Count; i++)
-                    {
-                        if (column.Mapping[i].Type == UnionTag.TypeCode)
-                        {
-                            map = column.Mapping[i]; break;
-                        }
-                    }
-
-                    if (map is null)
-                    {
-                        throw new FormatException($"Function {node.Name}: invalid parameter data type.");
-                    }
-
-                    column.Mapping.Clear();
-                    column.Mapping.Add(map);
-                }
-            }
-
-            Visit(in column, in script);
-        }
-
+        
         protected bool TryGetFromTable(in SyntaxNode node, out TableReference table)
         {
             table = null;
@@ -1864,10 +1802,6 @@ namespace DaJet.Scripting
             else if (functionName == "UUIDOF")
             {
                 //union.IsUuid = true; return;
-            }
-            else if (functionName == "TYPEOF")
-            {
-                //union.IsInteger = true; return;
             }
             else if (name == "VECTOR")
             {

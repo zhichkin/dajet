@@ -1847,13 +1847,13 @@ namespace DaJet.Scripting
         {
             string identifier = Previous().Lexeme;
 
-            if (ParserHelper.IsFunction(identifier, out TokenType token))
-            {
-                return function(token, identifier); // database built-in function
-            }
-            else if (Check(TokenType.OpenRoundBracket))
+            if (UDF.TryGet(identifier, out _)) // UDF can override built-in function
             {
                 return function(TokenType.UDF, identifier); // user-defined function
+            }
+            else if (ParserHelper.IsFunction(identifier, out TokenType token))
+            {
+                return function(token, identifier); // database built-in function
             }
 
             return new ColumnReference() { Identifier = identifier };

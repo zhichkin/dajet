@@ -112,9 +112,6 @@
 
                 sql.language.ignoreCase = false;
 
-                sql.language.keywords.push('APPEND');
-                sql.language.keywords.push('ARRAY');
-                sql.language.keywords.push('OBJECT');
                 sql.language.keywords.push('SLEEP');
                 sql.language.keywords.push('TRY');
                 sql.language.keywords.push('CATCH');
@@ -131,6 +128,9 @@
                 sql.language.keywords.push('PROCESS');
                 sql.language.keywords.push('SEQUENCE');
 
+                sql.language.operators.push('APPEND');
+                sql.language.operators.push('ARRAY');
+                sql.language.operators.push('OBJECT');
                 sql.language.operators.push('deleted');
                 sql.language.operators.push('inserted');
 
@@ -138,6 +138,7 @@
                 sql.language.builtinFunctions.push('JSON');
                 sql.language.builtinFunctions.push('TYPEOF');
                 sql.language.builtinFunctions.push('UUIDOF');
+                sql.language.builtinFunctions.push('NAMEOF');
                 sql.language.builtinFunctions.push('VECTOR');
                 sql.language.builtinFunctions.push('NEWUUID');
                 sql.language.builtinFunctions.push('METADATA');

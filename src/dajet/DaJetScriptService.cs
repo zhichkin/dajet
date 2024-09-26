@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
-namespace DaJet.Stream
+namespace DaJet.Runtime
 {
     internal sealed class DaJetScriptService : BackgroundService
     {

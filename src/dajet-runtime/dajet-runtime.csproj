@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>DaJet.Runtime</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <AssemblyName>DaJet.Runtime</AssemblyName>
+    <Version>3.7.0</Version>
+    <Authors>Zhichkin</Authors>
+    <Copyright>Zhichkin © 2024</Copyright>
+    <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/zhichkin/dajet/tree/main/src/dajet-runtime</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Confluent.Kafka" Version="2.3.0" />
+    <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\dajet-file-logger\dajet-file-logger.csproj" />
+    <ProjectReference Include="..\dajet-scripting\dajet-scripting.csproj" />
+  </ItemGroup>
+
+</Project>

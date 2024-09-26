@@ -20,4 +20,8 @@
     <ProjectReference Include="..\dajet-metadata\dajet-metadata.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="udf\SqlServer\" />
+  </ItemGroup>
+
 </Project>

@@ -1201,6 +1201,7 @@ namespace DaJet.Scripting
             }
         }
 
+        #region "DAJET SCRIPT STATEMENTS"
         private void Bind(in UseStatement node)
         {
             Bind(node.Statements);
@@ -1282,5 +1283,6 @@ namespace DaJet.Scripting
                 }
             }
         }
+        #endregion
     }
 }

@@ -114,7 +114,11 @@ namespace DaJet.Scripting
         {
             string name = node.Name.ToUpperInvariant();
 
-            if (name == "NOW") // GETUTCDATE()
+            if (UDF.TryGet(node.Name, out IUserDefinedFunction transpiler))
+            {
+                transpiler.Transpile(this, in node, in script);
+            }
+            else if (name == "NOW") // GETUTCDATE()
             {
                 if (YearOffset == 0)
                 {
@@ -142,9 +146,13 @@ namespace DaJet.Scripting
             {
                 script.Append("NEWID()");
             }
-            else
+            else if (node.Token != TokenType.UDF)
             {
                 base.Visit(in node, in script);
+            }
+            else
+            {
+                throw new InvalidOperationException($"Invalid function name: {node.Name}");
             }
         }
 

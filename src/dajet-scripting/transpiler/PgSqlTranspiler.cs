@@ -301,9 +301,15 @@ namespace DaJet.Scripting
         {
             if (node.Token == TokenType.UDF)
             {
-                script.Append("CAST(");
-                script.Append(node.GetVariableIdentifier());
-                script.Append(" AS mvarchar)");
+                if (UDF.TryGet(node.Name, out IUserDefinedFunction transpiler))
+                {
+                    transpiler.Transpile(this, in node, in script);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Invalid function name: {node.Name}");
+                }
+
                 return;
             }
 
@@ -315,7 +321,7 @@ namespace DaJet.Scripting
             {
                 script.Append($"CAST(E'\\\\x{ParserHelper.GetUuidHexLiteral(Guid.NewGuid())}' AS bytea)"); return;
             }
-            else if (name == "TYPEOF" || name == "UUIDOF")
+            else if (name == "UUIDOF")
             {
                 base.Visit(in node, in script); return;
             }

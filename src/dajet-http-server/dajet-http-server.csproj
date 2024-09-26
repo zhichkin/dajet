@@ -23,6 +23,7 @@
     <ProjectReference Include="..\dajet-dbview-generator\dajet-dbview-generator.csproj" />
     <ProjectReference Include="..\dajet-flow\dajet-flow.csproj" />
     <ProjectReference Include="..\dajet-rabbitmq\dajet-rabbitmq.csproj" />
+    <ProjectReference Include="..\dajet-runtime\dajet-runtime.csproj" />
     <ProjectReference Include="..\dajet-stream\dajet-stream.csproj" />
   </ItemGroup>
 
