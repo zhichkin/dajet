@@ -13,7 +13,7 @@
 |--------------------|----------------|------|-----------------|--------------|
 |Неопределено|null|null|NULL|NULL|
 |Булево|boolean|bool|binary(1)|boolean|
-|Число|number|decimal<br>int|numeric<br>int|numeric<br>integer|
+|Число|number|decimal<br>int<br>long|numeric<br>int<br>bigint|numeric<br>integer<br>bigint|
 |Дата|datetime|DateTime|datetime2|timestamp<br>without time zone|
 |Строка|string|string|nchar<br>nvarchar|mchar<br>mvarchar|
 |Ссылка|entity|[Entity](https://github.com/zhichkin/dajet/blob/main/src/dajet-model/core/Entity.cs)|binary(16)|bytea|
