@@ -50,11 +50,11 @@ namespace DaJet.Runtime
                 }
             }
 
-            foreach (var map in _functions)
+            foreach (FunctionDescriptor function in _statement.Functions)
             {
-                if (!_parameters.ContainsKey(map.Key))
+                if (!_parameters.ContainsKey(function.Target))
                 {
-                    _parameters.Add(map.Key, null);
+                    _parameters.Add(function.Target, null);
                 }
             }
         }
@@ -68,11 +68,11 @@ namespace DaJet.Runtime
                 }
             }
 
-            foreach (var map in _functions)
+            foreach (FunctionDescriptor function in _statement.Functions)
             {
-                object result = StreamFactory.InvokeFunction(in _scope, map.Value);
+                object result = StreamFactory.InvokeFunction(in _scope, function.Node);
 
-                _parameters[map.Key] = result ?? string.Empty;
+                _parameters[function.Target] = result;
             }
         }
     }

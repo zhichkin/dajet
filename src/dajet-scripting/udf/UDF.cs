@@ -8,6 +8,8 @@ namespace DaJet.Scripting
         static UDF()
         {
             Register(UDF_TYPEOF.Name, new UDF_TYPEOF());
+            
+            Register("ERROR_MESSAGE", new UDF_TYPEOF()); //FIXME: !!! ignore for database statements
         }
         public static void Register(in string name, in IUserDefinedFunction transpiler)
         {

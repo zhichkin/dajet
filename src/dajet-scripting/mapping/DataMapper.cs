@@ -223,12 +223,12 @@ namespace DaJet.Scripting
         {
             if (function.Token == TokenType.UDF)
             {
-                if (!UDF.TryGet(function.Name, out IUserDefinedFunction transpiler))
+                if (!UDF.TryGet(function.Name, out IUserDefinedFunction udf))
                 {
                     throw new InvalidOperationException($"Invalid function name: {function.Name}");
                 }
 
-                Type returnType = transpiler.ReturnType;
+                Type returnType = udf.ReturnType;
 
                 if (returnType == typeof(bool)) { union.IsBoolean = true; }
                 else if (returnType == typeof(int)) { union.IsNumeric = true; }

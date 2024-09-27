@@ -254,6 +254,11 @@ namespace DaJet.Data
             {
                 return new decimal(reader.GetByte(ordinal));
             }
+            else if (type == typeof(byte[])) // binary(4) TRef
+            {
+                byte[] value = (byte[])reader.GetValue(ordinal);
+                return Convert.ToDecimal(DbUtilities.GetInt32(value));
+            }
             else
             {
                 return reader.GetDecimal(ordinal);

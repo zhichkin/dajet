@@ -7,6 +7,7 @@ using System.Data;
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace DaJet.Runtime
 {
@@ -190,8 +191,12 @@ namespace DaJet.Runtime
             {
                 return InferReturnType(in scope, in member);
             }
+            else
+            {
+                UnionType type = DataMapper.Infer(in expression);
 
-            return null; // not found
+                return UnionType.MapToType(type);
+            }
         }
         private static Type InferReturnType(in StreamScope scope, in ScalarExpression expression)
         {
@@ -237,11 +242,21 @@ namespace DaJet.Runtime
                         {
                             string member = members[members.Count - 1]; //NOTE: take the last member !?
 
-                            foreach (ColumnExpression column in schema)
+                            foreach (ColumnExpression property in schema)
                             {
-                                if (column.Alias == member)
+                                if (string.IsNullOrWhiteSpace(property.Alias))
                                 {
-                                    return GetFunctionParameterType(in scope, column.Expression);
+                                    if (property.Expression is ColumnReference column)
+                                    {
+                                        if (column.Identifier == member)
+                                        {
+                                            return GetFunctionParameterType(in scope, property.Expression);
+                                        }
+                                    }
+                                }
+                                else if (property.Alias == member)
+                                {
+                                    return GetFunctionParameterType(in scope, property.Expression);
                                 }
                             }
                         }
@@ -457,6 +472,12 @@ namespace DaJet.Runtime
             else if (scope.Owner is ProcessStatement)
             {
                 return CreateUserDefinedProcessor(in scope);
+            }
+            else if (scope.Owner is SelectStatement statement && !statement.IsStream
+                && statement.Expression is SelectExpression select && select.From is null
+                && select.Into?.Value is VariableReference variable)
+            {
+                return new ObjectConstructor(in scope);
             }
 
             return CreateDatabaseProcessor(in scope);
@@ -790,6 +811,10 @@ namespace DaJet.Runtime
                 {
                     scope.Variables[declare.Name] = ParserHelper.GetScalarValue(in scalar);
                 }
+                else if (declare.Initializer is SelectExpression select && select.From is null && declare.Type.Token == TokenType.Object)
+                {
+                    scope.Variables[declare.Name] = ConstructObject(in scope, in select);
+                }
                 else if (declare.Initializer is SelectExpression || declare.Initializer is TableUnionOperator)
                 {
                     SelectStatement statement = new() { Expression = declare.Initializer };
@@ -800,6 +825,25 @@ namespace DaJet.Runtime
 
             //TODO: IMPORT statement ?
             //ScriptProcessor.ExecuteImportStatements(in script, in database, in sql_parameters);
+        }
+        internal static DataObject ConstructObject(in StreamScope scope, in SelectExpression select)
+        {
+            DataObject record = new(select.Columns.Count);
+
+            foreach (ColumnExpression column in select.Columns)
+            {
+                if (string.IsNullOrWhiteSpace(column.Alias))
+                {
+                    throw new InvalidOperationException($"[CONSTRUCTOR] Property name expected");
+                }
+
+                if (StreamFactory.TryEvaluate(in scope, column.Expression, out object value))
+                {
+                    record.SetValue(column.Alias, value);
+                }
+            }
+
+            return record;
         }
         private static object GetDefaultValue(in DeclareStatement declare)
         {

@@ -10,7 +10,7 @@ namespace DaJet.Scripting.PostgreSql
     {
         public const string Name = "TYPEOF";
         public Type ReturnType { get { return typeof(int); } }
-        public void Transpile(in ISqlTranspiler transpiler, in FunctionExpression node, in StringBuilder script)
+        public FunctionDescriptor Transpile(in ISqlTranspiler transpiler, in FunctionExpression node, in StringBuilder script)
         {
             if (node.Name != "TYPEOF")
             {
@@ -27,30 +27,39 @@ namespace DaJet.Scripting.PostgreSql
                 throw new FormatException("[TYPEOF] too many parameters");
             }
 
+            FunctionDescriptor descriptor;
+
             SyntaxNode parameter = node.Parameters[0];
 
             if (parameter is ColumnReference column)
             {
-                Transpile(in transpiler, in column, in script);
+                descriptor = Transpile(in transpiler, in column, in script);
             }
             else if (parameter is ScalarExpression scalar)
             {
-                Transpile(in transpiler, in scalar, in script);
+                descriptor = Transpile(in transpiler, in scalar, in script);
             }
             else if (parameter is VariableReference variable)
             {
-                Transpile(in transpiler, in variable, in script);
+                descriptor = Transpile(in transpiler, in variable, in script);
             }
             else if (parameter is MemberAccessExpression accessor)
             {
-                Transpile(in transpiler, in accessor, in script);
+                descriptor = Transpile(in transpiler, in accessor, in script);
             }
             else
             {
                 throw new FormatException("[TYPEOF] invalid parameter type");
             }
+
+            if (descriptor is not null)
+            {
+                descriptor.Node = node;
+            }
+
+            return descriptor;
         }
-        private void Transpile(in ISqlTranspiler transpiler, in ColumnReference column, in StringBuilder script)
+        private FunctionDescriptor Transpile(in ISqlTranspiler transpiler, in ColumnReference column, in StringBuilder script)
         {
             if (column.Mapping is null || column.Mapping.Count == 0)
             {
@@ -59,14 +68,12 @@ namespace DaJet.Scripting.PostgreSql
 
             if (column.Mapping.Count == 1)
             {
-                TranspileSingleColumn(in transpiler, in column, in script);
+                return TranspileSingleColumn(in transpiler, in column, in script);
             }
-            else
-            {
-                TranspileMultipleColumn(in transpiler, in column, in script);
-            }
+            
+            return TranspileMultipleColumn(in transpiler, in column, in script);
         }
-        private void TranspileSingleColumn(in ISqlTranspiler transpiler, in ColumnReference column, in StringBuilder script)
+        private FunctionDescriptor TranspileSingleColumn(in ISqlTranspiler transpiler, in ColumnReference column, in StringBuilder script)
         {
             if (column.Binding is not MetadataProperty property)
             {
@@ -85,8 +92,10 @@ namespace DaJet.Scripting.PostgreSql
             };
 
             transpiler.Visit(scalar, in script);
+
+            return null;
         }
-        private void TranspileMultipleColumn(in ISqlTranspiler transpiler, in ColumnReference column, in StringBuilder script)
+        private FunctionDescriptor TranspileMultipleColumn(in ISqlTranspiler transpiler, in ColumnReference column, in StringBuilder script)
         {
             ColumnMapper map = null;
 
@@ -107,17 +116,23 @@ namespace DaJet.Scripting.PostgreSql
             column.Mapping.Add(map);
 
             transpiler.Visit(column, in script);
+
+            return null;
         }
-        private void Transpile(in ISqlTranspiler transpiler, in ScalarExpression scalar, in StringBuilder script)
+        private FunctionDescriptor Transpile(in ISqlTranspiler transpiler, in ScalarExpression scalar, in StringBuilder script)
         {
             if (scalar.Token != TokenType.Entity)
             {
                 throw new FormatException("[TYPEOF] invalid scalar type");
             }
 
-            transpiler.Visit(scalar, in script);
+            Entity value = Entity.Parse(scalar.Literal);
+
+            script.Append(value.TypeCode);
+
+            return null;
         }
-        private void Transpile(in ISqlTranspiler transpiler, in VariableReference variable, in StringBuilder script)
+        private FunctionDescriptor Transpile(in ISqlTranspiler transpiler, in VariableReference variable, in StringBuilder script)
         {
             if (variable.Binding is not Entity)
             {
@@ -128,24 +143,15 @@ namespace DaJet.Scripting.PostgreSql
 
             script.Append(parameterName);
 
-            FunctionDescriptor function = new()
+            FunctionDescriptor descriptor = new()
             {
-                Name = UDF_TYPEOF.Name,
                 Target = parameterName,
                 ReturnType = ReturnType
             };
 
-            function.Parameters.Add(variable.Identifier);
-
-
-
-            //TODO: add function descriptor to results
-            // - function name to invoke
-            // - function parameters ...
-            // - variable name to store function return
-            // - return type !?
+            return descriptor;
         }
-        private void Transpile(in ISqlTranspiler transpiler, in MemberAccessExpression accessor, in StringBuilder script)
+        private FunctionDescriptor Transpile(in ISqlTranspiler transpiler, in MemberAccessExpression accessor, in StringBuilder script)
         {
             if (accessor.Binding is not Type type)
             {
@@ -157,7 +163,17 @@ namespace DaJet.Scripting.PostgreSql
                 throw new FormatException("[TYPEOF] invalid property type");
             }
 
-            script.Append("@TYPEOF_").Append(accessor.GetDbParameterName()[1..]);
+            string parameterName = $"@TYPEOF_" + accessor.Identifier[1..].Replace('.', '_');
+
+            script.Append(parameterName);
+
+            FunctionDescriptor descriptor = new()
+            {
+                Target = parameterName,
+                ReturnType = ReturnType
+            };
+
+            return descriptor;
         }
     }
 }

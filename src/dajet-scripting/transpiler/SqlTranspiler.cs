@@ -53,26 +53,34 @@ namespace DaJet.Scripting
             {
                 foreach (SyntaxNode node in model.Statements)
                 {
+                    SqlStatement statement;
+
                     if (node is SelectStatement select)
                     {
-                        result.Statements.Add(TranspileScriptStatement(in select));
+                        statement = TranspileScriptStatement(in select);
                     }
                     else if (node is ConsumeStatement consume)
                     {
-                        result.Statements.Add(TranspileScriptStatement(in consume));
+                        statement = TranspileScriptStatement(in consume);
                     }
                     else if (node is UpdateStatement update)
                     {
-                        result.Statements.Add(TranspileScriptStatement(in update));
+                        statement = TranspileScriptStatement(in update);
                     }
                     else if (node is DeleteStatement delete)
                     {
-                        result.Statements.Add(TranspileScriptStatement(in delete));
+                        statement = TranspileScriptStatement(in delete);
                     }
                     else
                     {
-                        result.Statements.Add(TranspileScriptStatement(in node));
+                        statement = TranspileScriptStatement(in node);
                     }
+
+                    statement.Functions.AddRange(Functions);
+
+                    Functions.Clear(); // functions to get input parameters
+
+                    result.Statements.Add(statement);
                 }
 
                 result.Mappers = GetEntityMappers(result.Statements);
@@ -121,6 +129,7 @@ namespace DaJet.Scripting
 
             return mappers;
         }
+        protected List<FunctionDescriptor> Functions { get; } = new();
         private SqlStatement TranspileScriptStatement(in SyntaxNode node)
         {
             StringBuilder script = new();
@@ -819,6 +828,10 @@ namespace DaJet.Scripting
             else if (node.Token == TokenType.Uuid)
             {
                 script.Append($"0x{ParserHelper.GetUuidHexLiteral(new Guid(node.Literal))}");
+            }
+            else if (node.Token == TokenType.Entity) // implicit cast to uuid
+            {
+                script.Append($"0x{ParserHelper.GetUuidHexLiteral(Entity.Parse(node.Literal).Identity)}");
             }
             else // Number | Binary
             {

@@ -116,7 +116,12 @@ namespace DaJet.Scripting
 
             if (UDF.TryGet(node.Name, out IUserDefinedFunction transpiler))
             {
-                transpiler.Transpile(this, in node, in script);
+                FunctionDescriptor function = transpiler.Transpile(this, in node, in script);
+
+                if (function is not null)
+                {
+                    Functions.Add(function);
+                }
             }
             else if (name == "NOW") // GETUTCDATE()
             {

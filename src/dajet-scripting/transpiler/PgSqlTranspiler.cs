@@ -268,6 +268,10 @@ namespace DaJet.Scripting
                     script.Append($"CAST(E'\\\\{node.Literal.TrimStart('0')}' AS bytea)");
                 }
             }
+            else if (node.Token == TokenType.Entity) // implicit cast to uuid
+            {
+                script.Append($"CAST(E'\\\\x{ParserHelper.GetUuidHexLiteral(Entity.Parse(node.Literal).Identity)}' AS bytea)");
+            }
             else // Number
             {
                 script.Append(node.Literal);
@@ -303,7 +307,12 @@ namespace DaJet.Scripting
             {
                 if (UDF.TryGet(node.Name, out IUserDefinedFunction transpiler))
                 {
-                    transpiler.Transpile(this, in node, in script);
+                    FunctionDescriptor function = transpiler.Transpile(this, in node, in script);
+
+                    if (function is not null)
+                    {
+                        Functions.Add(function);
+                    }
                 }
                 else
                 {
