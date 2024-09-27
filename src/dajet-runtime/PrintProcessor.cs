@@ -5,9 +5,9 @@ namespace DaJet.Runtime
     public sealed class PrintProcessor : IProcessor
     {
         private IProcessor _next;
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private readonly PrintStatement _statement;
-        public PrintProcessor(in StreamScope scope)
+        public PrintProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 

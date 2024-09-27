@@ -5,9 +5,9 @@ namespace DaJet.Runtime
     public sealed class BreakException : Exception { }
     public sealed class BreakProcessor : IProcessor
     {
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private readonly BreakStatement _statement;
-        public BreakProcessor(in StreamScope scope)
+        public BreakProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 

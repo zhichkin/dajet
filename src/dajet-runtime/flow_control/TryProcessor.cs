@@ -8,9 +8,9 @@ namespace DaJet.Runtime
         private IProcessor _try_block;
         private IProcessor _catch_block;
         private IProcessor _finally_block;
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private readonly TryStatement _statement;
-        public TryProcessor(in StreamScope scope)
+        public TryProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
@@ -21,18 +21,18 @@ namespace DaJet.Runtime
 
             _statement = statement;
 
-            StreamScope try_scope = _scope.Create(_statement.TRY);
+            ScriptScope try_scope = _scope.Create(_statement.TRY);
             _try_block = StreamFactory.CreateStream(in try_scope);
 
             if (_statement.CATCH is not null)
             {
-                StreamScope catch_scope = _scope.Create(_statement.CATCH);
+                ScriptScope catch_scope = _scope.Create(_statement.CATCH);
                 _catch_block = StreamFactory.CreateStream(in catch_scope);
             }
 
             if (_statement.FINALLY is not null)
             {
-                StreamScope finally_scope = _scope.Create(_statement.FINALLY);
+                ScriptScope finally_scope = _scope.Create(_statement.FINALLY);
                 _finally_block = StreamFactory.CreateStream(in finally_scope);
             }
         }

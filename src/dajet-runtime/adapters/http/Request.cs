@@ -9,14 +9,14 @@ namespace DaJet.Runtime.Http
     public sealed class Request : IProcessor
     {
         private IProcessor _next;
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private readonly HttpClient _client = new(new SocketsHttpHandler()
         {
             MaxConnectionsPerServer = 1 //THINK: implement "circuit breaker" to prevent port exhaustion
         });
         private readonly string _target;
         private readonly RequestStatement _statement;
-        public Request(in StreamScope scope)
+        public Request(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 

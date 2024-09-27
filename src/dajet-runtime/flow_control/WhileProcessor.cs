@@ -6,9 +6,9 @@ namespace DaJet.Runtime
     {
         private IProcessor _next;
         private IProcessor _body;
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private readonly WhileStatement _statement;
-        public WhileProcessor(in StreamScope scope)
+        public WhileProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
@@ -19,7 +19,7 @@ namespace DaJet.Runtime
 
             _statement = statement;
 
-            StreamScope body_scope = _scope.Create(_statement.Statements);
+            ScriptScope body_scope = _scope.Create(_statement.Statements);
 
             _body = StreamFactory.CreateStream(in body_scope);
         }

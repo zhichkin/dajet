@@ -7,10 +7,10 @@ namespace DaJet.Runtime
     public sealed class ObjectConstructor : IProcessor
     {
         private IProcessor _next;
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private readonly VariableReference _target;
         private readonly SelectStatement _statement;
-        public ObjectConstructor(in StreamScope scope)
+        public ObjectConstructor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 

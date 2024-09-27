@@ -8,9 +8,9 @@ namespace DaJet.Runtime
     {
         private IProcessor _next;
         private IProcessor _stream;
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private readonly ExecuteStatement _statement;
-        public ExecuteProcessor(in StreamScope scope)
+        public ExecuteProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
@@ -67,7 +67,7 @@ namespace DaJet.Runtime
                 FileLogger.Default.Write(error); return null;
             }
 
-            StreamScope child = _scope.Create(in model);
+            ScriptScope child = _scope.Create(in model);
 
             foreach (var variable in child.Variables)
             {

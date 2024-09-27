@@ -7,9 +7,9 @@ namespace DaJet.Runtime
         private IProcessor _next;
         private IProcessor _next_then;
         private IProcessor _next_else;
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private readonly IfStatement _statement;
-        public IfProcessor(in StreamScope scope)
+        public IfProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
@@ -20,12 +20,12 @@ namespace DaJet.Runtime
 
             _statement = statement;
 
-            StreamScope then_scope = _scope.Create(_statement.THEN);
+            ScriptScope then_scope = _scope.Create(_statement.THEN);
             _next_then = StreamFactory.CreateStream(in then_scope);
 
             if (_statement.ELSE is not null)
             {
-                StreamScope else_scope = _scope.Create(_statement.ELSE);
+                ScriptScope else_scope = _scope.Create(_statement.ELSE);
                 _next_else = StreamFactory.CreateStream(in else_scope);
             }
         }

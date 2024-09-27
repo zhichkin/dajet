@@ -2,31 +2,31 @@
 
 namespace DaJet.Scripting
 {
-    public sealed class ScriptScope
+    public sealed class BindingScope
     {
-        ///<summary>Иерархия пространства видимости (физическая)</summary>
-        private readonly ScriptScope _ancestor; //TODO: encapsulate logic in OpenScope method or class
-        public ScriptScope() { }
-        public ScriptScope(SyntaxNode owner, ScriptScope parent)
+        ///<summary>Иерархия области видимости (физическая)</summary>
+        private readonly BindingScope _ancestor; //TODO: encapsulate logic in OpenScope method or class
+        public BindingScope() { }
+        public BindingScope(SyntaxNode owner, BindingScope parent)
         {
             Owner = owner;
             Parent = parent; //NOTE: can be overriden in OpenScope method !!!
             _ancestor = parent; //NOTE: is used by CloseScope method
         }
         public SyntaxNode Owner { get; set; }
-        ///<summary>Иерархия пространства видимости (логическа)</summary>
-        public ScriptScope Parent { get; set; }
-        ///<summary>Дочерние пространства видимости (логические)</summary>
-        public List<ScriptScope> Children { get; } = new();
+        ///<summary>Иерархия области видимости (логическа)</summary>
+        public BindingScope Parent { get; set; }
+        ///<summary>Дочерние области видимости (логические)</summary>
+        public List<BindingScope> Children { get; } = new();
         public Dictionary<string, object> Tables { get; } = new(); // CTE (common table expression) or temporary tables
         public Dictionary<string, object> Aliases { get; } = new(); // table expression (subquery) or schema tables
         public Dictionary<string, object> Columns { get; } = new(); //NOTE: used for diagnosic purposes
         public Dictionary<string, object> Variables { get; } = new(); // table variables or UDT (user-defined type)
         public override string ToString() { return $"Owner: {Owner}"; }
 
-        public ScriptScope GetRoot()
+        public BindingScope GetRoot()
         {
-            ScriptScope root = this;
+            BindingScope root = this;
 
             while (root.Parent is not null)
             {
@@ -35,11 +35,11 @@ namespace DaJet.Scripting
 
             return root;
         }
-        public ScriptScope Ancestor<TOwner>() where TOwner : SyntaxNode
+        public BindingScope Ancestor<TOwner>() where TOwner : SyntaxNode
         {
             Type type = typeof(TOwner);
 
-            ScriptScope scope = this;
+            BindingScope scope = this;
             SyntaxNode owner = Owner;
 
             while (scope is not null)
@@ -55,16 +55,16 @@ namespace DaJet.Scripting
 
             return null;
         }
-        public ScriptScope OpenScope(in SyntaxNode owner)
+        public BindingScope OpenScope(in SyntaxNode owner)
         {
-            ScriptScope scope = new(owner, this);
+            BindingScope scope = new(owner, this);
 
             if (owner is not SelectExpression select || select.IsCorrelated)
             {
                 Children.Add(scope); return scope;
             }
 
-            ScriptScope parent = this;
+            BindingScope parent = this;
 
             while (parent is not null)
             {
@@ -88,11 +88,11 @@ namespace DaJet.Scripting
 
             throw new InvalidOperationException($"Failed to open scope [{owner}]");
         }
-        public ScriptScope CloseScope() { return _ancestor; }
+        public BindingScope CloseScope() { return _ancestor; }
 
         public object GetVariableBinding(in string name)
         {
-            ScriptScope scope = this;
+            BindingScope scope = this;
 
             while (scope is not null)
             {
@@ -108,7 +108,7 @@ namespace DaJet.Scripting
         }
         public object GetTableBinding(in string name)
         {
-            ScriptScope scope = this;
+            BindingScope scope = this;
 
             while (scope is not null)
             {
@@ -138,7 +138,7 @@ namespace DaJet.Scripting
 
             // lookup current and upper scopes
 
-            ScriptScope scope = this;
+            BindingScope scope = this;
 
             while (scope is not null)
             {

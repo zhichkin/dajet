@@ -67,7 +67,7 @@ namespace DaJet.Runtime
 
         [Function("METADATA")] public static DataObject GetMetadataObject(this IScriptRuntime runtime, in string name)
         {
-            if (runtime is StreamScope scope)
+            if (runtime is ScriptScope scope)
             {
                 if (!scope.TryGetMetadataProvider(out IMetadataProvider provider, out string error))
                 {
@@ -90,7 +90,7 @@ namespace DaJet.Runtime
         }
         [Function("ERROR_MESSAGE")] public static string GetLastErrorMessage(this IScriptRuntime runtime)
         {
-            if (runtime is StreamScope scope
+            if (runtime is ScriptScope scope
                 && scope.Parent is not null && scope.Parent.Owner is StatementBlock
                 && scope.Parent.Parent is not null && scope.Parent.Parent.Owner is TryStatement)
             {
@@ -110,7 +110,7 @@ namespace DaJet.Runtime
         }
         [Function("NAMEOF")] public static string GetEntityTypeFullName(this IScriptRuntime runtime, in Entity entity)
         {
-            if (runtime is StreamScope scope)
+            if (runtime is ScriptScope scope)
             {
                 if (scope.TryGetMetadataProvider(out IMetadataProvider provider, out string error))
                 {

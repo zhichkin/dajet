@@ -7,7 +7,7 @@ namespace DaJet.Runtime
     public abstract class OneDbProcessor : IProcessor
     {
         protected IProcessor _next;
-        protected readonly StreamScope _scope;
+        protected readonly ScriptScope _scope;
         protected Uri _uri;
         protected VariableReference _into;
         protected SqlStatement _statement;
@@ -16,7 +16,7 @@ namespace DaJet.Runtime
         protected readonly Dictionary<string, object> _parameters = new();
         protected readonly Dictionary<string, string> _variables = new();
         protected readonly Dictionary<string, FunctionExpression> _functions = new();
-        public OneDbProcessor(in StreamScope scope)
+        public OneDbProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 

@@ -11,8 +11,8 @@ namespace DaJet.Runtime
         private readonly string _iterator;
         private readonly List<string> _closure;
         private readonly ForStatement _statement;
-        private readonly StreamScope _body;
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _body;
+        private readonly ScriptScope _scope;
         private readonly List<IProcessor> _streams = new();
         private static int GetMaxDopValue(in ForStatement statement)
         {
@@ -42,7 +42,7 @@ namespace DaJet.Runtime
 
             return maxdop;
         }
-        public Parallelizer(in StreamScope scope)
+        public Parallelizer(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
@@ -112,7 +112,7 @@ namespace DaJet.Runtime
         }
         private IProcessor CloneStreamTemplate(in DataObject item)
         {
-            StreamScope clone = _body.Clone();
+            ScriptScope clone = _body.Clone();
 
             foreach (string variable in _closure)
             {

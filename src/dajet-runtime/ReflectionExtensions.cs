@@ -32,7 +32,7 @@ namespace DaJet.Runtime
                             parameterType = parameterType.GetElementType();
                         }
 
-                        if (parameterType == typeof(StreamScope))
+                        if (parameterType == typeof(ScriptScope))
                         {
                             return constructor;
                         }

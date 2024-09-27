@@ -5,9 +5,9 @@ namespace DaJet.Runtime
     public sealed class ContinueException : Exception { }
     public sealed class ContinueProcessor : IProcessor
     {
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private readonly ContinueStatement _statement;
-        public ContinueProcessor(in StreamScope scope)
+        public ContinueProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 

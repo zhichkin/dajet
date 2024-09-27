@@ -5,8 +5,8 @@ namespace DaJet.Runtime
     public sealed class RootProcessor : IProcessor
     {
         private readonly IProcessor _next;
-        private readonly StreamScope _scope;
-        public RootProcessor(in StreamScope scope)
+        private readonly ScriptScope _scope;
+        public RootProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 

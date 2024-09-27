@@ -7,10 +7,10 @@ namespace DaJet.Runtime
     public abstract class UserDefinedProcessor : IProcessor
     {
         protected IProcessor _next;
-        protected readonly StreamScope _scope;
+        protected readonly ScriptScope _scope;
         protected readonly ProcessStatement _statement;
         protected readonly Dictionary<string, object> _options = new();
-        protected UserDefinedProcessor(in StreamScope scope)
+        protected UserDefinedProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 

@@ -5,9 +5,9 @@ namespace DaJet.Runtime
     public sealed class ReturnException : Exception { }
     public sealed class ReturnProcessor : IProcessor
     {
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private readonly ReturnStatement _statement;
-        public ReturnProcessor(in StreamScope scope)
+        public ReturnProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 

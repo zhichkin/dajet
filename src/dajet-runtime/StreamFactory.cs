@@ -90,7 +90,7 @@ namespace DaJet.Runtime
             }
         }
 
-        public static bool TryGetFunction(in StreamScope scope, in FunctionExpression function, out MethodInfo method)
+        public static bool TryGetFunction(in ScriptScope scope, in FunctionExpression function, out MethodInfo method)
         {
             method = null;
 
@@ -144,7 +144,7 @@ namespace DaJet.Runtime
 
             return method is not null;
         }
-        public static object InvokeFunction(in StreamScope scope, in FunctionExpression function)
+        public static object InvokeFunction(in ScriptScope scope, in FunctionExpression function)
         {
             //TODO: move this code to IScriptRuntime !?
 
@@ -177,7 +177,7 @@ namespace DaJet.Runtime
             return method.Invoke(null, parameters); //NOTE: this is IScriptRuntime extension method
         }
 
-        private static Type GetFunctionParameterType(in StreamScope scope, in SyntaxNode expression)
+        private static Type GetFunctionParameterType(in ScriptScope scope, in SyntaxNode expression)
         {
             if (expression is ScalarExpression scalar)
             {
@@ -198,11 +198,11 @@ namespace DaJet.Runtime
                 return UnionType.MapToType(type);
             }
         }
-        private static Type InferReturnType(in StreamScope scope, in ScalarExpression expression)
+        private static Type InferReturnType(in ScriptScope scope, in ScalarExpression expression)
         {
             return ParserHelper.GetTokenDataType(expression.Token);
         }
-        private static Type InferReturnType(in StreamScope scope, in VariableReference expression)
+        private static Type InferReturnType(in ScriptScope scope, in VariableReference expression)
         {
             if (scope.TryGetDeclaration(expression.Identifier, out _, out DeclareStatement declare))
             {
@@ -226,7 +226,7 @@ namespace DaJet.Runtime
 
             return null; // not found
         }
-        private static Type InferReturnType(in StreamScope scope, in MemberAccessExpression expression)
+        private static Type InferReturnType(in ScriptScope scope, in MemberAccessExpression expression)
         {
             string variable = expression.GetVariableName();
 
@@ -288,7 +288,7 @@ namespace DaJet.Runtime
             {
                 ApplyInputParameters(in model, in parameters);
 
-                StreamScope scope = StreamScope.Create(in model, null);
+                ScriptScope scope = ScriptScope.Create(in model, null);
 
                 stream = new RootProcessor(in scope);
             }
@@ -402,9 +402,9 @@ namespace DaJet.Runtime
                 }
             }
         }
-        internal static IProcessor CreateStream(in StreamScope parent)
+        internal static IProcessor CreateStream(in ScriptScope parent)
         {
-            StreamScope next;
+            ScriptScope next;
             IProcessor starter = null;
             IProcessor current = null;
             IProcessor processor;
@@ -429,7 +429,7 @@ namespace DaJet.Runtime
 
             return starter;
         }
-        internal static IProcessor CreateProcessor(in StreamScope scope)
+        internal static IProcessor CreateProcessor(in ScriptScope scope)
         {
             if (scope.Owner is UseStatement)
             {
@@ -482,7 +482,7 @@ namespace DaJet.Runtime
 
             return CreateDatabaseProcessor(in scope);
         }
-        internal static IProcessor CreateDatabaseProcessor(in StreamScope scope)
+        internal static IProcessor CreateDatabaseProcessor(in ScriptScope scope)
         {
             if (TryGetIntoVariable(scope.Owner, out VariableReference variable))
             {
@@ -521,7 +521,7 @@ namespace DaJet.Runtime
             
             return new NonQueryProcessor(in scope);
         }
-        internal static IProcessor CreateAppendStream(in StreamScope parent, in VariableReference target)
+        internal static IProcessor CreateAppendStream(in ScriptScope parent, in VariableReference target)
         {
             List<TableJoinOperator> appends = new AppendOperatorExtractor().Extract(parent.Owner);
 
@@ -555,13 +555,13 @@ namespace DaJet.Runtime
 
             return starter;
         }
-        internal static IProcessor CreateAppendProcessor(in StreamScope parent, in VariableReference target, in TableJoinOperator append)
+        internal static IProcessor CreateAppendProcessor(in ScriptScope parent, in VariableReference target, in TableJoinOperator append)
         {
             if (append.Token == TokenType.APPEND && append.Expression2 is TableExpression subquery)
             {
                 SelectStatement statement = new() { Expression = subquery.Expression };
 
-                StreamScope scope = new(statement, parent);
+                ScriptScope scope = new(statement, parent);
 
                 parent.Children.Add(scope); // SELECT INTO @object or STREAM statement
 
@@ -654,7 +654,7 @@ namespace DaJet.Runtime
             return into is not null;
         }
         
-        internal static IProcessor CreateMessageBrokerProcessor(in StreamScope scope)
+        internal static IProcessor CreateMessageBrokerProcessor(in ScriptScope scope)
         {
             if (scope.Owner is ConsumeStatement consume)
             {
@@ -682,7 +682,7 @@ namespace DaJet.Runtime
             throw new InvalidOperationException("Unsupported service");
         }
 
-        internal static IProcessor CreateUserDefinedProcessor(in StreamScope scope)
+        internal static IProcessor CreateUserDefinedProcessor(in ScriptScope scope)
         {
             if (scope.Owner is not ProcessStatement statement)
             {
@@ -700,11 +700,11 @@ namespace DaJet.Runtime
         }
 
         #region "DECLARE INITIALIZE VARIABLES"
-        internal static void InitializeVariables(in StreamScope scope)
+        internal static void InitializeVariables(in ScriptScope scope)
         {
             InitializeVariables(in scope, null);
         }
-        internal static void InitializeVariables(in StreamScope scope, in IMetadataProvider database)
+        internal static void InitializeVariables(in ScriptScope scope, in IMetadataProvider database)
         {
             if (scope.Variables.Count == 0) { return; }
 
@@ -788,7 +788,7 @@ namespace DaJet.Runtime
                 }
             }
 
-            foreach (StreamScope child in scope.Children)
+            foreach (ScriptScope child in scope.Children)
             {
                 if (child.Owner is ImportStatement import)
                 {
@@ -826,7 +826,7 @@ namespace DaJet.Runtime
             //TODO: IMPORT statement ?
             //ScriptProcessor.ExecuteImportStatements(in script, in database, in sql_parameters);
         }
-        internal static DataObject ConstructObject(in StreamScope scope, in SelectExpression select)
+        internal static DataObject ConstructObject(in ScriptScope scope, in SelectExpression select)
         {
             DataObject record = new(select.Columns.Count);
 
@@ -873,7 +873,7 @@ namespace DaJet.Runtime
 
             return value;
         }
-        private static object GetSelectValue(in StreamScope scope, in IMetadataProvider database, in DeclareStatement declare, in SelectStatement select)
+        private static object GetSelectValue(in ScriptScope scope, in IMetadataProvider database, in DeclareStatement declare, in SelectStatement select)
         {
             SqlStatement statement = TranspileSelectStatement(in database, in select);
 
@@ -1025,7 +1025,7 @@ namespace DaJet.Runtime
         }
         #endregion
 
-        internal static ScriptModel CreateProcessorScript(in StreamScope scope)
+        internal static ScriptModel CreateProcessorScript(in ScriptScope scope)
         {
             ScriptModel script = new();
 
@@ -1040,7 +1040,7 @@ namespace DaJet.Runtime
 
             return script;
         }
-        internal static List<DeclareStatement> GetOuterScopeDeclarations(in StreamScope scope)
+        internal static List<DeclareStatement> GetOuterScopeDeclarations(in ScriptScope scope)
         {
             List<DeclareStatement> declarations = new();
 
@@ -1068,7 +1068,7 @@ namespace DaJet.Runtime
 
             return declarations;
         }
-        internal static DeclareStatement[] GetOuterScopeVariables(in StreamScope scope)
+        internal static DeclareStatement[] GetOuterScopeVariables(in ScriptScope scope)
         {
             List<VariableReference> references = new VariableReferenceExtractor().Extract(scope.Owner);
 
@@ -1129,7 +1129,7 @@ namespace DaJet.Runtime
 
             return declarations.ToArray();
         }
-        internal static DeclareStatement[] GetOuterScopeMemberAccess(in StreamScope scope)
+        internal static DeclareStatement[] GetOuterScopeMemberAccess(in ScriptScope scope)
         {
             List<MemberAccessExpression> members = new MemberAccessExtractor().Extract(scope.Owner);
 
@@ -1161,7 +1161,7 @@ namespace DaJet.Runtime
             return declarations.ToArray();
         }
 
-        internal static SqlStatement Transpile(in StreamScope scope)
+        internal static SqlStatement Transpile(in ScriptScope scope)
         {
             if (scope.TryGetTranspilation(scope.Owner, out SqlStatement statement))
             {
@@ -1187,7 +1187,7 @@ namespace DaJet.Runtime
                 throw new InvalidOperationException($"Transpilation error: [{scope.Owner}]");
             }
 
-            StreamScope root = scope.GetRoot(); //NOTE: ScriptModel is the root
+            ScriptScope root = scope.GetRoot(); //NOTE: ScriptModel is the root
 
             root.Transpilations.Add(scope.Owner, statement);
 
@@ -1223,7 +1223,7 @@ namespace DaJet.Runtime
             return null;
         }
 
-        internal static void ConfigureVariablesMap(in StreamScope scope, in Dictionary<string, string> map)
+        internal static void ConfigureVariablesMap(in ScriptScope scope, in Dictionary<string, string> map)
         {
             SyntaxNode node = scope.Owner;
 
@@ -1275,7 +1275,7 @@ namespace DaJet.Runtime
             }
         }
         
-        internal static void ConfigureIteratorSchema(in StreamScope scope, out string item, out string iterator)
+        internal static void ConfigureIteratorSchema(in ScriptScope scope, out string item, out string iterator)
         {
             if (scope.Owner is not ForStatement statement)
             {
@@ -1299,7 +1299,7 @@ namespace DaJet.Runtime
 
             declare.Type.Binding = schema.Type.Binding;
         }
-        internal static List<string> GetClosureVariables(in StreamScope scope)
+        internal static List<string> GetClosureVariables(in ScriptScope scope)
         {
             if (scope.Owner is not ForStatement statement)
             {
@@ -1324,7 +1324,7 @@ namespace DaJet.Runtime
 
             return closure;
         }
-        internal static void GetIdentifiersRecursively(in StreamScope scope, in HashSet<string> identifiers)
+        internal static void GetIdentifiersRecursively(in ScriptScope scope, in HashSet<string> identifiers)
         {
             SyntaxNode node = scope.Owner;
 
@@ -1354,7 +1354,7 @@ namespace DaJet.Runtime
                 }
             }
 
-            foreach (StreamScope child in scope.Children)
+            foreach (ScriptScope child in scope.Children)
             {
                 GetIdentifiersRecursively(in child, in identifiers);
             }
@@ -1362,7 +1362,7 @@ namespace DaJet.Runtime
 
         // ***
 
-        internal static void BindVariables(in StreamScope scope)
+        internal static void BindVariables(in ScriptScope scope)
         {
             ScriptModel script = CreateProcessorScript(in scope);
 
@@ -1371,7 +1371,7 @@ namespace DaJet.Runtime
                 throw new InvalidOperationException(error);
             }
         }
-        internal static bool TryGetOption(in StreamScope scope, in string name, out object value)
+        internal static bool TryGetOption(in ScriptScope scope, in string name, out object value)
         {
             if (scope.TryGetValue(name, out value))
             {
@@ -1402,7 +1402,7 @@ namespace DaJet.Runtime
             value = null;
             return false;
         }
-        internal static void MapOptions(in StreamScope scope)
+        internal static void MapOptions(in ScriptScope scope)
         {
             if (scope.Owner is ProduceStatement produce)
             {
@@ -1415,7 +1415,7 @@ namespace DaJet.Runtime
                 MapColumnExpressions(in scope, consume.Columns);
             }
         }
-        private static void MapColumnExpressions(in StreamScope scope, in List<ColumnExpression> columns)
+        private static void MapColumnExpressions(in ScriptScope scope, in List<ColumnExpression> columns)
         {
             foreach (ColumnExpression column in columns)
             {
@@ -1448,7 +1448,7 @@ namespace DaJet.Runtime
         ///Функция вычисляет значение синтаксического выражения <b>accessor</b>
         ///<br/>для текущей области видимости контекста выполнения <b>scope</b>
         ///</summary>
-        internal static bool TryEvaluate(in StreamScope scope, in SyntaxNode expression, out object value)
+        internal static bool TryEvaluate(in ScriptScope scope, in SyntaxNode expression, out object value)
         {
             if (expression is ScalarExpression scalar)
             {
@@ -1480,23 +1480,23 @@ namespace DaJet.Runtime
                 return false;
             }
         }
-        private static bool TryEvaluate(in StreamScope scope, in ScalarExpression expression, out object value)
+        private static bool TryEvaluate(in ScriptScope scope, in ScalarExpression expression, out object value)
         {
             value = ParserHelper.GetScalarValue(in expression); return true;
         }
-        private static bool TryEvaluate(in StreamScope scope, in VariableReference expression, out object value)
+        private static bool TryEvaluate(in ScriptScope scope, in VariableReference expression, out object value)
         {
             return scope.TryGetValue(expression.Identifier, out value);
         }
-        private static bool TryEvaluate(in StreamScope scope, in MemberAccessExpression expression, out object value)
+        private static bool TryEvaluate(in ScriptScope scope, in MemberAccessExpression expression, out object value)
         {
             return scope.TryGetValue(expression.Identifier, out value);
         }
-        private static bool TryEvaluate(in StreamScope scope, in FunctionExpression expression, out object value)
+        private static bool TryEvaluate(in ScriptScope scope, in FunctionExpression expression, out object value)
         {
             value = InvokeFunction(in scope, in expression); return true;
         }
-        private static bool TryEvaluate(in StreamScope scope, in AdditionOperator expression, out object value)
+        private static bool TryEvaluate(in ScriptScope scope, in AdditionOperator expression, out object value)
         {
             value = string.Empty;
 
@@ -1526,7 +1526,7 @@ namespace DaJet.Runtime
 
             return true;
         }
-        private static bool TryEvaluate(in StreamScope scope, in CaseExpression expression, out object value)
+        private static bool TryEvaluate(in ScriptScope scope, in CaseExpression expression, out object value)
         {
             value = string.Empty;
 
@@ -1548,7 +1548,7 @@ namespace DaJet.Runtime
         #endregion
 
         #region "EVALUATE BOOLEAN EXPRESSION"
-        internal static bool Evaluate(in StreamScope scope, in SyntaxNode node)
+        internal static bool Evaluate(in ScriptScope scope, in SyntaxNode node)
         {
             if (node is GroupOperator group)
             {
@@ -1587,15 +1587,15 @@ namespace DaJet.Runtime
                 throw new InvalidOperationException($"Unknown boolean operator [{node}]");
             }
         }
-        private static bool Evaluate(in StreamScope scope, in GroupOperator group)
+        private static bool Evaluate(in ScriptScope scope, in GroupOperator group)
         {
             return Evaluate(in scope, group.Expression);
         }
-        private static bool Evaluate(in StreamScope scope, in UnaryOperator unary)
+        private static bool Evaluate(in ScriptScope scope, in UnaryOperator unary)
         {
             return !Evaluate(in scope, unary.Expression);
         }
-        private static bool Evaluate(in StreamScope scope, in BinaryOperator binary)
+        private static bool Evaluate(in ScriptScope scope, in BinaryOperator binary)
         {
             if (binary.Token == TokenType.OR)
             {
@@ -1620,7 +1620,7 @@ namespace DaJet.Runtime
                 throw new InvalidOperationException($"Unknown binary operator [{binary.Token}]");
             }
         }
-        private static bool Evaluate(in StreamScope scope, in ComparisonOperator comparison)
+        private static bool Evaluate(in ScriptScope scope, in ComparisonOperator comparison)
         {
             if (!TryEvaluate(in scope, comparison.Expression1, out object left))
             {

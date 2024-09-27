@@ -5,27 +5,27 @@ using System.Text.Json.Serialization;
 
 namespace DaJet.Json
 {
-    public sealed class ScriptScopeJsonConverter : JsonConverter<ScriptScope>
+    public sealed class ScriptScopeJsonConverter : JsonConverter<BindingScope>
     {
-        public override ScriptScope Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override BindingScope Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             throw new NotImplementedException();
         }
-        public override void Write(Utf8JsonWriter writer, ScriptScope scope, JsonSerializerOptions options)
+        public override void Write(Utf8JsonWriter writer, BindingScope scope, JsonSerializerOptions options)
         {
             writer.WriteStartObject();
 
-            writer.WriteString(nameof(ScriptScope.Owner), scope.Owner.GetType().FullName);
+            writer.WriteString(nameof(BindingScope.Owner), scope.Owner.GetType().FullName);
 
-            ScriptScope ancestor = scope.CloseScope();
+            BindingScope ancestor = scope.CloseScope();
 
             if (ancestor is null)
             {
-                writer.WriteNull(nameof(ScriptScope.Ancestor));
+                writer.WriteNull(nameof(BindingScope.Ancestor));
             }
             else
             {
-                writer.WriteString(nameof(ScriptScope.Ancestor), ancestor.Owner.GetType().FullName);
+                writer.WriteString(nameof(BindingScope.Ancestor), ancestor.Owner.GetType().FullName);
             }
 
             //writer.WritePropertyName("Identifiers");
@@ -77,7 +77,7 @@ namespace DaJet.Json
 
             writer.WritePropertyName("Children");
             writer.WriteStartArray();
-            foreach (ScriptScope node in scope.Children)
+            foreach (BindingScope node in scope.Children)
             {
                 Write(writer, node, options);
             }

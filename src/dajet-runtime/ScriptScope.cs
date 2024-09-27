@@ -6,24 +6,24 @@ using System.Text.RegularExpressions;
 
 namespace DaJet.Runtime
 {
-    public sealed class StreamScope : IScriptRuntime
+    public sealed class ScriptScope : IScriptRuntime
     {
-        public StreamScope(SyntaxNode owner)
+        public ScriptScope(SyntaxNode owner)
         {
             Owner = owner ?? throw new ArgumentNullException(nameof(owner));
         }
-        public StreamScope(SyntaxNode owner, StreamScope parent) : this(owner)
+        public ScriptScope(SyntaxNode owner, ScriptScope parent) : this(owner)
         {
             Parent = parent ?? throw new ArgumentNullException(nameof(parent));
         }
         public SyntaxNode Owner { get; set; }
-        public StreamScope Parent { get; set; }
-        public List<StreamScope> Children { get; } = new();
+        public ScriptScope Parent { get; set; }
+        public List<ScriptScope> Children { get; } = new();
         public string ErrorMessage { get; set; } = string.Empty;
         public override string ToString() { return $"Owner: {Owner}"; }
-        public StreamScope GetRoot()
+        public ScriptScope GetRoot()
         {
-            StreamScope root = this;
+            ScriptScope root = this;
 
             while (root.Parent is not null)
             {
@@ -32,11 +32,11 @@ namespace DaJet.Runtime
 
             return root;
         }
-        public StreamScope GetParent<TOwner>() where TOwner : SyntaxNode
+        public ScriptScope GetParent<TOwner>() where TOwner : SyntaxNode
         {
             Type type = typeof(TOwner);
 
-            StreamScope scope = this;
+            ScriptScope scope = this;
             SyntaxNode owner = Owner;
 
             while (scope is not null)
@@ -52,41 +52,41 @@ namespace DaJet.Runtime
 
             return null;
         }
-        public StreamScope Open(in SyntaxNode owner)
+        public ScriptScope Open(in SyntaxNode owner)
         {
-            StreamScope scope = new(owner, this);
+            ScriptScope scope = new(owner, this);
 
             Children.Add(scope);
 
             return scope;
         }
 
-        public StreamScope Close() { return Parent; }
-        public StreamScope Clone()
+        public ScriptScope Close() { return Parent; }
+        public ScriptScope Clone()
         {
-            StreamScope clone = new(Owner, this);
+            ScriptScope clone = new(Owner, this);
 
-            foreach (StreamScope child in Children)
+            foreach (ScriptScope child in Children)
             {
                 clone.Children.Add(child.Clone(in clone));
             }
 
             return clone;
         }
-        private StreamScope Clone(in StreamScope parent)
+        private ScriptScope Clone(in ScriptScope parent)
         {
-            StreamScope clone = new(Owner, parent);
+            ScriptScope clone = new(Owner, parent);
 
-            foreach (StreamScope child in Children)
+            foreach (ScriptScope child in Children)
             {
                 clone.Children.Add(child.Clone(in clone));
             }
 
             return clone;
         }
-        public StreamScope Create(in StatementBlock statements)
+        public ScriptScope Create(in StatementBlock statements)
         {
-            StreamScope scope = new(statements, this);
+            ScriptScope scope = new(statements, this);
 
             Children.Add(scope);
 
@@ -104,7 +104,7 @@ namespace DaJet.Runtime
                 }
                 else
                 {
-                    StreamScope child = new(statement, scope);
+                    ScriptScope child = new(statement, scope);
 
                     scope.Children.Add(child);
                 }
@@ -112,9 +112,9 @@ namespace DaJet.Runtime
 
             return scope;
         }
-        public static StreamScope Create(in ScriptModel script, in StreamScope parent)
+        public static ScriptScope Create(in ScriptModel script, in ScriptScope parent)
         {
-            StreamScope scope = parent is null ? new(script) : new(script, parent);
+            ScriptScope scope = parent is null ? new(script) : new(script, parent);
 
             parent?.Children.Add(scope);
 
@@ -132,7 +132,7 @@ namespace DaJet.Runtime
                 }
                 else
                 {
-                    StreamScope child = new(statement, scope);
+                    ScriptScope child = new(statement, scope);
                     
                     scope.Children.Add(child);
                 }
@@ -140,14 +140,14 @@ namespace DaJet.Runtime
 
             return scope;
         }
-        public StreamScope Create(in ScriptModel script) { return Create(in script, this); }
+        public ScriptScope Create(in ScriptModel script) { return Create(in script, this); }
         public List<DeclareStatement> Declarations { get; } = new(); // order is important for binding
         public Dictionary<string, object> Variables { get; } = new(); // scope variables and their values
         public Dictionary<SyntaxNode, SqlStatement> Transpilations { get; } = new(); // script transpilations cache
         public Dictionary<string, IMetadataProvider> MetadataProviders { get; } = new(); // metadata providers cache
         public bool TrySetValue(in string name, in object value)
         {
-            StreamScope scope = this;
+            ScriptScope scope = this;
 
             while (scope is not null)
             {
@@ -199,7 +199,7 @@ namespace DaJet.Runtime
         {
             value = null;
 
-            StreamScope scope = this;
+            ScriptScope scope = this;
 
             while (scope is not null)
             {
@@ -302,7 +302,7 @@ namespace DaJet.Runtime
             local = true;
             declare = null;
 
-            StreamScope scope = this;
+            ScriptScope scope = this;
 
             while (scope is not null)
             {
@@ -327,7 +327,7 @@ namespace DaJet.Runtime
         {
             statement = null;
 
-            StreamScope scope = this;
+            ScriptScope scope = this;
 
             while (scope is not null)
             {
@@ -347,7 +347,7 @@ namespace DaJet.Runtime
 
             Uri uri = GetDatabaseUri(); //NOTE: constructs uri dynamically
 
-            StreamScope root = GetRoot(); //NOTE: ScriptModel is the root
+            ScriptScope root = GetRoot(); //NOTE: ScriptModel is the root
 
             if (root.MetadataProviders.TryGetValue(uri.ToString(), out provider))
             {
@@ -416,7 +416,7 @@ namespace DaJet.Runtime
         }
         public Uri GetDatabaseUri()
         {
-            StreamScope parent = GetParent<UseStatement>() ?? throw new InvalidOperationException("Parent UseStatement is not found");
+            ScriptScope parent = GetParent<UseStatement>() ?? throw new InvalidOperationException("Parent UseStatement is not found");
             
             if (parent.Owner is UseStatement use)
             {
@@ -429,7 +429,7 @@ namespace DaJet.Runtime
         private const string RETURN_VALUE_KEY = "_RETURN_VALUE_";
         internal void SetReturnValue(in object value)
         {
-            StreamScope root = GetRoot();
+            ScriptScope root = GetRoot();
 
             if (!root.Variables.TryAdd(RETURN_VALUE_KEY, value))
             {
@@ -438,7 +438,7 @@ namespace DaJet.Runtime
         }
         internal object GetReturnValue()
         {
-            StreamScope root = GetRoot();
+            ScriptScope root = GetRoot();
 
             if (root.TryGetValue(RETURN_VALUE_KEY, out object value))
             {

@@ -8,7 +8,7 @@ namespace DaJet.Runtime
     public sealed class AppendObjectProcessor : OneDbProcessor
     {
         private readonly string _member;
-        public AppendObjectProcessor(in StreamScope scope, in VariableReference target, in string member) : base(in scope)
+        public AppendObjectProcessor(in ScriptScope scope, in VariableReference target, in string member) : base(in scope)
         {
             _into = target ?? throw new ArgumentNullException(nameof(target));
 

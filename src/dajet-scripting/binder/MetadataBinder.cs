@@ -6,10 +6,10 @@ namespace DaJet.Scripting
 {
     public sealed class MetadataBinder
     {
-        private ScriptScope _scope;
+        private BindingScope _scope;
         private List<string> _errors;
         private IMetadataProvider _schema;
-        public bool TryBind(in SyntaxNode node, in IMetadataProvider schema, out ScriptScope scope, out List<string> errors)
+        public bool TryBind(in SyntaxNode node, in IMetadataProvider schema, out BindingScope scope, out List<string> errors)
         {
             if (node is null)
             {
@@ -20,7 +20,7 @@ namespace DaJet.Scripting
             
             _errors = new List<string>();
 
-            _scope = new ScriptScope() { Owner = node };
+            _scope = new BindingScope() { Owner = node };
 
             try
             {
@@ -117,7 +117,7 @@ namespace DaJet.Scripting
         #region "GLOBAL SCOPE BINDING"
         private void Bind(in ScriptModel node)
         {
-            _scope ??= new ScriptScope() { Owner = node };
+            _scope ??= new BindingScope() { Owner = node };
 
             foreach (SyntaxNode statement in node.Statements)
             {
@@ -398,7 +398,7 @@ namespace DaJet.Scripting
 
             node.Table.Binding = table;
 
-            ScriptScope root = _scope.GetRoot();
+            BindingScope root = _scope.GetRoot();
 
             root.Tables.Add(node.Table.Identifier, table);
         }

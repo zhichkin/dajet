@@ -7,9 +7,9 @@ namespace DaJet.Runtime
         private IProcessor _next;
         private IProcessor _else;
         private Dictionary<SyntaxNode, IProcessor> _case = new();
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private readonly CaseStatement _statement;
-        public CaseProcessor(in StreamScope scope)
+        public CaseProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
@@ -24,7 +24,7 @@ namespace DaJet.Runtime
             {
                 if (when.THEN is StatementBlock block)
                 {
-                    StreamScope then_scope = _scope.Create(in block);
+                    ScriptScope then_scope = _scope.Create(in block);
 
                     IProcessor processor = StreamFactory.CreateStream(in then_scope);
                     
@@ -34,7 +34,7 @@ namespace DaJet.Runtime
 
             if (_statement.ELSE is not null)
             {
-                StreamScope else_scope = _scope.Create(_statement.ELSE);
+                ScriptScope else_scope = _scope.Create(_statement.ELSE);
 
                 _else = StreamFactory.CreateStream(in else_scope);
             }

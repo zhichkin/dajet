@@ -5,9 +5,9 @@ namespace DaJet.Runtime
     public sealed class SleepProcessor : IProcessor
     {
         private IProcessor _next;
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private readonly SleepStatement _statement;
-        public SleepProcessor(in StreamScope scope)
+        public SleepProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 

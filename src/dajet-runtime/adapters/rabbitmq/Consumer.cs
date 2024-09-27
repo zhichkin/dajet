@@ -33,10 +33,10 @@ namespace DaJet.Runtime.RabbitMQ
         private EventingBasicConsumer _consumer;
         private int _consumed = 0; // in-memory counter
         private string _consumerTag;
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private readonly ConsumeStatement _options;
         private readonly string _target;
-        public Consumer(in StreamScope scope)
+        public Consumer(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 

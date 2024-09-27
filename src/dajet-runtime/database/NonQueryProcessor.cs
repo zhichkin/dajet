@@ -5,7 +5,7 @@ namespace DaJet.Runtime
 {
     public sealed class NonQueryProcessor : OneDbProcessor
     {
-        public NonQueryProcessor(in StreamScope scope) : base(in scope) { }
+        public NonQueryProcessor(in ScriptScope scope) : base(in scope) { }
         public override void Process()
         {
             using (DbConnection connection = _factory.Create(in _uri))

@@ -5,10 +5,10 @@ namespace DaJet.Runtime
     public sealed class SetProcessor : IProcessor
     {
         private IProcessor _next;
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private readonly string _target;
         private readonly AssignmentStatement _statement;
-        public SetProcessor(in StreamScope scope)
+        public SetProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 

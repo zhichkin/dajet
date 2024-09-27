@@ -13,13 +13,13 @@ namespace DaJet.Runtime
     public sealed class ProcedureProcessor : IProcessor
     {
         private IProcessor _next;
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private Uri _uri;
         private readonly string _procedureName;
         private readonly RequestStatement _statement;
         private readonly IDbConnectionFactory _factory;
         private Func<string, object, DbParameter> AddWithValueDelegate;
-        public ProcedureProcessor(in StreamScope scope)
+        public ProcedureProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 

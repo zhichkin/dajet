@@ -115,7 +115,20 @@ namespace DaJet.Scripting.PostgreSql
             column.Mapping.Clear();
             column.Mapping.Add(map);
 
-            transpiler.Visit(column, in script);
+            transpiler.Visit(column, in script); // _RecorderTRef
+
+            // PostgreSQL: 42846: cannot cast type bytea to integer
+
+            //script.Append("to_number(").Append(map.Name).Append(')');
+
+            //script.Append("CAST(").Append(map.Name).Append(" AS int)");
+
+            //script.Append(map.Name).Append("::int");
+
+            //if (!string.IsNullOrEmpty(map.Alias))
+            //{
+            //    script.Append(" AS ").Append(map.Alias);
+            //}
 
             return null;
         }

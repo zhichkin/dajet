@@ -6,7 +6,7 @@ namespace DaJet.Runtime
 {
     public sealed class IntoArrayProcessor : OneDbProcessor
     {
-        public IntoArrayProcessor(in StreamScope scope) : base(in scope) { }
+        public IntoArrayProcessor(in ScriptScope scope) : base(in scope) { }
         public override void Process()
         {
             List<DataObject> table = new();

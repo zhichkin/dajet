@@ -36,9 +36,9 @@ namespace DaJet.Runtime.RabbitMQ
         private IModel _channel;
         private IConnection _connection;
         private IBasicProperties _properties;
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private readonly ProduceStatement _options;
-        public Producer(in StreamScope scope)
+        public Producer(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 

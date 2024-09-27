@@ -8,7 +8,7 @@ namespace DaJet.Runtime
 {
     public sealed class Metadata : UserDefinedProcessor
     {
-        public Metadata(in StreamScope scope) : base(scope) { }
+        public Metadata(in ScriptScope scope) : base(scope) { }
         public override void Process() { Execute(); _next?.Process(); }
         private void Execute()
         {

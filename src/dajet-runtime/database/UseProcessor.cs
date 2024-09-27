@@ -7,9 +7,9 @@ namespace DaJet.Runtime
     {
         private IProcessor _next;
         private IProcessor _block;
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private readonly UseStatement _statement;
-        public UseProcessor(in StreamScope scope)
+        public UseProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
@@ -25,7 +25,7 @@ namespace DaJet.Runtime
                 throw new InvalidOperationException(error);
             }
             
-            StreamScope block_scope = _scope.Create(_statement.Statements);
+            ScriptScope block_scope = _scope.Create(_statement.Statements);
 
             StreamFactory.InitializeVariables(in block_scope, in database);
 

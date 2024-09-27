@@ -8,7 +8,7 @@ namespace DaJet.Runtime.Kafka
     public sealed class Producer : IProcessor
     {
         private IProcessor _next;
-        private readonly StreamScope _scope;
+        private readonly ScriptScope _scope;
         private readonly ProduceStatement _options;
 
         private int _produced;
@@ -42,7 +42,7 @@ namespace DaJet.Runtime.Kafka
 
             return key.ToString();
         }
-        public Producer(in StreamScope scope)
+        public Producer(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 

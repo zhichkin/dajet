@@ -7,7 +7,7 @@ namespace DaJet.Runtime
     public sealed class IntoObjectProcessor : OneDbProcessor
     {
         private readonly IProcessor _append;
-        public IntoObjectProcessor(in StreamScope scope) : base(in scope)
+        public IntoObjectProcessor(in ScriptScope scope) : base(in scope)
         {
             _append = StreamFactory.CreateAppendStream(in scope, in _into);
         }

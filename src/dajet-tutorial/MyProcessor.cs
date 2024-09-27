@@ -7,7 +7,7 @@ namespace DaJet.Tutorial
 {
     public sealed class MyProcessor : UserDefinedProcessor
     {
-        public MyProcessor(in StreamScope scope) : base(scope) { }
+        public MyProcessor(in ScriptScope scope) : base(scope) { }
         public override void Process() { Execute(); _next?.Process(); }
         private void Execute()
         {
