@@ -1748,10 +1748,6 @@ namespace DaJet.Scripting
             {
                 //union.IsDateTime = true; return;
             }
-            else if (functionName == "UUIDOF")
-            {
-                //union.IsUuid = true; return;
-            }
             else if (name == "VECTOR")
             {
                 //union.IsNumeric = true; return;
