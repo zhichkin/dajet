@@ -226,7 +226,6 @@ namespace DaJet.Scripting
             { "SUBSTRING", TokenType.SUBSTRING },
             { "DATALENGTH", TokenType.DATALENGTH },
             { "NOW", TokenType.NOW },
-            { "UUIDOF", TokenType.UUIDOF },
             { "VECTOR", TokenType.VECTOR },
             { "STRING_AGG", TokenType.STRING_AGG },
             { "CHARLENGTH", TokenType.CHARLENGTH },
@@ -480,7 +479,11 @@ namespace DaJet.Scripting
             string literal = scalar.Literal;
             TokenType token = scalar.Token;
 
-            if (token == TokenType.Boolean)
+            if (token == TokenType.NULL)
+            {
+                return null;
+            }
+            else if (token == TokenType.Boolean)
             {
                 if (literal.ToLowerInvariant() == "true")
                 {

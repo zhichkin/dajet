@@ -861,44 +861,37 @@ namespace DaJet.Scripting
 
             string name = node.Name.ToUpperInvariant();
 
-            if (name == "UUIDOF")
+            script.Append(node.Name);
+
+            if (node.Token != TokenType.EXISTS)
             {
-                VisitUuidOf(in node, in script);
+                script.Append('('); //NOTE: EXISTS function has one parameter - TableExpression
             }
-            else
+
+            if (node.Token == TokenType.COUNT &&
+                node.Modifier == TokenType.DISTINCT)
             {
-                script.Append(node.Name);
+                script.Append("DISTINCT ");
+            }
 
-                if (node.Token != TokenType.EXISTS)
-                {
-                    script.Append('('); //NOTE: EXISTS function has one parameter - TableExpression
-                }
+            SyntaxNode expression;
 
-                if (node.Token == TokenType.COUNT &&
-                    node.Modifier == TokenType.DISTINCT)
-                {
-                    script.Append("DISTINCT ");
-                }
+            for (int i = 0; i < node.Parameters.Count; i++)
+            {
+                expression = node.Parameters[i];
+                if (i > 0) { script.Append(", "); }
+                Visit(in expression, in script);
+            }
 
-                SyntaxNode expression;
+            if (node.Token != TokenType.EXISTS)
+            {
+                script.Append(')'); //NOTE: EXISTS function has one parameter - TableExpression
+            }
 
-                for (int i = 0; i < node.Parameters.Count; i++)
-                {
-                    expression = node.Parameters[i];
-                    if (i > 0) { script.Append(", "); }
-                    Visit(in expression, in script);
-                }
-
-                if (node.Token != TokenType.EXISTS)
-                {
-                    script.Append(')'); //NOTE: EXISTS function has one parameter - TableExpression
-                }
-
-                if (node.Over is not null)
-                {
-                    script.Append(' ');
-                    Visit(node.Over, in script);
-                }
+            if (node.Over is not null)
+            {
+                script.Append(' ');
+                Visit(node.Over, in script);
             }
         }
         protected virtual void Visit(in OverClause node, in StringBuilder script)
@@ -1436,64 +1429,6 @@ namespace DaJet.Scripting
         }
         #endregion
 
-        protected void VisitUuidOf(in FunctionExpression node, in StringBuilder script)
-        {
-            if (node.Parameters.Count == 0)
-            {
-                throw new FormatException($"Function {node.Name}: missing parameter.");
-            }
-
-            SyntaxNode parameter = node.Parameters[0];
-
-            if (parameter is VariableReference variable && variable.Binding is Entity entity)
-            {
-                ScalarExpression scalar = new()
-                {
-                    Token = TokenType.Uuid,
-                    Literal = entity.Identity.ToString()
-                };
-                Visit(in scalar, in script); return;
-            }
-
-            if (parameter is not ColumnReference column)
-            {
-                throw new FormatException($"Function {node.Name}: invalid parameter (column reference expected).");
-            }
-
-            if (column.Mapping is not null)
-            {
-                if (column.Mapping.Count == 1)
-                {
-                    if (column.Mapping[0].Type != UnionTag.Entity)
-                    {
-                        throw new FormatException($"Function {node.Name}: invalid parameter data type.");
-                    }
-                }
-                else
-                {
-                    ColumnMapper map = null;
-
-                    for (int i = 0; i < column.Mapping.Count; i++)
-                    {
-                        if (column.Mapping[i].Type == UnionTag.Entity)
-                        {
-                            map = column.Mapping[i]; break;
-                        }
-                    }
-
-                    if (map is null)
-                    {
-                        throw new FormatException($"Function {node.Name}: invalid parameter data type.");
-                    }
-
-                    column.Mapping.Clear();
-                    column.Mapping.Add(map);
-                }
-            }
-            
-            Visit(in column, in script);
-        }
-        
         protected bool TryGetFromTable(in SyntaxNode node, out TableReference table)
         {
             table = null;

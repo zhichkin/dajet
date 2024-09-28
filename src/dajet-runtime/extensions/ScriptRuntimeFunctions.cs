@@ -88,6 +88,10 @@ namespace DaJet.Runtime
         {
             return DateTime.Now;
         }
+        [Function("NEWUUID")] public static Guid GenerateNewUuid(this IScriptRuntime runtime)
+        {
+            return Guid.NewGuid();
+        }
         [Function("ERROR_MESSAGE")] public static string GetLastErrorMessage(this IScriptRuntime runtime)
         {
             if (runtime is ScriptScope scope

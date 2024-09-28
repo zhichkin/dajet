@@ -7,6 +7,7 @@
         {
             Register(UDF_JSON.Name, new UDF_JSON());
             Register(UDF_TYPEOF.Name, new UDF_TYPEOF());
+            Register(UDF_UUIDOF.Name, new UDF_UUIDOF());
         }
         public static bool TryGet(in string name, out IUserDefinedFunction function)
         {

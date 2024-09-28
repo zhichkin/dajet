@@ -330,10 +330,6 @@ namespace DaJet.Scripting
             {
                 script.Append($"CAST(E'\\\\x{ParserHelper.GetUuidHexLiteral(Guid.NewGuid())}' AS bytea)"); return;
             }
-            else if (name == "UUIDOF")
-            {
-                base.Visit(in node, in script); return;
-            }
             else if (name == "ISNULL")
             {
                 node.Name = "COALESCE";
