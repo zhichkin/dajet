@@ -7,5 +7,7 @@ namespace DaJet.Scripting
     {
         Type ReturnType { get; }
         FunctionDescriptor Transpile(in ISqlTranspiler transpiler, in FunctionExpression node, in StringBuilder script);
+        
+        //TODO: Execute (runtime) !?
     }
 }

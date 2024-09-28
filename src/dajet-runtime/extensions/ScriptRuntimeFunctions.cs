@@ -94,7 +94,7 @@ namespace DaJet.Runtime
                 && scope.Parent is not null && scope.Parent.Owner is StatementBlock
                 && scope.Parent.Parent is not null && scope.Parent.Parent.Owner is TryStatement)
             {
-                return scope.Parent.Parent.ErrorMessage; // this is only useful in the CATCH block
+                return scope.Parent.Parent.ErrorMessage; // useful in the CATCH block only
             }
 
             return string.Empty;
@@ -124,7 +124,7 @@ namespace DaJet.Runtime
                 }
             }
 
-            return "UNKNOWN";
+            return string.Empty;
         }
     }
 }

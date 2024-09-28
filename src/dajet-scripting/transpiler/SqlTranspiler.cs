@@ -10,6 +10,7 @@ namespace DaJet.Scripting
     public abstract class SqlTranspiler : ISqlTranspiler
     {
         protected IMetadataProvider Metadata { get; private set; }
+        public DatabaseProvider Target { get { return Metadata.DatabaseProvider; } }
         public int YearOffset { get; set; } = 0;
         public void Visit(in SyntaxNode expression, in StringBuilder script)
         {
