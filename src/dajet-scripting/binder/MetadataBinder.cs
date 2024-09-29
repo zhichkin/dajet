@@ -104,6 +104,7 @@ namespace DaJet.Scripting
             else if (node is WhileStatement while_statement) { Bind(in while_statement); }
             else if (node is SleepStatement sleep_statement) { Bind(in sleep_statement); }
             else if (node is ReturnStatement return_statement) { Bind(in return_statement); }
+            else if (node is ThrowStatement throw_statement) { Bind(in throw_statement); }
             else if (node is StatementBlock statement_block) { Bind(in statement_block); }
             else if (node is PrintStatement print) { Bind(in print); }
             else if (node is ProcessStatement process) { Bind(in process); }
@@ -1257,6 +1258,10 @@ namespace DaJet.Scripting
             Bind(node.Statements);
         }
         private void Bind(in ReturnStatement node)
+        {
+            Bind(node.Expression);
+        }
+        private void Bind(in ThrowStatement node)
         {
             Bind(node.Expression);
         }

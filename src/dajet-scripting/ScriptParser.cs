@@ -217,11 +217,6 @@ namespace DaJet.Scripting
                 throw new FormatException("[USE] END keyword expected");
             }
 
-            if (Match(TokenType.USE))
-            {
-                // optional : END USE
-            }
-
             return statement;
         }
         private SyntaxNode for_statement()
@@ -287,11 +282,6 @@ namespace DaJet.Scripting
                 throw new FormatException("[FOR] END keyword expected");
             }
 
-            if (Match(TokenType.FOR))
-            {
-                // optional : END FOR
-            }
-
             return statement;
         }
         private SyntaxNode try_statement()
@@ -338,10 +328,16 @@ namespace DaJet.Scripting
                 throw new FormatException("[TRY] END keyword expected");
             }
 
-            if (Match(TokenType.TRY))
+            return statement;
+        }
+        private SyntaxNode throw_statement()
+        {
+            ThrowStatement statement = new()
             {
-                // optional : END TRY
-            }
+                Expression = expression()
+            };
+
+            Skip(TokenType.Comment);
 
             return statement;
         }
@@ -366,6 +362,7 @@ namespace DaJet.Scripting
             else if (Match(TokenType.USE)) { return use_statement(); }
             else if (Match(TokenType.FOR)) { return for_statement(); }
             else if (Match(TokenType.TRY)) { return try_statement(); }
+            else if (Match(TokenType.THROW)) { return throw_statement(); }
             else if (Match(TokenType.SLEEP)) { return sleep_statement(); }
             else if (Match(TokenType.IF)) { return if_statement(); }
             else if (Match(TokenType.CASE)) { return case_statement(); }
@@ -467,11 +464,6 @@ namespace DaJet.Scripting
                 throw new FormatException("[IF] END keyword expected");
             }
 
-            if (Match(TokenType.IF))
-            {
-                // optional : END IF
-            }
-
             return statement;
         }
         private SyntaxNode case_statement()
@@ -526,11 +518,6 @@ namespace DaJet.Scripting
                 throw new FormatException("[CASE] END keyword expected");
             }
 
-            if (Match(TokenType.CASE))
-            {
-                // optional : END CASE
-            }
-
             return statement;
         }
         private SyntaxNode while_statement()
@@ -556,11 +543,6 @@ namespace DaJet.Scripting
             if (!Match(TokenType.END))
             {
                 throw new FormatException("[WHILE] END keyword expected");
-            }
-
-            if (Match(TokenType.WHILE))
-            {
-                // optional : END WHILE
             }
 
             return statement;
@@ -1874,7 +1856,7 @@ namespace DaJet.Scripting
 
             if (!Match(TokenType.END))
             {
-                throw new FormatException($"END keyword expected.");
+                throw new FormatException("[CASE] END keyword expected");
             }
 
             return node;
