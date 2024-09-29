@@ -180,17 +180,29 @@ namespace DaJet.Scripting
 
             if (!Match(TokenType.Variable) || variable() is not VariableReference _variable)
             {
-                throw new FormatException("[ASSIGNMENT] variable identifier expected");
+                throw new FormatException("[SET] variable identifier expected");
             }
 
             statement.Target = _variable;
 
             if (!Match(TokenType.Equals))
             {
-                throw new FormatException("Assignment operator expected");
+                throw new FormatException("[SET] Assignment operator expected");
             }
 
-            statement.Initializer = expression();
+            if (Check(TokenType.SELECT))
+            {
+                statement.Initializer = union();
+            }
+            else
+            {
+                statement.Initializer = expression();
+            }
+
+            if (statement.Initializer is null)
+            {
+                throw new FormatException("[SET] Variable initializer expected");
+            }
 
             return statement;
         }

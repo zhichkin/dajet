@@ -873,7 +873,7 @@ namespace DaJet.Runtime
 
             return value;
         }
-        private static object GetSelectValue(in ScriptScope scope, in IMetadataProvider database, in DeclareStatement declare, in SelectStatement select)
+        internal static object GetSelectValue(in ScriptScope scope, in IMetadataProvider database, in DeclareStatement declare, in SelectStatement select)
         {
             SqlStatement statement = TranspileSelectStatement(in database, in select);
 
