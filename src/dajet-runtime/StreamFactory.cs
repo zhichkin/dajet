@@ -430,14 +430,8 @@ namespace DaJet.Runtime
         }
         internal static IProcessor CreateProcessor(in ScriptScope scope)
         {
-            if (scope.Owner is UseStatement)
-            {
-                return new UseProcessor(in scope);
-            }
-            else if (scope.Owner is ForStatement)
-            {
-                return new Parallelizer(in scope);
-            }
+            if (scope.Owner is UseStatement) { return new UseProcessor(in scope); }
+            else if (scope.Owner is ForStatement) { return new ForProcessor(in scope); }
             else if (scope.Owner is RequestStatement request)
             {
                 if (request.Target.StartsWith("mssql") || request.Target.StartsWith("pgsql"))

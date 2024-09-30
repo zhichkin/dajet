@@ -3,7 +3,7 @@ using DaJet.Scripting.Model;
 
 namespace DaJet.Runtime
 {
-    public sealed class Parallelizer : IProcessor
+    public sealed class ForProcessor : IProcessor
     {
         private IProcessor _next;
         private readonly int _maxdop;
@@ -42,7 +42,7 @@ namespace DaJet.Runtime
 
             return maxdop;
         }
-        public Parallelizer(in ScriptScope scope)
+        public ForProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
