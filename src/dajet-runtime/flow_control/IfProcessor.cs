@@ -36,7 +36,7 @@ namespace DaJet.Runtime
         {
             if (ConditionIsTrue())
             {
-                _next_then.Process();
+                _next_then?.Process();
             }
             else
             {

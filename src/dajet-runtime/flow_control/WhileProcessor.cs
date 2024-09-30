@@ -32,7 +32,7 @@ namespace DaJet.Runtime
             {
                 try
                 {
-                    _body.Process(); //THINK: break/continue - avoid exception hack !?
+                    _body?.Process(); //THINK: break/continue - avoid exception hack !?
                 }
                 catch (BreakException) { break; }
                 catch (ContinueException) { continue; }

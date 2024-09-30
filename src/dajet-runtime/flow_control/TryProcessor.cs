@@ -45,7 +45,7 @@ namespace DaJet.Runtime
 
             try
             {
-                _try_block.Process();
+                _try_block?.Process();
             }
             catch (ReturnException)
             {

@@ -27,8 +27,11 @@ namespace DaJet.Runtime
                     ScriptScope then_scope = _scope.Create(in block);
 
                     IProcessor processor = StreamFactory.CreateStream(in then_scope);
-                    
-                    _case.Add(when.WHEN, processor);
+
+                    if (processor is not null)
+                    {
+                        _case.Add(when.WHEN, processor);
+                    }
                 }
             }
 
