@@ -155,7 +155,8 @@ SET @<identifier> = <expression>
 **\<expression\>** - скалярное значение (литерал), выражение или запрос СУБД.
 ```TSQL
 DECLARE @text string
-SET @text = 'Привет' + ', ' + 'Мир' + '!'
+DECLARE @name string = 'Мир'
+SET @text = 'Привет' + ', ' + @name + '!'
 PRINT @text
 ```
 **Результат выполнения скрипта**
