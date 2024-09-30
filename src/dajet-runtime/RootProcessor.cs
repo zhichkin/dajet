@@ -30,19 +30,11 @@ namespace DaJet.Runtime
             }
             catch (ReturnException)
             {
-                //TODO: dispose stream !?
                 return; //TODO: avoid exception hack !?
             }
-            catch (Exception error)
+            finally
             {
-                if (StreamManager.IGNORE_ERRORS)
-                {
-                    throw; //NOTE: the script should handle errors itself
-                }
-                else
-                {
-                    FileLogger.Default.Write(error);
-                }
+                //TODO: root processor : dispose stream !?
             }
         }
         public object GetReturnValue()

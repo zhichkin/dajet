@@ -41,11 +41,22 @@ namespace DaJet.Runtime
             {
                 StreamFactory.BindVariables(in _scope); // runtime binding
             }
-            else if (initializer is SelectExpression select_expression) // || initializer is TableUnionOperator union
+            else if (initializer is SelectExpression || initializer is TableUnionOperator)
             {
                 if (!_scope.TryGetMetadataProvider(out IMetadataProvider database, out string error))
                 {
                     throw new InvalidOperationException(error);
+                }
+
+                SelectExpression select_expression = null;
+
+                if (initializer is SelectExpression _select)
+                {
+                    select_expression = _select;
+                }
+                else if (initializer is TableUnionOperator union)
+                {
+                    select_expression = union.Expression1 as SelectExpression;
                 }
 
                 select_expression.Into = new IntoClause()
@@ -56,7 +67,7 @@ namespace DaJet.Runtime
 
                 SelectStatement select_command = new()
                 {
-                    Expression = select_expression
+                    Expression = initializer
                 };
 
                 StatementBlock block = new();
@@ -118,9 +129,9 @@ namespace DaJet.Runtime
             {
                 value = StreamFactory.ConstructObject(in _scope, in select);
             }
-            else if (initializer is SelectExpression || initializer is TableUnionOperator)
+            else if (_init is not null) // SELECT ... INTO <variable> FROM <database>
             {
-                _init.Process();
+                _init.Process(); // scalar | object | array
 
                 if (!_scope.TryGetValue(_target.Identifier, out value))
                 {

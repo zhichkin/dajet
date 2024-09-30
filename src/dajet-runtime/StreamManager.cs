@@ -6,15 +6,11 @@ namespace DaJet.Runtime
     public static class StreamManager
     {
         private const string DAJET_SCRIPT_FILE_EXTENSION = "*.djs";
+        private static readonly Dictionary<string, IProcessor> _streams = new();
 
         public static int LOG_MODE = 0; // 0 - file (default), 1 - console
         public static void LogToFile() { LOG_MODE = 0; }
         public static void LogToConsole() { LOG_MODE = 1; }
-
-        public static bool IGNORE_ERRORS = false; // false - log to file (default), true - the script should handle errors itself
-        public static void IgnoreErrors(bool value) { IGNORE_ERRORS = value; }
-
-        private static readonly Dictionary<string, IProcessor> _streams = new();
         public static void Serve(in string path)
         {
             if (Directory.Exists(path))

@@ -517,9 +517,13 @@ namespace DaJet.Runtime
                         }
                     }
                 }
+                else // boolean, number, datetime, string, binary, uuid, entity
+                {
+                    return new IntoScalarProcessor(in scope);
+                }
             }
             
-            return new NonQueryProcessor(in scope);
+            return new NonQueryProcessor(in scope); // insert | update | delete | etc
         }
         internal static IProcessor CreateAppendStream(in ScriptScope parent, in VariableReference target)
         {

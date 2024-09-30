@@ -50,7 +50,6 @@ namespace DaJet
             Console.WriteLine($"[SCRIPT] {filePath}");
 
             StreamManager.LogToConsole();
-            StreamManager.IgnoreErrors(true);
 
             Stopwatch watch = new();
 
@@ -78,7 +77,6 @@ namespace DaJet
             finally
             {
                 StreamManager.LogToFile();
-                StreamManager.IgnoreErrors(false);
             }
 
             watch.Stop();
