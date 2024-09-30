@@ -1,4 +1,5 @@
-﻿using DaJet.Scripting.Model;
+﻿using DaJet.Data;
+using DaJet.Scripting.Model;
 
 namespace DaJet.Runtime
 {
@@ -27,7 +28,39 @@ namespace DaJet.Runtime
             {
                 if (StreamManager.LOG_MODE == 0)
                 {
-                    FileLogger.Default.Write(value.ToString());
+                    if (value is null)
+                    {
+                        FileLogger.Default.Write("null");
+                    }
+                    else if (value is bool boolean)
+                    {
+                        FileLogger.Default.Write(boolean ? "true" : "false");
+                    }
+                    else if (value is decimal number)
+                    {
+                        FileLogger.Default.Write(number.ToString().Replace(',', '.'));
+                    }
+                    else if (value is DateTime datetime)
+                    {
+                        FileLogger.Default.Write(datetime.ToString("yyyy-MM-dd HH:mm:ss"));
+                    }
+                    else if (value is byte[] binary)
+                    {
+                        string hex = "0x";
+
+                        if (binary.Length == 0)
+                        {
+                            FileLogger.Default.Write(hex);
+                        }
+                        else
+                        {
+                            FileLogger.Default.Write(hex + DbUtilities.ByteArrayToString(binary));
+                        }
+                    }
+                    else
+                    {
+                        FileLogger.Default.Write(value.ToString());
+                    }
                 }
                 else
                 {

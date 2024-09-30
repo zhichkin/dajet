@@ -1518,8 +1518,7 @@ namespace DaJet.Runtime
             }
             else
             {
-                value = (left is null ? string.Empty : left.ToString())
-                      + (right is null ? string.Empty : right.ToString());
+                value = GetStringRepresentation(in left) + GetStringRepresentation(in right);
             }
 
             return true;
@@ -1542,6 +1541,40 @@ namespace DaJet.Runtime
             }
 
             return true;
+        }
+        private static string GetStringRepresentation(in object value)
+        {
+            if (value is null)
+            {
+                return "null";
+            }
+            else if (value is bool boolean)
+            {
+                return boolean ? "true" : "false";
+            }
+            else if (value is decimal number)
+            {
+                return number.ToString().Replace(',', '.');
+            }
+            else if (value is DateTime datetime)
+            {
+                return datetime.ToString("yyyy-MM-dd HH:mm:ss");
+            }
+            else if (value is byte[] binary)
+            {
+                string hex = "0x";
+
+                if (binary.Length == 0)
+                {
+                    return hex;
+                }
+                else
+                {
+                    return hex + DbUtilities.ByteArrayToString(binary);
+                }
+            }
+            
+            return value.ToString();
         }
         #endregion
 
