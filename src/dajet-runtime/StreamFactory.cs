@@ -1484,7 +1484,12 @@ namespace DaJet.Runtime
         }
         private static bool TryEvaluate(in ScriptScope scope, in VariableReference expression, out object value)
         {
-            return scope.TryGetValue(expression.Identifier, out value);
+            if (scope.TryGetValue(expression.Identifier, out value))
+            {
+                return true;
+            }
+
+            throw new InvalidOperationException($"Variable [{expression.Identifier}] is not found");
         }
         private static bool TryEvaluate(in ScriptScope scope, in MemberAccessExpression expression, out object value)
         {
