@@ -116,8 +116,8 @@ DECLARE @string   string   = 'Это тестовая строка'
 DECLARE @binary   binary   = 0x001234567890ABCDEF
 DECLARE @uuid     uuid     = 'ba1f9927-0aec-11ed-9cd3-408d5c93cc8e'
 DECLARE @entity   entity   = {12:e3aed142-9dbf-11ed-9ce2-408d5c93cc8e}
-DECLARE @object   object
-DECLARE @array    array
+DECLARE @object   object   -- Литерал не определён
+DECLARE @array    array    -- Литерал не определён
 
 PRINT 'boolean  = ' + @boolean
 PRINT 'decimal  = ' + @decimal
