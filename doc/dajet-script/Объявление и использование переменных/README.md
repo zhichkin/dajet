@@ -45,6 +45,16 @@ DECLARE @binary   binary
 DECLARE @uuid     uuid
 DECLARE @object   object
 DECLARE @array    array
+
+PRINT 'boolean  = ' + @boolean
+PRINT 'decimal  = ' + @decimal
+PRINT 'integer  = ' + @integer
+PRINT 'datetime = ' + @datetime
+PRINT 'string   = ' + @string
+PRINT 'binary   = ' + @binary
+PRINT 'uuid     = ' + @uuid
+PRINT 'object   = ' + @object
+PRINT 'array    = ' + @array
 ```
 **Результат выполнения скрипта**
 ```
