@@ -1209,8 +1209,34 @@ namespace DaJet.Scripting
         }
         private void Bind(in AssignmentStatement node)
         {
-            Bind(node.Target);
-            Bind(node.Initializer);
+            // Оператор присваивания SET обрабатывается аналогично предложению INTO команды SELECT
+            // Для переменных типов object и array необходимо привязать схему данных (структуру) 
+
+            Bind(node.Initializer); // оператор присваивания выполняется справа налево
+
+            Bind(node.Target); // получаем привязку типа данных для переменной
+
+            if (node.Target is VariableReference variable)
+            {
+                if (variable.Binding is TypeIdentifier type) // object | array
+                {
+                    if (type.Token == TokenType.Object || type.Token == TokenType.Array)
+                    {
+                        if (node.Initializer is SelectExpression select)
+                        {
+                            type.Binding = select.Columns; // object schema definition
+                        }
+                        else if (node.Initializer is TableUnionOperator union)
+                        {
+                            type.Binding = (union.Expression1 as SelectExpression).Columns; // object schema definition
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Failed to bind SET: unsupported initializer type");
+                        }
+                    }
+                }
+            }
         }
         private void Bind(in StatementBlock node)
         {

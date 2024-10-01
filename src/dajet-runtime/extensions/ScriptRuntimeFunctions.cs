@@ -1,5 +1,4 @@
-﻿using Confluent.Kafka;
-using DaJet.Data;
+﻿using DaJet.Data;
 using DaJet.Json;
 using DaJet.Metadata;
 using DaJet.Metadata.Core;
@@ -110,6 +109,8 @@ namespace DaJet.Runtime
         }
         [Function("METADATA")] public static DataObject GetMetadataObject(this IScriptRuntime runtime, in string name)
         {
+            //TODO: bind data schema to the target object variable : SET @variable = METADATA('Справочник.Номенклатура')
+
             if (runtime is ScriptScope scope)
             {
                 if (!scope.TryGetMetadataProvider(out IMetadataProvider provider, out string error))
@@ -127,6 +128,7 @@ namespace DaJet.Runtime
 
             return null;
         }
+
         [Function("NOW")] public static DateTime GetCurrentDateTime(this IScriptRuntime runtime)
         {
             return DateTime.Now;
