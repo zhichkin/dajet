@@ -188,7 +188,7 @@ namespace DaJet.Scripting
                 {
                     if (node.Initializer is null)
                     {
-                        throw new FormatException($"[DECLARE {node.Name} entity] must have initializer");
+                        node.Type.Binding = Entity.Undefined; // {0:00000000-0000-0000-0000-000000000000}
                     }
                     else if (node.Initializer is ScalarExpression scalar) // DECLARE @Ссылка entity = {code:uuid}
                     {
@@ -221,7 +221,7 @@ namespace DaJet.Scripting
                     }
                     else
                     {
-                        throw new FormatException($"[DECLARE {node.Name} entity] unknown initializer");
+                        throw new FormatException($"[DECLARE {node.Name} entity] unsupported initializer");
                     }
                 }
                 else if (node.Initializer is SelectExpression select)
