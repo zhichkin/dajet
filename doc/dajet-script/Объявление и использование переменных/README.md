@@ -27,18 +27,13 @@ DECLARE @<identifier> <type> [= <initializer>]
 **\<type\>** - тип переменной (одно из допустимых ключевых слов).<br>
 **\<initializer\>** - необязательный инициализатор: скалярное значение (литерал) или запрос СУБД.
 
-> Переменные типа ```entity``` должны иметь инициализатор! Это исключение.
-
 > Переменным, объявленным без иницализации, присваиваются значения по умолчанию.
 
 > Переменные типов ```object``` и ```array``` инициализируются результатами выполнения других команд.
 
-В следующем примере объявляются переменные всех допустимых типов данных DaJet Script. Их значения выводятся в лог программы. Обратите внимание, что объявление переменной типа ```entity``` закомментировано, так как в противном случае было бы выдано следующее сообщение об ошибке:
-
-> \[DECLARE @entity entity\] must have initializer
+В следующем примере объявляются переменные всех допустимых типов данных DaJet Script. Им присваиваются значения по умолчанию, которые в конечном итоге выводятся в лог программы командой **PRINT**.
 
 ```TSQL
---DECLARE @entity entity
 DECLARE @boolean  boolean
 DECLARE @decimal  number
 DECLARE @integer  number
@@ -46,6 +41,7 @@ DECLARE @datetime datetime
 DECLARE @string   string
 DECLARE @binary   binary
 DECLARE @uuid     uuid
+DECLARE @entity   entity
 DECLARE @object   object
 DECLARE @array    array
 
@@ -56,6 +52,7 @@ PRINT 'datetime = ' + @datetime
 PRINT 'string   = ' + @string
 PRINT 'binary   = ' + @binary
 PRINT 'uuid     = ' + @uuid
+PRINT 'entity   = ' + @entity
 PRINT 'object   = ' + @object
 PRINT 'array    = ' + @array
 ```
@@ -68,6 +65,7 @@ PRINT 'array    = ' + @array
 [2024-09-30 17:52:37] string   =    -- Это комментарий: пустая строка
 [2024-09-30 17:52:37] binary   = 0x -- Тоже комментарий: пустой массив байт
 [2024-09-30 17:52:37] uuid     = 00000000-0000-0000-0000-000000000000
+[2024-10-01 17:52:37] entity   = {0:00000000-0000-0000-0000-000000000000}
 [2024-09-30 17:52:37] object   = null
 [2024-09-30 17:52:37] array    = null
 ```
