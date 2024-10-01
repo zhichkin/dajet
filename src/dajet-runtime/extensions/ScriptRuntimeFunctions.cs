@@ -1,4 +1,5 @@
-﻿using DaJet.Data;
+﻿using Confluent.Kafka;
+using DaJet.Data;
 using DaJet.Json;
 using DaJet.Metadata;
 using DaJet.Metadata.Core;
@@ -9,6 +10,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
+using TokenType = DaJet.Scripting.TokenType;
 
 namespace DaJet.Runtime
 {
@@ -65,6 +67,47 @@ namespace DaJet.Runtime
             return JsonSerializer.Serialize(table, SerializerOptions);
         }
 
+        private static List<ColumnExpression> CreateMetadataObjectSchema()
+        {
+            return new List<ColumnExpression>()
+            {
+                new()
+                {
+                    Alias = "Ссылка",
+                    Expression = new ScalarExpression() { Token = TokenType.Uuid }
+                },
+                new()
+                {
+                    Alias = "Код",
+                    Expression = new ScalarExpression() { Token = TokenType.Integer }
+                },
+                new()
+                {
+                    Alias = "Тип",
+                    Expression = new ScalarExpression() { Token = TokenType.String }
+                },
+                new()
+                {
+                    Alias = "Имя",
+                    Expression = new ScalarExpression() { Token = TokenType.String }
+                },
+                new()
+                {
+                    Alias = "ПолноеИмя",
+                    Expression = new ScalarExpression() { Token = TokenType.String }
+                },
+                new()
+                {
+                    Alias = "Таблица",
+                    Expression = new ScalarExpression() { Token = TokenType.String }
+                },
+                new()
+                {
+                    Alias = "Владелец",
+                    Expression = new ScalarExpression() { Token = TokenType.Uuid }
+                }
+            };
+        }
         [Function("METADATA")] public static DataObject GetMetadataObject(this IScriptRuntime runtime, in string name)
         {
             if (runtime is ScriptScope scope)
@@ -129,6 +172,10 @@ namespace DaJet.Runtime
             }
 
             return string.Empty;
+        }
+        [Function("ENTITY")] public static Entity CreateEntity(this IScriptRuntime runtime, int typeCode, Guid identity)
+        {
+            return new Entity(typeCode, identity);
         }
     }
 }

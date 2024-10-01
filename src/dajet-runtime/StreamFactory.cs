@@ -219,7 +219,21 @@ namespace DaJet.Runtime
                 }
                 else if (declare.Type.Binding is Type type)
                 {
-                    return type;
+                    if (declare.Type.Identifier == "number")
+                    {
+                        if (scope.TryGetValue(expression.Identifier, out object value))
+                        {
+                            return value?.GetType(); // int | long | decimal
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException($"Failed to get variable value {expression.Identifier}");
+                        }
+                    }
+                    else
+                    {
+                        return type;
+                    }
                 }
             }
 

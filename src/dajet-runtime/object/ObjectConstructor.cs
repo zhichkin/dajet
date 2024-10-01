@@ -1,5 +1,4 @@
 ﻿using DaJet.Data;
-using DaJet.Scripting;
 using DaJet.Scripting.Model;
 
 namespace DaJet.Runtime
@@ -33,29 +32,6 @@ namespace DaJet.Runtime
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Process()
         {
-            //if (_statement.Expression is SelectExpression select)
-            //{
-            //    DataObject record = new(select.Columns.Count);
-
-            //    foreach (ColumnExpression column in select.Columns)
-            //    {
-            //        if (string.IsNullOrWhiteSpace(column.Alias))
-            //        {
-            //            throw new InvalidOperationException($"[CONSTRUCTOR] Property name expected");
-            //        }
-
-            //        if (StreamFactory.TryEvaluate(in _scope, column.Expression, out object value))
-            //        {
-            //            record.SetValue(column.Alias, value);
-            //        }
-            //    }
-
-            //    if (!_scope.TrySetValue(_target.Identifier, record))
-            //    {
-            //        throw new InvalidOperationException($"Failed to assign variable {_target}");
-            //    }
-            //}
-
             if (_statement.Expression is SelectExpression select)
             {
                 DataObject value = StreamFactory.ConstructObject(in _scope, in select);
