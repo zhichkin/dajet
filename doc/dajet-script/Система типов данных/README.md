@@ -16,12 +16,12 @@
 |Число|number|decimal<br>int<br>long|numeric<br>int<br>bigint|numeric<br>integer<br>bigint|
 |Дата|datetime|DateTime|datetime2|timestamp<br>without time zone|
 |Строка|string|string|nchar<br>nvarchar|mchar<br>mvarchar|
-|Ссылка|entity|[Entity](https://github.com/zhichkin/dajet/blob/main/src/dajet-model/core/Entity.cs)|binary(16)|bytea|
+|Ссылка|[entity](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/entity/README.md)|[Entity](https://github.com/zhichkin/dajet/blob/main/src/dajet-model/core/Entity.cs)|binary(16)|bytea|
 |Составной тип|union|[Union](https://github.com/zhichkin/dajet/blob/main/src/dajet-model/core/Union.cs)|Все выше<br>перечисленные|Все выше<br>перечисленные|
 |Бинарные данные|binary|byte[]|varbinary|bytea|
 |Уникальный<br>идентификатор|uuid|Guid|binary(16)|bytea|
-|Структура|object|[DataObject](https://github.com/zhichkin/dajet/blob/main/src/dajet-model/data/DataObject.cs)|UDT|UDT|
-|Массив|array|List\<DataObject\>|UDT|UDT|
+|Структура|[object](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/object/README.md)|[DataObject](https://github.com/zhichkin/dajet/blob/main/src/dajet-model/data/DataObject.cs)|UDT|UDT|
+|Массив|[array](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/array/README.md)|List\<DataObject\>|UDT|UDT|
 
 ### Тип данных ```entity```
 

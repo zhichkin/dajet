@@ -1,0 +1,4 @@
+## DaJet Script
+
+### Тип ```entity```
+
