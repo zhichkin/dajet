@@ -309,6 +309,18 @@ namespace DaJet.Scripting
                         if (name == member)
                         {
                             node.Binding = UnionType.MapToType(in union);
+
+                            if (union.IsUndefined && columns[i].Expression is VariableReference variable)
+                            {
+                                if (variable.Binding is TypeIdentifier schema)
+                                {
+                                    if (schema.Token == TokenType.Object || schema.Token == TokenType.Array)
+                                    {
+                                        node.Binding = variable; // искомое свойство имеет объектный тип данных
+                                    }
+                                }
+                            }
+
                             break;
                         }
                     }
