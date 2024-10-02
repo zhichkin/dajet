@@ -70,7 +70,15 @@ namespace DaJet.Runtime
             {
                 object result = StreamFactory.InvokeFunction(in _scope, function.Node);
 
-                _parameters[function.Target] = result;
+                if (function.Node.Name == UDF_TYPEOF.Name && result is int typeCode)
+                {
+                    //TODO: Надо что-то подумать с этим костылём ...
+                    _parameters[function.Target] = DbUtilities.GetByteArray(typeCode);
+                }
+                else
+                {
+                    _parameters[function.Target] = result;
+                }
             }
         }
     }

@@ -1,5 +1,4 @@
-﻿using Azure;
-using DaJet.Data;
+﻿using DaJet.Data;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 
