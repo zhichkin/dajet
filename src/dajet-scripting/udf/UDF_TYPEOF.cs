@@ -147,9 +147,9 @@ namespace DaJet.Scripting
         }
         private FunctionDescriptor Transpile(in VariableReference variable, in StringBuilder script)
         {
-            if (variable.Binding is not Entity)
+            if (variable.Binding is not Entity && !(variable.Binding is Type type && type == typeof(string)))
             {
-                throw new FormatException("[TYPEOF] invalid variable type");
+                throw new FormatException("[TYPEOF] invalid variable type: Entity or string expected");
             }
 
             string parameterName = $"@TYPEOF_" + variable.Identifier[1..];

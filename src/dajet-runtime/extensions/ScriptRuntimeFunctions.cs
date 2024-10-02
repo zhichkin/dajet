@@ -5,6 +5,8 @@ using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
+using System;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -153,9 +155,46 @@ namespace DaJet.Runtime
         {
             return entity.TypeCode;
         }
+        [Function("TYPEOF")] public static int GetEntityTypeCode(this IScriptRuntime runtime, in string name)
+        {
+            if (runtime is ScriptScope scope)
+            {
+                if (!scope.TryGetMetadataProvider(out IMetadataProvider provider, out string error))
+                {
+                    throw new InvalidOperationException(error);
+                }
+
+                MetadataObject metadata = provider.GetMetadataObject(name);
+
+                if (metadata is ApplicationObject entity && entity.TypeCode > 0)
+                {
+                    return entity.TypeCode; //TODO: check if reference object
+                }
+            }
+
+            return Entity.Undefined.TypeCode;
+        }
         [Function("UUIDOF")] public static Guid GetEntityIdentity(this IScriptRuntime runtime, in Entity entity)
         {
             return entity.Identity;
+        }
+        [Function("NAMEOF")] public static string GetEntityTypeFullName(this IScriptRuntime runtime, int typeCode)
+        {
+            if (runtime is ScriptScope scope)
+            {
+                if (scope.TryGetMetadataProvider(out IMetadataProvider provider, out string error))
+                {
+                    MetadataItem item = provider.GetMetadataItem(typeCode);
+
+                    MetadataObject metadata = provider.GetMetadataObject(item.Type, item.Uuid);
+
+                    string type = MetadataTypes.ResolveNameRu(item.Type);
+
+                    return $"{type}.{metadata.Name}";
+                }
+            }
+
+            return string.Empty;
         }
         [Function("NAMEOF")] public static string GetEntityTypeFullName(this IScriptRuntime runtime, in Entity entity)
         {
@@ -178,6 +217,25 @@ namespace DaJet.Runtime
         [Function("ENTITY")] public static Entity CreateEntity(this IScriptRuntime runtime, int typeCode, Guid identity)
         {
             return new Entity(typeCode, identity);
+        }
+        [Function("ENTITY")] public static Entity CreateEntity(this IScriptRuntime runtime, in string name, Guid identity)
+        {
+            if (runtime is ScriptScope scope)
+            {
+                if (!scope.TryGetMetadataProvider(out IMetadataProvider provider, out string error))
+                {
+                    throw new InvalidOperationException(error);
+                }
+
+                MetadataObject metadata = provider.GetMetadataObject(name);
+
+                if (metadata is ApplicationObject entity && entity.TypeCode > 0)
+                {
+                    return new Entity(entity.TypeCode, identity); //TODO: check if reference object
+                }
+            }
+
+            return Entity.Undefined;
         }
     }
 }

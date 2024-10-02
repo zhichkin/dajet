@@ -1,4 +1,5 @@
-﻿using DaJet.Data;
+﻿using Azure;
+using DaJet.Data;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
 
@@ -514,7 +515,6 @@ namespace DaJet.Scripting
         #endregion
 
         #region "<union type> == <union type>"
-
         private bool IsUnionNode(in SyntaxNode node)
         {
             return DataMapper.TryInfer(in node, out UnionType type) && type.IsUnion;
@@ -583,7 +583,7 @@ namespace DaJet.Scripting
         private void ConfigureTag(in Dictionary<UnionTag, ComparisonOperator> map, in ComparisonOperator comparison)
         {
             if (!map.TryGetValue(UnionTag.Tag, out ComparisonOperator item)) { return; }
-            if (item.Expression1 is null && item.Expression2 is null) { return; } // Tag column is not used
+            if (item.Expression1 is null || item.Expression2 is null) { return; } // Tag column is not used
             if (item.Expression1 is not null && item.Expression2 is not null) { return; } // Tag column is mapped already
 
             UnionType target;
@@ -606,7 +606,7 @@ namespace DaJet.Scripting
 
             ScalarExpression scalar = new()
             {
-                Token = ParserHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.Tag)),
+                Token = TokenType.Binary,
                 Literal = UnionType.GetHexString(type)
             };
 
@@ -622,7 +622,7 @@ namespace DaJet.Scripting
         private void ConfigureTypeCode(in Dictionary<UnionTag, ComparisonOperator> map, in ComparisonOperator comparison)
         {
             if (!map.TryGetValue(UnionTag.TypeCode, out ComparisonOperator item)) { return; }
-            if (item.Expression1 is null && item.Expression2 is null) { return; } // TypeCode column is not used
+            if (item.Expression1 is null || item.Expression2 is null) { return; } // TypeCode column is not used
             if (item.Expression1 is not null && item.Expression2 is not null) { return; } // TypeCode column is mapped already
 
             UnionType target;
@@ -640,7 +640,7 @@ namespace DaJet.Scripting
 
             ScalarExpression scalar = new()
             {
-                Token = ParserHelper.GetDataTypeToken(UnionType.GetDataType(UnionTag.TypeCode)),
+                Token = TokenType.Binary,
                 Literal = $"0x{Convert.ToHexString(DbUtilities.GetByteArray(target.TypeCode))}"
             };
 
@@ -666,6 +666,10 @@ namespace DaJet.Scripting
             else if (node is VariableReference variable)
             {
                 Transform(in variable, map, setter);
+            }
+            else if (node is FunctionExpression function)
+            {
+                Transform(in function, map, setter);
             }
         }
         private void Transform(in ColumnReference node, in Dictionary<UnionTag, ComparisonOperator> map, Action<ComparisonOperator, SyntaxNode> setter)
@@ -706,14 +710,95 @@ namespace DaJet.Scripting
         {
             UnionType type = DataMapper.Infer(node);
 
-            UnionTag tag = type.IsUuid ? UnionTag.Entity : type.GetSingleTagOrUndefined();
-
-            if (map.TryGetValue(tag, out ComparisonOperator comparison))
+            if (type.IsEntity)
             {
-                setter(comparison, node);
+                if (map.TryGetValue(UnionTag.Tag, out ComparisonOperator tag))
+                {
+                    setter(tag, new ScalarExpression()
+                    {
+                        Token = TokenType.Binary,
+                        Literal = "0x08" // reference type (ссылка)
+                    });
+                }
+
+                if (map.TryGetValue(UnionTag.TypeCode, out ComparisonOperator code))
+                {
+                    setter(code, new FunctionExpression()
+                    {
+                        Token = TokenType.UDF,
+                        Name = UDF_TYPEOF.Name,
+                        Parameters = { node }
+                    });
+                }
+
+                if (map.TryGetValue(UnionTag.Entity, out ComparisonOperator uuid))
+                {
+                    setter(uuid, new FunctionExpression()
+                    {
+                        Token = TokenType.UDF,
+                        Name = UDF_UUIDOF.Name,
+                        Parameters = { node }
+                    });
+                }
+            }
+            else if (type.IsUuid)
+            {
+                if (map.TryGetValue(UnionTag.Entity, out ComparisonOperator uuid))
+                {
+                    setter(uuid, new FunctionExpression()
+                    {
+                        Token = TokenType.UDF,
+                        Name = UDF_UUIDOF.Name,
+                        Parameters = { node }
+                    });
+                }
+            }
+            else if (type.IsBoolean)
+            {
+                if (map.TryGetValue(UnionTag.Boolean, out ComparisonOperator boolean))
+                {
+                    setter(boolean, node);
+                }
+            }
+            else if (type.IsNumeric)
+            {
+                if (map.TryGetValue(UnionTag.Numeric, out ComparisonOperator number))
+                {
+                    setter(number, node);
+                }
+            }
+            else if (type.IsDateTime)
+            {
+                if (map.TryGetValue(UnionTag.DateTime, out ComparisonOperator datetime))
+                {
+                    setter(datetime, node);
+                }
+            }
+            else if (type.IsString)
+            {
+                if (map.TryGetValue(UnionTag.String, out ComparisonOperator _string))
+                {
+                    setter(_string, node);
+                }
             }
         }
-
+        private void Transform(in FunctionExpression node, in Dictionary<UnionTag, ComparisonOperator> map, Action<ComparisonOperator, SyntaxNode> setter)
+        {
+            if (node.Name == UDF_TYPEOF.Name)
+            {
+                if (map.TryGetValue(UnionTag.TypeCode, out ComparisonOperator comparison))
+                {
+                    setter(comparison, node);
+                }
+            }
+            else if (node.Name == UDF_UUIDOF.Name)
+            {
+                if (map.TryGetValue(UnionTag.Entity, out ComparisonOperator comparison))
+                {
+                    setter(comparison, node);
+                }
+            }
+        }
         #endregion
     }
 }
