@@ -5,8 +5,6 @@ using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
-using System;
-using System.Security.Principal;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
