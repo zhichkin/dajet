@@ -6,6 +6,10 @@
 
 - [Общие сведения](#общие-сведения)
 - [Функции для работы с типом ```entity```](#функции-для-работы-с-типом-entity)
+  - [Функция ```ENTITY```](#функция-entity)
+  - [Функция ```TYPEOF```](#функция-typeof)
+  - [Функция ```UUIDOF```](#функция-uuidof)
+  - [Функция ```NAMEOF```](#функция-nameof)
 - [Типизированное объявление ```entity```](#типизированное-объявление-entity)
 
 #### Общие сведения
@@ -109,9 +113,87 @@ END
 **Таблица функций типа ```entity```**
 |**Функция**|**Возврат**|**Параметры**|**Описание**|**Команда USE**|**Запрос СУБД**|**Выражение<br>DaJet Script**|
 |---|---|---|---|---|---|---|
-|ENTITY|entity|string|Создаёт пустую ссылку по полному имени объекта метаданных|да|нет|да|
-|ENTITY|entity|string<br>uuid|Создаёт конкретную ссылку по полному имени объекта метаданных и идентификатору<br>`Наличие объекта в базе данных, имеющего такую ссылку, не гарантировано`|да|нет|да|
-|ENTITY|entity|number<br>uuid|Создаёт конкретную ссылку или пустую ссылку по коду типа объекта метаданных и идентификатору|нет|нет|да|
+|[ENTITY](#функция-entity)|entity|string|Создаёт пустую ссылку по полному имени объекта метаданных|да|нет|да|
+|[ENTITY](#функция-entity)|entity|string<br>uuid|Создаёт конкретную ссылку по полному имени объекта метаданных и идентификатору<br>`Наличие объекта в базе данных, имеющего такую ссылку, не гарантировано`|да|нет|да|
+|[ENTITY](#функция-entity)|entity|number<br>uuid|Создаёт конкретную ссылку или пустую ссылку по коду типа объекта метаданных и идентификатору|нет|нет|да|
+|[TYPEOF](#функция-typeof)|number|string|Получает значение кода типа объекта метаданных по его полному имени|да|да|да|
+|[TYPEOF](#функция-typeof)|number|entity|Получает значение кода типа объекта метаданных из ссылки, структуры ```entity```|да|да|да|
+|[TYPEOF](#функция-typeof)|number|поле<br>таблицы<br>базы данных|Получает значение кода типа объекта метаданных из поля таблицы базы данных, которое хранит значение ссылки, структуры ```entity```|да|да|нет|
+|[UUIDOF](#функция-uuidof)|uuid|entity|Получает значение идентификатора объекта из ссылки, структуры ```entity```|да|да|да|
+|[UUIDOF](#функция-uuidof)|uuid|поле<br>таблицы<br>базы данных|Получает значение идентификатора объекта из поля таблицы базы данных, которое хранит значение ссылки, структуры ```entity```|да|да|нет|
+|[NAMEOF](#функция-nameof)|string|number|Получает полное имя объекта метаданных по его коду типа|да|нет|да|
+|[NAMEOF](#функция-nameof)|string|entity|Получает полное имя объекта метаданных из ссылки, структуры ```entity```|да|нет|да|
+
+[Наверх](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/entity/README.md#тип-entity)
+
+#### Функция ```ENTITY```
+
+```TSQL
+DECLARE @name   string = 'Справочник.Номенклатура'
+DECLARE @type   number = 36 -- Код типа Справочник.Номенклатура
+DECLARE @uuid   uuid   = '08ec109d-a06b-a1b1-11ee-ca472bff0a0d'
+DECLARE @empty  uuid   = '00000000-0000-0000-0000-000000000000'
+DECLARE @object object
+
+USE 'mssql://server/database'
+
+   SET @object = SELECT by_name_no_uuid   = ENTITY(@name)
+                      , by_name_zero_uuid = ENTITY(@name, @empty)
+                      , by_name_and_uuid  = ENTITY(@name, @uuid)
+                      , by_type_and_uuid  = ENTITY(@type, @uuid)
+END
+
+PRINT 'Пустая ссылка по имени объекта метаданных : ' + @object.by_name_no_uuid
+PRINT 'Пустая ссылка по имени и нулевому UUID    : ' + @object.by_name_zero_uuid
+PRINT 'Конкретная ссылка по имени и UUID         : ' + @object.by_name_and_uuid
+PRINT 'Конкретная ссылка по коду типа и UUID     : ' + @object.by_type_and_uuid
+
+-- Результат выполнения скрипта
+[2024-10-03 14:25:06] Пустая ссылка по имени объекта метаданных : {36:00000000-0000-0000-0000-000000000000}
+[2024-10-03 14:25:06] Пустая ссылка по имени и нулевому UUID    : {36:00000000-0000-0000-0000-000000000000}
+[2024-10-03 14:25:06] Конкретная ссылка по имени и UUID         : {36:08ec109d-a06b-a1b1-11ee-ca472bff0a0d}
+[2024-10-03 14:25:06] Конкретная ссылка по коду типа и UUID     : {36:08ec109d-a06b-a1b1-11ee-ca472bff0a0d}
+```
+
+[Наверх](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/entity/README.md#тип-entity)
+
+#### Функция ```TYPEOF```
+
+```TSQL
+DECLARE @Ссылка entity
+DECLARE @name   string = 'Справочник.Номенклатура'
+DECLARE @type   number
+DECLARE @code   number
+DECLARE @empty  uuid   = '00000000-0000-0000-0000-000000000000'
+
+USE 'pgsql://postgres:postgres@127.0.0.1:5432/database'
+   SET @type   = TYPEOF(@name)
+   SET @Ссылка = ENTITY(@type, @empty)
+   SET @code   = SELECT TOP 1 TYPEOF(Ссылка)
+                   FROM Справочник.Номенклатура
+END
+
+PRINT 'Коды типа Справочник.Номенклатура:'
+PRINT 'TYPEOF(имя метаданного)      = ' + @type
+PRINT 'TYPEOF(ссылка на объект)     = ' + TYPEOF(@Ссылка)
+PRINT 'TYPEOF(поле таблицы, запрос) = ' + @code
+
+-- Результат выполнения скрипта
+[2024-10-03 15:12:49] Коды типа Справочник.Номенклатура:
+[2024-10-03 15:12:49] TYPEOF(имя метаданного)        = 38
+[2024-10-03 15:12:49] TYPEOF(ссылка на объект)       = 38
+[2024-10-03 15:12:49] TYPEOF(поле таблицы в запросе) = 38
+```
+
+[Наверх](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/entity/README.md#тип-entity)
+
+#### Функция ```UUIDOF```
+
+
+
+[Наверх](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/entity/README.md#тип-entity)
+
+#### Функция ```NAMEOF```
 
 [Наверх](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/entity/README.md#тип-entity)
 
