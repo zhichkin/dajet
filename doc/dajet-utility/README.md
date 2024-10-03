@@ -7,7 +7,7 @@
 ### Установка
 
 1. Установить [Microsoft .NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
-2. Скачать [дистрибутив утилиты](https://github.com/zhichkin/dajet/releases/tag/dajet-svc-1.1.0)
+2. Скачать [дистрибутив утилиты](https://github.com/zhichkin/dajet/releases/latest)
 3. Создать рабочий каталог и распаковать в него дистрибутив, например: ```C:\dajet-utility```
 4. Перейти в каталог установки и выполнить тестовый скрипт ```test.djs```
 ```SQL
