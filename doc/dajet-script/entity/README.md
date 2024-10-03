@@ -215,6 +215,30 @@ PRINT 'UUIDOF(ссылка на объект в коде) = ' + UUIDOF(@Ссыл
 
 #### Функция ```NAMEOF```
 
+```TSQL
+DECLARE @name        string = 'Справочник.Номенклатура'
+DECLARE @entity      entity -- Ссылка на объект
+DECLARE @type_code   number -- Код типа объекта
+DECLARE @from_code   string
+DECLARE @from_entity string
+
+USE 'pgsql://postgres:postgres@127.0.0.1:5432/database'
+   SET @entity      = ENTITY(@name)      -- Создаём пустую ссылку по имени
+   SET @type_code   = TYPEOF(@name)      -- Получаем код типа по имени
+   SET @from_code   = NAMEOF(@type_code) -- Имя типа по его коду
+   SET @from_entity = NAMEOF(@entity)    -- Имя типа из ссылки
+END
+
+PRINT 'Получение полного имени типа объекта метаданных'
+PRINT '- по коду типа        = ' + @from_code
+PRINT '- из ссылки на объект = ' + @from_entity
+
+-- Результат выполнения скрипта
+[2024-10-03 15:47:51] Получение полного имени типа объекта метаданных
+[2024-10-03 15:47:51] - по коду типа        = Справочник.Номенклатура
+[2024-10-03 15:47:51] - из ссылки на объект = Справочник.Номенклатура
+```
+
 [Наверх](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/entity/README.md#тип-entity)
 
 #### Типизированное объявление ```entity```
