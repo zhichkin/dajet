@@ -21,7 +21,7 @@
 - Apache Kafka
   - CONSUME
   - PRODUCE
-- Web API (http)
+- RPC (http, web api)
   - REQUEST
 - [Примеры DaJet Script](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/scripts)
 
