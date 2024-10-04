@@ -1242,10 +1242,6 @@ namespace DaJet.Scripting
                         {
                             type.Binding = (union.Expression1 as SelectExpression).Columns; // object schema definition
                         }
-                        else
-                        {
-                            throw new InvalidOperationException("Failed to bind SET: unsupported initializer type");
-                        }
                     }
                 }
             }
