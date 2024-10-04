@@ -46,3 +46,5 @@ PRODUCE 'kafka'
  SELECT Key   = 'Справочник.Номенклатура' -- Ключ сообщения
       , Value = JSON(@message)      -- Тело сообщения
       , Topic = @Приёмник                 -- Топик Apache Kafka
+
+END -- Контекст базы данных источника
