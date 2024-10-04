@@ -31,3 +31,5 @@ SELECT НомерСообщения = VECTOR('so_incoming_queue')
      , Отправитель    = @message.Topic
      , ТипСообщения   = @message.Key
      , ТелоСообщения  = @message.Value
+
+END -- Контекст базы данных приёмника
