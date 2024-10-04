@@ -33,6 +33,8 @@
   - PRODUCE
 - RPC (http, web api)
   - REQUEST
+- Программное расширение DaJet Script
+  - PROCESS \<variables\> WITH \<c-sharp-interface\> INTO \<variable\> [SELECT \<options\>]
 - [Примеры DaJet Script](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/scripts)
 
 ### Общее описание
