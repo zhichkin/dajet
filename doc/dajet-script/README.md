@@ -3,7 +3,27 @@
 - [Общее описание](#общее-описание)
 - [Система типов данных](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/%D0%A1%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D0%B0%20%D1%82%D0%B8%D0%BF%D0%BE%D0%B2%20%D0%B4%D0%B0%D0%BD%D0%BD%D1%8B%D1%85/README.md)
 - [Объявление и использование переменных](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/%D0%9E%D0%B1%D1%8A%D1%8F%D0%B2%D0%BB%D0%B5%D0%BD%D0%B8%D0%B5%20%D0%B8%20%D0%B8%D1%81%D0%BF%D0%BE%D0%BB%D1%8C%D0%B7%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5%20%D0%BF%D0%B5%D1%80%D0%B5%D0%BC%D0%B5%D0%BD%D0%BD%D1%8B%D1%85/README.md)
-- Документация будет дополняться ...
+- Вызов скриптов по http
+- Вызов внешних скриптов
+  - EXECUTE
+- Базы данных
+  - SELECT
+  - STREAM (потоковый SELECT)
+  - CONSUME (деструктивный STREAM)
+  - INSERT
+  - UPDATE
+  - DELETE
+  - REQUEST (хранимые процедуры)
+- RabbitMQ
+  - CONSUME
+  - PRODUCE
+- Apache Kafka
+  - CONSUME
+  - PRODUCE
+- Web API (http)
+  - REQUEST
+
+Документация будет дополняться ...
 
 ### Общее описание
 
