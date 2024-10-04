@@ -103,6 +103,28 @@ END
 #### Создание ```array``` при помощи функции JSON
 
 ```TSQL
+DECLARE @array  array
+DECLARE @object object
+
+DECLARE @json string = '[
+  { "name": "name 1", "value": 123 },
+  { "name": "name 2", "value": 321 },
+  { "name": "name 3", "value": 333 }
+]'
+
+-- Преобразование JSON в массив объектов
+SET @array = JSON(@json)
+
+-- Вывод результата в формате JSON
+FOR @object IN @array
+   -- Преобразование object в JSON
+   PRINT JSON(@object)
+END
+
+-- Результат выполнения скрипта
+[2024-10-04 20:07:59] {"name":"name 1","value":123}
+[2024-10-04 20:07:59] {"name":"name 2","value":321}
+[2024-10-04 20:07:59] {"name":"name 3","value":333}
 ```
 
 [Наверх](#тип-array)
