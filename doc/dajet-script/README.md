@@ -11,7 +11,7 @@
   - STREAM (потоковый SELECT)
   - CONSUME (деструктивный STREAM)
   - INSERT
-  - UPDATE
+  - UPDATE (обычный и потоковый)
   - DELETE
   - REQUEST (хранимые процедуры)
 - RabbitMQ
