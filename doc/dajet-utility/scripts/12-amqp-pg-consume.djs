@@ -22,3 +22,5 @@ SELECT НомерСообщения = VECTOR('so_incoming_queue')
      , ТипСообщения   = @message.Type
      , ТелоСообщения  = @message.Body
      , Получатели     = @message.ContentType
+
+END -- Контекст базы данных приёмника
