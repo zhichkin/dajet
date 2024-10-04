@@ -28,3 +28,5 @@ REQUEST '{@options.АдресСервера}/api/vhosts/{@vhost}'
       , Authorization = 'Basic ' + @options.ЛогинПароль
  SELECT Method = 'DELETE'
    INTO @response
+
+END -- Контекст базы данных
