@@ -27,3 +27,5 @@ PRODUCE 'amqp://guest:guest@localhost:5672/dajet'
       , Body = @message.ТелоСообщения
       , Exchange = 'test-exchange'
       , MessageId = @message.НомерСообщения
+
+END -- Контекст базы данных источника
