@@ -93,3 +93,5 @@ FOR EACH @node IN @nodes
      INTO @response
 
 END -- FOR
+
+END -- Контекст базы данных
