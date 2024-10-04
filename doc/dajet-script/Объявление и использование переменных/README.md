@@ -14,7 +14,6 @@
 - [Тип ```entity```](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/entity/README.md)
 - [Тип ```object```](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/object/README.md)
 - [Тип ```array```](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/array/README.md)
-- [Инициализация запросом http](#инициализация-запросом-http)
 
 ### Объявление
 
@@ -419,7 +418,3 @@ PRINT JSON(@array)
 [2024-10-01 11:51:23] [{"code":"00000001","name":"Товар 1"},{"code":"00000002","name":"Товар 2"}]
 ```
 [Наверх](#присваивание-значения-запросом)
-
-### Инициализация запросом http
-
-[Наверх](#объявление-и-использование-переменных)
