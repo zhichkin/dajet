@@ -6,7 +6,7 @@
 - Функция JSON
 - Вызов скриптов по http
 - Вызов внешних скриптов
-  - EXECUTE ```'script.djs'```
+  - EXECUTE ```script.djs```
 - Базы данных
   - SELECT
   - STREAM (потоковый SELECT)
