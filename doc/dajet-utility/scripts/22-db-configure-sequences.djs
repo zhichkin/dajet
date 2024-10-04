@@ -28,3 +28,5 @@ APPLY SEQUENCE so_outbox_sequence
 -- *****************************************************************
 -- REVOKE SEQUENCE so_outbox_sequence
 --     ON РегистрСведений.ИсходящаяОчередь
+
+END -- Контекст базы данных
