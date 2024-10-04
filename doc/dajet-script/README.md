@@ -7,7 +7,17 @@
 - Вызов скриптов по http
 - Вызов внешних скриптов
   - EXECUTE ```script.djs```
+- Контроль потока выполнения
+  - IF...THEN...ELSE...END
+  - CASE...WHEN...THEN...ELSE...END
+  - WHILE...END
+  - FOR...IN...END
+  - TRY...CATCH...FINALLY...END
+  - BREAK, CONTINUE, RETURN, THROW
+- Параллельное выполнение кода
+  - FOR...IN...MAXDOP...END
 - Базы данных
+  - USE
   - SELECT
   - STREAM (потоковый SELECT)
   - CONSUME (деструктивный STREAM)
