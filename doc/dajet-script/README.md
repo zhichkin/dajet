@@ -17,6 +17,7 @@
   - FOR...IN...END
   - TRY...CATCH...FINALLY...END
   - BREAK, CONTINUE, RETURN, THROW
+  - SLEEP \<seconds\>
 - Параллельное выполнение кода
   - FOR...IN...MAXDOP...END
 - Базы данных
