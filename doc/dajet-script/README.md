@@ -10,25 +10,48 @@
 - Вызов скриптов по http
 - Вызов внешних скриптов
   - EXECUTE ```script.djs```
-- Контроль потока выполнения
+- Условное выполнение кода
   - IF...THEN...ELSE...END
-  - CASE...WHEN...THEN...ELSE...END
+  - CASE WHEN...THEN...ELSE...END
+- Циклы
   - WHILE...END
-  - FOR...IN...END
+  - FOR \<object\> IN \<array\> END
+- Структурированная обработка ошибок
   - TRY...CATCH...FINALLY...END
   - BREAK, CONTINUE, RETURN, THROW
-  - SLEEP \<seconds\>
+- SLEEP \<seconds\>
 - Параллельное выполнение кода
-  - FOR...IN...MAXDOP...END
+  - FOR \<object\> IN \<array\> MAXDOP \<degree-of-parallelism\> END
 - Базы данных
   - USE
   - SELECT
+    - Табличные операторы
+      - JOIN, UNION, APPLY
+      - Подзапросы
+    - Общие табличные выражения
+      - Обычные и рекурсивные запросы
+    - Временные таблицы
+    - Агрегатные функции
+      - SUM, MAX, MIN, AVG, COUNT
+    - Оконные функции OVER
+      - SUM, MAX, MIN, AVG, COUNT
+      - ROW_NUMBER, LAG, LEAD, FIRST_VALUE, LAST_VALUE
+    - Строковые функции
+      - LTRIM, RTRIM, LOWER, UPPER, REPLACE, CONCAT, CONCAT_WS, SUBSTRING, CHARLENGTH, STRING_AGG
+    - Прочие функции и ключевые слова
+      - ISNULL, NOW, NEWUUID, DATALENGTH, EXISTS
+      - IN, LIKE, BETWEEN, = ANY/ALL
+      - OFFSET...FETCH...
   - STREAM (потоковый SELECT)
   - CONSUME (деструктивный STREAM)
   - INSERT
   - UPDATE (обычный и потоковый)
   - DELETE
   - REQUEST (хранимые процедуры)
+  - Управление последовательностью
+    - CREATE/DROP SEQUENCE
+    - APPLY/REVOKE SEQUENCE
+    - Функция VECTOR
 - RabbitMQ
   - CONSUME
   - PRODUCE
