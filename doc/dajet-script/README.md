@@ -28,6 +28,7 @@
     - Табличные операторы
       - JOIN, UNION, APPLY
       - Подзапросы
+      - Функция EXISTS
     - Общие табличные выражения
       - Обычные и рекурсивные запросы
     - Временные таблицы
@@ -39,7 +40,7 @@
     - Строковые функции
       - LTRIM, RTRIM, LOWER, UPPER, REPLACE, CONCAT, CONCAT_WS, SUBSTRING, CHARLENGTH
     - Прочие функции и ключевые слова
-      - ISNULL, NOW, NEWUUID, DATALENGTH, EXISTS
+      - ISNULL, NOW, NEWUUID, DATALENGTH
       - IN, LIKE, BETWEEN, = ANY/ALL
       - OFFSET...FETCH...
   - STREAM (потоковый SELECT)
