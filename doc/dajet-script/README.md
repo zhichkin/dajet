@@ -32,12 +32,12 @@
       - Обычные и рекурсивные запросы
     - Временные таблицы
     - Агрегатные функции
-      - SUM, MAX, MIN, AVG, COUNT
+      - SUM, MAX, MIN, AVG, COUNT, STRING_AGG
     - Оконные функции OVER
       - SUM, MAX, MIN, AVG, COUNT
       - ROW_NUMBER, LAG, LEAD, FIRST_VALUE, LAST_VALUE
     - Строковые функции
-      - LTRIM, RTRIM, LOWER, UPPER, REPLACE, CONCAT, CONCAT_WS, SUBSTRING, CHARLENGTH, STRING_AGG
+      - LTRIM, RTRIM, LOWER, UPPER, REPLACE, CONCAT, CONCAT_WS, SUBSTRING, CHARLENGTH
     - Прочие функции и ключевые слова
       - ISNULL, NOW, NEWUUID, DATALENGTH, EXISTS
       - IN, LIKE, BETWEEN, = ANY/ALL
