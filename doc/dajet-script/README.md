@@ -41,7 +41,7 @@
     - Прочие функции и ключевые слова
       - ISNULL, NOW, NEWUUID, DATALENGTH
       - IN, LIKE, BETWEEN, = ANY/ALL, EXISTS
-      - OFFSET...FETCH...
+      - ORDER BY...OFFSET...FETCH...
   - STREAM (потоковый SELECT)
   - CONSUME (деструктивный STREAM)
   - INSERT
