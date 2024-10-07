@@ -28,6 +28,25 @@ namespace DaJet.Runtime
         }
         private static readonly List<MethodInfo> _functions = new();
         private static readonly Dictionary<string, ConstructorInfo> _processors = new();
+        private static bool IsRuntimeFunction(in FunctionExpression function)
+        {
+            foreach (MethodInfo item in _functions)
+            {
+                FunctionAttribute attribute = item.GetCustomAttribute<FunctionAttribute>();
+
+                if (attribute is null)
+                {
+                    continue;
+                }
+
+                if (attribute.Name == function.Name)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
         private static void RegisterRuntimeFunctions()
         {
             foreach (Assembly assembly in AssemblyManager.Assemblies)
@@ -415,6 +434,22 @@ namespace DaJet.Runtime
                 }
             }
         }
+        internal static bool IsDatabaseSelect(in SelectExpression select)
+        {
+            List<FunctionExpression> functions = new FunctionExpressionExtractor().Extract(select);
+
+            bool using_database_functions = false;
+
+            foreach (FunctionExpression function in functions)
+            {
+                if (!IsRuntimeFunction(in function))
+                {
+                    using_database_functions = true; break;
+                }
+            }
+
+            return select.From is not null || using_database_functions;
+        }
         internal static IProcessor CreateStream(in ScriptScope parent)
         {
             ScriptScope next;
@@ -482,8 +517,7 @@ namespace DaJet.Runtime
                 return CreateUserDefinedProcessor(in scope);
             }
             else if (scope.Owner is SelectStatement statement && !statement.IsStream
-                && statement.Expression is SelectExpression select && select.From is null
-                && select.Into?.Value is VariableReference variable)
+                && statement.Expression is SelectExpression select && !IsDatabaseSelect(in select))
             {
                 return new ObjectConstructor(in scope);
             }
@@ -1530,6 +1564,22 @@ namespace DaJet.Runtime
             if (left is int int1 && right is int int2)
             {
                 value = expression.Token == TokenType.Plus ? int1 + int2 : int1 - int2;
+            }
+            else if (left is long long1 && right is long long2)
+            {
+                value = expression.Token == TokenType.Plus ? long1 + long2 : long1 - long2;
+            }
+            else if (left is long l1 && right is int i1)
+            {
+                value = expression.Token == TokenType.Plus
+                    ? l1 + Convert.ToInt64(i1)
+                    : l1 - Convert.ToInt64(i1);
+            }
+            else if (left is int i2 && right is long l2)
+            {
+                value = expression.Token == TokenType.Plus
+                    ? Convert.ToInt64(i2) + l2
+                    : Convert.ToInt64(i2) - l2;
             }
             else if (left is decimal dec1 && right is decimal dec2)
             {

@@ -418,11 +418,11 @@ namespace DaJet.Data
             {
                 //TODO: cast binary(8) to bigint at database level ?
                 //NOTE: SQL Server rowversion is unsigned big-endian value !!!
-                return DbUtilities.GetUInt64((byte[])reader.GetValue(ordinal));
+                return DbUtilities.GetInt64((byte[])reader.GetValue(ordinal));
             }
             else
             {
-                return Convert.ToUInt64(reader.GetInt64(ordinal));
+                return reader.GetInt64(ordinal);
             }
         }
         private object GetInteger(in IDataReader reader)

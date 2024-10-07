@@ -11,6 +11,13 @@ namespace DaJet.Data
             if (BitConverter.IsLittleEndian) Array.Reverse(value);
             return BitConverter.ToInt32(value, 0);
         }
+        public static long GetInt64(byte[] bytes)
+        {
+            byte[] value = new byte[8];
+            bytes.CopyTo(value, 0);
+            if (BitConverter.IsLittleEndian) Array.Reverse(value);
+            return BitConverter.ToInt64(value, 0);
+        }
         public static ulong GetUInt64(byte[] bytes)
         {
             byte[] value = new byte[8];

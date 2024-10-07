@@ -38,7 +38,10 @@ namespace DaJet.Runtime
         {
             StreamFactory.ConfigureVariablesMap(in _scope, in _variables);
 
-            _ = StreamFactory.TryGetIntoVariable(_statement.Node, out _into);
+            if (StreamFactory.TryGetIntoVariable(_statement.Node, out _into))
+            {
+                _variables.Remove(_into.Identifier);
+            }
 
             foreach (var map in _variables)
             {

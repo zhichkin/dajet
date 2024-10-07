@@ -37,7 +37,7 @@ namespace DaJet.Runtime
 
             SyntaxNode initializer = _statement.Initializer;
 
-            if (initializer is SelectExpression select && select.From is null)
+            if (initializer is SelectExpression select && !StreamFactory.IsDatabaseSelect(in select))
             {
                 StreamFactory.BindVariables(in _scope); // runtime binding
             }
@@ -79,7 +79,7 @@ namespace DaJet.Runtime
 
                 _init = StreamFactory.CreateStream(in select_scope);
             }
-            else
+            else // runtime expression
             {
                 StreamFactory.BindVariables(in _scope); // runtime binding
             }
@@ -125,11 +125,7 @@ namespace DaJet.Runtime
 
             SyntaxNode initializer = _statement.Initializer;
 
-            if (initializer is SelectExpression select && select.From is null && _token == TokenType.Object)
-            {
-                value = StreamFactory.ConstructObject(in _scope, in select);
-            }
-            else if (_init is not null) // SELECT ... INTO <variable> FROM <database>
+            if (_init is not null) // SELECT ... INTO <variable> FROM <database>
             {
                 _init.Process(); // scalar | object | array
 
@@ -137,6 +133,10 @@ namespace DaJet.Runtime
                 {
                     throw new InvalidOperationException($"[SET] failed to get variable value {_target}");
                 }
+            }
+            else if (initializer is SelectExpression select && select.From is null && _token == TokenType.Object)
+            {
+                value = StreamFactory.ConstructObject(in _scope, in select);
             }
             else if (!StreamFactory.TryEvaluate(in _scope, in initializer, out value))
             {
