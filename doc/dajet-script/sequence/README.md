@@ -120,7 +120,34 @@ CREATE SEQUENCE IF NOT EXISTS so_my_sequence AS bigint INCREMENT BY 1 START WITH
 
 #### DROP SEQUENCE
 
+Команда для удаления именованного объекта последовательности базы данных. В случае его отсутствия генерируется ошибка СУБД.
 
+```SQL
+DROP SEQUENCE <identifier>
+```
+**\<identifier\>** - имя объекта последовательности.
+
+> Имя удаляемого объекта последовательности указывается без одинарных кавычек.
+
+**Удаление последовательности ```so_my_sequence```**
+```SQL
+USE 'mssql://server/database'
+   TRY
+      DROP SEQUENCE so_my_sequence
+   CATCH
+      PRINT ERROR_MESSAGE()
+   END -- TRY
+END -- USE
+```
+
+**На уровне СУБД выполняется следующий код:**
+```SQL
+-- SQL Server
+DROP SEQUENCE so_my_sequence;
+
+-- PostgreSQL
+DROP SEQUENCE so_my_sequence;
+```
 
 [Наверх](#управление-последовательностью)
 
