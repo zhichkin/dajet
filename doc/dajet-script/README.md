@@ -48,10 +48,7 @@
   - UPDATE (обычный и потоковый)
   - DELETE
   - REQUEST (хранимые процедуры)
-  - Управление последовательностью
-    - CREATE/DROP SEQUENCE
-    - APPLY/REVOKE SEQUENCE
-    - Функция VECTOR
+  - [Управление последовательностью](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/sequence/README.md)
 - RabbitMQ
   - CONSUME
   - PRODUCE
