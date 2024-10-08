@@ -186,6 +186,7 @@ REVOKE SEQUENCE <identifier> ON <table>
 **\<table\>** - полное имя объекта метаданных 1С:Предприятие 8.
 
 **Пример использования команды REVOKE SEQUENCE:**
+```SQL
 USE 'mssql://server/database'
    TRY
       REVOKE SEQUENCE so_my_sequence ON РегистрСведений.ИсходящиеСообщения
@@ -193,6 +194,7 @@ USE 'mssql://server/database'
       PRINT ERROR_MESSAGE()
    END
 END
+```
 
 **На уровне СУБД команда REVOKE SEQUENCE выполняет следующий код:**
 ```SQL
