@@ -84,9 +84,93 @@ DROP SEQUENCE so_my_sequence;
 
 #### APPLY SEQUENCE
 
+Команда применяет ранее созданную последовательность к указанному измерению, например, регистра сведений, который используется в качестве очереди исходящих сообщений. Работа команды абсолютно прозрачна для 1С:Предприятие 8. Это означает, что код прикладного решения, выполняющего запись в регистр сведений, не меняется. Приращение значений соответствующего измерения будет осуществляться автоматически при добавлении новых записей в коде 1С:Предприятие 8.
+
+> **Совет:** используйте для измерения регистра сведений тип данных ЧИСЛО(15,0).
+
+Команда имеет необязательную опцию **RECALCULATE**. Эта опция позволяет выполнить пересчёт значений указанного измерения для существующих на данный момент в регистре сведений записей по порядку, начиная с текущего значения последовательности. Оригинальный порядок записей регистра при этом сохраняется таким же, какой он был до начала выполнения команды.
+
+Рассмотрим использование команды **APPLY SEQUENCE** на практическом примере. Допустим, что у нас есть регистр сведений "ИсходящиеСообщения" для регистрации изменений и дальнейшей их передачи во внешние узлы интеграции, имеющий следующую структуру:
+|**Реквизит**|**Назначение**|**Тип данных**|**Описание**|
+|------------|--------------|--------------|------------|
+|НомерСообщения|Измерение|ЧИСЛО(15,0)|Автоматически генерируемый СУБД последовательный номер сообщения|
+|ТипСообщения|Ресурс|СТРОКА(1024)|Имя типа сообщения|
+|ТелоСообщения|Ресурс|СТРОКА(0)|Тело сообщения в строковом формате, например, JSON|
+
+Теперь выполним следующий код 1С:Предприятие 8:
+
+![apply-sequence](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-apply-sequence-01.png)
+
+В результате выполнения в пустом регистре будет создана одна запись и получена следующая ошибка:
+
+![apply-sequence](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-apply-sequence-02.png)
+
+![apply-sequence](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-apply-sequence-03.png)
+
+Выполним следующий код DaJet Script:
+```SQL
+USE 'mssql://server/database'
+   CREATE SEQUENCE so_my_sequence -- На всякий случай, если объект последовательности отсутствует
+   TRY
+      APPLY SEQUENCE so_my_sequence ON РегистрСведений.ИсходящиеСообщения(НомерСообщения)
+   CATCH
+      PRINT ERROR_MESSAGE()
+   END
+END
+```
+
+Заново выполним тот же самый код 1С:Предприятие 8  (на этот раз без ошибок), предварительно изменив уже записанное значение измерения "НомерСообщения" в регистре на любое другое отличное от нуля значение. Получим следующий результат:
+
+![apply-sequence](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-apply-sequence-04.png)
+
+**На уровне СУБД команда APPLY SEQUENCE выполняет следующий код:**
+```SQL
+-- SQL Server
+IF OBJECT_ID('_inforg134_instead_of_insert', 'TR') IS NULL
+EXECUTE('CREATE TRIGGER _inforg134_instead_of_insert ON _InfoRg134 INSTEAD OF INSERT NOT FOR REPLICATION AS
+INSERT _InfoRg134(_Fld135, _Fld136, _Fld137)
+SELECT NEXT VALUE FOR so_my_sequence, i._Fld136, i._Fld137
+FROM INSERTED AS i;');
+
+-- PostgreSQL
+CREATE FUNCTION fn_inforg98_before_insert()
+RETURNS trigger AS $BODY$
+BEGIN
+NEW._fld99 := nextval('so_my_sequence');
+RETURN NEW;
+END $BODY$ LANGUAGE 'plpgsql';
+
+CREATE TRIGGER tr_inforg98_before_insert
+BEFORE INSERT ON _inforg98 FOR EACH ROW
+EXECUTE PROCEDURE fn_inforg98_before_insert();
+```
+
+**В случае использования опции RECALCULATE команды APPLY SEQUENCE дополнительно выполняется следующий код:**
+```SQL
+-- SQL Server
+BEGIN TRANSACTION;
+SELECT _Fld135, NEXT VALUE FOR so_my_sequence OVER (ORDER BY _Fld135 ASC) AS sequence_value
+INTO #COPY_InfoRg134 FROM _InfoRg134 WITH (TABLOCKX, HOLDLOCK);
+UPDATE T SET T._Fld135 = S.sequence_value FROM _InfoRg134 AS T
+INNER JOIN #COPY_InfoRg134 AS S ON T._Fld135 = S._Fld135;
+DROP TABLE #COPY_InfoRg134;
+COMMIT TRANSACTION;
+
+-- PostgreSQL
+BEGIN TRANSACTION;
+LOCK TABLE _inforg98 IN ACCESS EXCLUSIVE MODE;
+WITH cte AS (SELECT _fld99, nextval('so_my_sequence') AS sequence_value
+FROM _inforg98 ORDER BY _fld99 ASC)
+UPDATE _inforg98 SET _fld99 = cte.sequence_value FROM cte
+WHERE _inforg98._fld99 = cte._fld99;
+COMMIT TRANSACTION;
+```
+
 [Наверх](#управление-последовательностью)
 
 #### REVOKE SEQUENCE
+
+
 
 [Наверх](#управление-последовательностью)
 
