@@ -15,7 +15,7 @@
 - [APPLY SEQUENCE](#apply-sequence)
 - [REVOKE SEQUENCE](#revoke-sequence)
 - [Функция VECTOR](#функция-vector)
-- [Дополнительные материалы](#дополнительные-материалы)
+- [РИБ 2.0 Альтернатива планам обмена](https://github.com/zhichkin/dajet/blob/main/doc/distributed-info-bases-2-0.pdf)
 
 #### CREATE SEQUENCE
 
