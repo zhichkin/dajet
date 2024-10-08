@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>DaJet.Http.Server</RootNamespace>
     <AssemblyName>DaJet.Http.Server</AssemblyName>
-    <Version>3.8.0</Version>
+    <Version>3.8.1</Version>
     <Authors>Zhichkin</Authors>
     <Copyright>Zhichkin © 2022</Copyright>
     <Description>DaJet HTTP server for 1C:Enterprise 8 databases</Description>
