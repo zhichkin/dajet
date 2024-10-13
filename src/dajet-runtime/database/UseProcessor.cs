@@ -19,21 +19,11 @@ namespace DaJet.Runtime
             }
 
             _statement = statement;
-
-            if (!_scope.TryGetMetadataProvider(out IMetadataProvider database, out string error))
-            {
-                throw new InvalidOperationException(error);
-            }
-            
-            ScriptScope block_scope = _scope.Create(_statement.Statements);
-
-            StreamFactory.InitializeVariables(in block_scope, in database);
-
-            _block = StreamFactory.CreateStream(in block_scope);
         }
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Process()
         {
+            InitializeProcessor();
             _block.Process();
             _next?.Process();
         }
@@ -46,6 +36,24 @@ namespace DaJet.Runtime
         {
             _block.Dispose();
             _next?.Dispose();
+        }
+        private void InitializeProcessor()
+        {
+            if (_block is not null)
+            {
+                return; // lazy initialization
+            }
+
+            if (!_scope.TryGetMetadataProvider(out IMetadataProvider database, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            ScriptScope block_scope = _scope.Create(_statement.Statements);
+
+            StreamFactory.InitializeVariables(in block_scope, in database);
+
+            _block = StreamFactory.CreateStream(in block_scope);
         }
     }
 }

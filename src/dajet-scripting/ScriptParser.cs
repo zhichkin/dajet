@@ -577,10 +577,33 @@ namespace DaJet.Scripting
                 throw new FormatException("[EXECUTE] uri expected");
             }
 
-            return new ExecuteStatement()
+            ExecuteStatement statement = new() { Uri = Previous().Lexeme };
+
+            Skip(TokenType.Comment);
+
+            if (Match(TokenType.WITH)) // optional
             {
-                Uri = Previous().Lexeme
-            };
+                parse_columns(statement.Parameters);
+            }
+
+            Skip(TokenType.Comment);
+
+            if (Match(TokenType.INTO)) // optional
+            {
+                if (!Match(TokenType.Variable))
+                {
+                    throw new FormatException($"[EXECUTE] variable identifier expected");
+                }
+
+                statement.Return = new VariableReference()
+                {
+                    Identifier = Previous().Lexeme
+                };
+            }
+
+            Skip(TokenType.Comment);
+
+            return statement;
         }
         private SyntaxNode create_statement()
         {

@@ -34,7 +34,7 @@ namespace DaJet.Runtime
             }
             finally
             {
-                //TODO: root processor : dispose stream !?
+                //TODO: root processor : dispose pipeline !?
             }
         }
         public object GetReturnValue()

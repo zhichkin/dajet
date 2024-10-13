@@ -7,14 +7,15 @@ namespace DaJet.Runtime
     public sealed class ExecuteProcessor : IProcessor
     {
         private IProcessor _next;
-        private IProcessor _stream;
-        private readonly ScriptScope _scope;
+        private IProcessor _script;
+        private ScriptScope _scope;
+        private readonly ScriptScope _parent; // caller
         private readonly ExecuteStatement _statement;
         public ExecuteProcessor(in ScriptScope scope)
         {
-            _scope = scope ?? throw new ArgumentNullException(nameof(scope));
+            _parent = scope ?? throw new ArgumentNullException(nameof(scope));
 
-            if (_scope.Owner is not ExecuteStatement statement)
+            if (_parent.Owner is not ExecuteStatement statement)
             {
                 throw new ArgumentException(nameof(ExecuteStatement));
             }
@@ -28,20 +29,40 @@ namespace DaJet.Runtime
         {
             try
             {
-                _stream ??= PrepareScript(); //NOTE: avoid recursive script invocation !!!
+                _script ??= PrepareScript(); //THINK: avoid recursive script invocation !!!
 
-                _stream?.Process();
+                ConfigureInputParameters(); // copy variable values from caller's scope
+
+                _script?.Process();
+            }
+            catch (ReturnException)
+            {
+                object value = _scope.GetReturnValue();
+
+                if (_statement.Return is null)
+                {
+                    throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Return variable is not defined");
+                }
+
+                if (!_parent.TrySetValue(_statement.Return.Identifier, value))
+                {
+                    throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Error returning into {_statement.Return.Identifier}");
+                }
+
+                ConfigureReturnObjectSchema();
+
+                _scope.SetReturnValue(null);
             }
             catch (Exception error)
             {
-                FileLogger.Default.Write(error);
+                FileLogger.Default.Write(error); throw;
             }
 
             _next?.Process();
         }
         private IProcessor PrepareScript()
         {
-            Uri uri = _scope.GetUri(_statement.Uri);
+            Uri uri = _parent.GetUri(_statement.Uri);
 
             string file = Path.Combine(AppContext.BaseDirectory, uri.LocalPath[2..]);
 
@@ -52,7 +73,7 @@ namespace DaJet.Runtime
 
             if (!File.Exists(file))
             {
-                FileLogger.Default.Write($"File not found {file}"); return null;
+                throw new InvalidOperationException($"File not found {file}");
             }
 
             string script;
@@ -67,19 +88,50 @@ namespace DaJet.Runtime
                 FileLogger.Default.Write(error); return null;
             }
 
-            ScriptScope child = _scope.Create(in model);
+            _scope = _parent.Create(in model);
+            StreamFactory.InitializeVariables(in _scope);
+            return StreamFactory.CreateStream(in _scope);
+        }
+        private void ConfigureInputParameters()
+        {
+            if (_statement.Parameters is null) { return; }
 
-            foreach (var variable in child.Variables)
+            foreach (ColumnExpression parameter in _statement.Parameters)
             {
-                if (_scope.TryGetValue(variable.Key, out _))
+                string identifier = "@" + parameter.Alias;
+
+                if (!_scope.Variables.ContainsKey(identifier))
                 {
-                    child.Variables.Remove(variable.Key); //NOTE: use parent scope's variables
+                    throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Parameter {identifier} is not found");
+                }
+
+                if (!StreamFactory.TryEvaluate(in _parent, parameter.Expression, out object value))
+                {
+                    throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Error reading parameter {identifier}");
+                }
+
+                if (!_scope.TrySetValue(in identifier, in value))
+                {
+                    throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Error setting parameter {identifier}");
                 }
             }
+        }
+        private void ConfigureReturnObjectSchema()
+        {
+            if (_statement.Return is null) { return; }
 
-            StreamFactory.InitializeVariables(in child); //NOTE: DECLARE @variable = SELECT ...
+            string identifier = _statement.Return.Identifier;
 
-            return StreamFactory.CreateStream(in child); //NOTE: avoid recursive script invocation !!!
+            if (!_parent.TryGetDeclaration(in identifier, out _, out DeclareStatement target))
+            {
+                throw new InvalidOperationException($"Declaration of {identifier} is not found");
+            }
+
+            if (_scope.TryGetDeclaration(in identifier, out _, out DeclareStatement source))
+            {
+                //TODO: get return value schema from return statement
+                target.Type.Binding = source.Type.Binding;
+            }
         }
     }
 }

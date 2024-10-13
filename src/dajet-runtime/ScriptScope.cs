@@ -429,7 +429,7 @@ namespace DaJet.Runtime
         private const string RETURN_VALUE_KEY = "_RETURN_VALUE_";
         internal void SetReturnValue(in object value)
         {
-            ScriptScope root = GetRoot();
+            ScriptScope root = GetParent<ScriptModel>();
 
             if (!root.Variables.TryAdd(RETURN_VALUE_KEY, value))
             {
@@ -438,7 +438,7 @@ namespace DaJet.Runtime
         }
         internal object GetReturnValue()
         {
-            ScriptScope root = GetRoot();
+            ScriptScope root = GetParent<ScriptModel>();
 
             if (root.TryGetValue(RETURN_VALUE_KEY, out object value))
             {

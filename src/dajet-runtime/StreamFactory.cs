@@ -849,23 +849,30 @@ namespace DaJet.Runtime
 
             foreach (DeclareStatement declare in scope.Declarations)
             {
+                object value = null;
+
                 if (declare.Initializer is null)
                 {
-                    scope.Variables[declare.Name] = GetDefaultValue(in declare);
+                    value = GetDefaultValue(in declare);
                 }
                 else if (declare.Initializer is ScalarExpression scalar)
                 {
-                    scope.Variables[declare.Name] = ParserHelper.GetScalarValue(in scalar);
+                    value = ParserHelper.GetScalarValue(in scalar);
                 }
                 else if (declare.Initializer is SelectExpression select && select.From is null && declare.Type.Token == TokenType.Object)
                 {
-                    scope.Variables[declare.Name] = ConstructObject(in scope, in select);
+                    value = ConstructObject(in scope, in select);
                 }
                 else if (declare.Initializer is SelectExpression || declare.Initializer is TableUnionOperator)
                 {
                     SelectStatement statement = new() { Expression = declare.Initializer };
 
-                    scope.Variables[declare.Name] = GetSelectValue(in scope, in database, in declare, in statement);
+                    value = GetSelectValue(in scope, in database, in declare, in statement);
+                }
+
+                if (!scope.TrySetValue(declare.Name, in value))
+                {
+                    throw new InvalidOperationException($"Failed to set variable {declare.Name} value");
                 }
             }
 

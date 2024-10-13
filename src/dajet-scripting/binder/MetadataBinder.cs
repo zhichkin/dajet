@@ -1304,7 +1304,15 @@ namespace DaJet.Scripting
         {
             Bind(node.Expression);
         }
-        private void Bind(in ExecuteStatement node) { /* nothing to bind */ }
+        private void Bind(in ExecuteStatement node)
+        {
+            for (int i = 0; i < node.Parameters.Count; i++)
+            {
+                Bind(node.Parameters[i]);
+            }
+
+            if (node.Return is not null) { Bind(node.Return); }
+        }
         private void Bind(in ProcessStatement node)
         {
             for (int i = 0; i < node.Variables.Count; i++)
