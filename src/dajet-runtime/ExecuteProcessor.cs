@@ -31,7 +31,7 @@ namespace DaJet.Runtime
             {
                 _script ??= PrepareScript(); //THINK: avoid recursive script invocation !!!
 
-                ConfigureInputParameters(); // copy variable values from caller's scope
+                ConfigureInputParameters(); // copy input variable values from caller's scope
 
                 _script?.Process();
             }
@@ -44,7 +44,7 @@ namespace DaJet.Runtime
                     throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Return variable is not defined");
                 }
 
-                if (!_parent.TrySetValue(_statement.Return.Identifier, value))
+                if (!_parent.TrySetValue(_statement.Return.Identifier, value)) // set return value to the caller's scope variable
                 {
                     throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Error returning into {_statement.Return.Identifier}");
                 }

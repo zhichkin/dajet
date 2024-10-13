@@ -25,7 +25,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\dajet-runtime\dajet-runtime.csproj" />
-    <ProjectReference Include="..\dajet-stream\dajet-stream.csproj" />
   </ItemGroup>
 
   <ItemGroup>
