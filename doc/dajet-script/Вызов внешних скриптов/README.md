@@ -111,6 +111,8 @@ WHILE @counter < 3
 END
 
 PRINT 'END: ' + @counter
+
+RETURN @counter
 ```
 
 Результат выполнения скрипта ```starter.djs```:
