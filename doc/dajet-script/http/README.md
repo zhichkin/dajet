@@ -18,4 +18,9 @@ SET @output = SELECT say = 'Hello, ' + @input + '!'
 RETURN @output
 ```
 
+Вызвать этот скрипт можно, обратившись к сервису ```dajet/exe``` http-сервера DaJet. Путь к скрипту для этого сервиса будет выглядеть следующим образом: ```/api/test.djs```. Сервис обслуживает каталог ```code``` - указывать его в URL не нужно.
+
+**Пример вызова скрипта по http при помощи программы Postman**
+![dajet-script-http-postman](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-http-postman.png)
+
 [Наверх](#вызов-скриптов-по-http)
