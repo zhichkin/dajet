@@ -23,7 +23,7 @@
 - Параллельное выполнение кода
   - FOR \<object\> IN \<array\> MAXDOP \<degree-of-parallelism\> END
 - Базы данных
-  - USE
+  - [USE (контекст базы данных)](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/use/README.md)
   - SELECT
     - Табличные операторы
       - JOIN, UNION, APPLY
