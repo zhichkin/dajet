@@ -125,10 +125,7 @@ END
 ```SQL
 DECLARE @КодУзла   string = 'РИБ-0002'
 DECLARE @Настройки object
-
-EXECUTE 'file://get-db-settings.djs'
-   WITH УзелОбмена = @КодУзла
-   INTO @Настройки
+EXECUTE 'file://get-db-settings.djs' WITH УзелОбмена = @КодУзла INTO @Настройки
 ```
 
-[Наверх](#вызов-внешних-скриптов)
+[Наверх](#команда-use)
