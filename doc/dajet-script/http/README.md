@@ -45,4 +45,7 @@ PRINT @response.Value.say
 [2024-10-12 21:24:21] Hello, DaJet!
 ```
 
+**Пример вызова скрипта ```test.djs``` по http при помощи утилиты ```curl```**
+![dajet-script-http-postman](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-http-curl.png)
+
 [Наверх](#вызов-скриптов-по-http)
