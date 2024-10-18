@@ -23,7 +23,7 @@
 #### Команда IF
 
 ```SQL
-IF <condition> THEN <then_statements> [ELSE <блок команд>] END
+IF <condition> THEN <then_statements> [ELSE <else_statements> END
 ```
 
 **\<condition\>** - выражение, которое возвращает значение типа ```boolean```.<br>
