@@ -79,12 +79,19 @@ END
 ```SQL
 WHILE <condition>
    <statements>
+   [BREAK]
+   [CONTINUE]
 END
 ```
 
 **\<condition\>** - выражение, которое возвращает значение типа ```boolean```.<br>
 **\<statements\>** - блок команд DaJet Script, который выполняется пока выражение **\<condition\>** возвращает значение ```true```.
 
+**BREAK** - (опционально) команда немедленного, принудительного, завершения цикла **WHILE**. Управление кодом передаётся следующей команде скрипта, которая следует сразу же после завершающего цикл **WHILE** ключевого слова **END**.
+
+**CONTINUE** - (опционально) команда принудительного перехода на начало цикла. Управление кодом передаётся строке проверки условия **\<condition\>**, с которой начинается цикл **WHILE**.
+
+**Пример простого цикла WHILE**
 ```SQL
 DECLARE @counter number = 0
 
@@ -100,6 +107,36 @@ PRINT '@counter = ' + @counter
 [2024-10-12 21:31:55] @counter = 1
 [2024-10-12 21:31:55] @counter = 2
 [2024-10-12 21:31:55] @counter = 3
+```
+
+**Пример цикла WHILE с использованием BREAK и CONTINUE**
+
+```SQL
+DECLARE @counter number = 0
+
+PRINT 'SCRIPT START'
+
+WHILE TRUE -- Потенциально "вечный" цикл
+   IF @counter = 2
+   THEN
+      PRINT 'break: ' + @counter
+      BREAK;
+   ELSE
+      PRINT 'continue: ' + @counter
+      SET @counter = @counter + 1
+      CONTINUE;
+   END -- IF
+   PRINT 'Эта команда не будет выполнена'
+END -- WHILE
+
+PRINT 'SCRIPT END'
+
+-- Результат выполнения скрипта
+[2024-10-20 16:28:01] SCRIPT START
+[2024-10-20 16:28:01] continue: 0
+[2024-10-20 16:28:01] continue: 1
+[2024-10-20 16:28:01] break: 2
+[2024-10-20 16:28:01] SCRIPT END
 ```
 
 [Наверх](#алгоритмические-возможности)
