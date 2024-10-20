@@ -13,7 +13,7 @@
 - Структурированная обработка ошибок
   - [TRY](#команда-try)
   - [THROW](#команда-throw)
-  - [Функция ERROR_MESSAGE](#функция-error-message)
+  - [Функция ERROR_MESSAGE](#функция-error_message)
 - [Приостановка выполнения кода (пауза)](#команда-sleep)
 - Параллельное выполнение кода
   - FOR \<object\> IN \<array\> ... MAXDOP \<degree-of-parallelism\> END
