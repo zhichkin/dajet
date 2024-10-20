@@ -15,6 +15,7 @@
   - [THROW](#команда-throw)
   - [Функция ERROR_MESSAGE](#функция-error_message)
 - [Приостановка выполнения кода (пауза)](#команда-sleep)
+- [Шаблон простого "вечного" сервиса](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/simple-service-example/README.md)
 - Параллельное выполнение кода
   - FOR \<object\> IN \<array\> ... MAXDOP \<degree-of-parallelism\> END
 
