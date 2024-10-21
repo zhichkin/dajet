@@ -32,7 +32,7 @@ DaJet Script поддерживает работу со следующими о�
 
 [Наверх](#реляционные-базы-данных)
 
-- [SELECT](https://github.com/zhichkin/dajet/edit/main/doc/dajet-script/databases/select/README.md)
+- [SELECT](https://github.com/zhichkin/dajet/edit/main/doc/dajet-script/select/README.md)
   - Табличные операторы
     - JOIN, UNION, APPLY
     - Подзапросы
