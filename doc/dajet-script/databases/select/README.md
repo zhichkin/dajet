@@ -4,7 +4,7 @@
 
 ### Команда SELECT
 
-```SQL
+```
 SELECT [DISTINCT] [TOP (<top_expression>)]
        { <column_alias> = <column_expression>
        | <column_expression> AS <column_alias>
