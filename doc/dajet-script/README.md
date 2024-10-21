@@ -13,8 +13,8 @@
   - EXECUTE ```script.djs```
 - Базы данных (mssql + pgsql)
   - [USE (контекст базы данных)](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/use/README.md)
-  - [Управление последовательностью](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/sequence/README.md)
   - [Язык запросов DaJet Script](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/databases/README.md)
+  - [Управление последовательностью](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/sequence/README.md)  
 - RabbitMQ
   - CONSUME
   - PRODUCE
