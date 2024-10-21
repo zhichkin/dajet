@@ -11,8 +11,11 @@ SELECT [DISTINCT] [TOP (<top_expression>)]
        } [,...n]
   INTO {<object>|<array>}
   FROM {<table_identifier>|<table_expression>}
+
 [[{LEFT|RIGHT|INNER|FULL}] JOIN {<table_identifier>|<table_expression>}]
+
 [[{CROSS|OUTER}]APPLY <subquery>]
+
 [WHERE]
 [GROUP BY]
 [HAVING]
