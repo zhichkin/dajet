@@ -1,18 +1,19 @@
 ## DaJet Script
 
 - [Общее описание](#общее-описание)
-- [Система типов данных](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/%D0%A1%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D0%B0%20%D1%82%D0%B8%D0%BF%D0%BE%D0%B2%20%D0%B4%D0%B0%D0%BD%D0%BD%D1%8B%D1%85/README.md)
+- [Система типов данных](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/data-type-system/README.md)
   - [Тип ```entity``` (ссылка)](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/entity/README.md)
   - [Тип ```object``` (структура данных)](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/object/README.md)
   - [Тип ```array``` (массив структур)](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/array/README.md)
-- [Объявление и использование переменных](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/%D0%9E%D0%B1%D1%8A%D1%8F%D0%B2%D0%BB%D0%B5%D0%BD%D0%B8%D0%B5%20%D0%B8%20%D0%B8%D1%81%D0%BF%D0%BE%D0%BB%D1%8C%D0%B7%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5%20%D0%BF%D0%B5%D1%80%D0%B5%D0%BC%D0%B5%D0%BD%D0%BD%D1%8B%D1%85/README.md)
+- [Объявление и использование переменных](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/variables/README.md)
 - [Алгоритмические возможности](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/algorithm/README.md)
 - Функция JSON
 - [Вызов скриптов по http](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/http/README.md)
-- [Вызов внешних скриптов](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/%D0%92%D1%8B%D0%B7%D0%BE%D0%B2%20%D0%B2%D0%BD%D0%B5%D1%88%D0%BD%D0%B8%D1%85%20%D1%81%D0%BA%D1%80%D0%B8%D0%BF%D1%82%D0%BE%D0%B2/README.md)
+- [Вызов внешних скриптов](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/execute/README.md)
   - EXECUTE ```script.djs```
-- Базы данных
+- [Базы данных (mssql + pgsql)](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/databases/README.md)
   - [USE (контекст базы данных)](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/use/README.md)
+  - [Управление последовательностью](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/sequence/README.md)
   - SELECT
     - Табличные операторы
       - JOIN, UNION, APPLY
@@ -37,7 +38,6 @@
   - UPDATE (обычный и потоковый)
   - DELETE
   - REQUEST (хранимые процедуры)
-  - [Управление последовательностью](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/sequence/README.md)
 - RabbitMQ
   - CONSUME
   - PRODUCE
