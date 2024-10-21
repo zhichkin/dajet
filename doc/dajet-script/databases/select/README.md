@@ -22,7 +22,7 @@ SELECT [DISTINCT] [TOP (<top_expression>)]
 [UNION [ALL]]
 [ORDER BY <order_by_expression> [ASC|DESC] [,...n][<offset_fetch>]]
 
-offset_fetch ::= OFFSET { integer_constant | offset_row_count_expression } { ROW | ROWS }
+<offset_fetch> = OFFSET { integer_constant | offset_row_count_expression } { ROW | ROWS }
 [FETCH { FIRST | NEXT } { integer_constant | fetch_row_count_expression } { ROW | ROWS } ONLY]
 ```
 
