@@ -1,3 +1,4 @@
+-- https://rawcdn.githack.com/rabbitmq/rabbitmq-server/v3.8.19/deps/rabbitmq_management/priv/www/api/index.html
 
 DECLARE @options object
 DECLARE @response object
