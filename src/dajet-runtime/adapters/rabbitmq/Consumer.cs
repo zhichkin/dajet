@@ -4,6 +4,7 @@ using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using System.Collections.Generic;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -54,7 +55,7 @@ namespace DaJet.Runtime.RabbitMQ
                 _target = variable.Identifier;
             }
 
-            if (!_scope.TrySetValue(_target, new DataObject(8))) // buffer message
+            if (!_scope.TrySetValue(_target, new DataObject(9))) // buffer message
             {
                 throw new InvalidOperationException($"Variable {_target} is not found");
             }
@@ -74,6 +75,20 @@ namespace DaJet.Runtime.RabbitMQ
         {
             return new List<ColumnExpression>()
             {
+                new()
+                {
+                    Alias = nameof(IBasicProperties.Headers),
+                    Expression = new VariableReference()
+                    {
+                        Identifier = _target,
+                        Binding = new TypeIdentifier()
+                        {
+                            Token = TokenType.Object,
+                            Binding = typeof(object),
+                            Identifier = ParserHelper.GetDataTypeLiteral(typeof(object))
+                        }
+                    }
+                },
                 new()
                 {
                     Alias = nameof(IBasicProperties.AppId),
@@ -312,6 +327,7 @@ namespace DaJet.Runtime.RabbitMQ
             {
                 if (value is DataObject message)
                 {
+                    ProcessHeaders(in message, in args);
                     message.SetValue("Body", DecodeMessageBody(args.Body));
                     message.SetValue(nameof(IBasicProperties.AppId), args.BasicProperties.AppId ?? string.Empty);
                     message.SetValue(nameof(IBasicProperties.Type), args.BasicProperties.Type ?? string.Empty);
@@ -339,6 +355,52 @@ namespace DaJet.Runtime.RabbitMQ
 
                 NackMessage(in consumer, in args, in error);
             }
+        }
+        private void ProcessHeaders(in DataObject message, in BasicDeliverEventArgs args)
+        {
+            IDictionary<string, object> message_headers = args?.BasicProperties?.Headers;
+
+            if (message_headers is null || message_headers.Count == 0)
+            {
+                return;
+            }
+
+            DataObject headers = new(message_headers.Count);
+
+            foreach (var header in message_headers)
+            {
+                if (header.Value is byte[] bytes) // this might be whatever ?
+                {
+                    string value = string.Empty;
+
+                    try
+                    {
+                        value = Encoding.UTF8.GetString(bytes);
+                    }
+                    finally
+                    {
+                        headers.SetValue(header.Key, value);
+                    }
+                }
+                else if (header.Value is decimal number)
+                {
+                    headers.SetValue(header.Key, number);
+                }
+                else if (header.Value is bool boolean)
+                {
+                    headers.SetValue(header.Key, boolean);
+                }
+                else if (header.Value is int integer)
+                {
+                    headers.SetValue(header.Key, integer);
+                }
+                else
+                {
+                    headers.SetValue(header.Key, null);
+                }
+            }
+
+            message.SetValue(nameof(IBasicProperties.Headers), headers);
         }
         private void NackMessage(in EventingBasicConsumer consumer, in BasicDeliverEventArgs args, in Exception error)
         {

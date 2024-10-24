@@ -103,6 +103,15 @@ namespace DaJet.Runtime.RabbitMQ
 
             return string.Empty;
         }
+        private DataObject GetHeaders()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "Headers", out object value) && value is DataObject record)
+            {
+                return record;
+            }
+
+            return null;
+        }
         private string[] GetBlindCopy()
         {
             if (StreamFactory.TryGetOption(in _scope, "BlindCopy", out object value))
@@ -440,10 +449,11 @@ namespace DaJet.Runtime.RabbitMQ
         {
             _properties.Headers?.Clear();
 
+            DataObject headers = GetHeaders();
             string[] BlindCopy = GetBlindCopy();
             string[] CarbonCopy = GetCarbonCopy();
 
-            if (BlindCopy is null && CarbonCopy is null)
+            if (headers is null && BlindCopy is null && CarbonCopy is null)
             {
                 return;
             }
@@ -458,6 +468,16 @@ namespace DaJet.Runtime.RabbitMQ
             if (CarbonCopy is not null)
             {
                 _ = _properties.Headers.TryAdd(HEADER_CC, CarbonCopy);
+            }
+
+            if (headers is not null)
+            {
+                for (int i = 0; i < headers.Count(); i++)
+                {
+                    string key = headers.GetName(i);
+                    object value = headers.GetValue(i);
+                    _ = _properties.Headers.TryAdd(key, value);
+                }
             }
         }
         private void ConfigureMessageProperties()
