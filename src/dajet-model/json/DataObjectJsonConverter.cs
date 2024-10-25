@@ -68,7 +68,7 @@ namespace DaJet.Json
                     {
                         value = uuid;
                     }
-                    else if (DateTime.TryParse(input, out DateTime dateTime))
+                    else if (input.Length >= 10 && DateTime.TryParse(input, out DateTime dateTime))
                     {
                         value = dateTime;
                     }

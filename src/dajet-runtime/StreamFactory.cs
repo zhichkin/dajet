@@ -1689,6 +1689,21 @@ namespace DaJet.Runtime
                     throw new InvalidOperationException($"Variable {variable} value is not boolean");
                 }
             }
+            else if (node is FunctionExpression function)
+            {
+                if (!TryEvaluate(in scope, in function, out object value))
+                {
+                    throw new InvalidOperationException($"Failed to evaluate {function.Name}");
+                }
+                else if (value is not bool boolean)
+                {
+                    throw new InvalidOperationException($"Return value {function.Name} is not boolean");
+                }
+                else
+                {
+                    return boolean;
+                }
+            }
             else
             {
                 throw new InvalidOperationException($"Unknown boolean operator [{node}]");

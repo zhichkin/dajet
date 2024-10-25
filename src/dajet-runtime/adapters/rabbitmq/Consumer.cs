@@ -4,7 +4,6 @@ using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using System.Collections.Generic;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -369,7 +368,24 @@ namespace DaJet.Runtime.RabbitMQ
 
             foreach (var header in message_headers)
             {
-                if (header.Value is byte[] bytes) // this might be whatever ?
+                if (header.Key == "CC")
+                {
+                    continue; // Игнорируем стандартный заголовок
+                }
+
+                if (header.Value is bool boolean)
+                {
+                    headers.SetValue(header.Key, boolean);
+                }
+                else if (header.Value is int integer)
+                {
+                    headers.SetValue(header.Key, integer);
+                }
+                else if (header.Value is decimal number)
+                {
+                    headers.SetValue(header.Key, number);
+                }
+                else if (header.Value is byte[] bytes) // this might be whatever ?
                 {
                     string value = string.Empty;
 
@@ -382,25 +398,20 @@ namespace DaJet.Runtime.RabbitMQ
                         headers.SetValue(header.Key, value);
                     }
                 }
-                else if (header.Value is decimal number)
-                {
-                    headers.SetValue(header.Key, number);
-                }
-                else if (header.Value is bool boolean)
-                {
-                    headers.SetValue(header.Key, boolean);
-                }
-                else if (header.Value is int integer)
-                {
-                    headers.SetValue(header.Key, integer);
-                }
                 else
                 {
-                    headers.SetValue(header.Key, null);
+                    headers.SetValue(header.Key, null); // unsupported or unknown data type
                 }
             }
 
-            message.SetValue(nameof(IBasicProperties.Headers), headers);
+            if (headers.Count() == 0)
+            {
+                message.SetValue(nameof(IBasicProperties.Headers), null);
+            }
+            else
+            {
+                message.SetValue(nameof(IBasicProperties.Headers), headers);
+            }
         }
         private void NackMessage(in EventingBasicConsumer consumer, in BasicDeliverEventArgs args, in Exception error)
         {

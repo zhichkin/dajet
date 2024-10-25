@@ -5,7 +5,6 @@ using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
-using System.Security.Principal;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -239,6 +238,60 @@ namespace DaJet.Runtime
             }
 
             return string.Empty;
+        }
+
+        [Function("PROPERTY_COUNT")] public static int PropertyCount(this IScriptRuntime runtime, in DataObject record)
+        {
+            if (record is null)
+            {
+                return 0;
+            }
+
+            return record.Count();
+        }
+        [Function("PROPERTY_EXISTS")] public static bool PropertyExists(this IScriptRuntime runtime, in DataObject record, in string name)
+        {
+            if (record is null || string.IsNullOrWhiteSpace(name))
+            {
+                return false;
+            }
+
+            return record.Contains(name);
+        }
+        [Function("GET_PROPERTY")] public static DataObject GetProperty(this IScriptRuntime runtime, in DataObject record, int index)
+        {
+            //TODO: bind data schema to the target object variable : SET @variable = GET_PROPERTY(@object, @index)
+
+            if (record is null || index < 0 || index >= record.Count())
+            {
+                return null;
+            }
+
+            string name = record.GetName(index);
+            object value = record.GetValue(index);
+            string type = (value is null) ? "NULL" : ParserHelper.GetDataTypeLiteral(value.GetType());
+
+            DataObject property = new(3);
+            property.SetValue("Name", name);
+            property.SetValue("Type", type);
+            property.SetValue("Value", value);
+
+            //if (runtime is ScriptScope scope)
+            //{
+            //    if (!scope.TryGetDeclaration("???", out _, out DeclareStatement declare))
+            //    {
+            //        //throw new InvalidOperationException($"Declaration of {_target} is not found");
+            //    }
+
+            //    declare.Type.Binding = new List<ColumnExpression>()
+            //    {
+            //        new() { Alias = "Name", Expression = new ScalarExpression() { Token = TokenType.String } },
+            //        new() { Alias = "Type", Expression = new ScalarExpression() { Token = TokenType.String } },
+            //        new() { Alias = "Value", Expression = new ScalarExpression() { Token = TokenType.Union } }
+            //    };
+            //}
+            
+            return property;
         }
     }
 }

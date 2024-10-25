@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DaJet Studio © 3.8.2</title>
+    <title>DaJet Studio © 3.8.3</title>
     <link rel="icon" href="/img/vuk.png" type="image/png">
     <base href="/" />
     <link href="css/app.css" rel="stylesheet" />
@@ -147,7 +147,10 @@
                 sql.language.builtinFunctions.push('CONCAT_WS');
                 sql.language.builtinFunctions.push('CHARLENGTH');
                 sql.language.builtinFunctions.push('STRING_AGG');
-                
+                sql.language.builtinFunctions.push('GET_PROPERTY');
+                sql.language.builtinFunctions.push('PROPERTY_COUNT');
+                sql.language.builtinFunctions.push('PROPERTY_EXISTS');
+
                 sql.language.typeIdentifiers = ['boolean','number','datetime','string','binary','uuid','entity','object','array'];
 
                 sql.language.tokenizer.typeIdentifiers = [[/[\w@#$]+/,
