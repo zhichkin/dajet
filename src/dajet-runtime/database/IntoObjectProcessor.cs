@@ -13,7 +13,7 @@ namespace DaJet.Runtime
         }
         public override void Process()
         {
-            DataObject record = new(_statement.Mapper.Properties.Count);
+            DataObject record = null;
 
             using (DbConnection connection = _factory.Create(in _uri))
             {
@@ -32,6 +32,8 @@ namespace DaJet.Runtime
                     {
                         if (reader.Read()) // take the first record
                         {
+                            record = new(_statement.Mapper.Properties.Count);
+
                             _statement.Mapper.Map(in reader, in record);
                         }
                         reader.Close();
@@ -41,7 +43,10 @@ namespace DaJet.Runtime
 
             _ = _scope.TrySetValue(_into.Identifier, record);
 
-            _append?.Process();
+            if (record is not null)
+            {
+                _append?.Process();
+            }
             
             _next?.Process();
         }

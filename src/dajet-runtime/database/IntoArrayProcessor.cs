@@ -39,6 +39,11 @@ namespace DaJet.Runtime
                 }
             }
 
+            if (table.Count == 0)
+            {
+                table = null;
+            }
+
             _ = _scope.TrySetValue(_into.Identifier, table);
 
             _next?.Process();

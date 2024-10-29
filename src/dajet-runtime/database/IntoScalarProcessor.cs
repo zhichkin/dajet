@@ -1,5 +1,4 @@
-﻿using DaJet.Data;
-using System.Data;
+﻿using System.Data;
 using System.Data.Common;
 
 namespace DaJet.Runtime
