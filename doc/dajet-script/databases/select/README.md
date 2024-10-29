@@ -5,8 +5,8 @@
 ### Команда SELECT
 
 - [Общее описание](#общее-описание)
-- Табличный оператор JOIN
-- Табличный оператор UNION
+- [Табличный оператор JOIN](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/join/README.md)
+- [Табличный оператор UNION](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/union/README.md)
 
 #### Общее описание
 
