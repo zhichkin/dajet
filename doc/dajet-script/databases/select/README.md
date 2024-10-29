@@ -52,7 +52,10 @@ USE 'mssql://zhichkin/unf'
 
 END
 
-RETURN @table
+IF @table = NULL
+THEN RETURN 'Нет данных'
+ELSE RETURN @table
+END
 ```
 **Результат выполнения запроса в DaJet Studio**
 |**Номенклатура**|**Количество**|
