@@ -20,7 +20,32 @@
 
 **Пример команды SELECT**
 ```SQL
+DECLARE @table   array
+DECLARE @company entity
 
+USE 'mssql://zhichkin/unf'
+
+   SELECT Ссылка INTO @company
+     FROM Справочник.Организации
+    WHERE Код = '00-000001'
+
+   SELECT TOP 10
+          Номенклатура
+        , Количество = SUM(CASE WHEN ВидДвижения = 0
+                                THEN  Количество
+                                ELSE -Количество END)
+     INTO @table
+     FROM РегистрНакопления.ЗапасыНаСкладах
+    WHERE Организация = @company
+    GROUP BY Номенклатура
+   HAVING SUM(CASE WHEN ВидДвижения = 0
+                   THEN  Количество
+                   ELSE -Количество END) > 0
+    ORDER BY Номенклатура
+
+END
+
+RETURN @table
 ```
 
 [Наверх](#команда-select)
