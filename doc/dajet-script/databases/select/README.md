@@ -8,8 +8,12 @@
 - [Табличный оператор JOIN](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/join/README.md)
 - [Табличный оператор UNION](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/union/README.md)
 - [Коррелированные подзапросы](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/subquery/README.md)
-- Оператор APPLY (боковые соединения)
-- Общие табличные выражения
+- [Оператор APPLY (боковые соединения)](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/apply/README.md)
+- [Общие табличные выражения](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/cte/README.md)
+- Строковые функции
+- Агрегатные функции
+- Оконные (аналитические) функции
+- Прочие полезные функции
 
 #### Общее описание
 
