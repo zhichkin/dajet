@@ -1,6 +1,7 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
+using static Npgsql.Replication.PgOutput.Messages.RelationMessage;
 
 namespace DaJet.Scripting
 {
@@ -43,9 +44,34 @@ namespace DaJet.Scripting
         }
         private bool IsScalarColumn(SyntaxNode node)
         {
-            return (node is ColumnReference column
-                && column.Binding is MetadataProperty property
-                && property.Columns.Count == 1);
+            if (node is ColumnReference column)
+            {
+                return IsScalarColumn(column.Binding);
+            }
+
+            return false;
+        }
+        private bool IsScalarColumn(in object binding)
+        {
+            if (binding is MetadataProperty property)
+            {
+                return (property.Columns.Count == 1);
+            }
+            else if (binding is ColumnExpression expression)
+            {
+                return IsScalarColumn(in expression);
+            }
+
+            return false;
+        }
+        private bool IsScalarColumn(in ColumnExpression expression)
+        {
+            if (expression.Expression is ColumnReference column)
+            {
+                return IsScalarColumn(column.Binding);
+            }
+
+            return false;
         }
         private bool IsUnionColumn(SyntaxNode node, out ColumnReference column)
         {
