@@ -31,7 +31,9 @@ namespace DaJet.Scripting
             { typeof(Entity), "entity" },
             { typeof(Union), "union" },
             { typeof(Array), "array" },
-            { typeof(object), "object" }
+            { typeof(object), "object" },
+            { typeof(DataObject), "object" },
+            { typeof(List<DataObject>), "array" }
         };
         private static Dictionary<Type, TokenType> _datatype_token = new()
         {
