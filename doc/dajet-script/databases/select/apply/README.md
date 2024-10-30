@@ -68,7 +68,8 @@ USE 'mssql://server/database'
 
    SELECT Наименование = Товары.Наименование
         , Период       = ISNULL(ПрайсЛист.Период, '2024-01-01T00:00:00')
-        , Цена         = ISNULL(ПрайсЛист.Цена, 0.00)
+        , Цена         = CASE WHEN NOT ПрайсЛист.Цена IS NULL
+                              THEN ПрайсЛист.Цена ELSE 0.00 END
      INTO @table
      FROM (SELECT TOP 5 Ссылка, Наименование FROM Справочник.Номенклатура) AS Товары
     OUTER APPLY (SELECT Период, Цена
