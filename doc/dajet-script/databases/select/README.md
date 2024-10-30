@@ -7,6 +7,9 @@
 - [Общее описание](#общее-описание)
 - [Табличный оператор JOIN](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/join/README.md)
 - [Табличный оператор UNION](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/union/README.md)
+- [Коррелированные подзапросы](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/subquery/README.md)
+- Оператор APPLY (боковые соединения)
+- Общие табличные выражения
 
 #### Общее описание
 
