@@ -476,7 +476,10 @@ namespace DaJet.Runtime.RabbitMQ
                 {
                     string key = headers.GetName(i);
                     object value = headers.GetValue(i);
-                    _ = _properties.Headers.TryAdd(key, value);
+
+                    string text = HeaderSerializer.Serialize(in value);
+                    byte[] utf8 = Encoding.UTF8.GetBytes(text);
+                    _ = _properties.Headers.TryAdd(key, utf8);
                 }
             }
         }

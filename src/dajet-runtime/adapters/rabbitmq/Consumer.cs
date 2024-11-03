@@ -373,17 +373,9 @@ namespace DaJet.Runtime.RabbitMQ
                     continue; // Игнорируем стандартный заголовок
                 }
 
-                if (header.Value is bool boolean)
+                if (header.Value is string text)
                 {
-                    headers.SetValue(header.Key, boolean);
-                }
-                else if (header.Value is int integer)
-                {
-                    headers.SetValue(header.Key, integer);
-                }
-                else if (header.Value is decimal number)
-                {
-                    headers.SetValue(header.Key, number);
+                    headers.SetValue(header.Key, HeaderSerializer.Deserialize(in text));
                 }
                 else if (header.Value is byte[] bytes) // this might be whatever ?
                 {
@@ -395,7 +387,7 @@ namespace DaJet.Runtime.RabbitMQ
                     }
                     finally
                     {
-                        headers.SetValue(header.Key, value);
+                        headers.SetValue(header.Key, HeaderSerializer.Deserialize(in value));
                     }
                 }
                 else

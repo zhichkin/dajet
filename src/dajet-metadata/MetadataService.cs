@@ -9,6 +9,8 @@ using DaJet.Model;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Web;
 
 namespace DaJet.Metadata
 {
@@ -262,7 +264,27 @@ namespace DaJet.Metadata
 
         public static IMetadataProvider CreateOneDbMetadataProvider(in Uri uri)
         {
-            return new OneDbMetadataProvider(in uri, false);
+            bool use_extensions = false;
+
+            if (uri.Query is not null)
+            {
+                string[] parameters = uri.Query.Split('?', '&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                
+                if (parameters is not null && parameters.Length > 0)
+                {
+                    for (int i = 0; i < parameters.Length; i++)
+                    {
+                        string[] parameter = parameters[i].Split('=', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                        if (parameter.Length == 1 && parameter[0] == "mdex")
+                        {
+                            use_extensions = true; break;
+                        }
+                    }
+                }
+            }
+
+            return new OneDbMetadataProvider(in uri, use_extensions);
         }
         public static IMetadataProvider CreateOneDbMetadataProvider(in InfoBaseRecord options)
         {

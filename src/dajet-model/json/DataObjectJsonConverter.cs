@@ -171,6 +171,10 @@ namespace DaJet.Json
                 {
                     writer.WriteString(name, dateTime.ToString("yyyy-MM-ddTHH:mm:ss"));
                 }
+                else if (value is Entity entity)
+                {
+                    writer.WriteString(name, entity.ToString());
+                }
                 else if (value is byte[] binary)
                 {
                     writer.WriteString(name, Convert.ToBase64String(binary));
@@ -186,10 +190,10 @@ namespace DaJet.Json
                 else if (value is ushort uint2) { writer.WriteNumber(name, uint2); }
                 else if (value is uint uint4) { writer.WriteNumber(name, uint4); }
                 else if (value is ulong uint8) { writer.WriteNumber(name, uint8); }
-                else if (value is DataObject entity)
+                else if (value is DataObject data)
                 {
                     writer.WritePropertyName(name);
-                    Write(writer, entity, options);
+                    Write(writer, data, options);
                 }
                 else if (value is List<DataObject> list)
                 {
