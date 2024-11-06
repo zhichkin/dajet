@@ -29,8 +29,18 @@ namespace DaJet.Runtime
                 _next_else = StreamFactory.CreateStream(in else_scope);
             }
         }
-        public void Dispose() { _next?.Dispose(); }
-        public void Synchronize() { _next?.Synchronize(); }
+        public void Dispose()
+        {
+            _next_then?.Dispose();
+            _next_else?.Dispose();
+            _next?.Dispose();
+        }
+        public void Synchronize()
+        {
+            _next_then?.Synchronize();
+            _next_else?.Synchronize();
+            _next?.Synchronize();
+        }
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Process()
         {

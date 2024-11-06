@@ -109,16 +109,8 @@ namespace DaJet.Runtime
             }
         }
         public void LinkTo(in IProcessor next) { _next = next; }
-        public void Dispose()
-        {
-            _init?.Dispose();
-            _next?.Dispose();
-        }
-        public void Synchronize()
-        {
-            _init?.Synchronize();
-            _next?.Synchronize();
-        }
+        public void Dispose() { _next?.Dispose(); }
+        public void Synchronize() { _next?.Synchronize(); }
         public void Process()
         {
             object value = null;

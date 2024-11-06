@@ -10,6 +10,16 @@ namespace DaJet.Metadata.Extensions
     /// </summary>
     public sealed class ExtensionInfo : MetadataObject
     {
+        private readonly OneDbMetadataProvider _host;
+        [JsonConstructor] public ExtensionInfo() { _host = null; }
+        public ExtensionInfo(in OneDbMetadataProvider host)
+        {
+            _host = host ?? throw new ArgumentNullException(nameof(host));
+        }
+        /// <summary>
+        /// Основная конфигурация (владелец), к которой подключенно данное расширение
+        /// </summary>
+        public OneDbMetadataProvider Host { get { return _host; } }
         /// <summary>
         /// Идентификатор расширения _IDRRef в таблице _ExtensionsInfo
         /// <br>Используется для поиска соответствующего файла DbNames расширения</br>

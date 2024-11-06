@@ -6,7 +6,7 @@ namespace DaJet.Runtime
     public sealed class UseProcessor : IProcessor
     {
         private IProcessor _next;
-        private IProcessor _block;
+        private IProcessor _body;
         private readonly ScriptScope _scope;
         private readonly UseStatement _statement;
         public UseProcessor(in ScriptScope scope)
@@ -24,22 +24,22 @@ namespace DaJet.Runtime
         public void Process()
         {
             InitializeProcessor();
-            _block.Process();
+            _body?.Process();
             _next?.Process();
         }
         public void Synchronize()
         {
-            _block.Synchronize();
+            _body?.Synchronize();
             _next?.Synchronize();
         }
         public void Dispose()
         {
-            _block.Dispose();
+            _body?.Dispose();
             _next?.Dispose();
         }
         private void InitializeProcessor()
         {
-            if (_block is not null)
+            if (_body is not null)
             {
                 return; // lazy initialization
             }
@@ -49,11 +49,11 @@ namespace DaJet.Runtime
                 throw new InvalidOperationException(error);
             }
 
-            ScriptScope block_scope = _scope.Create(_statement.Statements);
+            ScriptScope body_scope = _scope.Create(_statement.Statements);
 
-            StreamFactory.InitializeVariables(in block_scope, in database);
+            StreamFactory.InitializeVariables(in body_scope, in database);
 
-            _block = StreamFactory.CreateStream(in block_scope);
+            _body = StreamFactory.CreateStream(in body_scope);
         }
     }
 }

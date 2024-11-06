@@ -162,9 +162,27 @@ namespace DaJet.Metadata.Core
 
                     target.Reference = uuid; // uuid объекта метаданных
 
-                    if (cache.TryGetDbName(uuid, out DbName db))
+                    if (cache.TryGetDbName(uuid, out DbName db)) // поиск собственных объектов конфигурации, в том числе расширений
                     {
                         target.TypeCode = db.Code; // код типа объекта метаданных
+                    }
+                    else if (cache.Extension is not null) // контекст расширения конфигурации - поиск заимствованных объектов
+                    {
+                        // Идентификатор объекта метаданных заимствованного ссылочного типа НЕ РАВЕН 
+                        // аналогичному идентификатору своего родительского объекта метаданных !!!
+                        // Родительский объект следует искать в основной конфигурации.
+                        uuid = cache.Extension.Host.GetExtensionObjectParent(uuid);
+
+                        if (uuid != Guid.Empty && cache.Extension.Host.TryGetDbName(uuid, out DbName dbn))
+                        {
+                            target.TypeCode = dbn.Code;
+                            target.Reference = dbn.Uuid;
+                        }
+                        else //THINK: throw exception ? этого не должно быть
+                        {
+                            target.TypeCode = 0;
+                            target.Reference = uuid;
+                        }
                     }
                 }
                 else

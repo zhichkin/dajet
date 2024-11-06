@@ -1279,7 +1279,25 @@ namespace DaJet.Metadata
                 yield return metadata;
             }
         }
-        
+        internal Guid GetExtensionObjectParent(Guid uuid)
+        {
+            //TODO: optimize extensions loading - map child metadata object uuid to parant's one
+            //NOTE: собственные объекты расширения Parent == Uuid !!!
+            //NOTE: заимствоанный объект расширения Parent != Uuid
+            //      Parent = uuid родительского объекта метаданных
+            //      Uuid = собственный uuid заимствованного объекта расширения
+
+            foreach (var item in _extended)
+            {
+                if (item.Value.Uuid == uuid)
+                {
+                    return item.Key;
+                }
+            }
+
+            return Guid.Empty; // not found
+        }
+
         #endregion
 
         #region "RESOLVE DATA TYPE SET REFERENCES"
@@ -1672,7 +1690,7 @@ namespace DaJet.Metadata
 
                 Guid uuid = new(DbUtilities.Get1CUuid((byte[])reader.GetValue(0)));
 
-                ExtensionInfo extension = new()
+                ExtensionInfo extension = new(this)
                 {
                     Identity = uuid, // Поле _IDRRef используется для поиска файла DbNames расширения
                     Order = (int)reader.GetDecimal(1),
@@ -1705,7 +1723,7 @@ namespace DaJet.Metadata
 
                 Guid uuid = new(DbUtilities.Get1CUuid((byte[])reader.GetValue(0)));
 
-                ExtensionInfo extension = new()
+                ExtensionInfo extension = new(this)
                 {
                     Identity = uuid, // Поле _IDRRef используется для поиска файла DbNames расширения
                     Order = (int)reader.GetDecimal(1),
