@@ -16,6 +16,7 @@ namespace DaJet.Runtime
 
         private AutoResetEvent _sleep;
         public ConsumeProcessor(in ScriptScope scope) : base(in scope) { }
+        public override void Synchronize() { /* IGNORE */ }
         public override void Process()
         {
             if (CanExecute) // STATE_IDLE -> STATE_ACTIVE
@@ -145,8 +146,6 @@ namespace DaJet.Runtime
 
             return processed;
         }
-
-        public override void Synchronize() { /* IGNORE */ }
         public override void Dispose()
         {
             if (CanDispose) // STATE_ACTIVE -> STATE_DISPOSING

@@ -13,7 +13,24 @@ namespace DaJet.Runtime
         }
         public override void Process()
         {
-            int processed = 0;
+            try
+            {
+                int streamed = Stream();
+
+                FileLogger.Default.Write($"Streamed {streamed} messages");
+            }
+            catch (Exception error)
+            {
+                FileLogger.Default.Write(error);
+            }
+            finally
+            {
+                _next?.Dispose();
+            }
+        }
+        private int Stream()
+        {
+            int streamed = 0;
 
             using (DbConnection connection = _factory.Create(in _uri))
             {
@@ -36,31 +53,26 @@ namespace DaJet.Runtime
 
                     try
                     {
-                        using (IDataReader reader = command.ExecuteReader())
+                        using (DbDataReader reader = command.ExecuteReader())
                         {
                             while (reader.Read())
                             {
-                                _statement.Mapper.Map(in reader, in record);
+                                _statement.Mapper.Map(reader, in record);
 
                                 _ = _scope.TrySetValue(_into.Identifier, record);
 
                                 _append?.Process();
-                                
+
                                 _next?.Process();
 
-                                processed++;
+                                streamed++;
                             }
                             reader.Close();
                         }
-                        
-                        if (processed > 0)
-                        {
-                            _next?.Synchronize();
-                        }
+
+                        if (streamed > 0) { _next?.Synchronize(); } //TODO: submit batches !?
 
                         transaction.Commit();
-
-                        FileLogger.Default.Write($"[{Environment.CurrentManagedThreadId}] Streamed {processed} messages");
                     }
                     catch (Exception error)
                     {
@@ -79,6 +91,8 @@ namespace DaJet.Runtime
                     }
                 }
             }
+
+            return streamed;
         }
     }
 }
