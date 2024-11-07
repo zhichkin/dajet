@@ -9,8 +9,6 @@ using DaJet.Model;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.Web;
 
 namespace DaJet.Metadata
 {
@@ -58,37 +56,22 @@ namespace DaJet.Metadata
                 return false;
             }
 
-            IMetadataProvider provider = entry.Value;
-
-            if (provider is null)
-            {
-                infoBase = null;
-                error = string.Format(ERROR_CASH_ENTRY_IS_NULL_OR_EXPIRED, key);
-                return false;
-            }
-
-            if (provider is not OneDbMetadataProvider metadata)
-            {
-                infoBase = null;
-                error = string.Format(ERROR_UNSUPPORTED_METADATA_PROVIDER, provider.GetType());
-                return false;
-            }
-
             Guid root;
             error = string.Empty;
 
             try
             {
-                using (ConfigFileReader reader = new(
-                    entry.Options.DatabaseProvider, entry.Options.ConnectionString, ConfigTables.Config, ConfigFiles.Root))
+                string connectionString = entry.Options.ConnectionString;
+                DatabaseProvider provider = entry.Options.DatabaseProvider;
+
+                using (ConfigFileReader reader = new(provider, connectionString, ConfigTables.Config, ConfigFiles.Root))
                 {
                     root = new RootFileParser().Parse(in reader);
                 }
 
-                using (ConfigFileReader reader = new(
-                    entry.Options.DatabaseProvider, entry.Options.ConnectionString, ConfigTables.Config, root))
+                using (ConfigFileReader reader = new(provider, connectionString, ConfigTables.Config, root))
                 {
-                    new InfoBaseParser(metadata).Parse(in reader, root, out infoBase);
+                    new InfoBaseParser(null).Parse(in reader, root, out infoBase);
                 }
             }
             catch (Exception exception)
@@ -97,7 +80,7 @@ namespace DaJet.Metadata
                 error = ExceptionHelper.GetErrorMessage(exception);
             }
 
-            return (infoBase != null);
+            return (infoBase is not null);
         }
         public bool TryGetOneDbMetadataProvider(string key, out OneDbMetadataProvider metadata, out string error)
         {

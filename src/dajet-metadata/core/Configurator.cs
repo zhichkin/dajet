@@ -168,8 +168,8 @@ namespace DaJet.Metadata.Core
                     }
                     else if (cache.Extension is not null) // контекст расширения конфигурации - поиск заимствованных объектов
                     {
-                        // Идентификатор объекта метаданных заимствованного ссылочного типа НЕ РАВЕН 
-                        // аналогичному идентификатору своего родительского объекта метаданных !!!
+                        // Идентификатор заимствованного объекта метаданных расширения НЕ РАВЕН аналогичному
+                        // идентификатору своего родительского объекта метаданных основной конфигурации !!!
                         // Родительский объект следует искать в основной конфигурации.
                         uuid = cache.Extension.Host.GetExtensionObjectParent(uuid);
 
@@ -181,7 +181,7 @@ namespace DaJet.Metadata.Core
                         else //THINK: throw exception ? этого не должно быть
                         {
                             target.TypeCode = 0;
-                            target.Reference = uuid;
+                            target.Reference = identifier; // неразрешённый идентификатор ссылки
                         }
                     }
                 }
@@ -189,7 +189,7 @@ namespace DaJet.Metadata.Core
                 {
                     // unsupported reference type, например "БизнесПроцесс"
                     target.TypeCode = 0;
-                    target.Reference = identifier;
+                    target.Reference = identifier; // неразрешённый идентификатор ссылки
                 }
             }
             else // multiple reference type
@@ -227,45 +227,16 @@ namespace DaJet.Metadata.Core
                     return 1; // single reference type
                 }
             }
-
-            #region "Deprecated code - remove in the future"
-            //if (cache.TryResolveCharacteristic(reference, out Guid uuid))
-            //{
-            //    // NOTE: Lazy-load of Characteristic: recursion is avoided because of rule #2.
-            //    // NOTE: 08.03.2024
-            //    // Рекурсия возможна, например, при загрузке в кэш объекта метаданных "МойПланВидовХарактеристик",
-            //    // который имеет реквизит с типом данных "Характеристика.МойПланВидовХарактеристик".
-            //    // При попытке разрешить ссылку на характеристику попадаем сюда и уходим в рекурсию:
-            //    // reference =         Характеристика.МойПланВидовХарактеристик
-            //    // uuid      = ПланВидовХарактеристик.МойПланВидовХарактеристик
-            //    // Решение: загрузка типов значенией характеристик при первичном заполнении кэша метаданных.
-            //    /// <see cref="DaJet.Metadata.Parsers.CharacteristicParser.Parse(in ConfigFileReader, Guid, out MetadataInfo)" />
-            //    /// <see cref="DaJet.Metadata.Parsers.CharacteristicParser.DataTypeDescriptor" />
-                 
-            //    MetadataObject metadata = cache.GetMetadataObjectCached(MetadataTypes.Characteristic, uuid);
-
-            //    if (metadata is not Characteristic characteristic)
-            //    {
-            //        return 0; // this should not happen
-            //    }
-
-            //    target.Apply(characteristic.DataTypeDescriptor);
-                
-            //    if (!target.CanBeReference)
-            //    {
-            //        return 0; // no reference types
-            //    }
-
-            //    if (target.Reference == Guid.Empty)
-            //    {
-            //        return 2; // multiple reference type (may be more then 2 in fact)
-            //    }
-            //    else
-            //    {
-            //        return 1; // single reference type
-            //    }
-            //}
-            #endregion
+            
+            // NOTE: 08.03.2024 Lazy-load of Characteristic: recursion is avoided because of rule #2.
+            // Рекурсия возможна, например, при загрузке в кэш объекта метаданных "МойПланВидовХарактеристик",
+            // который имеет реквизит с типом данных "Характеристика.МойПланВидовХарактеристик".
+            // При попытке разрешить ссылку на характеристику попадаем сюда и уходим в рекурсию:
+            // reference =         Характеристика.МойПланВидовХарактеристик
+            // uuid      = ПланВидовХарактеристик.МойПланВидовХарактеристик
+            // Решение: загрузка типов значенией характеристик при первичном заполнении кэша метаданных.
+            // <see cref="DaJet.Metadata.Parsers.CharacteristicParser.Parse(in ConfigFileReader, Guid, out MetadataInfo)" />
+            // <see cref="DaJet.Metadata.Parsers.CharacteristicParser.DataTypeDescriptor" />
 
             if (cache.TryGetReferenceInfo(reference, out MetadataItem info))
             {

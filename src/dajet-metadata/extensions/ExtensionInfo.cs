@@ -19,7 +19,7 @@ namespace DaJet.Metadata.Extensions
         /// <summary>
         /// Основная конфигурация (владелец), к которой подключенно данное расширение
         /// </summary>
-        public OneDbMetadataProvider Host { get { return _host; } }
+        [JsonIgnore] public OneDbMetadataProvider Host { get { return _host; } }
         /// <summary>
         /// Идентификатор расширения _IDRRef в таблице _ExtensionsInfo
         /// <br>Используется для поиска соответствующего файла DbNames расширения</br>
