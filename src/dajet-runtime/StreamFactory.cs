@@ -1223,7 +1223,7 @@ namespace DaJet.Runtime
                 return statement;
             }
 
-            lock (_transpilation_lock)
+            lock (_transpilation_lock) //TODO: lock by owner ???
             {
                 if (scope.TryGetTranspilation(scope.Owner, out statement))
                 {
