@@ -5,7 +5,7 @@
 ### Реляционные базы данных
 - [Общее описание](#общее-описание)
 - [SELECT](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/README.md)
-- [STREAM](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/README.md) (потоковый SELECT)
+- [STREAM](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/stream/README.md) (потоковый SELECT)
 
 #### Общее описание
 
