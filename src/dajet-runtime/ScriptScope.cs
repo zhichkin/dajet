@@ -2,6 +2,7 @@
 using DaJet.Metadata;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 
 namespace DaJet.Runtime
@@ -144,7 +145,7 @@ namespace DaJet.Runtime
         public List<DeclareStatement> Declarations { get; } = new(); // order is important for binding
         public Dictionary<string, object> Variables { get; } = new(); // scope variables and their values
         public Dictionary<SyntaxNode, SqlStatement> Transpilations { get; } = new(); // script transpilations cache
-        public Dictionary<string, IMetadataProvider> MetadataProviders { get; } = new(); // metadata providers cache
+        public ConcurrentDictionary<string, IMetadataProvider> MetadataProviders { get; } = new(); // metadata providers cache
         public bool TrySetValue(in string name, in object value)
         {
             ScriptScope scope = this;
@@ -349,16 +350,21 @@ namespace DaJet.Runtime
 
             ScriptScope root = GetRoot(); //NOTE: ScriptModel is the root
 
-            if (root.MetadataProviders.TryGetValue(uri.ToString(), out provider))
+            string connectionString = uri.ToString();
+
+            if (root.MetadataProviders.TryGetValue(connectionString, out provider))
             {
                 return true;
             }
 
             try
             {
-                provider = MetadataService.CreateOneDbMetadataProvider(in uri);
+                if (!root.MetadataProviders.ContainsKey(connectionString))
+                {
+                    provider = MetadataService.CreateOneDbMetadataProvider(in uri);
 
-                root.MetadataProviders.Add(uri.ToString(), provider);
+                    _ = root.MetadataProviders.TryAdd(connectionString, provider);
+                }
             }
             catch (Exception exception)
             {
