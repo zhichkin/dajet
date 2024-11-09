@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <AssemblyName>DaJet.Runtime</AssemblyName>
-    <Version>3.8.6</Version>
+    <Version>3.8.7</Version>
     <Authors>Zhichkin</Authors>
     <Copyright>Zhichkin © 2024</Copyright>
     <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>
