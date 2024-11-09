@@ -3,6 +3,11 @@
 [Начало](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/README.md)
 
 ### Реляционные базы данных
+- [Общее описание](#общее-описание)
+- [SELECT](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/README.md)
+- [STREAM](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/README.md) (потоковый SELECT)
+
+#### Общее описание
 
 DaJet Script поддерживает работу с базами данных 1С:Предприятие 8 под управлением СУБД Microsoft SQL Server или PostgreSQL. При этом нужно отметить, что имеется ввиду специальная [сборка PostgreSQL для 1С](https://v8.1c.ru/tekhnologii/systemnye-trebovaniya-1s-predpriyatiya-8/subd-postgresql/). Существенным отличием этой сборки PostgreSQL от стандартной является использование 1С строкового пользовательского типа данных ```mchar``` и ```mvarchar```. Возможно имеются и другие отличия, которые для работы DaJet Script не имеют значения.
 
@@ -32,7 +37,7 @@ DaJet Script поддерживает работу со следующими о�
 
 [Наверх](#реляционные-базы-данных)
 
-- [SELECT](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/README.md)
+- SELECT
   - Табличные операторы
     - JOIN, UNION, APPLY
     - Подзапросы
