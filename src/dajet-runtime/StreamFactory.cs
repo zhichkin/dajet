@@ -1214,35 +1214,46 @@ namespace DaJet.Runtime
             return declarations.ToArray();
         }
 
+        private static readonly object _transpilation_lock = new();
         internal static SqlStatement Transpile(in ScriptScope scope)
         {
+
             if (scope.TryGetTranspilation(scope.Owner, out SqlStatement statement))
             {
                 return statement;
             }
 
-            if (!scope.TryGetMetadataProvider(out IMetadataProvider database, out string error))
+            lock (_transpilation_lock)
             {
-                throw new InvalidOperationException(error);
+                if (scope.TryGetTranspilation(scope.Owner, out statement))
+                {
+                    return statement;
+                }
+
+                if (!scope.TryGetMetadataProvider(out IMetadataProvider database, out string error))
+                {
+                    throw new InvalidOperationException(error);
+                }
+
+                ScriptModel script = CreateProcessorScript(in scope);
+
+                if (!ScriptProcessor.TryBind(in script, in database, out error))
+                {
+                    throw new InvalidOperationException(error);
+                }
+
+                statement = TranspileProcessorScript(in script, in database);
+
+                if (statement is null)
+                {
+                    throw new InvalidOperationException($"Transpilation error: [{scope.Owner}]");
+                }
+
+                ScriptScope root = scope.GetRoot(); //NOTE: ScriptModel is the root
+
+
+                root.Transpilations.Add(scope.Owner, statement);
             }
-
-            ScriptModel script = CreateProcessorScript(in scope);
-
-            if (!ScriptProcessor.TryBind(in script, in database, out error))
-            {
-                throw new InvalidOperationException(error);
-            }
-
-            statement = TranspileProcessorScript(in script, in database);
-
-            if (statement is null)
-            {
-                throw new InvalidOperationException($"Transpilation error: [{scope.Owner}]");
-            }
-
-            ScriptScope root = scope.GetRoot(); //NOTE: ScriptModel is the root
-
-            root.Transpilations.Add(scope.Owner, statement);
 
             return statement;
         }

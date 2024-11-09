@@ -9,6 +9,7 @@ namespace DaJet.Runtime
 {
     public sealed class ScriptScope : IScriptRuntime
     {
+        private static readonly object _metadata_providers_lock = new();
         public ScriptScope(SyntaxNode owner)
         {
             Owner = owner ?? throw new ArgumentNullException(nameof(owner));
@@ -359,8 +360,13 @@ namespace DaJet.Runtime
 
             try
             {
-                if (!root.MetadataProviders.ContainsKey(connectionString))
+                lock (_metadata_providers_lock) //TODO: lock by connection string value
                 {
+                    if (root.MetadataProviders.TryGetValue(connectionString, out provider))
+                    {
+                        return true;
+                    }
+
                     provider = MetadataService.CreateOneDbMetadataProvider(in uri);
 
                     _ = root.MetadataProviders.TryAdd(connectionString, provider);
