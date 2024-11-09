@@ -15,9 +15,7 @@ namespace DaJet.Runtime
         {
             try
             {
-                int streamed = Stream();
-
-                FileLogger.Default.Write($"Streamed {streamed} messages");
+                Stream();
             }
             catch (Exception error)
             {
@@ -28,7 +26,7 @@ namespace DaJet.Runtime
                 _next?.Dispose();
             }
         }
-        private int Stream()
+        private void Stream()
         {
             int streamed = 0;
 
@@ -91,8 +89,6 @@ namespace DaJet.Runtime
                     }
                 }
             }
-
-            return streamed;
         }
     }
 }
