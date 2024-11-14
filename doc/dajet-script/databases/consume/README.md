@@ -13,8 +13,8 @@
   - [Web API]()
   - [Пользовательский обработчик на C#]()
 - Дополнительные материалы
-  - [Методика РИБ 2.0](https://github.com/zhichkin/dajet/tree/main/doc/mp4/rib20.mp4) (видео mp4)
-  - [Методика РИБ 2.0](https://github.com/zhichkin/dajet/tree/main/doc/pdf/rib20.pdf) (слайды pdf)
+  - [Методика РИБ 2.0](https://zhichkin.github.io/mp4/rib20.mp4) (видео mp4)
+  - [Методика РИБ 2.0](https://zhichkin.github.io/distributed-info-bases-2-0.pdf) (слайды pdf)
 
 #### Общее описание
 
