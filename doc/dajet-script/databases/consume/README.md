@@ -46,12 +46,57 @@ USE 'mssql://sa:sa@localhost:1433/source-database'
 END
 ```
 
-![Схема выполнения команды CONSUME](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-database-consume-to-database.png)
-
 ![Схема выполнения команды CONSUME](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-database-consume-to-database-schema.png)
 
-![Схема выполнения команды CONSUME](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-database-consume-to-rabbitmq.png)
+![Схема выполнения команды CONSUME](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-database-consume-to-database.png)
+
+```SQL
+WITH queue AS 
+(SELECT TOP (10)
+_Fld135 AS НомерСообщения,
+_Fld220 AS Заголовки,
+_Fld137 AS ТипСообщения,
+_Fld138 AS ТелоСообщения
+FROM _InfoRg134 WITH (ROWLOCK, READPAST)
+ORDER BY
+_Fld135 ASC)
+DELETE queue
+OUTPUT
+deleted.НомерСообщения,
+deleted.Заголовки,
+deleted.ТипСообщения,
+deleted.ТелоСообщения
+```
+
+```SQL
+WITH filter AS 
+(SELECT
+_fld99,
+_fld100
+FROM _InfoRg98
+ORDER BY
+_Fld99 ASC
+LIMIT 10
+FOR UPDATE SKIP LOCKED)
+, queue AS 
+(DELETE FROM _InfoRg98 AS source USING filter
+WHERE (source._fld99 = filter._fld99
+AND source._fld100 = filter._fld100)
+RETURNING
+source._Fld99 AS НомерСообщения,
+source._Fld101 AS ТипСообщения,
+source._Fld102 AS ТелоСообщения)
+SELECT
+queue.НомерСообщения,
+queue.ТипСообщения,
+queue.ТелоСообщения
+FROM queue
+ORDER BY
+queue.НомерСообщения ASC
+```
 
 ![Схема выполнения команды CONSUME](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-database-consume-to-rabbitmq-schema.png)
+
+![Схема выполнения команды CONSUME](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-database-consume-to-rabbitmq.png)
 
 [Наверх](#команда-consume)
