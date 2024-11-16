@@ -45,7 +45,7 @@
 
 ![Схема выполнения команды CONSUME](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-database-consume-to-database-schema.png)
 
-**Диаграмма выполнения транзакции для одного пакета записей**
+**Диаграмма выполнения транзакции для одного пакета из 1000 записей**
 
 ![Диаграмма выполнения транзакции](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-database-consume-to-database.png)
 
