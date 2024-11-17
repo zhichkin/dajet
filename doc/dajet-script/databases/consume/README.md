@@ -16,6 +16,8 @@
   - Вызов метода Web API
   - Пользовательский обработчик на C#
 - Дополнительные материалы
+  - [Нюанс № 1](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/consume/nuances/one/README.md)
+  - [Нюанс SQL Server](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/consume/nuances/two/README.md)
   - [Методика РИБ 2.0](https://zhichkin.github.io/mp4/rib20.mp4) (видео mp4)
   - [Методика РИБ 2.0](https://zhichkin.github.io/distributed-info-bases-2-0.pdf) (слайды pdf)
 
