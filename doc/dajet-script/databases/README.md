@@ -7,6 +7,7 @@
 - [SELECT](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/README.md)
 - [STREAM](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/stream/README.md) (потоковый SELECT)
 - [CONSUME](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/consume/README.md) (деструктивный STREAM)
+- [Мониторинг таблиц-очередей](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/queue-monitor/README.md)
 
 #### Общее описание
 
