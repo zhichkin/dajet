@@ -11,9 +11,14 @@
 - [Оператор APPLY (боковые соединения)](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/apply/README.md)
 - [Общие табличные выражения](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/select/cte/README.md)
 - Строковые функции
+  - LTRIM, RTRIM, LOWER, UPPER, REPLACE, CONCAT, CONCAT_WS, SUBSTRING, CHARLENGTH, DATALENGTH
 - Агрегатные функции
+  - SUM, MAX, MIN, AVG, COUNT, STRING_AGG
 - Оконные (аналитические) функции
+  - SUM, MAX, MIN, AVG, COUNT
+  - ROW_NUMBER, LAG, LEAD, FIRST_VALUE, LAST_VALUE
 - Прочие полезные функции
+  - ISNULL, NOW, NEWUUID, IN, LIKE, BETWEEN, = ANY/ALL, EXISTS
 
 #### Общее описание
 
