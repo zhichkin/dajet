@@ -8,10 +8,10 @@
 - [STREAM](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/stream/README.md) (потоковый SELECT)
 - [CONSUME](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/consume/README.md) (деструктивный STREAM)
 - [Мониторинг таблиц-очередей](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/queue-monitor/README.md)
-- INSERT
-- UPDATE (обычный и потоковый)
-- DELETE
-- REQUEST (хранимые процедуры)
+- [INSERT](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/insert/README.md)
+- [UPDATE](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/update/README.md) (обычный и потоковый)
+- [DELETE](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/delete/README.md)
+- [REQUEST](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/databases/request/README.md) (хранимые процедуры)
 
 #### Общее описание
 
