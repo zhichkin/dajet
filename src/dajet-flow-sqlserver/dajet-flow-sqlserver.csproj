@@ -15,6 +15,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.13.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\dajet-data-client\dajet-data-client.csproj" />
     <ProjectReference Include="..\dajet-flow\dajet-flow.csproj" />
   </ItemGroup>
