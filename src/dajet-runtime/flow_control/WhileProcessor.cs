@@ -4,6 +4,7 @@ namespace DaJet.Runtime
 {
     public sealed class WhileProcessor : IProcessor
     {
+        private bool _disposed;
         private IProcessor _next;
         private IProcessor _body;
         private readonly ScriptScope _scope;
@@ -25,6 +26,7 @@ namespace DaJet.Runtime
         }
         public void Dispose()
         {
+            _disposed = true;
             _body?.Dispose();
             _next?.Dispose();
         }
@@ -36,7 +38,9 @@ namespace DaJet.Runtime
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Process()
         {
-            while (ConditionIsTrue())
+            _disposed = false;
+
+            while (!_disposed && ConditionIsTrue())
             {
                 try
                 {
@@ -46,7 +50,10 @@ namespace DaJet.Runtime
                 catch (ContinueException) { continue; }
             }
 
-            _next?.Process();
+            if (!_disposed)
+            {
+                _next?.Process();
+            }
         }
         private bool ConditionIsTrue()
         {

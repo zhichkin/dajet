@@ -14,6 +14,9 @@ namespace DaJet
         private static HostConfig Config { get; set; } = new();
         public static void Main(string[] args)
         {
+            //args = new string[] { "./config.json" };
+            //args = new string[] { "./code/while-sleep-loop.djs" };
+
             if (args is not null && args.Length > 0)
             {
                 string extension = Path.GetExtension(args[0]);
@@ -26,7 +29,7 @@ namespace DaJet
                 {
                     Console.WriteLine($"[404][NOT FOUND] {args[0]}");
                 }
-                else if (extension == ".json")
+                else if (extension == ".json") // configuration file
                 {
                     RunHost(args[0]);
                 }

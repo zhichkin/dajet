@@ -7,6 +7,7 @@ namespace DaJet.Runtime
         private IProcessor _next;
         private readonly ScriptScope _scope;
         private readonly SleepStatement _statement;
+        private CancellationTokenSource _cts;
         public SleepProcessor(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
@@ -18,25 +19,43 @@ namespace DaJet.Runtime
 
             _statement = statement;
         }
-        public void Dispose() { _next?.Dispose(); }
         public void Synchronize() { _next?.Synchronize(); }
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Process()
         {
-            //TODO: [SLEEP] Task.Delay(timeout).Wait(cancellation_token);
+            //Thread.Sleep(TimeSpan.FromSeconds(_statement.Timeout));
 
-            //try
-            //{
-            //    Task.Delay(TimeSpan.FromSeconds(_statement.Timeout)).Wait(_cancellationToken);
-            //}
-            //catch // (OperationCanceledException)
-            //{
-            //    // do nothing - host shutdown requested
-            //}
+            _cts ??= new CancellationTokenSource();
 
-            Thread.Sleep(TimeSpan.FromSeconds(_statement.Timeout));
+            CancellationToken token = _cts.Token;
 
-            _next?.Process();
+            try
+            {
+                Task.Delay(TimeSpan.FromSeconds(_statement.Timeout)).Wait(token);
+            }
+            catch // (OperationCanceledException)
+            {
+                // do nothing - host shutdown requested
+            }
+
+            if (!token.IsCancellationRequested)
+            {
+                _next?.Process();
+            }
+        }
+        public void Dispose()
+        {
+            try
+            {
+                _cts?.Cancel();
+            }
+            finally
+            {
+                _cts?.Dispose();
+                _cts = null;
+            }
+
+            _next?.Dispose();
         }
     }
 }
