@@ -76,12 +76,12 @@ USE 'mssql://server/database'
      ORDER BY НомерСообщения ASC
     
    PRODUCE 'amqp://guest:guest@localhost:5672/dajet'
-    SELECT AppId         = 'Центральный офис'
-         , Exchange      = 'test-exchange'
-         , RoutingKey    = @message.Получатель
-         , MessageId     = @message.НомерСообщения
-         , ТипСообщения  = @message.ТипСообщения
-         , ТелоСообщения = @message.ТелоСообщения
+    SELECT AppId      = 'Центральный офис'
+         , Exchange   = 'test-exchange'
+         , RoutingKey = @message.Получатель
+         , MessageId  = @message.НомерСообщения
+         , Type       = @message.ТипСообщения
+         , Body       = @message.ТелоСообщения
 
 END
 ```
