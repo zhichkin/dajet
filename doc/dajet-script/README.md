@@ -15,9 +15,7 @@
   - [USE (контекст базы данных)](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/use/README.md)
   - [Язык запросов DaJet Script](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/databases/README.md)
   - [Управление последовательностью](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/sequence/README.md)  
-- [RabbitMQ](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/rabbitmq/README.md)
-  - [CONSUME](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/rabbitmq/consume/README.md)
-  - [PRODUCE](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/rabbitmq/produceREADME.md)
+- [Брокер RabbitMQ](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/rabbitmq/README.md)
 - Apache Kafka
   - CONSUME
   - PRODUCE
