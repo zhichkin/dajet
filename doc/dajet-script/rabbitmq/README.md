@@ -38,6 +38,6 @@
 'amqp://guest:guest@localhost:5672/%2F'
 ```
 
-> **На заметку:** для более глубокого понимания (на уровне разработчика) необходимо знать и понимать особенности работы [клиента .NET для RabbitMQ](https://www.rabbitmq.com/client-libraries/dotnet-api-guide), так как DaJet Script использует именно его.
-
 [Наверх](#rabbitmq)
+
+> **На заметку:** для более глубокого понимания (на уровне разработчика) необходимо знать и понимать особенности работы [клиента .NET для RabbitMQ](https://www.rabbitmq.com/client-libraries/dotnet-api-guide), так как DaJet Script использует именно его.
