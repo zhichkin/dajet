@@ -76,22 +76,35 @@ END
 
 #### Обработка пользовательских заголовков
 
+Команда **CONSUME** получает пользовательские заголовки сообщения RabbitMQ в виде значения типа ```object```. В ниже следующем примере заголовки сообщения сериализуются в формат JSON и сохраняются в ресурс "Заголовки" регистра сведений "ВходящиеСообщения".
+
+![outgoing-queue-data](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-rabbitmq-consume-outgoing-queue.png)
+
 ```SQL
 DECLARE @message object -- Сообщение RabbitMQ
+DECLARE @headers string -- Заголовки в формате JSON
 
 CONSUME 'amqp://guest:guest@localhost:5672/dajet'
    WITH QueueName = 'test-queue', Heartbeat = 10
    INTO @message
+
+IF @message.Headers = NULL
+   THEN SET @headers = 'нет заголовков'
+   ELSE SET @headers = JSON(@message.Headers)
+END
 
 USE 'mssql://server/database'
 
    INSERT РегистрСведений.ВходящиеСообщения
    SELECT НомерСообщения = VECTOR('so_incoming_queue')
         , Отправитель    = @message.AppId
+        , Заголовки      = @headers
         , ТипСообщения   = @message.Type
         , ТелоСообщения  = @message.Body
 
 END
 ```
+
+![consume-message-headers](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-rabbitmq-consume-message-headers.png)
 
 [Наверх](#команда-consume)
