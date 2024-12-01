@@ -86,6 +86,8 @@ USE 'mssql://server/database'
 END
 ```
 
+![message-example](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-rabbitmq-produce-message-example.png)
+
 [Наверх](#команда-produce)
 
 #### Пользовательские заголовки сообщений
