@@ -55,7 +55,7 @@ PRODUCE 'amqp://<username>:<password>@<server>:<port>/<virtual-host>'
 |ТелоСообщения|Ресурс|СТРОКА(0)|Тело сообщения|
 |Получатель|Реквизит|СТРОКА(36)|Код получателя|
 
-
+![outgoing-queue-data](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-rabbitmq-produce-outgoing-queue.png)
 
 [Наверх](#команда-produce)
 
