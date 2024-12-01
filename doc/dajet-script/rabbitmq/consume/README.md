@@ -3,6 +3,9 @@
 [RabbitMQ](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/rabbitmq/README.md)
 
 ### Команда CONSUME
+- [Таблица свойств потребляемого сообщения RabbitMQ](#таблица-свойств-потребляемого-сообщения-rabbitmq)
+- [Пример кода DaJet Script](#пример-кода-dajet-script)
+- [Обработка пользовательских заголовков](#обработка-пользовательских-заголовков)
 
 Поведение команды **CONSUME**, реализующей потребление сообщений RabbitMQ, с точки зрения концепции потоковой обработки данных DaJet Script аналогично поведению команды [CONSUME](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/databases/consume/README.md) для баз данных.
 
@@ -31,7 +34,9 @@ CONSUME 'amqp://<username>:<password>@<server>:<port>/<virtual-host>'
 
 > **На заметку:** [хорошая статья](https://www.cloudamqp.com/blog/how-to-optimize-the-rabbitmq-prefetch-count.html), объясняющая основные принципы оптимизации потребления сообщений при помощи параметра **PrefetchCount**.
 
-**Таблица свойств потребляемого сообщения RabbitMQ**
+[Наверх](#команда-consume)
+
+#### Таблица свойств потребляемого сообщения RabbitMQ
 
 |**Свойство**|**Тип данных**|**Описание**|
 |---|---|---|
@@ -44,6 +49,32 @@ CONSUME 'amqp://<username>:<password>@<server>:<port>/<virtual-host>'
 |ReplyTo|string|Адресат для обратной связи, определяемый логикой приложения.|
 |CorrelationId|string|Идентификатор корреляции сообщений между собой, определяемый логикой приложения.|
 |Headers|object|Пользовательские заголовки (смотри документацию ниже)|
+
+[Наверх](#команда-consume)
+
+#### Пример кода DaJet Script
+
+```SQL
+DECLARE @message object -- Сообщение RabbitMQ
+
+CONSUME 'amqp://guest:guest@localhost:5672/dajet'
+   WITH QueueName = 'test-queue', Heartbeat = 10
+   INTO @message
+
+USE 'mssql://server/database'
+
+   INSERT РегистрСведений.ВходящиеСообщения
+   SELECT НомерСообщения = VECTOR('so_incoming_queue')
+        , Отправитель    = @message.AppId
+        , ТипСообщения   = @message.Type
+        , ТелоСообщения  = @message.Body
+
+END
+```
+
+[Наверх](#команда-consume)
+
+#### Обработка пользовательских заголовков
 
 ```SQL
 DECLARE @message object -- Сообщение RabbitMQ
