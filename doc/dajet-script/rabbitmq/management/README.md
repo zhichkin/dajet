@@ -10,8 +10,7 @@
 
 Следующий скрипт сначала читает настройки подключения к web api брокера RabbitMQ из информационной базы 1С:Предприятие 8. Затем по узлам плана обмена создаёт типик исходящих сообщений и выполняет привязку к нему очередей, которые затем могут быть использованы узлами 1С для получения сообщений. Данный скрипт выполняет конфигурирование RabbitMQ согласно методике [РИБ 2.0](https://github.com/zhichkin/dajet/blob/main/doc/distributed-info-bases-2-0.pdf).
 
-> **Документация по RabbitMQ web api**<br>
-https://rawcdn.githack.com/rabbitmq/rabbitmq-server/v3.8.19/deps/rabbitmq_management/priv/www/api/index.html
+> [Документация RabbitMQ web api](https://rawcdn.githack.com/rabbitmq/rabbitmq-server/v3.8.19/deps/rabbitmq_management/priv/www/api/index.html)
 
 ```SQL
 DECLARE @node object
