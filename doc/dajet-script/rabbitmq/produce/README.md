@@ -59,10 +59,10 @@ DECLARE @message object
 USE 'mssql://server/database'
 
    CONSUME TOP 1000
-           НомерСообщения
+           Получатель
+         , НомерСообщения
          , ТипСообщения
          , ТелоСообщения
-         , Получатель
       INTO @message
       FROM РегистрСведений.ИсходящиеСообщения
      ORDER BY НомерСообщения ASC
