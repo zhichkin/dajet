@@ -56,7 +56,7 @@ PRODUCE 'amqp://<username>:<password>@<server>:<port>/<virtual-host>'
 ```SQL
 DECLARE @message object
 
-USE 'mssql://zhichkin/dajet-exchange'
+USE 'mssql://server/database'
 
    CONSUME TOP 1000
            НомерСообщения
