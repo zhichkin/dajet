@@ -7,6 +7,7 @@
 - [Регистр сведений исходящих сообщений](#регистр-сведений-исходящих-сообщений)
 - [Базовый пример публикации сообщений](#базовый-пример-публикации-сообщений)
 - [Пользовательские заголовки сообщений](#пользовательские-заголовки-сообщений)
+- [Формирование пользовательских заголовков в коде DaJet Script](#формирование-пользовательских-заголовков-в-коде-dajet-script)
 
 ```SQL
 PRODUCE 'amqp://<username>:<password>@<server>:<port>/<virtual-host>'
@@ -124,5 +125,41 @@ END
 ```
 
 ![message-headers](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-rabbitmq-produce-message-headers.png)
+
+[Наверх](#команда-produce)
+
+#### Формирование пользовательских заголовков в коде DaJet Script
+
+```SQL
+DECLARE @message object
+DECLARE @headers object
+
+USE 'mssql://server/database'
+
+   CONSUME TOP 1000
+           Получатель
+         , НомерСообщения
+         , ТипСообщения
+         , ТелоСообщения
+      INTO @message
+      FROM РегистрСведений.ИсходящиеСообщения
+     ORDER BY НомерСообщения ASC
+
+   -- Формирование пользовательских заголовков
+   SET @headers = SELECT version = '1.0'
+
+   PRODUCE 'amqp://guest:guest@localhost:5672/dajet'
+    SELECT AppId      = 'Центральный офис'
+         , Exchange   = 'test-exchange'
+         , Headers    = @headers -- Заголовки
+         , RoutingKey = @message.Получатель
+         , MessageId  = @message.НомерСообщения
+         , Type       = @message.ТипСообщения
+         , Body       = @message.ТелоСообщения
+
+END
+```
+
+![message-headers-by-code](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-rabbitmq-produce-message-headers-by-code.png)
 
 [Наверх](#команда-produce)
