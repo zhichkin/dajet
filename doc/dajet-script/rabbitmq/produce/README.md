@@ -92,4 +92,37 @@ END
 
 #### Пользовательские заголовки сообщений
 
+Команда **PRODUCE** позволяет работать с пользовательскими заголовками RabbitMQ. В следующем примере заголовки хранятся в формате JSON в исходящей очереди регистра сведений JSON. Чтобы их отправить в очередь RabbitMQ, необходимо эти заголовки десериализовать при помощи функции **JSON** в объект типа ```object```, а затем присвоить полученное значение свойству ```Headers``` сообщения RabbitMQ.
+
+![outgoing-headers](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-rabbitmq-produce-outgoing-headers.png)
+
+```SQL
+DECLARE @message object
+
+USE 'mssql://server/database'
+
+   CONSUME TOP 1000
+           Получатель
+         , Заголовки
+         , НомерСообщения
+         , ТипСообщения
+         , ТелоСообщения
+      INTO @message
+      FROM РегистрСведений.ИсходящиеСообщения
+     ORDER BY НомерСообщения ASC
+    
+   PRODUCE 'amqp://guest:guest@localhost:5672/dajet'
+    SELECT AppId      = 'Центральный офис'
+         , Exchange   = 'test-exchange'
+         , Headers    = JSON(@message.Заголовки)
+         , RoutingKey = @message.Получатель
+         , MessageId  = @message.НомерСообщения
+         , Type       = @message.ТипСообщения
+         , Body       = @message.ТелоСообщения
+
+END
+```
+
+![message-headers](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-rabbitmq-produce-message-headers.png)
+
 [Наверх](#команда-produce)
