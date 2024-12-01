@@ -361,7 +361,7 @@ namespace DaJet.Runtime.RabbitMQ
 
             if (message_headers is null || message_headers.Count == 0)
             {
-                return;
+                message.SetValue(nameof(IBasicProperties.Headers), null); return;
             }
 
             DataObject headers = new(message_headers.Count);
