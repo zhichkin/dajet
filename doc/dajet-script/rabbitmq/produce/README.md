@@ -4,7 +4,10 @@
 
 ### Команда PRODUCE
 
-Команда **PRODUCE** имеет следующий синтаксис:
+- [Регистр сведений исходящих сообщений](#регистр-сведений-исходящих-сообщений)
+- [Базовый пример публикации сообщений](#базовый-пример-публикации-сообщений)
+- [Пользовательские заголовки сообщений](#пользовательские-заголовки-сообщений)
+
 ```SQL
 PRODUCE 'amqp://<username>:<password>@<server>:<port>/<virtual-host>'
  SELECT <options>
@@ -42,4 +45,41 @@ PRODUCE 'amqp://<username>:<password>@<server>:<port>/<virtual-host>'
 
 [Наверх](#команда-produce)
 
+#### Регистр сведений исходящих сообщений
 
+
+
+[Наверх](#команда-produce)
+
+#### Базовый пример публикации сообщений
+
+```SQL
+DECLARE @message object
+
+USE 'mssql://zhichkin/dajet-exchange'
+
+   CONSUME TOP 1000
+           НомерСообщения
+         , ТипСообщения
+         , ТелоСообщения
+         , Получатель
+      INTO @message
+      FROM РегистрСведений.ИсходящиеСообщения
+     ORDER BY НомерСообщения ASC
+    
+   PRODUCE 'amqp://guest:guest@localhost:5672/dajet'
+    SELECT AppId         = 'Центральный офис'
+         , Exchange      = 'test-exchange'
+         , RoutingKey    = @message.Получатель
+         , MessageId     = @message.НомерСообщения
+         , ТипСообщения  = @message.ТипСообщения
+         , ТелоСообщения = @message.ТелоСообщения
+
+END
+```
+
+[Наверх](#команда-produce)
+
+#### Пользовательские заголовки сообщений
+
+[Наверх](#команда-produce)
