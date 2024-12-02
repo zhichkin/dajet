@@ -392,7 +392,7 @@ namespace DaJet.Runtime.RabbitMQ
                 }
                 else
                 {
-                    headers.SetValue(header.Key, null); // unsupported or unknown data type
+                    headers.SetValue(header.Key, string.Empty); // unsupported or unknown data type
                 }
             }
 
