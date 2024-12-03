@@ -7,7 +7,7 @@
 - [Отправка сообщений в топик Apache Kafka](#отправка-сообщений-в-топик-apache-kafka)
 - [Получение сообщений из топика Apache Kafka](#получение-сообщений-из-топика-apache-kafka)
 
-**DaJet Script** реализует работу с топиками **Apache Kafka** при помощи двух команд: **CONSUME** и **PRODUCE**. Концепция их работы аналогична [одноимённым командам RabbitMQ](https://github.com/zhichkin/dajet/edit/main/doc/dajet-script/rabbitmq/README.md).
+**DaJet Script** реализует работу с топиками **Apache Kafka** при помощи двух команд: **CONSUME** и **PRODUCE**. Концепция их работы аналогична [одноимённым командам RabbitMQ](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/rabbitmq/README.md).
 
 > **Внимание!** Специальной строки подключения не используется! Указывается только идентификатор адаптера: **kafka**.
 
