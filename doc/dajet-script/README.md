@@ -7,21 +7,19 @@
   - [Тип ```array``` (массив структур)](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/array/README.md)
 - [Объявление и использование переменных](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/variables/README.md)
 - [Алгоритмические возможности](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/algorithm/README.md)
-- Функция JSON
+- **Функция JSON**
 - [Вызов скриптов по http](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/http/README.md)
 - [Вызов внешних скриптов](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/execute/README.md)
   - EXECUTE ```script.djs```
-- Базы данных (mssql + pgsql)
+- **Базы данных (mssql + pgsql)**
   - [USE (контекст базы данных)](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/use/README.md)
   - [Язык запросов DaJet Script](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/databases/README.md)
-  - [Управление последовательностью](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/sequence/README.md)  
-- [RabbitMQ](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/rabbitmq/README.md)
-- Apache Kafka
-  - CONSUME
-  - PRODUCE
-- RPC (http, web api)
+  - [Управление последовательностью](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/sequence/README.md)
+- **RPC (http, web api)**
   - REQUEST
-- Программное расширение DaJet Script
+- [RabbitMQ](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/rabbitmq/README.md)
+- [Apache Kafka](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/kafka/README.md)
+- **Программное расширение DaJet Script**
   - PROCESS \<variables\> WITH \<c-sharp-interface\> INTO \<variable\> [SELECT \<options\>]
 - [Примеры DaJet Script](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/scripts)
 
