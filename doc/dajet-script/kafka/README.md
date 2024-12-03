@@ -4,8 +4,8 @@
 
 ### Apache Kafka
 
-- [Отправка сообщений: регистр сведений - топик Apache Kafka](#отправка-сообщений-регистр-сведений---топик-apache-kafka)
-- [Получение сообщений: топик Apache Kafka - регистр сведений](#получение-сообщений-топик-apache-kafka---регистр-сведений)
+- [Отправка сообщений в топик Apache Kafka](#отправка-сообщений-в-топик-apache-kafka)
+- [Получение сообщений из топика Apache Kafka](#получение-сообщений-из-топика-apache-kafka)
 
 **DaJet Script** реализует работу с топиками **Apache Kafka** при помощи двух команд: **CONSUME** и **PRODUCE**. Концепция их работы аналогична [одноимённым командам RabbitMQ](https://github.com/zhichkin/dajet/edit/main/doc/dajet-script/rabbitmq/README.md).
 
@@ -33,7 +33,7 @@
 
 [Наверх](#apache-kafka)
 
-#### Отправка сообщений: регистр сведений - топик Apache Kafka
+#### Отправка сообщений в топик Apache Kafka
 
 ```SQL
 DECLARE @changes object -- Запись таблицы регистрации изменений
@@ -80,7 +80,7 @@ END -- Контекст базы данных источника
 
 [Наверх](#apache-kafka)
 
-#### Получение сообщений: топик Apache Kafka - регистр сведений
+#### Получение сообщений из топика Apache Kafka
 
 ```SQL
 DECLARE @message object -- Запись (сообщение) Apache Kafka
