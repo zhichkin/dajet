@@ -7,7 +7,7 @@
   - [Тип ```array``` (массив структур)](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/array/README.md)
 - [Объявление и использование переменных](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/variables/README.md)
 - [Алгоритмические возможности](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/algorithm/README.md)
-- **Функция JSON**
+- [Функция JSON](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/json/README.md)
 - [Вызов скриптов по http](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/http/README.md)
 - [Вызов внешних скриптов](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/execute/README.md)
   - EXECUTE ```script.djs```
@@ -18,9 +18,8 @@
 - [REQUEST](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/request/README.md) (http, web api)
 - [RabbitMQ](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/rabbitmq/README.md)
 - [Apache Kafka](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/kafka/README.md)
-- **Программное расширение DaJet Script**
-  - PROCESS \<variables\> WITH \<c-sharp-interface\> INTO \<variable\> [SELECT \<options\>]
-- [Примеры DaJet Script](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/scripts)
+- [Программное расширение DaJet Script](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/process/README.md)
+- [Готовые шаблоны скриптов DaJet Script](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/scripts)
 
 ### Общее описание
 
