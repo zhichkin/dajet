@@ -92,12 +92,14 @@ namespace DaJet.Metadata.Parsers
             Guid type = source.GetUuid();
 
             if (type == SystemUuid.InformationRegister_Measure ||
-                type == SystemUuid.AccumulationRegister_Measure)
+                type == SystemUuid.AccumulationRegister_Measure ||
+                type == SystemUuid.AccountingRegister_Measure)
             {
                 _purpose = PropertyPurpose.Measure;
             }
             else if (type == SystemUuid.InformationRegister_Dimension
-                || type == SystemUuid.AccumulationRegister_Dimension)
+                || type == SystemUuid.AccumulationRegister_Dimension
+                || type == SystemUuid.AccountingRegister_Dimension)
             {
                 _purpose = PropertyPurpose.Dimension;
             }
@@ -187,6 +189,20 @@ namespace DaJet.Metadata.Parsers
                             _converter[0][5] += UseDimensionForChangeTracking;
                         }
                     }
+                    else if (_owner is AccountingRegister)
+                    {
+                        if (_purpose == PropertyPurpose.Dimension)
+                        {
+                            _converter[0][2] += UseBalance; // Балансовый
+                            _converter[0][3] += AccountingFlag; // Признак учёта
+                        }
+                        else if (_purpose == PropertyPurpose.Measure)
+                        {
+                            _converter[0][2] += UseBalance; // Балансовый
+                            _converter[0][3] += AccountingFlag; // Признак учёта
+                            _converter[0][4] += AccountingDimensionFlag; // Признак учёта субконто
+                        }
+                    }
                 }
             }
 
@@ -250,6 +266,18 @@ namespace DaJet.Metadata.Parsers
 
             //FIXME: extension has higher priority
             //_target.DataTypeDescriptor.Merge(in type);
+        }
+        private void UseBalance(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _property.UseBalance = (source.GetInt32() == 1);
+        }
+        private void AccountingFlag(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _property.AccountingFlag = source.GetUuid();
+        }
+        private void AccountingDimensionFlag(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _property.AccountingDimensionFlag = source.GetUuid();
         }
     }
 }

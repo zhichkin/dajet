@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System;
+using System.Collections.Generic;
 
 namespace DaJet.Metadata.Model
 {
@@ -31,6 +31,13 @@ namespace DaJet.Metadata.Model
         /// <summary>Признак измерения регистра сведений (ведущее):
         /// <br>запись будет подчинена объектам, записываемым в данном измерении</br></summary>
         public bool CascadeDelete { get; set; } = false; // Каскадное удаление по внешнему ключу
+
+        #region "Регистр бухгалтерии"
+        public bool UseBalance { get; set; } = true; // Балансовый (измерения и ресурсы)
+        public Guid AccountingFlag { get; set; } = Guid.Empty; // Признак учёта (измерения и ресурсы)
+        public Guid AccountingDimensionFlag { get; set; } = Guid.Empty; // Признак учёта субконто (только ресурсы)
+        #endregion
+
         public override string ToString() { return Name; }
     }
 }

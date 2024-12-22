@@ -1,4 +1,5 @@
 ﻿using DaJet.Metadata.Model;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -44,6 +45,10 @@ namespace DaJet.Metadata.Core
             else if (metadata is ChangeTrackingTable changeTable)
             {
                 ConfigureChangeTrackingTable(in cache, in changeTable);
+            }
+            else if (metadata is AccountingRegister register3)
+            {
+                ConfigureAccountingRegister(in cache, in register3);
             }
         }
         internal static void ConfigureSharedProperties(in OneDbMetadataProvider cache, in MetadataObject metadata)
@@ -2057,6 +2062,138 @@ namespace DaJet.Metadata.Core
             });
 
             table.Properties.Add(property);
+        }
+
+        #endregion
+
+        #region "ACCOUNTING REGISTER"
+
+        private static void ConfigureAccountingRegister(in OneDbMetadataProvider cache, in AccountingRegister register)
+        {
+            ConfigurePropertyПериод(register);
+            ConfigurePropertyРегистратор(in cache, register);
+            ConfigurePropertyНомерЗаписи(register);
+            ConfigurePropertyАктивность(register);
+
+            if (!register.UseCorrespondence)
+            {
+                ConfigurePropertyВидДвижения(in register);
+            }
+
+            ConfigurePropertyСчёт(in cache, in register);
+
+            //TODO: configure dimensions if correspondence
+            //TODO: configure measures if correspondence
+        }
+        private static void ConfigurePropertyВидДвижения(in AccountingRegister register)
+        {
+            // 0 = Дебет
+            // 1 = Кредит
+
+            MetadataProperty property = new()
+            {
+                Name = "ВидДвижения",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Correspond"
+            };
+
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericPrecision = 1;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Precision = 1,
+                TypeName = "numeric"
+            });
+
+            register.Properties.Add(property);
+        }
+        private static void ConfigurePropertyСчёт(in OneDbMetadataProvider cache, in AccountingRegister register)
+        {
+            Guid account = register.ChartOfAccounts;
+
+            if (account == Guid.Empty)
+            {
+                throw new FormatException("Chart of accounts is not defined");
+            }
+
+            if (!cache.TryGetDbName(account, out DbName dbn))
+            {
+                throw new FormatException("Failed to get type code for chart of accounts");
+            }
+
+            MetadataProperty property = null;
+
+            if (register.UseCorrespondence)
+            {
+                property = new MetadataProperty()
+                {
+                    Name = "СчётДт",
+                    Uuid = Guid.Empty,
+                    Purpose = PropertyPurpose.System,
+                    DbName = "_AccountDtRRef"
+                };
+
+                property.PropertyType.TypeCode = dbn.Code;
+                property.PropertyType.Reference = account;
+                property.PropertyType.CanBeReference = true;
+
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = property.DbName,
+                    Length = 16,
+                    TypeName = "binary"
+                });
+
+                register.Properties.Add(property);
+
+                property = new MetadataProperty()
+                {
+                    Name = "СчётКт",
+                    Uuid = Guid.Empty,
+                    Purpose = PropertyPurpose.System,
+                    DbName = "_AccountCtRRef"
+                };
+
+                property.PropertyType.TypeCode = dbn.Code;
+                property.PropertyType.Reference = account;
+                property.PropertyType.CanBeReference = true;
+
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = property.DbName,
+                    Length = 16,
+                    TypeName = "binary"
+                });
+
+                register.Properties.Add(property);
+            }
+            else
+            {
+                property = new MetadataProperty()
+                {
+                    Name = "Счёт",
+                    Uuid = Guid.Empty,
+                    Purpose = PropertyPurpose.System,
+                    DbName = "_AccountRRef"
+                };
+
+                property.PropertyType.TypeCode = dbn.Code;
+                property.PropertyType.Reference = account;
+                property.PropertyType.CanBeReference = true;
+
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = property.DbName,
+                    Length = 16,
+                    TypeName = "binary"
+                });
+
+                register.Properties.Add(property);
+            }
         }
 
         #endregion

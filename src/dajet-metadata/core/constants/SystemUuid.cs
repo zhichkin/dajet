@@ -53,6 +53,13 @@ namespace DaJet.Metadata.Core
         ///<summary>Идентификатор коллекции измерений регистра накопления</summary>
         public static Guid AccumulationRegister_Dimension = new Guid("b64d9a43-1642-11d6-a3c7-0050bae0a776");
 
+        ///<summary>Идентификатор коллекции ресурсов регистра бухгалтерии</summary>
+        public static Guid AccountingRegister_Measure = new("63405499-7491-4ce3-ac72-43433cbe4112");
+        ///<summary>Идентификатор коллекции реквизитов регистра бухгалтерии</summary>
+        public static Guid AccountingRegister_Property = new("9d28ee33-9c7e-4a1b-8f13-50aa9b36607b");
+        ///<summary>Идентификатор коллекции измерений регистра бухгалтерии</summary>
+        public static Guid AccountingRegister_Dimension = new("35b63b9d-0adf-4625-a047-10ae874c19a3");
+
         ///<summary>Идентификатор коллекции макетов объекта метаданных</summary>
         public static Guid Template_Collection = new Guid("3daea016-69b7-4ed4-9453-127911372fe6");
     }

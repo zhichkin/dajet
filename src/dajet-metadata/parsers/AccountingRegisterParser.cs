@@ -71,15 +71,12 @@ namespace DaJet.Metadata.Parsers
         }
         public void Parse(in ConfigFileReader reader, Guid uuid, out MetadataObject target)
         {
+            _target = new AccountingRegister() { Uuid = uuid };
+
             ConfigureConverter();
 
             _parser = new ConfigFileParser();
-            _propertyParser = new MetadataPropertyCollectionParser(_cache);
-
-            _target = new AccountingRegister()
-            {
-                Uuid = uuid
-            };
+            _propertyParser = new MetadataPropertyCollectionParser(_cache, _target);
 
             _parser.Parse(in reader, in _converter);
 
@@ -98,9 +95,14 @@ namespace DaJet.Metadata.Parsers
 
             _converter[1][15][1][2] += Name; // Имя
             _converter[1][15][1][3][2] += Alias; // Синоним
+            _converter[1][18] += ChartOfAccounts; // План счетов
+            _converter[1][20] += UseCorrespondence; // Корреспонденция
             _converter[1][23] += UseSplitter; // Разрешить разделение итогов
 
-            ConfigurePropertyConverters();
+            // коллекции свойств регистра бухгалтерии
+            _converter[3] += PropertyCollection; // измерения 35b63b9d-0adf-4625-a047-10ae874c19a3
+            _converter[5] += PropertyCollection; // ресурсы   63405499-7491-4ce3-ac72-43433cbe4112
+            _converter[7] += PropertyCollection; // реквизиты 9d28ee33-9c7e-4a1b-8f13-50aa9b36607b
         }
         private void Cancel(in ConfigFileReader source, in CancelEventArgs args)
         {
@@ -124,16 +126,17 @@ namespace DaJet.Metadata.Parsers
         {
             _target.Alias = source.Value;
         }
+        private void ChartOfAccounts(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _target.ChartOfAccounts = source.GetUuid();
+        }
+        private void UseCorrespondence(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _target.UseCorrespondence = (source.GetInt32() == 1);
+        }
         private void UseSplitter(in ConfigFileReader source, in CancelEventArgs args)
         {
             _target.UseSplitter = (source.GetInt32() != 0);
-        }
-        private void ConfigurePropertyConverters()
-        {
-            // коллекции свойств регистра накопления
-            _converter[5] += PropertyCollection; // ресурсы
-            _converter[6] += PropertyCollection; // реквизиты
-            _converter[7] += PropertyCollection; // измерения
         }
         private void PropertyCollection(in ConfigFileReader source, in CancelEventArgs args)
         {
