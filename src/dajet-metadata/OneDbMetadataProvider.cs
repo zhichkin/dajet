@@ -298,6 +298,25 @@ namespace DaJet.Metadata
 
             return false;
         }
+        internal bool TryGetExtDim(Guid uuid, out DbName entry)
+        {
+            if (!_database.TryGet(uuid, out entry))
+            {
+                return false;
+            }
+
+            foreach (DbName child in entry.Children)
+            {
+                if (child.Name == MetadataTokens.ExtDim)
+                {
+                    entry = child;
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         private void AddName(Guid type, Guid uuid, string name)
         {
@@ -519,11 +538,13 @@ namespace DaJet.Metadata
                 //{ MetadataTypes.Subsystem,            new List<Guid>() }, // Подсистемы
                 { MetadataTypes.NamedDataTypeDescriptor,     new List<Guid>() }, // Определяемые типы
                 { MetadataTypes.SharedProperty,       new List<Guid>() }, // Общие реквизиты
+                { MetadataTypes.Account,              new List<Guid>() }, // Планы счетов
                 { MetadataTypes.Catalog,              new List<Guid>() }, // Справочники
                 { MetadataTypes.Document,             new List<Guid>() }, // Документы
                 { MetadataTypes.Enumeration,          new List<Guid>() }, // Перечисления
                 { MetadataTypes.Publication,          new List<Guid>() }, // Планы обмена
                 { MetadataTypes.Characteristic,       new List<Guid>() }, // Планы видов характеристик
+                { MetadataTypes.AccountingRegister,   new List<Guid>() }, // Регистры бухгалтерии
                 { MetadataTypes.InformationRegister,  new List<Guid>() }, // Регистры сведений
                 { MetadataTypes.AccumulationRegister, new List<Guid>() }  // Регистры накопления
             };
@@ -576,6 +597,7 @@ namespace DaJet.Metadata
             _characteristics.Clear();
 
             _references.TryAdd(ReferenceTypes.AnyReference, new MetadataItem(Guid.Empty, Guid.Empty));
+            _references.TryAdd(ReferenceTypes.Account, new MetadataItem(MetadataTypes.Account, Guid.Empty));
             _references.TryAdd(ReferenceTypes.Catalog, new MetadataItem(MetadataTypes.Catalog, Guid.Empty));
             _references.TryAdd(ReferenceTypes.Document, new MetadataItem(MetadataTypes.Document, Guid.Empty));
             _references.TryAdd(ReferenceTypes.Enumeration, new MetadataItem(MetadataTypes.Enumeration, Guid.Empty));
@@ -1205,7 +1227,11 @@ namespace DaJet.Metadata
         {
             Guid uuid = Guid.Empty;
 
-            if (reference == ReferenceTypes.Catalog)
+            if (reference == ReferenceTypes.Account)
+            {
+                uuid = MetadataTypes.Account;
+            }
+            else if (reference == ReferenceTypes.Catalog)
             {
                 uuid = MetadataTypes.Catalog;
             }
@@ -1447,7 +1473,11 @@ namespace DaJet.Metadata
 
             Guid type;
 
-            if (dbn.Name == MetadataTokens.Reference)
+            if (dbn.Name == MetadataTokens.Acc)
+            {
+                type = MetadataTypes.Account;
+            }
+            else if (dbn.Name == MetadataTokens.Reference)
             {
                 type = MetadataTypes.Catalog;
             }

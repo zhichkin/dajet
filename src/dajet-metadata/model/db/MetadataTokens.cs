@@ -39,6 +39,8 @@
 
         ///<summary>Табличная часть (вложенный значимый тип данных)</summary>
         public const string VT = "VT";
+        ///<summary>Табличная часть "ВидыСубконто" счёта плана счетов</summary>
+        public const string ExtDim = "ExtDim";
         ///<summary>Перечисление (ссылочный тип данных)</summary>
         public const string Enum = "Enum";
         ///<summary>План видов характеристик (ссылочный тип данных)</summary>

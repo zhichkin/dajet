@@ -45,6 +45,7 @@ namespace DaJet.Metadata.Model
         {
             MetadataTokens.VT,
             MetadataTokens.Fld,
+            MetadataTokens.Acc,
             MetadataTokens.Enum,
             MetadataTokens.Chrc,
             MetadataTokens.Node,
@@ -52,11 +53,13 @@ namespace DaJet.Metadata.Model
             MetadataTokens.Const,
             MetadataTokens.Document,
             MetadataTokens.Reference,
+            MetadataTokens.AccRg,
             MetadataTokens.InfoRg,
             MetadataTokens.AccumRg
         };
         private readonly HashSet<string> _tref = new()
         {
+            MetadataTokens.Acc,
             MetadataTokens.Enum,
             MetadataTokens.Chrc,
             MetadataTokens.Node,

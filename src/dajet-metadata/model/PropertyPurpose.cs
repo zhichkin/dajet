@@ -21,6 +21,14 @@
         /// <b>Ресурс</b>
         /// <br>Определяемый пользователем для регистра ресурс.</br>
         /// </summary>
-        Measure
+        Measure,
+        /// <summary>
+        /// <b>Признак учёта плана счетов</b>
+        /// </summary>
+        AccountingFlag,
+        /// <summary>
+        /// <b>Признак учёта субконто плана счетов</b>
+        /// </summary>
+        AccountingDimensionFlag
     }
 }

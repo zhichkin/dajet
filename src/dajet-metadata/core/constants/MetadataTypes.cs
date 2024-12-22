@@ -18,6 +18,8 @@ namespace DaJet.Metadata.Core
         public static Guid Characteristic = new Guid("82a1b659-b220-4d94-a9bd-14d757b95a48"); // Планы видов характеристик
         public static Guid InformationRegister = new Guid("13134201-f60b-11d5-a3c7-0050bae0a776"); // Регистры сведений
         public static Guid AccumulationRegister = new Guid("b64d9a40-1642-11d6-a3c7-0050bae0a776"); // Регистры накопления
+        public static Guid Account = new Guid("238e7e88-3c5f-48b2-8a3b-81ebbecb20ed"); // Планы счетов 
+        public static Guid AccountingRegister = new Guid("2deed9b8-0056-4ffe-a473-c20a6c32a0bc"); // Регистры бухгатерии
 
         public static List<Guid> AllSupportedTypes
         {
@@ -27,11 +29,13 @@ namespace DaJet.Metadata.Core
                 {
                     SharedProperty,
                     NamedDataTypeDescriptor,
+                    Account,
                     Catalog,
                     Document,
                     Enumeration,
                     Publication,
                     Characteristic,
+                    AccountingRegister,
                     InformationRegister,
                     AccumulationRegister
                 };
@@ -43,6 +47,7 @@ namespace DaJet.Metadata.Core
             {
                 return new List<Guid>()
                 {
+                    Account,
                     Catalog,
                     Document,
                     Enumeration,
@@ -59,6 +64,7 @@ namespace DaJet.Metadata.Core
             {
                 return new List<Guid>()
                 {
+                    Account,
                     Catalog,
                     Document,
                     Enumeration,
@@ -73,6 +79,7 @@ namespace DaJet.Metadata.Core
             {
                 return new List<Guid>()
                 {
+                    Account,
                     Catalog,
                     Characteristic,
                     Publication
@@ -85,6 +92,7 @@ namespace DaJet.Metadata.Core
             {
                 return new List<Guid>()
                 {
+                    AccountingRegister,
                     InformationRegister,
                     AccumulationRegister
                 };
@@ -95,6 +103,7 @@ namespace DaJet.Metadata.Core
 
         #region " RU "
 
+        private const string RU_ACCOUNT= "ПланСчетов";
         private const string RU_CATALOG = "Справочник";
         private const string RU_DOCUMENT = "Документ";
         private const string RU_CONSTANT = "Константа";
@@ -103,6 +112,7 @@ namespace DaJet.Metadata.Core
         private const string RU_ENUMERATION = "Перечисление";
         private const string RU_CHARACTERISTIC = "ПланВидовХарактеристик";
         private const string RU_INFORMATION_REGISTER = "РегистрСведений";
+        private const string RU_ACCOUNTING_REGISTER = "РегистрБухгалтерии";
         private const string RU_ACCUMULATION_REGISTER = "РегистрНакопления";
         private const string RU_SHARED_PROPERTY = "ОбщийРеквизит";
         private const string RU_NAMED_DATA_TYPE = "ОпределяемыйТип";
@@ -111,6 +121,7 @@ namespace DaJet.Metadata.Core
 
         #region " EN "
 
+        private const string EN_ACCOUNT = "Account";
         private const string EN_CATALOG = "Catalog";
         private const string EN_DOCUMENT = "Document";
         private const string EN_CONSTANT = "Constant";
@@ -118,6 +129,7 @@ namespace DaJet.Metadata.Core
         private const string EN_PUBLICATION = "Publication";
         private const string EN_ENUMERATION = "Enumeration";
         private const string EN_CHARACTERISTIC = "Characteristic";
+        private const string EN_ACCOUNTING_REGISTER = "AccountingRegister";
         private const string EN_INFORMATION_REGISTER = "InformationRegister";
         private const string EN_ACCUMULATION_REGISTER = "AccumulationRegister";
         private const string EN_SHARED_PROPERTY = "CommonAttribute";
@@ -138,8 +150,10 @@ namespace DaJet.Metadata.Core
         }
         public static Guid ResolveNameRu(in string name)
         {
+            if (name == RU_ACCOUNT) return Account;
             if (name == RU_CATALOG) return Catalog;
             if (name == RU_DOCUMENT) return Document;
+            if (name == RU_ACCOUNTING_REGISTER) return AccountingRegister;
             if (name == RU_INFORMATION_REGISTER) return InformationRegister;
             if (name == RU_ACCUMULATION_REGISTER) return AccumulationRegister;
 
@@ -157,8 +171,10 @@ namespace DaJet.Metadata.Core
         }
         public static Guid ResolveNameEn(in string name)
         {
+            if (name == EN_ACCOUNT) return Account;
             if (name == EN_CATALOG) return Catalog;
             if (name == EN_DOCUMENT) return Document;
+            if (name == EN_ACCOUNTING_REGISTER) return AccountingRegister;
             if (name == EN_INFORMATION_REGISTER) return InformationRegister;
             if (name == EN_ACCUMULATION_REGISTER) return AccumulationRegister;
 
@@ -188,8 +204,10 @@ namespace DaJet.Metadata.Core
         }
         public static string ResolveNameRu(Guid uuid)
         {
+            if (uuid == Account) return RU_ACCOUNT;
             if (uuid == Catalog) return RU_CATALOG;
             if (uuid == Document) return RU_DOCUMENT;
+            if (uuid == AccountingRegister) return RU_ACCOUNTING_REGISTER;
             if (uuid == InformationRegister) return RU_INFORMATION_REGISTER;
             if (uuid == AccumulationRegister) return RU_ACCUMULATION_REGISTER;
 
@@ -207,8 +225,10 @@ namespace DaJet.Metadata.Core
         }
         public static string ResolveNameEn(Guid uuid)
         {
+            if (uuid == Account) return EN_ACCOUNT;
             if (uuid == Catalog) return EN_CATALOG;
             if (uuid == Document) return EN_DOCUMENT;
+            if (uuid == AccountingRegister) return EN_ACCOUNTING_REGISTER;
             if (uuid == InformationRegister) return EN_INFORMATION_REGISTER;
             if (uuid == AccumulationRegister) return EN_ACCUMULATION_REGISTER;
 
@@ -227,12 +247,14 @@ namespace DaJet.Metadata.Core
 
         public static string ResolveNameRu(Type type)
         {
-            if (type == typeof(Catalog)) { return RU_CATALOG; }
+            if (type == typeof(Account)) { return RU_ACCOUNT; }
+            else if (type == typeof(Catalog)) { return RU_CATALOG; }
             else if (type == typeof(Document)) { return RU_DOCUMENT; }
             else if (type == typeof(Constant)) { return RU_CONSTANT; }
             else if (type == typeof(Publication)) { return RU_PUBLICATION; }
             else if (type == typeof(Enumeration)) { return RU_ENUMERATION; }
             else if (type == typeof(Characteristic)) { return RU_CHARACTERISTIC; }
+            else if (type == typeof(AccountingRegister)) { return RU_ACCOUNTING_REGISTER; }
             else if (type == typeof(InformationRegister)) { return RU_INFORMATION_REGISTER; }
             else if (type == typeof(AccumulationRegister)) { return RU_ACCUMULATION_REGISTER; }
             else if (type == typeof(SharedProperty)) { return RU_SHARED_PROPERTY; }

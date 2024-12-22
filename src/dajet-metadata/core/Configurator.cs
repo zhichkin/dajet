@@ -9,7 +9,11 @@ namespace DaJet.Metadata.Core
     {
         internal static void ConfigureSystemProperties(in OneDbMetadataProvider cache, in MetadataObject metadata)
         {
-            if (metadata is Catalog catalog)
+            if (metadata is Account account)
+            {
+                ConfigureAccount(in cache, in account);
+            }
+            else if (metadata is Catalog catalog)
             {
                 ConfigureCatalog(in cache, in catalog);
             }
@@ -275,7 +279,11 @@ namespace DaJet.Metadata.Core
 
             int count = 0;
 
-            if (reference == ReferenceTypes.Catalog)
+            if (reference == ReferenceTypes.Account)
+            {
+                count = cache.CountMetadataObjects(MetadataTypes.Account);
+            }
+            else if (reference == ReferenceTypes.Catalog)
             {
                 count = cache.CountMetadataObjects(MetadataTypes.Catalog);
             }
@@ -297,6 +305,8 @@ namespace DaJet.Metadata.Core
             }
             else if (reference == ReferenceTypes.AnyReference)
             {
+                count += cache.CountMetadataObjects(MetadataTypes.Account);
+                if (count > 1) { return count; }
                 count += cache.CountMetadataObjects(MetadataTypes.Catalog);
                 if (count > 1) { return count; }
                 count += cache.CountMetadataObjects(MetadataTypes.Document);
@@ -463,6 +473,259 @@ namespace DaJet.Metadata.Core
             });
 
             enumeration.Properties.Add(property);
+        }
+
+        #endregion
+
+        #region "ACCOUNT"
+
+        private static void ConfigureAccount(in OneDbMetadataProvider cache, in Account account)
+        {
+            ConfigurePropertyСсылка(account);
+            ConfigurePropertyПометкаУдаления(account);
+
+            if (account.IsHierarchical) // always = true
+            {
+                ConfigurePropertyРодитель(in cache, account);
+            }
+
+            if (account.CodeLength > 0)
+            {
+                ConfigurePropertyКод(account);
+            }
+
+            if (account.DescriptionLength > 0)
+            {
+                ConfigurePropertyНаименование(account);
+            }
+
+            ConfigurePropertyПредопределённый(in cache, account);
+
+            ConfigurePropertyВерсияДанных(account);
+
+            if (account.UseAutoOrder)
+            {
+                ConfigurePropertyПорядок(in account);
+            }
+
+            ConfigurePropertyВидСчёта(in account);
+            ConfigurePropertyЗабалансовый(in account);
+
+            List<MetadataProperty> dimensions = new();
+
+            int index = 0;
+            int count = account.Properties.Count;
+
+            while (index < count)
+            {
+                MetadataProperty property = account.Properties[index];
+
+                if (property.Purpose == PropertyPurpose.AccountingDimensionFlag)
+                {
+                    dimensions.Add(property);
+                    account.Properties.RemoveAt(index);
+                    count--;
+                }
+                else
+                {
+                    index++;
+                }
+            }
+
+            if (account.MaxDimensionCount > 0)
+            {
+                if (!cache.TryGetExtDim(account.Uuid, out DbName entry))
+                {
+                    throw new FormatException($"Failed to get account dimension types table");
+                }
+
+                TablePart dimensionTypes = new()
+                {
+                    Name = "ВидыСубконто",
+                    Alias = "Виды субконто",
+                    TypeCode = entry.Code,
+                    TableName = $"{account.TableName}_ExtDim{entry.Code}"
+                };
+
+                ConfigurePropertyСсылка(account, in dimensionTypes);
+                ConfigurePropertyКлючСтроки(in dimensionTypes);
+                ConfigurePropertyНомерСтроки(in dimensionTypes);
+                ConfigurePropertyВидСубконто(in cache, in account, in dimensionTypes);
+                ConfigurePropertyПредопределённое(in dimensionTypes);
+                ConfigurePropertyТолькоОбороты(in dimensionTypes);
+
+                dimensionTypes.Properties.AddRange(dimensions);
+
+                account.TableParts.Add(dimensionTypes);
+            }
+        }
+        private static void ConfigurePropertyПорядок(in Account account)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "Порядок",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_OrderField"
+            };
+
+            property.PropertyType.CanBeString = true;
+            property.PropertyType.StringKind = StringKind.Variable;
+            property.PropertyType.StringLength = account.AutoOrderLength;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = account.AutoOrderLength,
+                TypeName = "nvarchar"
+            });
+
+            account.Properties.Add(property);
+        }
+        ///<summary>Вид счёта <see cref="AccountType"/> (активный, пассивный или активно-пассивный)</summary>
+        private static void ConfigurePropertyВидСчёта(in Account account)
+        {
+            // Активный = Active = 0
+            // Пассивный = Passive = 1
+            // Активно-пассивный = 2 ActivePassive
+
+            MetadataProperty property = new()
+            {
+                Name = "Вид",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Kind"
+            };
+
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericPrecision = 1;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Precision = 1,
+                TypeName = "numeric"
+            });
+
+            account.Properties.Add(property);
+        }
+        private static void ConfigurePropertyЗабалансовый(in Account account)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "Забалансовый",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_OffBalance"
+            };
+            property.PropertyType.CanBeBoolean = true;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 1,
+                TypeName = "binary"
+            });
+
+            account.Properties.Add(property);
+        }
+        private static void ConfigurePropertyНомерСтроки(in TablePart dimensionTypes)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "НомерСтроки",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_LineNo"
+            };
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericPrecision = 5;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Precision = 5,
+                TypeName = "numeric"
+            });
+
+            dimensionTypes.Properties.Add(property);
+        }
+        private static void ConfigurePropertyВидСубконто(in OneDbMetadataProvider cache, in Account account, in TablePart dimensionTypes)
+        {
+            Guid characteristic = account.DimensionTypes;
+
+            if (characteristic == Guid.Empty)
+            {
+                throw new FormatException("Account dimension types are not defined");
+            }
+
+            if (!cache.TryGetDbName(characteristic, out DbName typeCode))
+            {
+                throw new FormatException("Failed to get type code for account dimension types");
+            }
+
+            MetadataProperty property = new()
+            {
+                Name = "ВидСубконто",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_DimKindRRef"
+            };
+
+            property.PropertyType.TypeCode = typeCode.Code;
+            property.PropertyType.Reference = account.DimensionTypes;
+            property.PropertyType.CanBeReference = true;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 16,
+                TypeName = "binary"
+            });
+
+            dimensionTypes.Properties.Add(property);
+        }
+        private static void ConfigurePropertyПредопределённое(in TablePart dimensionTypes)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "Предопределённое",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_DimIsMetadata"
+            };
+            property.PropertyType.CanBeBoolean = true;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 1,
+                TypeName = "binary"
+            });
+
+            dimensionTypes.Properties.Add(property);
+        }
+        private static void ConfigurePropertyТолькоОбороты(in TablePart dimensionTypes)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "ТолькоОбороты",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_TurnoverOnly"
+            };
+            property.PropertyType.CanBeBoolean = true;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 1,
+                TypeName = "binary"
+            });
+
+            dimensionTypes.Properties.Add(property);
         }
 
         #endregion

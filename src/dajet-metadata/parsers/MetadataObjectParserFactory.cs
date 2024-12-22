@@ -14,11 +14,13 @@ namespace DaJet.Metadata.Parsers
 
             _parsers = new() // supported metadata object parsers
             {
+                { MetadataTypes.Account, CreateAccountParser },
                 { MetadataTypes.Catalog, CreateCatalogParser },
                 { MetadataTypes.Document, CreateDocumentParser },
                 { MetadataTypes.Enumeration, CreateEnumerationParser },
                 { MetadataTypes.Publication, CreatePublicationParser },
                 { MetadataTypes.Characteristic, CreateCharacteristicParser },
+                { MetadataTypes.AccountingRegister, CreateAccountingRegisterParser },
                 { MetadataTypes.InformationRegister, CreateInformationRegisterParser },
                 { MetadataTypes.AccumulationRegister, CreateAccumulationRegisterParser },
                 { MetadataTypes.SharedProperty, CreateSharedPropertyParser }, // since 1C:Enterprise 8.2.14 version
@@ -43,6 +45,10 @@ namespace DaJet.Metadata.Parsers
 
         #region "CONCRETE PARSER FACTORIES"
 
+        private IMetadataObjectParser CreateAccountParser()
+        {
+            return new AccountParser(_metadata);
+        }
         private IMetadataObjectParser CreateCatalogParser()
         {
             return new CatalogParser(_metadata);
@@ -62,6 +68,10 @@ namespace DaJet.Metadata.Parsers
         private IMetadataObjectParser CreateCharacteristicParser()
         {
             return new CharacteristicParser(_metadata);
+        }
+        private IMetadataObjectParser CreateAccountingRegisterParser()
+        {
+            return new AccountingRegisterParser(_metadata);
         }
         private IMetadataObjectParser CreateInformationRegisterParser()
         {

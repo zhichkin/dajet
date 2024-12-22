@@ -101,6 +101,14 @@ namespace DaJet.Metadata.Parsers
             {
                 _purpose = PropertyPurpose.Dimension;
             }
+            else if (type == SystemUuid.Account_AccountingFlags)
+            {
+                _purpose = PropertyPurpose.AccountingFlag;
+            }
+            else if (type == SystemUuid.Account_AccountingDimensionFlags)
+            {
+                _purpose = PropertyPurpose.AccountingDimensionFlag;
+            }
             else
             {
                 _purpose = PropertyPurpose.Property;

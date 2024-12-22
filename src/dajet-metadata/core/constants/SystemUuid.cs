@@ -10,6 +10,15 @@ namespace DaJet.Metadata.Core
         ///<summary>Идентификатор коллекции реквизитов табличной части</summary>
         public static Guid TablePart_Properties = new Guid("888744e1-b616-11d4-9436-004095e12fc7");
 
+        ///<summary>Идентификатор коллекции реквизитов плана счетов</summary>
+        public static Guid Account_Properties = new("6e65cbf5-daa8-4d8d-bef8-59723f4e5777");
+        ///<summary>Идентификатор коллекции табличных частей плана счетов</summary>
+        public static Guid Account_TableParts = new("4c7fec95-d1bd-4508-8a01-f1db090d9af8");
+        ///<summary>Идентификатор коллекции признаков учёта плана счетов</summary>
+        public static Guid Account_AccountingFlags = new("78bd1243-c4df-46c3-8138-e147465cb9a4");
+        ///<summary>Идентификатор коллекции признаков учёта субконто плана счетов</summary>
+        public static Guid Account_AccountingDimensionFlags = new("c70ca527-5042-4cad-a315-dcb4007e32a3");
+
         ///<summary>Идентификатор коллекции реквизитов справочника</summary>
         public static Guid Catalog_Properties = new Guid("cf4abea7-37b2-11d4-940f-008048da11f9");
         ///<summary>Идентификатор коллекции табличных частей справочника</summary>

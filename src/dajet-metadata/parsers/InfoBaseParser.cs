@@ -232,7 +232,11 @@ namespace DaJet.Metadata.Parsers
             else if (uuid == Components.Operations) // 4.0 - Компонента платформы "Оперативный учёт"
             {
                 _converter[node][1][1][2] += ConfigureMetadata; // начало коллекции объектов метаданных компоненты
-            }   
+            }
+            else if (uuid == Components.Accounting) // 5.0 - Компонента платформы "Бухгалтерский учёт"
+            {
+                _converter[node][1][2] += ConfigureMetadata; // начало коллекции объектов метаданных компоненты
+            }
         }
         private void ConfigureMetadata(in ConfigFileReader source, in CancelEventArgs args)
         {
