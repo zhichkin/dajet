@@ -292,6 +292,15 @@ namespace DaJet.Metadata.Model
             //References.AddRange(source.References);
         }
 
+        public DataTypeDescriptor Copy()
+        {
+            DataTypeDescriptor copy = new();
+
+            copy.Apply(this);
+
+            return copy;
+        }
+
         ///<summary>Проверяет является ли свойство составным типом данных</summary>
         public bool IsMultipleType
         {

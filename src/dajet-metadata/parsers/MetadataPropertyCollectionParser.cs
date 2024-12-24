@@ -193,12 +193,12 @@ namespace DaJet.Metadata.Parsers
                     {
                         if (_purpose == PropertyPurpose.Dimension)
                         {
-                            _converter[0][2] += UseBalance; // Балансовый
+                            _converter[0][2] += IsBalance; // Балансовый
                             _converter[0][3] += AccountingFlag; // Признак учёта
                         }
                         else if (_purpose == PropertyPurpose.Measure)
                         {
-                            _converter[0][2] += UseBalance; // Балансовый
+                            _converter[0][2] += IsBalance; // Балансовый
                             _converter[0][3] += AccountingFlag; // Признак учёта
                             _converter[0][4] += AccountingDimensionFlag; // Признак учёта субконто
                         }
@@ -267,9 +267,9 @@ namespace DaJet.Metadata.Parsers
             //FIXME: extension has higher priority
             //_target.DataTypeDescriptor.Merge(in type);
         }
-        private void UseBalance(in ConfigFileReader source, in CancelEventArgs args)
+        private void IsBalance(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _property.UseBalance = (source.GetInt32() == 1);
+            _property.IsBalance = (source.GetInt32() == 1);
         }
         private void AccountingFlag(in ConfigFileReader source, in CancelEventArgs args)
         {

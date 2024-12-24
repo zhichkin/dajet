@@ -1,5 +1,4 @@
 ﻿using DaJet.Metadata.Model;
-using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -2075,6 +2074,8 @@ namespace DaJet.Metadata.Core
             ConfigurePropertyНомерЗаписи(register);
             ConfigurePropertyАктивность(register);
 
+            //NOTE: для таблицы ЗначенияСубконто - обратная логика
+            // Если UseCorrespondence, то есть поле _Correspond
             if (!register.UseCorrespondence)
             {
                 ConfigurePropertyВидДвижения(in register);
@@ -2082,8 +2083,25 @@ namespace DaJet.Metadata.Core
 
             ConfigurePropertyСчёт(in cache, in register);
 
-            //TODO: configure dimensions if correspondence
-            //TODO: configure measures if correspondence
+            ConfigureDimensionsAndMeasures(in cache, in register);
+
+            if (cache.InfoBase.CompatibilityVersion >= 80315)
+            {
+                //TODO: Значения субконто хранятся в основной таблице регистра бухгалтерии
+                //      наряду с обычным хранением в таблице _AccRegED
+                if (register.UseCorrespondence)
+                {
+                    //[_ValueDt1]
+                    //[_KindDt1RRef]
+                    //[_ValueCt1]
+                    //[_KindCt1RRef]
+                }
+                else
+                {
+                    //[_Value1]
+                    //[_Kind1RRef]
+                }
+            }
         }
         private static void ConfigurePropertyВидДвижения(in AccountingRegister register)
         {
@@ -2193,6 +2211,62 @@ namespace DaJet.Metadata.Core
                 });
 
                 register.Properties.Add(property);
+            }
+        }
+        private static void ConfigureDimensionsAndMeasures(in OneDbMetadataProvider cache, in AccountingRegister register)
+        {
+            if (!register.UseCorrespondence)
+            {
+                return; // Разделять измерения и ресурсы на дебет и кредит не нужно
+            }
+
+            int index = 0;
+            int count = register.Properties.Count;
+            MetadataProperty property;
+
+            while (index < count)
+            {
+                property = register.Properties[index];
+
+                if (property.Purpose == PropertyPurpose.Measure ||
+                    property.Purpose == PropertyPurpose.Dimension)
+                {
+                    if (property.IsBalance == false)
+                    {
+                        MetadataProperty copy = property.Copy();
+
+                        property.Name += "Дт";
+                        property.DbName += "Dt";
+                        property.Columns.Clear();
+                        ConfigureDatabaseColumns(in cache, in property);
+
+                        copy.Name += "Кт";
+                        copy.DbName += "Ct";
+                        copy.Columns.Clear();
+                        ConfigureDatabaseColumns(in cache, in copy);
+
+                        index++;
+
+                        if (index == count)
+                        {
+                            register.Properties.Add(copy);
+                        }
+                        else
+                        {
+                            register.Properties.Insert(index, copy); index++;
+                        }
+
+                        count++;
+                    }
+                    else
+                    {
+                        index++;
+                    }
+                }
+                else
+                {
+                    index++;
+                }
             }
         }
 

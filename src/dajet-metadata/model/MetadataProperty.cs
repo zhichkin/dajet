@@ -33,10 +33,48 @@ namespace DaJet.Metadata.Model
         public bool CascadeDelete { get; set; } = false; // Каскадное удаление по внешнему ключу
 
         #region "Регистр бухгалтерии"
-        public bool UseBalance { get; set; } = true; // Балансовый (измерения и ресурсы)
+        ///<summary><b>Использование отдельных свойств для дебета и кредита:</b>
+        ///<br>true - не использовать</br>
+        ///<br>false - использовать</br></summary>
+        public bool IsBalance { get; set; } = true; // Балансовый (измерения и ресурсы)
+        ///<summary>Признак учёта (для счёта плана счетов)</summary>
         public Guid AccountingFlag { get; set; } = Guid.Empty; // Признак учёта (измерения и ресурсы)
+        ///<summary><b>Признак учёта субконто</b>
+        ///<br>Используется в стандартной (системной) табличной части "ВидыСубконто"</br>
+        ///<br>если <see cref="Account.MaxDimensionCount"/> больше нуля.</br></summary>
         public Guid AccountingDimensionFlag { get; set; } = Guid.Empty; // Признак учёта субконто (только ресурсы)
         #endregion
+
+        public MetadataProperty Copy()
+        {
+            MetadataProperty copy = new()
+            {
+                Uuid = this.Uuid,
+                Name = this.Name,
+                Alias = this.Alias,
+                Comment = this.Comment,
+                Parent = this.Parent,
+                ExtensionPropertyType = this.ExtensionPropertyType?.Copy(),
+                DbName = this.DbName,
+                Purpose = this.Purpose,
+                PropertyType = this.PropertyType?.Copy(),
+                PrimaryKey = this.PrimaryKey,
+                IsDbGenerated = this.IsDbGenerated,
+                PropertyUsage = this.PropertyUsage,
+                CascadeDelete = this.CascadeDelete,
+                UseForChangeTracking = this.UseForChangeTracking,
+                IsBalance = this.IsBalance,
+                AccountingFlag = this.AccountingFlag,
+                AccountingDimensionFlag = this.AccountingDimensionFlag
+            };
+
+            for (int i = 0; i < this.Columns.Count; i++)
+            {
+                copy.Columns.Add(this.Columns[i].Copy());
+            }
+
+            return copy;
+        }
 
         public override string ToString() { return Name; }
     }
