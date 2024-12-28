@@ -317,6 +317,26 @@ namespace DaJet.Metadata
 
             return false;
         }
+        internal bool TryGetAccRgED(Guid uuid, out DbName entry)
+        {
+            if (!_database.TryGet(uuid, out entry))
+            {
+                return false;
+            }
+
+            foreach (DbName child in entry.Children)
+            {
+                // Таблица значений субконто регистра бухгалтерии
+                if (child.Name == MetadataTokens.AccRgED)
+                {
+                    entry = child;
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         private void AddName(Guid type, Guid uuid, string name)
         {
@@ -1050,6 +1070,22 @@ namespace DaJet.Metadata
                 }
             }
 
+            if (metadata is AccountingRegister accounting)
+            {
+                if (tableName == "ЗначенияСубконто")
+                {
+                    return GetAccountingDimensionValuesTable(in accounting);
+                }
+                else if (tableName == "Настройки")
+                {
+                    return null; //TODO: _AccRgOpt
+                }
+                else
+                {
+                    return null; // not found error
+                }
+            }
+
             if (InfoBase.CompatibilityVersion >= 80302)
             {
                 if (metadata is InformationRegister inforeg)
@@ -1138,7 +1174,21 @@ namespace DaJet.Metadata
 
             return table;
         }
-        
+
+        private AccountingDimensionValuesTable GetAccountingDimensionValuesTable(in AccountingRegister register)
+        {
+            if (!TryGetAccRgED(register.Uuid, out _))
+            {
+                return null;
+            }
+
+            AccountingDimensionValuesTable table = new(register);
+
+            Configurator.ConfigureAccountingDimensionValuesTable(this, in table);
+
+            return table;
+        }
+
         private RegisterSettingsTable GetInfoRegisterSettingsTable(in InformationRegister register)
         {
             if (!TryGetInfoRgOpt(register.Uuid, out _))

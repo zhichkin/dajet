@@ -540,7 +540,7 @@ namespace DaJet.Metadata.Core
             {
                 if (!cache.TryGetExtDim(account.Uuid, out DbName entry))
                 {
-                    throw new FormatException($"Failed to get account dimension types table");
+                    throw new InvalidOperationException($"Failed to get account dimension types table");
                 }
 
                 TablePart dimensionTypes = new()
@@ -662,12 +662,12 @@ namespace DaJet.Metadata.Core
 
             if (characteristic == Guid.Empty)
             {
-                throw new FormatException("Account dimension types are not defined");
+                throw new InvalidOperationException("Account dimension types are not defined");
             }
 
             if (!cache.TryGetDbName(characteristic, out DbName typeCode))
             {
-                throw new FormatException("Failed to get type code for account dimension types");
+                throw new InvalidOperationException("Failed to get type code for account dimension types");
             }
 
             MetadataProperty property = new()
@@ -1701,13 +1701,13 @@ namespace DaJet.Metadata.Core
 
             if (register.RegisterKind == RegisterKind.Balance)
             {
-                ConfigurePropertyВидДвижения(in register);
+                ConfigurePropertyВидДвиженияНакопления(in register);
             }
 
             ConfigurePropertyАктивность(register);
         }
         ///<summary>Вид движения <see cref="RecordType"/> регистра накопления остатков</summary>
-        private static void ConfigurePropertyВидДвижения(in AccumulationRegister register)
+        private static void ConfigurePropertyВидДвиженияНакопления(in AccumulationRegister register)
         {
             // Приход = Receipt = 0 
             // Расход = Expense = 1 
@@ -1764,7 +1764,7 @@ namespace DaJet.Metadata.Core
         ///Разделитель итогов. Включается специальной настройкой "Разрешить разделение итогов" в конфигураторе.
         ///<br>Используется для параллельной записи документов в таблицу итогов регистра по одинаковым значениям измерений.</br>
         ///</summary>
-        private static void ConfigurePropertySplitter(in RegisterTotalsTable table)
+        private static void ConfigurePropertySplitter(in ApplicationObject table)
         {
             MetadataProperty property = new()
             {
@@ -1831,7 +1831,7 @@ namespace DaJet.Metadata.Core
 
             if (register.UseSplitter) // Разрешить разделение итогов
             {
-                ConfigurePropertySplitter(in table);
+                ConfigurePropertySplitter(table);
             }
         }
         internal static void ConfigureRegisterSettingsTable(in OneDbMetadataProvider cache, in RegisterSettingsTable table)
@@ -2074,36 +2074,101 @@ namespace DaJet.Metadata.Core
             ConfigurePropertyНомерЗаписи(register);
             ConfigurePropertyАктивность(register);
 
-            //NOTE: для таблицы ЗначенияСубконто - обратная логика
-            // Если UseCorrespondence, то есть поле _Correspond
+            //NOTE: для таблицы ЗначенияСубконто (_AccRgED) обратная логика:
+            //      если UseCorrespondence == true, то есть поле _Correspond
+            //      (ВидДвижения: 0 - Дебет, 1 - Кредит)
             if (!register.UseCorrespondence)
             {
-                ConfigurePropertyВидДвижения(in register);
+                ConfigurePropertyВидДвиженияБухгалтерии(register);
             }
 
             ConfigurePropertyСчёт(in cache, in register);
 
             ConfigureDimensionsAndMeasures(in cache, in register);
 
+            Guid account_uuid = register.ChartOfAccounts;
+
+            if (account_uuid == Guid.Empty)
+            {
+                return; // Субконто не используются
+            }
+
+            int account_code;
+
+            if (cache.TryGetDbName(account_uuid, out DbName dbn1))
+            {
+                account_code = dbn1.Code;
+            }
+            else
+            {
+                throw new InvalidOperationException("Ошибка получения кода типа для плана счетов!");
+            }
+
+            MetadataObject metadata1 = cache.GetMetadataObject(MetadataTypes.Account, account_uuid);
+
+            if (metadata1 is not Account account)
+            {
+                throw new InvalidOperationException("Объект метаданных плана счетов не найден!");
+            }
+
+            if (account.MaxDimensionCount == 0)
+            {
+                return; // Субконто не используются
+            }
+
+            Guid dimension_uuid = account.DimensionTypes;
+
+            if (dimension_uuid == Guid.Empty)
+            {
+                return; // Субконто не используются
+            }
+
+            int dimension_code;
+
+            if (cache.TryGetDbName(dimension_uuid, out DbName dbn2))
+            {
+                dimension_code = dbn2.Code;
+            }
+            else
+            {
+                throw new InvalidOperationException("Ошибка получения кода типа для плана видов характеристик (субконто) плана счетов!");
+            }
+
+            MetadataObject metadata2 = cache.GetMetadataObject(MetadataTypes.Characteristic, dimension_uuid);
+
+            if (metadata2 is not Characteristic characteristic)
+            {
+                throw new InvalidOperationException("Объект метаданных плана видов характеристик (субконто) плана счетов не найден!");
+            }
+
             if (cache.InfoBase.CompatibilityVersion >= 80315)
             {
-                //TODO: Значения субконто хранятся в основной таблице регистра бухгалтерии
-                //      наряду с обычным хранением в таблице _AccRegED
-                if (register.UseCorrespondence)
+                int count = account.MaxDimensionCount + 1;
+
+                //Значения субконто хранятся в основной таблице регистра бухгалтерии
+                //наряду с обычным хранением в системной таблице ЗначенияСубконто (_AccRegED)
+
+                for (int order = 1; order < count; order++)
                 {
-                    //[_ValueDt1]
-                    //[_KindDt1RRef]
-                    //[_ValueCt1]
-                    //[_KindCt1RRef]
-                }
-                else
-                {
-                    //[_Value1]
-                    //[_Kind1RRef]
+                    if (register.UseCorrespondence)
+                    {
+                        ConfigureAccountingDimensionValue(in cache, register, in characteristic, $"СубконтоДт{order}", $"_ValueDt{order}");
+                        ConfigureAccountingDimensionType(register, dimension_code, dimension_uuid, $"ВидСубконтоДт{order}", $"_KindDt{order}RRef");
+                        ConfigureAccountingDimensionValue(in cache, register, in characteristic, $"СубконтоКт{order}", $"_ValueCt{order}");
+                        ConfigureAccountingDimensionType(register, dimension_code, dimension_uuid, $"ВидСубконтоКт{order}", $"_KindCt{order}RRef");
+                    }
+                    else
+                    {
+                        ConfigureAccountingDimensionValue(in cache, register, in characteristic, $"Субконто{order}", $"_Value{order}");
+                        ConfigureAccountingDimensionType(register, dimension_code, dimension_uuid, $"ВидСубконто{order}", $"_Kind{order}RRef");
+                    }
                 }
             }
+
+            //TODO: _EDHashDt
+            //TODO: _EDHashCt
         }
-        private static void ConfigurePropertyВидДвижения(in AccountingRegister register)
+        private static void ConfigurePropertyВидДвиженияБухгалтерии(in ApplicationObject register)
         {
             // 0 = Дебет
             // 1 = Кредит
@@ -2135,12 +2200,12 @@ namespace DaJet.Metadata.Core
 
             if (account == Guid.Empty)
             {
-                throw new FormatException("Chart of accounts is not defined");
+                throw new InvalidOperationException("Chart of accounts is not defined");
             }
 
             if (!cache.TryGetDbName(account, out DbName dbn))
             {
-                throw new FormatException("Failed to get type code for chart of accounts");
+                throw new InvalidOperationException("Failed to get type code for chart of accounts");
             }
 
             MetadataProperty property = null;
@@ -2266,6 +2331,139 @@ namespace DaJet.Metadata.Core
                 else
                 {
                     index++;
+                }
+            }
+        }
+        private static void ConfigureAccountingDimensionType(in ApplicationObject register, int code, Guid uuid, string name1, string name2)
+        {
+            MetadataProperty property = new()
+            {
+                Uuid = Guid.Empty,
+                Name = name1,
+                DbName = name2,
+                Purpose = PropertyPurpose.System
+            };
+
+            property.PropertyType.TypeCode = code;
+            property.PropertyType.Reference = uuid;
+            property.PropertyType.CanBeReference = true;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 16,
+                TypeName = "binary"
+            });
+
+            register.Properties.Add(property);
+        }
+        private static void ConfigureAccountingDimensionValue(in OneDbMetadataProvider cache,
+            in ApplicationObject register, in Characteristic characteristic, string name1, string name2)
+        {
+            MetadataProperty property = new()
+            {
+                Uuid = Guid.Empty,
+                Name = name1,
+                DbName = name2,
+                Purpose = PropertyPurpose.System,
+                PropertyType = characteristic.DataTypeDescriptor?.Copy()
+            };
+
+            ConfigureDatabaseColumns(in cache, in property);
+
+            register.Properties.Add(property);
+        }
+
+        internal static void ConfigureAccountingDimensionValuesTable(in OneDbMetadataProvider cache, in AccountingDimensionValuesTable table)
+        {
+            if (table.Entity is not AccountingRegister register)
+            {
+                return;
+            }
+
+            if (!cache.TryGetAccRgED(register.Uuid, out DbName dbn))
+            {
+                return;
+            }
+
+            table.Uuid = register.Uuid;
+            table.Name = register.Name + ".ЗначенияСубконто";
+            table.Alias = "Таблица значений субконто регистра бухгалтерии";
+            table.TypeCode = register.TypeCode;
+            table.TableName = $"_{dbn.Name}{dbn.Code}";
+
+            ConfigurePropertyПериод(table);
+            ConfigurePropertyРегистратор(in cache, table);
+            ConfigurePropertyНомерЗаписи(table);
+
+            if (register.UseCorrespondence)
+            {
+                ConfigurePropertyВидДвиженияБухгалтерии(table);
+            }
+
+            Guid account_uuid = register.ChartOfAccounts;
+
+            if (account_uuid == Guid.Empty)
+            {
+                return; // Субконто не используются
+            }
+
+            int account_code;
+
+            if (cache.TryGetDbName(account_uuid, out DbName dbn1))
+            {
+                account_code = dbn1.Code;
+            }
+            else
+            {
+                throw new InvalidOperationException("Ошибка получения кода типа для плана счетов!");
+            }
+
+            MetadataObject metadata1 = cache.GetMetadataObject(MetadataTypes.Account, account_uuid);
+
+            if (metadata1 is not Account account)
+            {
+                throw new InvalidOperationException("Объект метаданных плана счетов не найден!");
+            }
+
+            if (account.MaxDimensionCount == 0)
+            {
+                return; // Субконто не используются
+            }
+
+            Guid dimension_uuid = account.DimensionTypes;
+
+            if (dimension_uuid == Guid.Empty)
+            {
+                return; // Субконто не используются
+            }
+
+            int dimension_code;
+
+            if (cache.TryGetDbName(dimension_uuid, out DbName dbn2))
+            {
+                dimension_code = dbn2.Code;
+            }
+            else
+            {
+                throw new InvalidOperationException("Ошибка получения кода типа для плана видов характеристик (субконто) плана счетов!");
+            }
+
+            MetadataObject metadata2 = cache.GetMetadataObject(MetadataTypes.Characteristic, dimension_uuid);
+
+            if (metadata2 is not Characteristic characteristic)
+            {
+                throw new InvalidOperationException("Объект метаданных плана видов характеристик (субконто) плана счетов не найден!");
+            }
+
+            ConfigureAccountingDimensionType(table, dimension_code, dimension_uuid, "ВидСубконто", "_KindRRef");
+            ConfigureAccountingDimensionValue(in cache, table, in characteristic, "Значение", "_Value");
+
+            foreach (MetadataProperty property in register.Properties)
+            {
+                if (property is SharedProperty shared)
+                {
+                    table.Properties.Add(shared.Copy());
                 }
             }
         }
