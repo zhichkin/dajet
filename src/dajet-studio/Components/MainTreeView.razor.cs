@@ -5,7 +5,6 @@ using DaJet.Studio.Model;
 using DaJet.Studio.Pages;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
-using System.ComponentModel;
 using System.Globalization;
 using System.Net.Http.Json;
 
@@ -17,6 +16,7 @@ namespace DaJet.Studio.Components
         private readonly Guid ENUMERATION_TYPE = new("f6a80749-5ad7-400b-8519-39dc5dff2542");
         private readonly Guid SHARED_PROPERTY_TYPE = new("15794563-ccec-41f6-a83c-ec5f7b9a5bc1");
         private readonly Guid NAMED_DATA_TYPE_TYPE = new("c045099e-13b9-4fb6-9d50-fca00202971e");
+        private readonly Guid ACCOUNTING_REGISTER = new("2deed9b8-0056-4ffe-a473-c20a6c32a0bc");
         private const string NODE_TYPE_SERVICE = "Служебные";
         private const string NODE_TYPE_SHARED_PROPERTY = "ОбщийРеквизит";
         private const string NODE_TYPE_NAMED_DATA_TYPE = "ОпределяемыйТип";
@@ -29,6 +29,8 @@ namespace DaJet.Studio.Components
         private const string NODE_TYPE_CHARACTERISTIC = "ПланВидовХарактеристик";
         private const string NODE_TYPE_INFOREGISTER = "РегистрСведений";
         private const string NODE_TYPE_ACCUMREGISTER = "РегистрНакопления";
+        private const string NODE_TYPE_CHART_OF_ACCOUNTS = "ПланСчетов";
+        private const string NODE_TYPE_ACCOUNTING_REGISTER = "РегистрБухгалтерии";
         #endregion
         protected string FilterValue { get; set; } = string.Empty;
         protected List<TreeNodeModel> Nodes { get; set; } = new();
@@ -297,6 +299,14 @@ namespace DaJet.Studio.Components
             {
                 Parent = parent,
                 Tag = parent.Tag,
+                Title = NODE_TYPE_CHART_OF_ACCOUNTS,
+                Url = $"{parent.Url}/{NODE_TYPE_CHART_OF_ACCOUNTS}",
+                OpenNodeHandler = OpenMetadataNodeHandler
+            });
+            parent.Nodes.Add(new TreeNodeModel()
+            {
+                Parent = parent,
+                Tag = parent.Tag,
                 Title = NODE_TYPE_INFOREGISTER,
                 Url = $"{parent.Url}/{NODE_TYPE_INFOREGISTER}",
                 OpenNodeHandler = OpenMetadataNodeHandler
@@ -307,6 +317,14 @@ namespace DaJet.Studio.Components
                 Tag = parent.Tag,
                 Title = NODE_TYPE_ACCUMREGISTER,
                 Url = $"{parent.Url}/{NODE_TYPE_ACCUMREGISTER}",
+                OpenNodeHandler = OpenMetadataNodeHandler
+            });
+            parent.Nodes.Add(new TreeNodeModel()
+            {
+                Parent = parent,
+                Tag = parent.Tag,
+                Title = NODE_TYPE_ACCOUNTING_REGISTER,
+                Url = $"{parent.Url}/{NODE_TYPE_ACCOUNTING_REGISTER}",
                 OpenNodeHandler = OpenMetadataNodeHandler
             });
         }
@@ -446,8 +464,6 @@ namespace DaJet.Studio.Components
         }
         private void ConfigureEntityNode(in TreeNodeModel node, in EntityModel entity)
         {
-            // TODO: node.Tag = entity; // Change MetadataItemModel to EntityModel ???
-
             foreach (PropertyModel property in entity.Properties)
             {
                 TreeNodeModel model = new()
@@ -473,6 +489,29 @@ namespace DaJet.Studio.Components
                 ConfigureEntityNode(in model, in table);
 
                 node.Nodes.Add(model);
+            }
+
+            if (node.Tag is MetadataItemModel metadata && metadata.Type == ACCOUNTING_REGISTER)
+            {
+                string name = "ЗначенияСубконто";
+
+                if (node.Title == name)
+                {
+                    //FIXME: по сути тут у нас хак для служебной таблицы регистра - второй раз добавлять не нужно
+                }
+                else
+                {
+                    TreeNodeModel model = new()
+                    {
+                        Tag = metadata,
+                        Parent = node,
+                        Title = name,
+                        Url = $"{node.Url}.{name}", //FIXME: вот так хитро через точку, а не слэш ¯\_(ツ)_/¯
+                        OpenNodeHandler = OpenEntityNodeHandler
+                    };
+
+                    node.Nodes.Add(model);
+                }
             }
         }
         private void ConfigureEnumerationNode(in TreeNodeModel node, in EnumModel entity)

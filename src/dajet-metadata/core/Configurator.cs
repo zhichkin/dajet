@@ -349,6 +349,12 @@ namespace DaJet.Metadata.Core
                     continue;
                 }
 
+                if (tablePart.Uuid == Guid.Empty)
+                {
+                    //NOTE: Системная табличная часть, например, "ВидыСубконто" плана счетов
+                    continue;
+                }
+
                 ConfigurePropertyСсылка(in owner, in tablePart);
                 ConfigurePropertyКлючСтроки(in tablePart);
                 ConfigurePropertyНомерСтроки(in cache, in tablePart);
