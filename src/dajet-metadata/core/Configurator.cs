@@ -2334,13 +2334,14 @@ namespace DaJet.Metadata.Core
                 }
             }
         }
-        private static void ConfigureAccountingDimensionType(in ApplicationObject register, int code, Guid uuid, string name1, string name2)
+        private static void ConfigureAccountingDimensionType(in ApplicationObject register,
+            int code, Guid uuid, string propertyName, string databaseName)
         {
             MetadataProperty property = new()
             {
                 Uuid = Guid.Empty,
-                Name = name1,
-                DbName = name2,
+                Name = propertyName,
+                DbName = databaseName,
                 Purpose = PropertyPurpose.System
             };
 
@@ -2357,14 +2358,14 @@ namespace DaJet.Metadata.Core
 
             register.Properties.Add(property);
         }
-        private static void ConfigureAccountingDimensionValue(in OneDbMetadataProvider cache,
-            in ApplicationObject register, in Characteristic characteristic, string name1, string name2)
+        private static void ConfigureAccountingDimensionValue(in OneDbMetadataProvider cache, in ApplicationObject register,
+            in Characteristic characteristic, string propertyName, string databaseName)
         {
             MetadataProperty property = new()
             {
                 Uuid = Guid.Empty,
-                Name = name1,
-                DbName = name2,
+                Name = propertyName,
+                DbName = databaseName,
                 Purpose = PropertyPurpose.System,
                 PropertyType = characteristic.DataTypeDescriptor?.Copy()
             };
