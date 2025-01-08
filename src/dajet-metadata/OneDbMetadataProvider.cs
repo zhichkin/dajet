@@ -374,6 +374,11 @@ namespace DaJet.Metadata
         {
             _ = _characteristics.TryAdd(characteristic, metadata);
         }
+        ///<summary>Загрузка типов значений характеристик при первичном заполнении кэша метаданных.
+        ///<br>Это необходимо для избежания рекурсии разрешения ссылок когда план видов характеристик ссылается сам на себя.</br>
+        /// </summary>
+        /// <param name="characteristic">Идентификатор конкретного типа плана видов характеристик</param>
+        /// <param name="descriptor">Описание типов значений характеристик</param>
         private void AddCharacteristicTypes(Guid characteristic, DataTypeDescriptor descriptor)
         {
             _ = _typeDescriptors.TryAdd(characteristic, descriptor);
@@ -711,7 +716,7 @@ namespace DaJet.Metadata
                     if (metadata.CharacteristicUuid != Guid.Empty)
                     {
                         AddCharacteristic(metadata.CharacteristicUuid, metadata.MetadataUuid);
-                        AddCharacteristicTypes(metadata.CharacteristicUuid, metadata.DataTypeDescriptor); //FIX: 08.03.2024
+                        AddCharacteristicTypes(metadata.CharacteristicUuid, metadata.DataTypeDescriptor);
                     }
 
                     if (metadata.CatalogOwners.Count > 0)
@@ -1331,11 +1336,14 @@ namespace DaJet.Metadata
         {
             return _references.TryGetValue(reference, out info);
         }
-        internal bool TryResolveCharacteristic(Guid reference, out Guid uuid)
-        {
-            return _characteristics.TryGetValue(reference, out uuid);
-        }
-        internal bool TryGetCharacteristicDataType(Guid reference, out DataTypeDescriptor descriptor)
+        /// <summary>
+        /// Метод пытается получить описание типов значений характеристики (<see cref="_characteristics"/>).
+        /// <br>Можно использовать для проверки, является ли параметр <b>reference</b> идентификатором типа "Харакетристика".</br>
+        /// </summary>
+        /// <param name="reference">Идентификатор типа "Характеристика"</param>
+        /// <param name="descriptor">Описание типов значений характеристики</param>
+        /// <returns></returns>
+        internal bool TryGetCharacteristic(Guid reference, out DataTypeDescriptor descriptor)
         {
             return _typeDescriptors.TryGetValue(reference, out descriptor);
         }
@@ -1432,6 +1440,10 @@ namespace DaJet.Metadata
             {
                 return new MetadataItem(ReferenceTypes.AnyReference, Guid.Empty, "ЛюбаяСсылка");
             }
+            else if (reference == ReferenceTypes.Account)
+            {
+                return new MetadataItem(ReferenceTypes.Account, Guid.Empty, "ПланСчетовСсылка");
+            }
             else if (reference == ReferenceTypes.Catalog)
             {
                 return new MetadataItem(ReferenceTypes.Catalog, Guid.Empty, "СправочникСсылка");
@@ -1452,19 +1464,34 @@ namespace DaJet.Metadata
             {
                 return new MetadataItem(ReferenceTypes.Characteristic, Guid.Empty, "ПланВидовХарактеристикСсылка");
             }
-            else if (_characteristics.TryGetValue(reference, out Guid uuid))
+            else if (_characteristics.TryGetValue(reference, out Guid uuid)) //NOTE: reference == Характеристика
             {
-                string name = GetMetadataName(MetadataTypes.Characteristic, uuid);
+                //NOTE: преобразуем идентификатор типа "Характеристика" в идентификатор типа "ПланВидовХарактеристикСсылка":
+                //в данном случае reference - это ПланВидовХарактеристик.ВидыСубконтоХозрасчетные.Характеристика,
+                //а uuid - это конкретный тип объекта метаданных ПланВидовХарактеристик.ВидыСубконтоХозрасчетные.
 
-                ///NOTE: Небольшой хак ¯\_(ツ)_/¯ <see cref="MetadataItem.ToString()"/>
-                return new MetadataItem(ReferenceTypes.Characteristic, uuid, name); // Характеристика
-                // Но не ... return new MetadataItem(MetadataTypes.Characteristic, uuid, name); // ПланВидовХарактеристикСсылка
+                // Поиск имени конкретного типа объекта метаданных по его идентификатору
+                string name = GetMetadataName(MetadataTypes.Characteristic, uuid);
+                return new MetadataItem(ReferenceTypes.Characteristic, uuid, name);
             }
-            else if (_references.TryGetValue(reference, out MetadataItem info))
+            else if (TryGetReferenceInfo(reference, out MetadataItem info))
             {
+                if (info.Type == MetadataTypes.NamedDataTypeDescriptor)
+                {
+                    MetadataObject metadata = GetMetadataObjectCached(info.Type, info.Uuid);
+
+                    if (metadata is not NamedDataTypeDescriptor descriptor)
+                    {
+                        // this should not happen - throw error !?
+                    }
+                    else
+                    {
+                        //TODO: обработать определяемый тип !!!
+                    }
+                }
+                
                 //NOTE: MetadataItem коллекции _references не содержит имени объекта метаданных !
                 string name = GetMetadataName(info.Type, info.Uuid);
-                
                 return new MetadataItem(info.Type, info.Uuid, name);
             }
 

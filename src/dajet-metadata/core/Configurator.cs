@@ -218,9 +218,12 @@ namespace DaJet.Metadata.Core
             //    если возможным справочником будет только один, то это будет single reference type. (!)
             // 4. То же самое, что и для пункта #3, касается значения типа "ЛюбаяСсылка". (!)
 
-            if (cache.TryGetCharacteristicDataType(reference, out DataTypeDescriptor descriptor))
+            if (cache.TryGetCharacteristic(reference, out DataTypeDescriptor descriptor))
             {
                 if (descriptor is null) { return 0; } // this should not happen
+
+                //NOTE: в данном случае reference - это тип данных "Характеристика", то есть по сути - описание типов.
+                //Такой тип данных свойства объекта метаданных не допускает использования других дополнительных типов.
 
                 target.Apply(in descriptor);
 
@@ -236,13 +239,13 @@ namespace DaJet.Metadata.Core
                 }
             }
             
-            // NOTE: 08.03.2024 Lazy-load of Characteristic: recursion is avoided because of rule #2.
+            // NOTE: Lazy-load of Characteristic: recursion is avoided because of rule #2.
             // Рекурсия возможна, например, при загрузке в кэш объекта метаданных "МойПланВидовХарактеристик",
             // который имеет реквизит с типом данных "Характеристика.МойПланВидовХарактеристик".
             // При попытке разрешить ссылку на характеристику попадаем сюда и уходим в рекурсию:
             // reference =         Характеристика.МойПланВидовХарактеристик
             // uuid      = ПланВидовХарактеристик.МойПланВидовХарактеристик
-            // Решение: загрузка типов значенией характеристик при первичном заполнении кэша метаданных.
+            // Решение: загрузка типов значений характеристик при первичном заполнении кэша метаданных.
             // <see cref="DaJet.Metadata.Parsers.CharacteristicParser.Parse(in ConfigFileReader, Guid, out MetadataInfo)" />
             // <see cref="DaJet.Metadata.Parsers.CharacteristicParser.DataTypeDescriptor" />
 

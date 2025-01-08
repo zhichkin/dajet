@@ -37,6 +37,7 @@ namespace DaJet.Metadata.Core
 
             //NOTE: обобщённые типы данных, например, справочник любого типа
             if (Type == ReferenceTypes.AnyReference) { return "ЛюбаяСсылка"; }
+            if (Type == ReferenceTypes.Account) { return "ПланСчетовСсылка"; }
             if (Type == ReferenceTypes.Catalog) { return "СправочникСсылка"; }
             if (Type == ReferenceTypes.Document) { return "ДокументСсылка"; }
             if (Type == ReferenceTypes.Enumeration) { return "ПеречислениеСсылка"; }
