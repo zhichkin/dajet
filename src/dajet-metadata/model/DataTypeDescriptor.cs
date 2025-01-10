@@ -38,7 +38,7 @@ namespace DaJet.Metadata.Model
         #region "SIMPLE DATA TYPES"
 
         ///<summary>Тип значения свойства "УникальныйИдентификатор", binary(16). Не поддерживает составной тип данных.</summary>
-        public bool IsUuid
+        public bool IsUuid // SingleTypes.UniqueIdentifier
         {
             get { return (_flags & DataTypeFlags.UniqueIdentifier) == DataTypeFlags.UniqueIdentifier; }
             set
@@ -48,7 +48,7 @@ namespace DaJet.Metadata.Model
                     _flags = DataTypeFlags.UniqueIdentifier;
                     TypeCode = 0;
                     Reference = Guid.Empty;
-                    //REFACTORING(29.01.2023) References.Clear();
+                    References.Clear();
                 }
                 else if (IsUuid)
                 {
@@ -56,7 +56,6 @@ namespace DaJet.Metadata.Model
                 }
             }
         }
-        public bool CanBeUuid { get { return Identifiers.Contains(SingleTypes.UniqueIdentifier); } }
         ///<summary>Типом значения свойства является byte[8] - версия данных, timestamp, rowversion. Не поддерживает составной тип данных.</summary>
         public bool IsBinary
         {
@@ -68,7 +67,7 @@ namespace DaJet.Metadata.Model
                     _flags = DataTypeFlags.Binary;
                     TypeCode = 0;
                     Reference = Guid.Empty;
-                    //REFACTORING(29.01.2023) References.Clear();
+                    References.Clear();
                 }
                 else if (IsBinary)
                 {
@@ -77,7 +76,7 @@ namespace DaJet.Metadata.Model
             }
         }
         ///<summary>Тип значения свойства "ХранилищеЗначения", varbinary(max). Не поддерживает составной тип данных.</summary>
-        public bool IsValueStorage
+        public bool IsValueStorage // SingleTypes.ValueStorage
         {
             get { return (_flags & DataTypeFlags.ValueStorage) == DataTypeFlags.ValueStorage; }
             set
@@ -87,7 +86,7 @@ namespace DaJet.Metadata.Model
                     _flags = DataTypeFlags.ValueStorage;
                     TypeCode = 0;
                     Reference = Guid.Empty;
-                    //REFACTORING(29.01.2023) References.Clear();
+                    References.Clear();
                 }
                 else if (IsValueStorage)
                 {
@@ -95,8 +94,7 @@ namespace DaJet.Metadata.Model
                 }
             }
         }
-        public bool CanBeValueStorage { get { return Identifiers.Contains(SingleTypes.ValueStorage); } }
-
+        
         ///<summary>Типом значения свойства может быть "Булево" (поддерживает составной тип данных)</summary>
         public bool CanBeBoolean
         {
@@ -244,7 +242,7 @@ namespace DaJet.Metadata.Model
         #endregion
 
         ///<summary>
-        ///Список идентификаторов ссылочных типов данных объекта "ОписаниеТипов".
+        ///Список идентификаторов ссылочных типов данных объекта "ОписаниеТипов" или типов значений характеристики.
         ///<br><b>Возможные типы данных:</b></br>
         ///<br>- ХранилищеЗначения</br>
         ///<br>- УникальныйИдентификатор</br>
@@ -253,19 +251,10 @@ namespace DaJet.Metadata.Model
         ///<br>- Общие ссылочные типы, например, ЛюбаяСсылка или СправочникСсылка</br>
         ///<br>- Конкретные ссылочные типы, например, СправочникСсылка.Номенклатура</br>
         ///<br>Функция для обработки идентификаторов: <see cref="Configurator.ConfigureDataTypeDescriptor(in OneDbMetadataProvider, in DataTypeDescriptor, in List{Guid})"/></br>
+        ///<br>Функция для разрешения идентификаторов: <see cref="Configurator.ResolveReferencesToMetadataItems(OneDbMetadataProvider, in List{Guid})"/></br>
         ///</summary>
-        public List<Guid> Identifiers { get; set; } = new();
+        public List<MetadataItem> References { get; } = new();
         
-        ///<summary>
-        ///Список ссылочных типов данных объекта "ОписаниеТипов".
-        ///<br><b>Назначение использования:</b></br>
-        ///<br>1. Отображение информации в интерфейсе пользователя.</br>
-        ///<br>2. Анализ логических связей между объектами метаданных.</br>
-        ///<br>Список заполняется функцией <see cref="OneDbMetadataProvider.ResolveReferences(in List{Guid})"/></br>
-        ///</summary>
-        //THINK !?
-        //REFACTORING(29.01.2023) public List<MetadataItem> References { get; } = new();
-
         ///<summary>
         ///Применяет описание типов определяемого типа или характеристики к свойству объекта метаданных.
         ///<br>Используется методом <see cref="Configurator.ResolveAndCountReferenceTypes"/></br>
@@ -287,9 +276,8 @@ namespace DaJet.Metadata.Model
             TypeCode = source.TypeCode;
             Reference = source.Reference;
 
-            //REFACTORING(29.01.2023)
-            //References.Clear();
-            //References.AddRange(source.References);
+            References.Clear();
+            References.AddRange(source.References);
         }
 
         public DataTypeDescriptor Copy()
@@ -405,7 +393,7 @@ namespace DaJet.Metadata.Model
                 _flags = source._flags;
                 TypeCode = 0;
                 Reference = Guid.Empty;
-                //REFACTORING(29.01.2023) References.Clear();
+                References.Clear();
                 return;
             }
 
@@ -440,19 +428,18 @@ namespace DaJet.Metadata.Model
                 //TODO: merge references of two data type sets
                 // use source.Identifiers ...
                 CanBeReference = source.CanBeReference;
-                
-                //REFACTORING(29.01.2023)
-                //References.AddRange(source.References);
-                //if (References.Count > 0)
-                //{
-                //    TypeCode = 0;
-                //    Reference = Guid.Empty;
-                //}
-                //else
-                //{
-                //    TypeCode = source.TypeCode;
-                //    Reference = source.Reference;
-                //}
+                References.AddRange(source.References);
+
+                if (References.Count > 0)
+                {
+                    TypeCode = 0;
+                    Reference = Guid.Empty;
+                }
+                else
+                {
+                    TypeCode = source.TypeCode;
+                    Reference = source.Reference;
+                }
             }
         }
 

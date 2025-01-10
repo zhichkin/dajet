@@ -33,7 +33,7 @@ namespace DaJet.Metadata.Parsers
 
             if (_cache == null) // Обработка идентификаторов ссылочных типов не требуется
             {
-                target.Identifiers = references;
+                //TODO: target.References = references; !!!
             }
             else if (references.Count > 0)
             {
@@ -46,7 +46,7 @@ namespace DaJet.Metadata.Parsers
 
                 //REFACTORING(29.01.2023)
                 //THINK: add setting to OneDbMetadataProvider to resolve references optionally !?
-                //List<MetadataItem> list = _cache.ResolveReferences(in references);
+                //List<MetadataItem> list = _cache.ResolveReferencesToMetadataItems(in references);
                 //target.References.AddRange(list);
             }
         }

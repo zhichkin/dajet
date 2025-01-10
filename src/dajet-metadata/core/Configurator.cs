@@ -1006,7 +1006,11 @@ namespace DaJet.Metadata.Core
 
             Guid type = Guid.Empty;
 
-            if (metadata is Catalog)
+            if (metadata is Account)
+            {
+                type = MetadataTypes.Account;
+            }
+            else if (metadata is Catalog)
             {
                 type = MetadataTypes.Catalog;
             }
@@ -1015,11 +1019,10 @@ namespace DaJet.Metadata.Core
                 type = MetadataTypes.Characteristic;
             }
 
-            //REFACTORING(29.01.2023)
-            //if (type != Guid.Empty)
-            //{
-            //    property.PropertyType.References.Add(new MetadataItem(type, metadata.Uuid, metadata.Name));
-            //}
+            if (type != Guid.Empty && cache is not null && cache.ResolveReferences)
+            {
+                property.PropertyType.References.Add(new MetadataItem(type, metadata.Uuid, metadata.Name));
+            }
 
             property.Columns.Add(new MetadataColumn()
             {
@@ -1061,16 +1064,18 @@ namespace DaJet.Metadata.Core
             };
             property.PropertyType.CanBeReference = true;
 
-            //REFACTORING(29.01.2023)
-            //foreach (Guid owner in owners)
-            //{
-            //    MetadataItem item = cache.GetCatalogOwner(owner);
+            if (cache is not null && cache.ResolveReferences)
+            {
+                foreach (Guid owner in owners)
+                {
+                    MetadataItem item = cache.GetCatalogOwner(owner);
 
-            //    if (item != MetadataItem.Empty)
-            //    {
-            //        property.PropertyType.References.Add(item);
-            //    }
-            //}
+                    if (item != MetadataItem.Empty)
+                    {
+                        property.PropertyType.References.Add(item);
+                    }
+                }
+            }
 
             if (owners.Count == 1) // Single type value
             {
@@ -1505,10 +1510,7 @@ namespace DaJet.Metadata.Core
         {
             List<Guid> recorders = cache.GetRegisterRecorders(register.Uuid);
 
-            if (recorders == null || recorders.Count == 0)
-            {
-                return;
-            }
+            if (recorders is null || recorders.Count == 0) { return; }
 
             MetadataProperty property = new()
             {
@@ -1518,17 +1520,19 @@ namespace DaJet.Metadata.Core
                 DbName = "_Recorder"
             };
 
-            //REFACTORING(29.01.2023)
-            //foreach (Guid recorder in recorders)
-            //{
-            //    MetadataItem item = cache.GetRegisterRecorder(recorder);
+            if (cache is not null && cache.ResolveReferences)
+            {
+                foreach (Guid recorder in recorders)
+                {
+                    MetadataItem item = cache.GetRegisterRecorder(recorder);
 
-            //    if (item != MetadataItem.Empty)
-            //    {
-            //        property.PropertyType.References.Add(item);
-            //    }
-            //}
-
+                    if (item != MetadataItem.Empty)
+                    {
+                        property.PropertyType.References.Add(item);
+                    }
+                }
+            }
+            
             MetadataColumn field = new()
             {
                 Name = "_RecorderRRef",
@@ -3062,6 +3066,122 @@ namespace DaJet.Metadata.Core
             });
 
             table.Properties.Add(property);
+        }
+
+        #endregion
+
+        #region "RESOLVE DATA TYPE DESCRIPTOR REFERENCES"
+
+        /// <summary>
+        /// Функция сопоставления ссылочных типов данных объекта "ОписаниеТипов" объектам метаданных.
+        /// <br>Список ссылочных типов объекта <see cref="DataTypeDescriptor"/> получает парсер <see cref="DataTypeDescriptorParser"/>.</br>
+        /// </summary>
+        /// <param name="references">Список ссылочных типов данных объекта "ОписаниеТипов".</param>
+        /// <returns></returns>
+        internal static List<MetadataItem> ResolveReferencesToMetadataItems(this OneDbMetadataProvider cache, in List<Guid> references)
+        {
+            List<MetadataItem> metadata = new();
+
+            for (int i = 0; i < references.Count; i++)
+            {
+                Guid reference = references[i];
+
+                if (reference == Guid.Empty) { continue; }
+
+                MetadataItem item = ResolveReference(in cache, reference);
+
+                if (item != MetadataItem.Empty)
+                {
+                    metadata.Add(item);
+                }
+            }
+
+            return metadata;
+        }
+        private static MetadataItem ResolveReference(in OneDbMetadataProvider cache, Guid reference)
+        {
+            // RULES (правила разрешения ссылочных типов данных для объекта "ОписаниеТипов"):
+            // 1. DataTypeDescriptor (описание типа данных свойства объекта) может ссылаться только на
+            //    один экземпляр определяемого типа или плана видов характеристик (характеристику).
+            //    В таком случае указание дополнительных типов данных для данного свойства невозможно.
+            // 2. Определяемый тип или характеристика не могут ссылаться на другие определяемые типы или характеристики.
+            // 3. Если ссылочный тип имеет значение, например, "СправочникСсылка", то есть любой справочник,
+            //    то в таком случае необходимо вычислить количество справочников в составе конфигурации:
+            //    если возможным справочником будет только один, то это будет single reference type.
+            // 4. То же самое, что и для пункта #3, касается значения типа "ЛюбаяСсылка":
+            //    если в составе конфигурации имеется только один ссылочный тип данных, например,
+            //    только один справочник или документ, то это будет single reference type.
+            // 5. К специальным ссылочным типам данных относятся "УникальныйИдентификатор" и "ХранилищеЗначения".
+            //    Согласно алгоритму парсера DataTypeDescriptorParser, они в качестве значения параметра reference отсутствуют.
+
+            if (reference == SingleTypes.ValueStorage)
+            {
+                return new MetadataItem(SingleTypes.ValueStorage, Guid.Empty, "ХранилищеЗначения");
+            }
+            else if (reference == SingleTypes.UniqueIdentifier)
+            {
+                return new MetadataItem(SingleTypes.UniqueIdentifier, Guid.Empty, "УникальныйИдентификатор");
+            }
+            else if (reference == ReferenceTypes.AnyReference)
+            {
+                return new MetadataItem(ReferenceTypes.AnyReference, Guid.Empty, "ЛюбаяСсылка");
+            }
+            else if (reference == ReferenceTypes.Account)
+            {
+                return new MetadataItem(ReferenceTypes.Account, Guid.Empty, "ПланСчетовСсылка");
+            }
+            else if (reference == ReferenceTypes.Catalog)
+            {
+                return new MetadataItem(ReferenceTypes.Catalog, Guid.Empty, "СправочникСсылка");
+            }
+            else if (reference == ReferenceTypes.Document)
+            {
+                return new MetadataItem(ReferenceTypes.Document, Guid.Empty, "ДокументСсылка");
+            }
+            else if (reference == ReferenceTypes.Enumeration)
+            {
+                return new MetadataItem(ReferenceTypes.Enumeration, Guid.Empty, "ПеречислениеСсылка");
+            }
+            else if (reference == ReferenceTypes.Publication)
+            {
+                return new MetadataItem(ReferenceTypes.Publication, Guid.Empty, "ПланОбменаСсылка");
+            }
+            else if (reference == ReferenceTypes.Characteristic)
+            {
+                return new MetadataItem(ReferenceTypes.Characteristic, Guid.Empty, "ПланВидовХарактеристикСсылка");
+            }
+            else if (cache.TryGetCharacteristicType(reference, out Guid type)) //NOTE: reference == Характеристика
+            {
+                //NOTE: преобразуем идентификатор типа "Характеристика" в идентификатор типа "ПланВидовХарактеристикСсылка":
+                //в данном случае reference - это ПланВидовХарактеристик.ВидыСубконтоХозрасчетные.Характеристика,
+                //а uuid - это конкретный тип объекта метаданных ПланВидовХарактеристик.ВидыСубконтоХозрасчетные.
+
+                // Поиск имени конкретного типа объекта метаданных по его идентификатору
+                string name = cache.GetMetadataName(MetadataTypes.Characteristic, type);
+                return new MetadataItem(ReferenceTypes.Characteristic, type, name);
+            }
+            else if (cache.TryGetReferenceInfo(reference, out MetadataItem info))
+            {
+                if (info.Type == MetadataTypes.NamedDataTypeDescriptor)
+                {
+                    MetadataObject metadata = cache.GetMetadataObjectCached(info.Type, info.Uuid);
+
+                    if (metadata is not NamedDataTypeDescriptor descriptor)
+                    {
+                        // this should not happen - throw error !?
+                    }
+                    else
+                    {
+                        //TODO: обработать определяемый тип !!!
+                    }
+                }
+
+                //NOTE: MetadataItem коллекции _references не содержит имени объекта метаданных !
+                string name = cache.GetMetadataName(info.Type, info.Uuid);
+                return new MetadataItem(info.Type, info.Uuid, name);
+            }
+
+            return new MetadataItem(Guid.Empty, reference); // Неподдерживаемый общий или конкретный ссылочный тип
         }
 
         #endregion
