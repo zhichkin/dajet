@@ -27,27 +27,35 @@ namespace DaJet.Metadata.Parsers
         public void Parse(in ConfigFileReader source, out DataTypeDescriptor target)
         {
             target = new DataTypeDescriptor();
+
             List<Guid> references = new();
 
             ParseDataTypeDescriptor(in source, in target, in references);
 
-            if (_cache == null) // Обработка идентификаторов ссылочных типов не требуется
+            if (_cache is null)
             {
-                //TODO: target.References = references; !!!
+                return; //NOTE: Обработка идентификаторов ссылочных типов невозможна!
             }
-            else if (references.Count > 0)
+            
+            if (references.Count > 0)
             {
                 // Конфигурирование ссылочных типов данных объекта "ОписаниеТипов".
                 // Внимание!
                 // Если описание типов ссылается на определяемый тип или характеристику,
                 // которые не являются или не содержат в своём составе ссылочные типы данных,
                 // то в таком случае описание типов будет содержать только примитивные типы данных.
+                // Выполняется конфигурирование только свойств:
+                // - target.CanBeReference (bool)
+                // - target.TypeCode (int)
+                // - target.Reference (Guid)
                 Configurator.ConfigureDataTypeDescriptor(in _cache, in target, in references);
 
-                //REFACTORING(29.01.2023)
-                //THINK: add setting to OneDbMetadataProvider to resolve references optionally !?
-                //List<MetadataItem> list = _cache.ResolveReferencesToMetadataItems(in references);
-                //target.References.AddRange(list);
+                if (_cache.ResolveReferences)
+                {
+                    List<MetadataItem> list = Configurator.ResolveReferencesToMetadataItems(in _cache, in references);
+
+                    target.References.AddRange(list);
+                }
             }
         }
         private void ParseDataTypeDescriptor(in ConfigFileReader source, in DataTypeDescriptor target, in List<Guid> references)

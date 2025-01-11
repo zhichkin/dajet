@@ -241,54 +241,6 @@ namespace DaJet.Metadata.Model
 
         #endregion
 
-        ///<summary>
-        ///Список идентификаторов ссылочных типов данных объекта "ОписаниеТипов" или типов значений характеристики.
-        ///<br><b>Возможные типы данных:</b></br>
-        ///<br>- ХранилищеЗначения</br>
-        ///<br>- УникальныйИдентификатор</br>
-        ///<br>- Характеристика <see cref="OneDbMetadataProvider._characteristics"/></br>
-        ///<br>- ОпределяемыйТип <see cref="OneDbMetadataProvider._references"/></br>
-        ///<br>- Общие ссылочные типы, например, ЛюбаяСсылка или СправочникСсылка</br>
-        ///<br>- Конкретные ссылочные типы, например, СправочникСсылка.Номенклатура</br>
-        ///<br>Функция для обработки идентификаторов: <see cref="Configurator.ConfigureDataTypeDescriptor(in OneDbMetadataProvider, in DataTypeDescriptor, in List{Guid})"/></br>
-        ///<br>Функция для разрешения идентификаторов: <see cref="Configurator.ResolveReferencesToMetadataItems(OneDbMetadataProvider, in List{Guid})"/></br>
-        ///</summary>
-        public List<MetadataItem> References { get; } = new();
-        
-        ///<summary>
-        ///Применяет описание типов определяемого типа или характеристики к свойству объекта метаданных.
-        ///<br>Используется методом <see cref="Configurator.ResolveAndCountReferenceTypes"/></br>
-        ///</summary>
-        ///<param name="source">Описание типов определяемого типа или характеристики.</param>
-        internal void Apply(in DataTypeDescriptor source)
-        {
-            _flags = source._flags;
-
-            StringKind = source.StringKind;
-            StringLength = source.StringLength;
-
-            NumericKind = source.NumericKind;
-            NumericScale = source.NumericScale;
-            NumericPrecision = source.NumericPrecision;
-
-            DateTimePart = source.DateTimePart;
-            
-            TypeCode = source.TypeCode;
-            Reference = source.Reference;
-
-            References.Clear();
-            References.AddRange(source.References);
-        }
-
-        public DataTypeDescriptor Copy()
-        {
-            DataTypeDescriptor copy = new();
-
-            copy.Apply(this);
-
-            return copy;
-        }
-
         ///<summary>Проверяет является ли свойство составным типом данных</summary>
         public bool IsMultipleType
         {
@@ -322,48 +274,52 @@ namespace DaJet.Metadata.Model
             else if (CanBeReference) return "Reference";
             else return "Undefined";
         }
-        public string GetDescription()
+
+        ///<summary>
+        ///Список идентификаторов ссылочных типов данных объекта "ОписаниеТипов" или типов значений характеристики.
+        ///<br><b>Возможные типы данных:</b></br>
+        ///<br>- ХранилищеЗначения</br>
+        ///<br>- УникальныйИдентификатор</br>
+        ///<br>- Характеристика <see cref="OneDbMetadataProvider._characteristics"/></br>
+        ///<br>- ОпределяемыйТип <see cref="OneDbMetadataProvider._references"/></br>
+        ///<br>- Общие ссылочные типы, например, ЛюбаяСсылка или СправочникСсылка</br>
+        ///<br>- Конкретные ссылочные типы, например, СправочникСсылка.Номенклатура</br>
+        ///<br>Функция для обработки идентификаторов: <see cref="Configurator.ConfigureDataTypeDescriptor(in OneDbMetadataProvider, in DataTypeDescriptor, in List{Guid})"/></br>
+        ///<br>Функция для разрешения идентификаторов: <see cref="Configurator.ResolveReferencesToMetadataItems(in OneDbMetadataProvider, in List{Guid})"/></br>
+        ///</summary>
+        public List<MetadataItem> References { get; } = new();
+        
+        ///<summary>
+        ///Применяет описание типов определяемого типа или характеристики к свойству объекта метаданных.
+        ///<br>Используется методом <see cref="Configurator.ResolveAndCountReferenceTypes"/></br>
+        ///</summary>
+        ///<param name="source">Описание типов определяемого типа или характеристики.</param>
+        internal void Apply(in DataTypeDescriptor source)
         {
-            List<string> description = new();
+            _flags = source._flags;
 
-            if (IsUuid)
-            {
-                description.Add("УникальныйИдентификатор");
-            }
-            else if (IsValueStorage)
-            {
-                description.Add("ХранилищеЗначения");
-            }
-            else
-            {
-                if (CanBeBoolean)
-                {
-                    description.Add("Булево");
-                }
-                if (CanBeNumeric)
-                {
-                    description.Add($"Число({NumericPrecision},{NumericScale})");
-                }
-                if (CanBeDateTime)
-                {
-                    description.Add($"Дата({DateTimePart})");
-                }
-                if (CanBeString)
-                {
-                    description.Add($"Строка({StringLength})");
-                }
-                if (CanBeReference)
-                {
-                    description.Add($"Ссылка({TypeCode})");
-                }
-            }
+            StringKind = source.StringKind;
+            StringLength = source.StringLength;
 
-            if (description.Count == 0)
-            {
-                return ToString();
-            }
+            NumericKind = source.NumericKind;
+            NumericScale = source.NumericScale;
+            NumericPrecision = source.NumericPrecision;
 
-            return string.Join(';', description);
+            DateTimePart = source.DateTimePart;
+            
+            TypeCode = source.TypeCode;
+            Reference = source.Reference;
+
+            References.Clear();
+            References.AddRange(source.References);
+        }
+        public DataTypeDescriptor Copy()
+        {
+            DataTypeDescriptor copy = new();
+
+            copy.Apply(this);
+
+            return copy;
         }
         
         /// <summary>
@@ -461,7 +417,6 @@ namespace DaJet.Metadata.Model
             }
             return union;
         }
-
         public bool IsUnionType(out bool canBeSimple, out bool canBeReference)
         {
             canBeSimple = false;

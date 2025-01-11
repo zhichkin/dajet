@@ -1354,7 +1354,7 @@ namespace DaJet.Metadata
         /// <param name="reference">Идентификатор типа "Характеристика"</param>
         /// <param name="descriptor">Описание типов значений характеристики</param>
         /// <returns></returns>
-        internal bool TryGetCharacteristic(Guid reference, out DataTypeDescriptor descriptor)
+        internal bool TryGetCharacteristicDescriptor(Guid reference, out DataTypeDescriptor descriptor)
         {
             return _typeDescriptors.TryGetValue(reference, out descriptor);
         }
