@@ -49,13 +49,11 @@ namespace DaJet.Metadata.Parsers
                 // - target.TypeCode (int)
                 // - target.Reference (Guid)
                 Configurator.ConfigureDataTypeDescriptor(in _cache, in target, in references);
+            }
 
-                if (_cache.ResolveReferences)
-                {
-                    List<MetadataItem> list = Configurator.ResolveReferencesToMetadataItems(in _cache, in references);
-
-                    target.References.AddRange(list);
-                }
+            if (_cache.ResolveReferences)
+            {
+                target.References.AddRange(references);
             }
         }
         private void ParseDataTypeDescriptor(in ConfigFileReader source, in DataTypeDescriptor target, in List<Guid> references)

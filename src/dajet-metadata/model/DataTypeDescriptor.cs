@@ -287,7 +287,7 @@ namespace DaJet.Metadata.Model
         ///<br>Функция для обработки идентификаторов: <see cref="Configurator.ConfigureDataTypeDescriptor(in OneDbMetadataProvider, in DataTypeDescriptor, in List{Guid})"/></br>
         ///<br>Функция для разрешения идентификаторов: <see cref="Configurator.ResolveReferencesToMetadataItems(in OneDbMetadataProvider, in List{Guid})"/></br>
         ///</summary>
-        public List<MetadataItem> References { get; } = new();
+        public List<Guid> References { get; } = new();
         
         ///<summary>
         ///Применяет описание типов определяемого типа или характеристики к свойству объекта метаданных.

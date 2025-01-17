@@ -1005,27 +1005,6 @@ namespace DaJet.Metadata.Core
             property.PropertyType.TypeCode = metadata.TypeCode;
             property.PropertyType.Reference = metadata.Uuid;
 
-            Guid type = Guid.Empty;
-
-            if (metadata is Account)
-            {
-                type = MetadataTypes.Account;
-            }
-            else if (metadata is Catalog)
-            {
-                type = MetadataTypes.Catalog;
-            }
-            else if (metadata is Characteristic)
-            {
-                type = MetadataTypes.Characteristic;
-            }
-
-            if (type != Guid.Empty && cache is not null && cache.ResolveReferences)
-            {
-                MetadataItem item = new(type, metadata.Uuid, metadata.Name);
-                property.PropertyType.References.Add(item); // Родитель
-            }
-
             property.Columns.Add(new MetadataColumn()
             {
                 Name = property.DbName,
@@ -1065,19 +1044,6 @@ namespace DaJet.Metadata.Core
                 DbName = "_OwnerID"
             };
             property.PropertyType.CanBeReference = true;
-
-            if (cache is not null && cache.ResolveReferences)
-            {
-                foreach (Guid owner in owners)
-                {
-                    MetadataItem item = cache.GetCatalogOwner(owner);
-
-                    if (item != MetadataItem.Empty)
-                    {
-                        property.PropertyType.References.Add(item); // Владелец
-                    }
-                }
-            }
 
             if (owners.Count == 1) // Single type value
             {
@@ -1522,19 +1488,6 @@ namespace DaJet.Metadata.Core
                 DbName = "_Recorder"
             };
 
-            if (cache is not null && cache.ResolveReferences)
-            {
-                foreach (Guid recorder in recorders)
-                {
-                    MetadataItem item = cache.GetRegisterRecorder(recorder);
-
-                    if (item != MetadataItem.Empty)
-                    {
-                        property.PropertyType.References.Add(item); // Регистратор
-                    }
-                }
-            }
-            
             MetadataColumn field = new()
             {
                 Name = "_RecorderRRef",
@@ -3083,6 +3036,7 @@ namespace DaJet.Metadata.Core
         internal static List<MetadataItem> ResolveReferencesToMetadataItems(in OneDbMetadataProvider cache, in List<Guid> references)
         {
             ArgumentNullException.ThrowIfNull(cache);
+            ArgumentNullException.ThrowIfNull(references);
 
             // Правила разрешения ссылочных типов данных для объекта "ОписаниеТипов":
             // 1. DataTypeDescriptor (описание типов данных свойства объекта) может ссылаться только на
@@ -3114,7 +3068,7 @@ namespace DaJet.Metadata.Core
 
                 if (cache.TryGetCharacteristicDescriptor(reference, out DataTypeDescriptor descriptor))
                 {
-                    return descriptor.References;
+                    //TODO: return descriptor.References;
                 }
 
                 if (cache.TryGetReferenceInfo(reference, out MetadataItem item))
@@ -3132,7 +3086,7 @@ namespace DaJet.Metadata.Core
                     {
                         NamedDataTypeDescriptor named = cache.GetMetadataObject<NamedDataTypeDescriptor>(item);
 
-                        if (named is not null) { return named.DataTypeDescriptor.References; }
+                        //TODO: if (named is not null) { return named.DataTypeDescriptor.References; }
                     }
                     else
                     {

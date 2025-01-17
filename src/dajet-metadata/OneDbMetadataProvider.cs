@@ -407,7 +407,7 @@ namespace DaJet.Metadata
             }
         }
 
-        internal List<Guid> GetCatalogOwners(Guid catalog)
+        public List<Guid> GetCatalogOwners(Guid catalog)
         {
             if (_owners.TryGetValue(catalog, out List<Guid> owners))
             {
@@ -416,7 +416,7 @@ namespace DaJet.Metadata
 
             return null;
         }
-        internal List<Guid> GetRegisterRecorders(Guid register)
+        public List<Guid> GetRegisterRecorders(Guid register)
         {
             if (_registers.TryGetValue(register, out List<Guid> documents))
             {
@@ -426,7 +426,7 @@ namespace DaJet.Metadata
             return null;
         }
 
-        internal MetadataItem GetCatalogOwner(Guid uuid)
+        public MetadataItem GetCatalogOwner(Guid uuid)
         {
             foreach (Guid type in MetadataTypes.CatalogOwnerTypes)
             {
@@ -441,7 +441,7 @@ namespace DaJet.Metadata
 
             return MetadataItem.Empty;
         }
-        internal MetadataItem GetRegisterRecorder(Guid uuid)
+        public MetadataItem GetRegisterRecorder(Guid uuid)
         {
             if (_items.TryGetValue(MetadataTypes.Document, out Dictionary<Guid, string> items))
             {
@@ -527,7 +527,6 @@ namespace DaJet.Metadata
             _parsers = new MetadataObjectParserFactory(this);
         }
         public bool UseExtensions { get; set; } = false;
-        public bool ResolveReferences { get { return _resolveReferences; } }
         public InfoBase InfoBase { get { return _infoBase; } }
         public int YearOffset { get { return _infoBase is null ? 0 : _infoBase.YearOffset; } }
         public ExtensionInfo Extension { get { return _extension; } }
@@ -558,6 +557,12 @@ namespace DaJet.Metadata
             }
 
             throw new InvalidOperationException($"Unsupported database provider: {_provider}");
+        }
+
+        public bool ResolveReferences { get { return _resolveReferences; } }
+        public List<MetadataItem> ResolveReferencesToMetadataItems(in List<Guid> references)
+        {
+            return Configurator.ResolveReferencesToMetadataItems(this, in references);
         }
 
         #region "INITIALIZE CACHE BEFORE USE IT"
