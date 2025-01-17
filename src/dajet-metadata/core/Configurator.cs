@@ -3043,14 +3043,14 @@ namespace DaJet.Metadata.Core
             //    один экземпляр определяемого типа или плана видов характеристик (характеристику).
             //    В таком случае указание дополнительных типов данных для данного свойства невозможно.
             // 2. Определяемый тип или характеристика не могут ссылаться на другие определяемые типы или характеристики.
-            // 3. Если ссылочный тип имеет значение, например, "СправочникСсылка", то есть любой справочник,
+            // 3. Если ссылочный тип имеет значение общего типа, например, "СправочникСсылка", то есть любой справочник,
             //    то в таком случае необходимо вычислить количество справочников в составе конфигурации:
             //    если возможным справочником будет только один, то это будет single reference type.
             // 4. То же самое, что и для пункта #3, касается значения типа "ЛюбаяСсылка":
             //    если в составе конфигурации имеется только один ссылочный тип данных, например,
             //    только один справочник или документ, то это будет single reference type.
             // 5. К специальным ссылочным типам данных относятся "УникальныйИдентификатор" и "ХранилищеЗначения".
-            //    Согласно алгоритму парсера DataTypeDescriptorParser, они в качестве значения параметра references отсутствуют.
+            //    Кроме того перечисления также можно отнести к специфическим ссылочным типам данных.
 
             Guid reference;
             List<MetadataItem> metadata = new();
@@ -3066,33 +3066,39 @@ namespace DaJet.Metadata.Core
                     continue;
                 }
 
-                if (cache.TryGetCharacteristicDescriptor(reference, out DataTypeDescriptor descriptor))
+                if (cache.TryGetCharacteristicDescriptor(reference, out DataTypeDescriptor descriptor)) // Характеристика
                 {
-                    //TODO: return descriptor.References;
+                    return ResolveReferencesToMetadataItems(in cache, descriptor.References); // Смотри правило #2
                 }
 
                 if (cache.TryGetReferenceInfo(reference, out MetadataItem item))
                 {
-                    if (item.Uuid == Guid.Empty) // Общий ссылочный тип
+                    if (item.Uuid == Guid.Empty) // Общий ссылочный тип, например: ЛюбаяСсылка или СправочникСсылка
                     {
-                        reference = cache.GetSingleMetadataObjectUuid(reference); // Пытаемся получить единственный конкретный тип
+                        metadata.Add(item);
                     }
-
-                    if (reference == Guid.Empty) // ЛюбаяСсылка
+                    else if (item.Type == MetadataTypes.NamedDataTypeDescriptor) // Определяемый тип
                     {
-                        //TODO: ???
+                        if (cache.GetMetadataObject(item) is NamedDataTypeDescriptor named)
+                        {
+                            return ResolveReferencesToMetadataItems(in cache, named.DataTypeDescriptor.References); // Смотри правило #2
+                        }
+                        else
+                        {
+                            //TODO: log error !!!
+                        }
                     }
-                    else if (item.Type == MetadataTypes.NamedDataTypeDescriptor)
+                    else // Конкретный ссылочный тип, например: Справочник.НоменклатураСсылка
                     {
-                        NamedDataTypeDescriptor named = cache.GetMetadataObject<NamedDataTypeDescriptor>(item);
-
-                        //TODO: if (named is not null) { return named.DataTypeDescriptor.References; }
-                    }
-                    else
-                    {
-                        string name = cache.GetMetadataName(item.Type, item.Uuid);
-
-                        metadata.Add(new MetadataItem(item.Type, item.Uuid, name));
+                        if (string.IsNullOrEmpty(item.Name))
+                        {
+                            string name = cache.GetMetadataName(item.Type, item.Uuid);
+                            metadata.Add(new MetadataItem(item.Type, item.Uuid, name));
+                        }
+                        else
+                        {
+                            metadata.Add(item);
+                        }
                     }
                 }
             }

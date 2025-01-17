@@ -564,6 +564,23 @@ namespace DaJet.Metadata
         {
             return Configurator.ResolveReferencesToMetadataItems(this, in references);
         }
+        public static bool TryCreateMetadataProvider(in OneDbMetadataProviderOptions options, out OneDbMetadataProvider provider, out string error)
+        {
+            error = null;
+
+            provider = new OneDbMetadataProvider(options);
+
+            try
+            {
+                provider.Initialize();
+            }
+            catch (Exception exception)
+            {
+                error = ExceptionHelper.GetErrorMessage(exception);
+            }
+
+            return error is null;
+        }
 
         #region "INITIALIZE CACHE BEFORE USE IT"
 
@@ -633,13 +650,13 @@ namespace DaJet.Metadata
             _references.Clear();
             _characteristics.Clear();
 
-            _references.TryAdd(ReferenceTypes.AnyReference, new MetadataItem(Guid.Empty, Guid.Empty));
-            _references.TryAdd(ReferenceTypes.Account, new MetadataItem(MetadataTypes.Account, Guid.Empty));
-            _references.TryAdd(ReferenceTypes.Catalog, new MetadataItem(MetadataTypes.Catalog, Guid.Empty));
-            _references.TryAdd(ReferenceTypes.Document, new MetadataItem(MetadataTypes.Document, Guid.Empty));
-            _references.TryAdd(ReferenceTypes.Enumeration, new MetadataItem(MetadataTypes.Enumeration, Guid.Empty));
-            _references.TryAdd(ReferenceTypes.Publication, new MetadataItem(MetadataTypes.Publication, Guid.Empty));
-            _references.TryAdd(ReferenceTypes.Characteristic, new MetadataItem(MetadataTypes.Characteristic, Guid.Empty));
+            _references.TryAdd(ReferenceTypes.AnyReference, new MetadataItem(Guid.Empty, Guid.Empty, "ЛюбаяСсылка"));
+            _references.TryAdd(ReferenceTypes.Account, new MetadataItem(MetadataTypes.Account, Guid.Empty, "ПланСчетовСсылка"));
+            _references.TryAdd(ReferenceTypes.Catalog, new MetadataItem(MetadataTypes.Catalog, Guid.Empty, "СправочникСсылка"));
+            _references.TryAdd(ReferenceTypes.Document, new MetadataItem(MetadataTypes.Document, Guid.Empty, "ДокументСсылка"));
+            _references.TryAdd(ReferenceTypes.Enumeration, new MetadataItem(MetadataTypes.Enumeration, Guid.Empty, "ПеречислениеСсылка"));
+            _references.TryAdd(ReferenceTypes.Publication, new MetadataItem(MetadataTypes.Publication, Guid.Empty, "ПланОбменаСсылка"));
+            _references.TryAdd(ReferenceTypes.Characteristic, new MetadataItem(MetadataTypes.Characteristic, Guid.Empty, "ПланВидовХарактеристикСсылка"));
 
             Dictionary<Guid, List<Guid>> metadata = CreateSupportedMetadataDictionary();
 

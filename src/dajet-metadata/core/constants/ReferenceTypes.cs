@@ -7,7 +7,7 @@ namespace DaJet.Metadata.Core
         ///<summary>ЛюбаяСсылка</summary>
         public static readonly Guid AnyReference = new("280f5f0e-9c8a-49cc-bf6d-4d296cc17a63");
         ///<summary>ПланСчетовСсылка</summary>
-        public static readonly Guid Account = new("c5f4f1d2-da30-4348-a76e-e4a2ab5ecfcc");
+        public static readonly Guid Account = new("ac606d60-0209-4159-8e4c-794bc091ce38");
         ///<summary>СправочникСсылка</summary>
         public static readonly Guid Catalog = new("e61ef7b8-f3e1-4f4b-8ac7-676e90524997");
         ///<summary>ДокументСсылка</summary>
