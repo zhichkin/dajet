@@ -178,39 +178,17 @@ namespace DaJet.Runtime
                         if (descriptor.CanBeDateTime) { FileLogger.Default.Write($"  - ДатаВремя"); }
                         if (descriptor.CanBeString) { FileLogger.Default.Write($"  - Строка"); }
                     }
-
                     if (canBeReference)
                     {
                         if (descriptor.TypeCode == 0) // multiple reference
                         {
-                            if (property.Purpose == PropertyPurpose.System && property.Name == "Владелец" && entity is Catalog catalog)
+                            if (property.Purpose == PropertyPurpose.System &&
+                                (property.Name == "Владелец" || property.Name == "Регистратор"))
                             {
-                                List<Guid> owners = _provider.GetCatalogOwners(catalog.Uuid);
-
-                                if (owners is not null && owners.Count > 0)
+                                foreach (Guid uuid in descriptor.References)
                                 {
-                                    foreach (Guid owner in owners)
-                                    {
-                                        MetadataItem item = _provider.GetCatalogOwner(owner);
-                                        FileLogger.Default.Write($"  - Ссылка [{item.Name}]");
-                                    }
-                                }
-
-                            }
-                            else if (property.Purpose == PropertyPurpose.System && property.Name == "Регистратор")
-                            {
-                                if (entity is InformationRegister || entity is AccumulationRegister || entity is AccountingRegister)
-                                {
-                                    List<Guid> recorders = _provider.GetRegisterRecorders(entity.Uuid);
-
-                                    if (recorders is not null || recorders.Count > 0)
-                                    {
-                                        foreach (Guid recorder in recorders)
-                                        {
-                                            MetadataItem item = _provider.GetRegisterRecorder(recorder);
-                                            FileLogger.Default.Write($"  - Ссылка [{item.Name}]");
-                                        }
-                                    }
+                                    MetadataItem item = _provider.GetMetadataItem(uuid);
+                                    FileLogger.Default.Write($"  - Ссылка [{item.Name}]");
                                 }
                             }
                             else
@@ -243,41 +221,8 @@ namespace DaJet.Runtime
                 else if (descriptor.CanBeString) { FileLogger.Default.Write($"  - Строка"); }
                 else if (descriptor.CanBeReference)
                 {
-                    if (property.Purpose == PropertyPurpose.System && property.Name == "Владелец" && entity is Catalog catalog)
-                    {
-                        List<Guid> owners = _provider.GetCatalogOwners(catalog.Uuid);
-
-                        if (owners is not null && owners.Count > 0)
-                        {
-                            foreach (Guid owner in owners)
-                            {
-                                MetadataItem item = _provider.GetCatalogOwner(owner);
-                                FileLogger.Default.Write($"  - Ссылка [{item.Name}]");
-                            }
-                        }
-
-                    }
-                    else if (property.Purpose == PropertyPurpose.System && property.Name == "Регистратор")
-                    {
-                        if (entity is InformationRegister || entity is AccumulationRegister || entity is AccountingRegister)
-                        {
-                            List<Guid> recorders = _provider.GetRegisterRecorders(entity.Uuid);
-
-                            if (recorders is not null || recorders.Count > 0)
-                            {
-                                foreach (Guid recorder in recorders)
-                                {
-                                    MetadataItem item = _provider.GetRegisterRecorder(recorder);
-                                    FileLogger.Default.Write($"  - Ссылка [{item.Name}]");
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        MetadataItem item = _provider.GetMetadataItem(descriptor.Reference);
-                        FileLogger.Default.Write($"  - Ссылка [{item.Name}]");
-                    }
+                    MetadataItem item = _provider.GetMetadataItem(descriptor.Reference);
+                    FileLogger.Default.Write($"  - Ссылка [{item.Name}]");
                 }
             }
         }

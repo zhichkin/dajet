@@ -407,7 +407,7 @@ namespace DaJet.Metadata
             }
         }
 
-        public List<Guid> GetCatalogOwners(Guid catalog)
+        internal List<Guid> GetCatalogOwners(Guid catalog)
         {
             if (_owners.TryGetValue(catalog, out List<Guid> owners))
             {
@@ -416,7 +416,7 @@ namespace DaJet.Metadata
 
             return null;
         }
-        public List<Guid> GetRegisterRecorders(Guid register)
+        internal List<Guid> GetRegisterRecorders(Guid register)
         {
             if (_registers.TryGetValue(register, out List<Guid> documents))
             {
@@ -426,7 +426,7 @@ namespace DaJet.Metadata
             return null;
         }
 
-        public MetadataItem GetCatalogOwner(Guid uuid)
+        internal MetadataItem GetCatalogOwner(Guid uuid)
         {
             foreach (Guid type in MetadataTypes.CatalogOwnerTypes)
             {
@@ -441,7 +441,7 @@ namespace DaJet.Metadata
 
             return MetadataItem.Empty;
         }
-        public MetadataItem GetRegisterRecorder(Guid uuid)
+        internal MetadataItem GetRegisterRecorder(Guid uuid)
         {
             if (_items.TryGetValue(MetadataTypes.Document, out Dictionary<Guid, string> items))
             {

@@ -1045,6 +1045,11 @@ namespace DaJet.Metadata.Core
             };
             property.PropertyType.CanBeReference = true;
 
+            if (cache.ResolveReferences && owners is not null && owners.Count > 0)
+            {
+                property.PropertyType.References.AddRange(owners);
+            }
+
             if (owners.Count == 1) // Single type value
             {
                 property.PropertyType.Reference = owners[0];
@@ -1500,6 +1505,11 @@ namespace DaJet.Metadata.Core
             property.Columns.Add(field);
 
             property.PropertyType.CanBeReference = true;
+
+            if (cache.ResolveReferences && recorders is not null || recorders.Count > 0)
+            {
+                property.PropertyType.References.AddRange(recorders);
+            }
 
             if (recorders.Count == 1) // Single type value
             {
