@@ -178,40 +178,21 @@ namespace DaJet.Runtime
                         if (descriptor.CanBeDateTime) { FileLogger.Default.Write($"  - ДатаВремя"); }
                         if (descriptor.CanBeString) { FileLogger.Default.Write($"  - Строка"); }
                     }
+
                     if (canBeReference)
                     {
-                        if (descriptor.TypeCode == 0) // multiple reference
-                        {
-                            if (property.Purpose == PropertyPurpose.System &&
-                                (property.Name == "Владелец" || property.Name == "Регистратор"))
-                            {
-                                foreach (Guid uuid in descriptor.References)
-                                {
-                                    MetadataItem item = _provider.GetMetadataItem(uuid);
-                                    FileLogger.Default.Write($"  - Ссылка [{item.Name}]");
-                                }
-                            }
-                            else
-                            {
-                                List<MetadataItem> list = _provider.ResolveReferencesToMetadataItems(descriptor.References);
+                        List<MetadataItem> items = _provider.ResolveReferencesToMetadataItems(property.References);
 
-                                foreach (MetadataItem item in list)
-                                {
-                                    if (item.Uuid == Guid.Empty) // Общий ссылочный тип
-                                    {
-                                        FileLogger.Default.Write($"  - {item.Name}");
-                                    }
-                                    else // Конкретный ссылочный тип
-                                    {
-                                        FileLogger.Default.Write($"  - Ссылка [{item.Name}]");
-                                    }
-                                }
-                            }
-                        }
-                        else // single reference
+                        foreach (MetadataItem item in items)
                         {
-                            MetadataItem item = _provider.GetMetadataItem(descriptor.Reference);
-                            FileLogger.Default.Write($"  - Ссылка [{item.Name}]");
+                            if (item.Uuid == Guid.Empty) // Общий ссылочный тип
+                            {
+                                FileLogger.Default.Write($"  - {item.Name}");
+                            }
+                            else // Конкретный ссылочный тип
+                            {
+                                FileLogger.Default.Write($"  - Ссылка \"{item.Name}\" [{descriptor.TypeCode}] {{{descriptor.Reference}}}");
+                            }
                         }
                     }
                 }
@@ -222,7 +203,7 @@ namespace DaJet.Runtime
                 else if (descriptor.CanBeReference)
                 {
                     MetadataItem item = _provider.GetMetadataItem(descriptor.Reference);
-                    FileLogger.Default.Write($"  - Ссылка [{item.Name}]");
+                    FileLogger.Default.Write($"  - Ссылка \"{item.Name}\" [{descriptor.TypeCode}] {{{descriptor.Reference}}}");
                 }
             }
         }

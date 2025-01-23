@@ -188,7 +188,7 @@ namespace DaJet.Metadata.Parsers
 
             if (source.Token == TokenType.StartObject)
             {
-                _typeParser.Parse(in source, out DataTypeDescriptor type);
+                _typeParser.Parse(in source, out DataTypeDescriptor type, out List<Guid> references);
 
                 if (_entry is not null) // Первичная загрузка метаданных в кэш
                 {
@@ -197,6 +197,11 @@ namespace DaJet.Metadata.Parsers
                 else // Полная загрузка объекта метаданных
                 {
                     _target.DataTypeDescriptor = type;
+
+                    if (_cache is not null && _cache.ResolveReferences && type.CanBeReference)
+                    {
+                        _target.References.AddRange(references);
+                    }
                 }
 
                 //FIXME: extension has higher priority
@@ -248,7 +253,7 @@ namespace DaJet.Metadata.Parsers
                 return;
             }
 
-            _typeParser.Parse(in source, out DataTypeDescriptor type);
+            _typeParser.Parse(in source, out DataTypeDescriptor type, out List<Guid> references);
 
             _target.ExtensionDataTypeDescriptor = type;
 

@@ -230,9 +230,14 @@ namespace DaJet.Metadata.Parsers
 
             if (source.Token == TokenType.StartObject)
             {
-                _typeParser.Parse(in source, out DataTypeDescriptor type);
+                _typeParser.Parse(in source, out DataTypeDescriptor type, out List<Guid> references);
 
                 _property.PropertyType = type;
+
+                if (_cache is not null && _cache.ResolveReferences && type.CanBeReference)
+                {
+                    _property.References.AddRange(references);
+                }
             }
         }
         private void PropertyUsage(in ConfigFileReader source, in CancelEventArgs args)
@@ -260,7 +265,7 @@ namespace DaJet.Metadata.Parsers
                 return;
             }
 
-            _typeParser.Parse(in source, out DataTypeDescriptor type);
+            _typeParser.Parse(in source, out DataTypeDescriptor type, out List<Guid> references);
 
             _property.ExtensionPropertyType = type;
 

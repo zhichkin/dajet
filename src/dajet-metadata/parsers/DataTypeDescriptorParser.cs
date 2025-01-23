@@ -24,11 +24,11 @@ namespace DaJet.Metadata.Parsers
         ///</summary>
         ///<param name="source">Объект чтения файла метаданных.</param>
         ///<param name="target">Объект описания типа данных.</param>
-        public void Parse(in ConfigFileReader source, out DataTypeDescriptor target)
+        public void Parse(in ConfigFileReader source, out DataTypeDescriptor target, out List<Guid> references)
         {
             target = new DataTypeDescriptor();
 
-            List<Guid> references = new();
+            references = new List<Guid>();
 
             ParseDataTypeDescriptor(in source, in target, in references);
 
@@ -49,11 +49,6 @@ namespace DaJet.Metadata.Parsers
                 // - target.TypeCode (int)
                 // - target.Reference (Guid)
                 Configurator.ConfigureDataTypeDescriptor(in _cache, in target, in references);
-            }
-
-            if (_cache.ResolveReferences)
-            {
-                target.References.AddRange(references);
             }
         }
         private void ParseDataTypeDescriptor(in ConfigFileReader source, in DataTypeDescriptor target, in List<Guid> references)

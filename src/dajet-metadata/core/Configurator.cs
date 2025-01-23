@@ -194,9 +194,19 @@ namespace DaJet.Metadata.Core
                         }
                     }
                 }
+                else if (cache.TryGetCharacteristicType(identifier, out Guid uuid))
+                {
+                    target.Reference = uuid; // uuid объекта метаданных
+
+                    if (cache.TryGetDbName(uuid, out DbName db))
+                    {
+                        target.TypeCode = db.Code; // код типа объекта метаданных
+                    }
+                }
                 else
                 {
-                    // unsupported reference type, например "БизнесПроцесс"
+                    //TODO: log error !?
+                    //unsupported reference type, например "БизнесПроцесс"
                     target.TypeCode = 0;
                     target.Reference = identifier; // неразрешённый идентификатор ссылки
                 }
@@ -333,6 +343,103 @@ namespace DaJet.Metadata.Core
             }
 
             return count;
+        }
+
+        /// <summary>
+        /// Функция сопоставления ссылочных типов данных объекта "ОписаниеТипов" объектам метаданных.
+        /// <br>Список ссылочных типов объекта <see cref="DataTypeDescriptor"/> получает парсер <see cref="Parsers.DataTypeDescriptorParser"/>.</br>
+        /// </summary>
+        /// <param name="references">Список ссылочных типов данных объекта "ОписаниеТипов".</param>
+        /// <returns></returns>
+        internal static List<MetadataItem> ResolveReferencesToMetadataItems(in OneDbMetadataProvider cache, in List<Guid> references)
+        {
+            ArgumentNullException.ThrowIfNull(cache);
+            ArgumentNullException.ThrowIfNull(references);
+
+            // Правила разрешения ссылочных типов данных для объекта "ОписаниеТипов":
+            // 1. DataTypeDescriptor (описание типов данных свойства объекта) может ссылаться только на
+            //    один экземпляр определяемого типа или плана видов характеристик (характеристику).
+            //    В таком случае указание дополнительных типов данных для данного свойства невозможно.
+            // 2. Определяемый тип или характеристика не могут ссылаться на другие определяемые типы или характеристики.
+            // 3. Если ссылочный тип имеет значение общего типа, например, "СправочникСсылка", то есть любой справочник,
+            //    то в таком случае необходимо вычислить количество справочников в составе конфигурации:
+            //    если возможным справочником будет только один, то это будет single reference type.
+            // 4. То же самое, что и для пункта #3, касается значения типа "ЛюбаяСсылка":
+            //    если в составе конфигурации имеется только один ссылочный тип данных, например,
+            //    только один справочник или документ, то это будет single reference type.
+            // 5. К специальным ссылочным типам данных относятся "УникальныйИдентификатор" и "ХранилищеЗначения".
+            //    Кроме того перечисления также можно отнести к специфическим ссылочным типам данных.
+
+            Guid reference;
+            List<MetadataItem> metadata = new();
+
+            for (int i = 0; i < references.Count; i++)
+            {
+                reference = references[i];
+
+                if (reference == Guid.Empty ||
+                    reference == SingleTypes.ValueStorage ||
+                    reference == SingleTypes.UniqueIdentifier)
+                {
+                    continue;
+                }
+
+                if (cache.TryGetCharacteristicType(reference, out Guid uuid)) // Характеристика
+                {
+                    if (cache.GetMetadataObject(MetadataTypes.Characteristic, uuid) is Characteristic characteristic)
+                    {
+                        return ResolveReferencesToMetadataItems(in cache, characteristic.References); // Смотри правило #2
+                    }
+                    else
+                    {
+                        //TODO: log error !!!
+                    }
+                }
+
+                if (cache.TryGetReferenceInfo(reference, out MetadataItem item))
+                {
+                    if (item.Uuid == Guid.Empty) // Общий ссылочный тип, например: ЛюбаяСсылка или СправочникСсылка
+                    {
+                        metadata.Add(item);
+                    }
+                    else if (item.Type == MetadataTypes.NamedDataTypeDescriptor) // Определяемый тип
+                    {
+                        if (cache.GetMetadataObject(item) is NamedDataTypeDescriptor descriptor)
+                        {
+                            return ResolveReferencesToMetadataItems(in cache, descriptor.References); // Смотри правило #2
+                        }
+                        else
+                        {
+                            //TODO: log error !!!
+                        }
+                    }
+                    else // Конкретный ссылочный тип, например: Справочник.НоменклатураСсылка
+                    {
+                        if (string.IsNullOrEmpty(item.Name))
+                        {
+                            string name = cache.GetMetadataName(item.Type, item.Uuid);
+                            metadata.Add(new MetadataItem(item.Type, item.Uuid, name));
+                        }
+                        else
+                        {
+                            metadata.Add(item);
+                        }
+                    }
+                }
+                else // reference == uuid объекта метаданных, например, "Владелец" или "Регистратор"
+                {
+                    item = cache.GetMetadataItem(reference);
+
+                    if (item == MetadataItem.Empty)
+                    {
+                        //TODO: log error !!!
+                    }
+
+                    metadata.Add(item);
+                }
+            }
+
+            return metadata;
         }
 
         #region "TABLE PARTS"
@@ -1005,6 +1112,11 @@ namespace DaJet.Metadata.Core
             property.PropertyType.TypeCode = metadata.TypeCode;
             property.PropertyType.Reference = metadata.Uuid;
 
+            if (cache.ResolveReferences)
+            {
+                property.References.Add(metadata.Uuid);
+            }
+
             property.Columns.Add(new MetadataColumn()
             {
                 Name = property.DbName,
@@ -1047,7 +1159,7 @@ namespace DaJet.Metadata.Core
 
             if (cache.ResolveReferences && owners is not null && owners.Count > 0)
             {
-                property.PropertyType.References.AddRange(owners);
+                property.References.AddRange(owners);
             }
 
             if (owners.Count == 1) // Single type value
@@ -1508,7 +1620,7 @@ namespace DaJet.Metadata.Core
 
             if (cache.ResolveReferences && recorders is not null || recorders.Count > 0)
             {
-                property.PropertyType.References.AddRange(recorders);
+                property.References.AddRange(recorders);
             }
 
             if (recorders.Count == 1) // Single type value
@@ -3033,88 +3145,6 @@ namespace DaJet.Metadata.Core
             table.Properties.Add(property);
         }
 
-        #endregion
-
-        #region "RESOLVE DATA TYPE DESCRIPTOR REFERENCES"
-
-        /// <summary>
-        /// Функция сопоставления ссылочных типов данных объекта "ОписаниеТипов" объектам метаданных.
-        /// <br>Список ссылочных типов объекта <see cref="DataTypeDescriptor"/> получает парсер <see cref="Parsers.DataTypeDescriptorParser"/>.</br>
-        /// </summary>
-        /// <param name="references">Список ссылочных типов данных объекта "ОписаниеТипов".</param>
-        /// <returns></returns>
-        internal static List<MetadataItem> ResolveReferencesToMetadataItems(in OneDbMetadataProvider cache, in List<Guid> references)
-        {
-            ArgumentNullException.ThrowIfNull(cache);
-            ArgumentNullException.ThrowIfNull(references);
-
-            // Правила разрешения ссылочных типов данных для объекта "ОписаниеТипов":
-            // 1. DataTypeDescriptor (описание типов данных свойства объекта) может ссылаться только на
-            //    один экземпляр определяемого типа или плана видов характеристик (характеристику).
-            //    В таком случае указание дополнительных типов данных для данного свойства невозможно.
-            // 2. Определяемый тип или характеристика не могут ссылаться на другие определяемые типы или характеристики.
-            // 3. Если ссылочный тип имеет значение общего типа, например, "СправочникСсылка", то есть любой справочник,
-            //    то в таком случае необходимо вычислить количество справочников в составе конфигурации:
-            //    если возможным справочником будет только один, то это будет single reference type.
-            // 4. То же самое, что и для пункта #3, касается значения типа "ЛюбаяСсылка":
-            //    если в составе конфигурации имеется только один ссылочный тип данных, например,
-            //    только один справочник или документ, то это будет single reference type.
-            // 5. К специальным ссылочным типам данных относятся "УникальныйИдентификатор" и "ХранилищеЗначения".
-            //    Кроме того перечисления также можно отнести к специфическим ссылочным типам данных.
-
-            Guid reference;
-            List<MetadataItem> metadata = new();
-
-            for (int i = 0; i < references.Count; i++)
-            {
-                reference = references[i];
-
-                if (reference == Guid.Empty ||
-                    reference == SingleTypes.ValueStorage ||
-                    reference == SingleTypes.UniqueIdentifier)
-                {
-                    continue;
-                }
-
-                if (cache.TryGetCharacteristicDescriptor(reference, out DataTypeDescriptor descriptor)) // Характеристика
-                {
-                    return ResolveReferencesToMetadataItems(in cache, descriptor.References); // Смотри правило #2
-                }
-
-                if (cache.TryGetReferenceInfo(reference, out MetadataItem item))
-                {
-                    if (item.Uuid == Guid.Empty) // Общий ссылочный тип, например: ЛюбаяСсылка или СправочникСсылка
-                    {
-                        metadata.Add(item);
-                    }
-                    else if (item.Type == MetadataTypes.NamedDataTypeDescriptor) // Определяемый тип
-                    {
-                        if (cache.GetMetadataObject(item) is NamedDataTypeDescriptor named)
-                        {
-                            return ResolveReferencesToMetadataItems(in cache, named.DataTypeDescriptor.References); // Смотри правило #2
-                        }
-                        else
-                        {
-                            //TODO: log error !!!
-                        }
-                    }
-                    else // Конкретный ссылочный тип, например: Справочник.НоменклатураСсылка
-                    {
-                        if (string.IsNullOrEmpty(item.Name))
-                        {
-                            string name = cache.GetMetadataName(item.Type, item.Uuid);
-                            metadata.Add(new MetadataItem(item.Type, item.Uuid, name));
-                        }
-                        else
-                        {
-                            metadata.Add(item);
-                        }
-                    }
-                }
-            }
-
-            return metadata;
-        }
         #endregion
     }
 }

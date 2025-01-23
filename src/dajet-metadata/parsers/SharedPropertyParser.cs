@@ -1,6 +1,7 @@
 ﻿using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 
 namespace DaJet.Metadata.Parsers
@@ -179,9 +180,14 @@ namespace DaJet.Metadata.Parsers
                 return;
             }
 
-            _typeParser.Parse(in source, out DataTypeDescriptor type);
+            _typeParser.Parse(in source, out DataTypeDescriptor type, out List<Guid> references);
 
             _target.PropertyType = type;
+
+            if (_cache is not null && _cache.ResolveReferences && type.CanBeReference)
+            {
+                _target.References.AddRange(references);
+            }
         }
     }
 }

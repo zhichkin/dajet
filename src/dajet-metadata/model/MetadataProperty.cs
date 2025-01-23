@@ -77,5 +77,21 @@ namespace DaJet.Metadata.Model
         }
 
         public override string ToString() { return Name; }
+
+        ///<summary>
+        ///<b>Свойство определяет логическую ссылочную целостность базы данных (foreign keys)</b>
+        ///<br>Содержит список идентификаторов ссылочных типов данных, которые определяются</br>
+        ///<br>в типе свойства, в том числе составного типа, "ОписаниеТипов" или "Характеристика".</br>
+        ///<br><b>Возможные типы данных:</b></br>
+        ///<br>- ХранилищеЗначения (константа - исключение из правил)</br>
+        ///<br>- УникальныйИдентификатор  (константа - исключение из правил)</br>
+        ///<br>- Характеристика <see cref="OneDbMetadataProvider._characteristics"/></br>
+        ///<br>- ОпределяемыйТип <see cref="OneDbMetadataProvider._references"/></br>
+        ///<br>- Общие ссылочные типы, например, ЛюбаяСсылка или СправочникСсылка</br>
+        ///<br>- Конкретные ссылочные типы, например, СправочникСсылка.Номенклатура</br>
+        ///<br>Функция для обработки идентификаторов: <b>Configurator.ConfigureDataTypeDescriptor</b></br>
+        ///<br>Функция для разрешения идентификаторов: <b>Configurator.ResolveReferencesToMetadataItems</b></br>
+        ///</summary>
+        public List<Guid> References { get; } = [];
     }
 }

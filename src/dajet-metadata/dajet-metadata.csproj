@@ -4,12 +4,12 @@
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>DaJet.Metadata</RootNamespace>
     <AssemblyName>DaJet.Metadata</AssemblyName>
-    <Version>4.7.0</Version>
+    <Version>4.7.1</Version>
     <Authors>Zhichkin</Authors>
     <Description>Library to read 1C:Enterprise 8 metadata from Microsoft SQL Server or PostgreSQL databases.</Description>
     <PackageProjectUrl>https://zhichkin.github.io/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/zhichkin/dajet/tree/main/src/dajet-metadata</RepositoryUrl>
-    <PackageReleaseNotes>Minor bug fixes</PackageReleaseNotes>
+    <PackageReleaseNotes>Logical references resolvation</PackageReleaseNotes>
     <Copyright>Zhichkin © 2020</Copyright>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>

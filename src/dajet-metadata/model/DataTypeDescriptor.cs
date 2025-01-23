@@ -1,6 +1,5 @@
 ﻿using DaJet.Metadata.Core;
 using System;
-using System.Collections.Generic;
 
 namespace DaJet.Metadata.Model
 {
@@ -48,7 +47,6 @@ namespace DaJet.Metadata.Model
                     _flags = DataTypeFlags.UniqueIdentifier;
                     TypeCode = 0;
                     Reference = Guid.Empty;
-                    References.Clear();
                 }
                 else if (IsUuid)
                 {
@@ -67,7 +65,6 @@ namespace DaJet.Metadata.Model
                     _flags = DataTypeFlags.Binary;
                     TypeCode = 0;
                     Reference = Guid.Empty;
-                    References.Clear();
                 }
                 else if (IsBinary)
                 {
@@ -86,7 +83,6 @@ namespace DaJet.Metadata.Model
                     _flags = DataTypeFlags.ValueStorage;
                     TypeCode = 0;
                     Reference = Guid.Empty;
-                    References.Clear();
                 }
                 else if (IsValueStorage)
                 {
@@ -276,20 +272,6 @@ namespace DaJet.Metadata.Model
         }
 
         ///<summary>
-        ///Список идентификаторов ссылочных типов данных объекта "ОписаниеТипов" или типов значений характеристики.
-        ///<br><b>Возможные типы данных:</b></br>
-        ///<br>- ХранилищеЗначения</br>
-        ///<br>- УникальныйИдентификатор</br>
-        ///<br>- Характеристика <see cref="OneDbMetadataProvider._characteristics"/></br>
-        ///<br>- ОпределяемыйТип <see cref="OneDbMetadataProvider._references"/></br>
-        ///<br>- Общие ссылочные типы, например, ЛюбаяСсылка или СправочникСсылка</br>
-        ///<br>- Конкретные ссылочные типы, например, СправочникСсылка.Номенклатура</br>
-        ///<br>Функция для обработки идентификаторов: <see cref="Configurator.ConfigureDataTypeDescriptor(in OneDbMetadataProvider, in DataTypeDescriptor, in List{Guid})"/></br>
-        ///<br>Функция для разрешения идентификаторов: <see cref="Configurator.ResolveReferencesToMetadataItems(in OneDbMetadataProvider, in List{Guid})"/></br>
-        ///</summary>
-        public List<Guid> References { get; } = new();
-        
-        ///<summary>
         ///Применяет описание типов определяемого типа или характеристики к свойству объекта метаданных.
         ///<br>Используется методом <see cref="Configurator.ResolveAndCountReferenceTypes"/></br>
         ///</summary>
@@ -309,9 +291,6 @@ namespace DaJet.Metadata.Model
             
             TypeCode = source.TypeCode;
             Reference = source.Reference;
-
-            References.Clear();
-            References.AddRange(source.References);
         }
         public DataTypeDescriptor Copy()
         {
@@ -322,83 +301,6 @@ namespace DaJet.Metadata.Model
             return copy;
         }
         
-        /// <summary>
-        /// Объединяет два описания типов, отдавая приоритет входящему параметру <b>source</b>.
-        /// </summary>
-        /// <param name="source">Описание типов, определяемых расширением или объектом основной конфигурации</param>
-        internal void Merge(in DataTypeDescriptor source)
-        {
-            if (source == null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
-
-            if (source._flags == DataTypeFlags.None)
-            {
-                return; // Undefined data type set - empty
-            }
-
-            if (_flags == DataTypeFlags.None)
-            {
-                Apply(in source);
-                return;
-            }
-
-            if (source.IsUuid || source.IsValueStorage || source.IsBinary)
-            {
-                _flags = source._flags;
-                TypeCode = 0;
-                Reference = Guid.Empty;
-                References.Clear();
-                return;
-            }
-
-            if (source.CanBeBoolean)
-            {
-                CanBeBoolean = source.CanBeBoolean;
-            }
-
-            if (source.CanBeNumeric)
-            {
-                CanBeNumeric = source.CanBeNumeric;
-                NumericKind = source.NumericKind;
-                NumericScale = source.NumericScale;
-                NumericPrecision = source.NumericPrecision;
-            }
-
-            if (source.CanBeDateTime)
-            {
-                CanBeDateTime = source.CanBeDateTime;
-                DateTimePart = source.DateTimePart;
-            }
-
-            if (source.CanBeString)
-            {
-                CanBeString = source.CanBeString;
-                StringKind = source.StringKind;
-                StringLength = source.StringLength;
-            }
-
-            if (source.CanBeReference)
-            {
-                //TODO: merge references of two data type sets
-                // use source.Identifiers ...
-                CanBeReference = source.CanBeReference;
-                References.AddRange(source.References);
-
-                if (References.Count > 0)
-                {
-                    TypeCode = 0;
-                    Reference = Guid.Empty;
-                }
-                else
-                {
-                    TypeCode = source.TypeCode;
-                    Reference = source.Reference;
-                }
-            }
-        }
-
         public UnionType GetUnionType()
         {
             UnionType union = new();

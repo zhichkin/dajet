@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace DaJet.Metadata.Model
 {
@@ -15,6 +16,10 @@ namespace DaJet.Metadata.Model
         public List<TablePart> TableParts { get; set; } = new List<TablePart>();
         public List<PredefinedValue> PredefinedValues { get; set; } = new List<PredefinedValue>();
         public DataTypeDescriptor ExtensionDataTypeDescriptor { get; set; }
+        /// <summary>
+        /// Определяет логическую ссылочную целостность базы данных <see cref="MetadataProperty.References"/>
+        /// </summary>
+        public List<Guid> References { get; } = [];
     }
     
     //PropertyNameLookup.Add("_idrref", "Ссылка");
