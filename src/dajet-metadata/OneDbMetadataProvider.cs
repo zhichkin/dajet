@@ -160,7 +160,7 @@ namespace DaJet.Metadata
         ///<br>а также числовые коды ссылочных типов данных (!)</br>
         ///</summary>
         private DbNameCache _database;
-        internal bool TryGetDbName(Guid uuid, out DbName entry)
+        public bool TryGetDbName(Guid uuid, out DbName entry)
         {
             return _database.TryGet(uuid, out entry);
         }

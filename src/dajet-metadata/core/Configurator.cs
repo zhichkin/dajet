@@ -1375,6 +1375,8 @@ namespace DaJet.Metadata.Core
                 DbName = "_Date_Time"
             };
             property.PropertyType.CanBeDateTime = true;
+            property.PropertyType.DateTimePart = DateTimePart.DateTime;
+
             property.Columns.Add(new MetadataColumn()
             {
                 Name = property.DbName,

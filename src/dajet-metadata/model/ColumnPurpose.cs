@@ -38,6 +38,22 @@ namespace DaJet.Metadata.Model
     }
     public static class ColumnPurposeExtensions
     {
+        public static string GetNameEn(this ColumnPurpose purpose)
+        {
+            if (purpose == ColumnPurpose.Default) { return "Default"; }
+            else if (purpose == ColumnPurpose.Tag) { return "Tag"; }
+            else if (purpose == ColumnPurpose.Boolean) { return "Boolean"; }
+            else if (purpose == ColumnPurpose.Numeric) { return "Numeric"; }
+            else if (purpose == ColumnPurpose.DateTime) { return "DateTime"; }
+            else if (purpose == ColumnPurpose.String) { return "String"; }
+            else if (purpose == ColumnPurpose.Binary) { return "Binary"; }
+            else if (purpose == ColumnPurpose.TypeCode) { return "TypeCode"; }
+            else if (purpose == ColumnPurpose.Identity) { return "Identity"; }
+            else
+            {
+                return "Value";
+            }
+        }
         public static ColumnPurpose ParseColumnPurpose(string fieldName)
         {
             char L = char.Parse("L");

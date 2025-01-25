@@ -31,4 +31,20 @@
         /// </summary>
         AccountingDimensionFlag
     }
+    public static class PropertyPurposeExtensions
+    {
+        public static string GetNameRu(this PropertyPurpose purpose)
+        {
+            if (purpose == PropertyPurpose.System) { return "СтандартныйРеквизит"; }
+            else if (purpose == PropertyPurpose.Measure) { return "Ресурс"; }
+            else if (purpose == PropertyPurpose.Property) { return "Реквизит"; }
+            else if (purpose == PropertyPurpose.Dimension) { return "Измерение"; }
+            else if (purpose == PropertyPurpose.AccountingFlag) { return "ПризнакУчёта"; }
+            else if (purpose == PropertyPurpose.AccountingDimensionFlag) { return "ПризнакУчётаСубконто"; }
+            else
+            {
+                return "Свойство";
+            }
+        }
+    }
 }

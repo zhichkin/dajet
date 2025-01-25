@@ -1,5 +1,6 @@
 ﻿using DaJet.Metadata.Core;
 using System;
+using System.Collections.Generic;
 
 namespace DaJet.Metadata.Model
 {
@@ -398,6 +399,73 @@ namespace DaJet.Metadata.Model
             else if (CanBeDateTime) { return "datetime"; }
             else if (CanBeReference) { return "entity"; }
             else { return "undefined"; }
+        }
+    }
+    public static class DataTypeDescriptorExtensions
+    {
+        public static string GetDescriptionRu(this DataTypeDescriptor descriptor)
+        {
+            if (descriptor is null) { return "Неопределено"; }
+            else if (descriptor.IsUuid) { return "УникальныйИдентификатор"; }
+            else if (descriptor.IsValueStorage) { return "ХранилищеЗначения"; }
+            else if (descriptor.IsBinary)
+            {
+                return "ДвоичныеДанные"; //TODO: binary(size) !?
+            }
+            else if (descriptor.IsUnionType(out bool canBeSimple, out bool canBeReference))
+            {
+                List<string> union = new();
+
+                if (canBeSimple)
+                {
+                    if (descriptor.CanBeBoolean) { union.Add("Булево"); }
+
+                    if (descriptor.CanBeNumeric)
+                    {
+                        union.Add($"Число({descriptor.NumericPrecision}, {descriptor.NumericScale}, {descriptor.NumericKind.GetNameRu()})");
+                    }
+
+                    if (descriptor.CanBeDateTime)
+                    {
+                        if (descriptor.DateTimePart == DateTimePart.Date) { union.Add("Дата"); }
+                        else if (descriptor.DateTimePart == DateTimePart.Time) { union.Add("Время"); }
+                        else { union.Add("ДатаВремя"); }
+                    }
+
+                    if (descriptor.CanBeString)
+                    {
+                        union.Add($"Строка({descriptor.StringLength}, {descriptor.StringKind.GetNameRu()})");
+                    }
+                }
+
+                if (canBeReference)
+                {
+                    union.Add($"Ссылка({descriptor.TypeCode}, {descriptor.Reference})");
+                }
+
+                return string.Join(' ', union);
+            }
+            else if (descriptor.CanBeBoolean) { return "Булево"; }
+            else if (descriptor.CanBeNumeric)
+            {
+                return $"Число({descriptor.NumericPrecision}, {descriptor.NumericScale}, {descriptor.NumericKind.GetNameRu()})";
+            }
+            else if (descriptor.CanBeDateTime)
+            {
+                if (descriptor.DateTimePart == DateTimePart.Date) { return "Дата"; }
+                else if (descriptor.DateTimePart == DateTimePart.Time) { return "Время"; }
+                else { return "ДатаВремя"; }
+            }
+            else if (descriptor.CanBeString)
+            {
+                return $"Строка({descriptor.StringLength}, {descriptor.StringKind.GetNameRu()})";
+            }
+            else if (descriptor.CanBeReference)
+            {
+                return $"Ссылка({descriptor.TypeCode}, {descriptor.Reference})";
+            }
+
+            return "Неопределено"; // Ошибка !!!
         }
     }
 }
