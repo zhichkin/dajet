@@ -53,6 +53,7 @@ namespace DaJet.Metadata.Core
                     Enumeration,
                     Publication,
                     Characteristic,
+                    AccountingRegister,
                     InformationRegister,
                     AccumulationRegister
                 };

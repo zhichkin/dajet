@@ -2,26 +2,48 @@
 using DaJet.Metadata;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
+using DaJet.Metadata.Services;
 
 namespace DaJet.Runtime
 {
     public sealed class MetadataStreamer : UserDefinedProcessor
     {
+        private string _command;
         private IDbConnectionFactory _factory;
         private OneDbMetadataProvider _provider;
         public MetadataStreamer(in ScriptScope scope) : base(scope) { }
         public override void Process()
         {
+            _command = GetCommandName();
+
             Initialize();
 
-            foreach (DataObject metadata in MetadataStream())
+            if (_command == "check-database-schema")
             {
-                SetReturnValue(metadata);
+                CheckMetadataAgainstDatabaseSchema();
+            }
+            else
+            {
+                foreach (DataObject metadata in MetadataStream())
+                {
+                    SetReturnValue(metadata);
 
-                _next?.Process();
+                    _next?.Process();
+                }
             }
 
             SetReturnValue(null);
+        }
+        private string GetCommandName()
+        {
+            _ = _scope.TryGetValue(_statement.Variables[0].Identifier, out object value);
+
+            if (value is not string command)
+            {
+                throw new ArgumentException($"[{nameof(MetadataStreamer)}] command name is missing");
+            }
+
+            return command;
         }
         private void Initialize()
         {
@@ -54,13 +76,6 @@ namespace DaJet.Runtime
             if (!OneDbMetadataProvider.TryCreateMetadataProvider(in options, out _provider, out string error))
             {
                 FileLogger.Default.Write(error);
-            }
-
-            _ = _scope.TryGetValue(_statement.Variables[0].Identifier, out object value);
-
-            if (value is not string metadataName)
-            {
-                throw new ArgumentException($"[{nameof(MetadataStreamer)}] metadata name is missing");
             }
         }
         private void SetReturnValue(in object value)
@@ -233,6 +248,101 @@ namespace DaJet.Runtime
             return ConvertToDataObject(metadata as ApplicationObject);
         }
 
+        private void CheckReferenceResolvation(in MetadataProperty property, in List<DataObject> references)
+        {
+            DataTypeDescriptor descriptor = property.PropertyType;
+
+            if (descriptor.CanBeReference)
+            {
+                MetadataItem test;
+
+                // Проверка разрешимости одиночной ссылки
+
+                if (descriptor.TypeCode == 0 && descriptor.Reference != Guid.Empty)
+                {
+                    FileLogger.Default.Write($"[WARNING] \"{property.Name}\" {{{property.Uuid}}} TypeCode is null when Reference is not (unsupported metadata type)");
+                }
+                else if (descriptor.TypeCode != 0 && descriptor.Reference == Guid.Empty)
+                {
+                    FileLogger.Default.Write($"[ERROR] \"{property.Name}\" {{{property.Uuid}}} Reference is null when TypeCode is not");
+                }
+                else if (descriptor.TypeCode != 0 && descriptor.Reference != Guid.Empty)
+                {
+                    MetadataItem testTypeCode = _provider.GetMetadataItem(descriptor.TypeCode);
+
+                    if (testTypeCode == MetadataItem.Empty)
+                    {
+                        FileLogger.Default.Write($"[ERROR] \"{property.Name}\" {{{property.Uuid}}} TypeCode not resolved");
+                    }
+
+                    MetadataItem testReference = _provider.GetMetadataItem(descriptor.Reference);
+
+                    if (testReference == MetadataItem.Empty)
+                    {
+                        FileLogger.Default.Write($"[ERROR] \"{property.Name}\" {{{property.Uuid}}} Reference not resolved [{property.PropertyType.GetDescriptionRu()}]");
+                    }
+
+                    if (testTypeCode != testReference)
+                    {
+                        FileLogger.Default.Write($"[ERROR] \"{property.Name}\" {{{property.Uuid}}} TypeCode and Reference resolved differently [{property.PropertyType.GetDescriptionRu()}]");
+                    }
+                }
+                else if (descriptor.TypeCode == 0 && descriptor.Reference == Guid.Empty)
+                {
+                    if (property.References.Count == 0)
+                    {
+                        //FileLogger.Default.Write($"[ERROR] \"{property.Name}\" {{{property.Uuid}}} References is empty");
+                    }
+                }
+
+                // Проверка наличия и разрешимости логических ссылок на соответствующие объекты метаданных
+
+                if (property.References.Count == 0)
+                {
+                    if (property.Purpose == PropertyPurpose.System && property.Name == "Ссылка")
+                    {
+                        // Исключение из правил - это первичный ключ, а не внешний
+                    }
+                    else
+                    {
+                        FileLogger.Default.Write($"[ERROR] \"{property.Name}\" {{{property.Uuid}}} References missing");
+                    }
+                }
+                else
+                {
+                    foreach (DataObject reference in references)
+                    {
+                        if (reference.TryGetValue("Uuid", out object value) && value is Guid uuid)
+                        {
+                            if (uuid == Guid.Empty)
+                            {
+                                if (reference.TryGetValue("Type", out object type) && type is string fullName)
+                                {
+                                    //FileLogger.Default.Write($"[WARNING] \"{property.Name}\" {{{property.Uuid}}} [{fullName}]");
+                                }
+                                else
+                                {
+                                    FileLogger.Default.Write($"[FATAL ERROR] Reference.Type is not initialized");
+                                }
+                            }
+                            else
+                            {
+                                test = _provider.GetMetadataItem(uuid);
+
+                                if (test == MetadataItem.Empty)
+                                {
+                                    FileLogger.Default.Write($"[ERROR] \"{property.Name}\" {{{property.Uuid}}} failed to resolve reference");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            FileLogger.Default.Write($"[FATAL ERROR] Reference.Uuid is not initialized");
+                        }
+                    }
+                }
+            }
+        }
         private DataObject ConvertToDataObject(in MetadataColumn column)
         {
             DataObject @object = new(4);
@@ -255,99 +365,10 @@ namespace DaJet.Runtime
             @object.SetValue("DbName", property.DbName);
             @object.SetValue("Columns", ConvertToDataObject(property.Columns));
             @object.SetValue("Descriptor", property.PropertyType.GetDescriptionRu());
-            @object.SetValue("References", ResolveReferences(property.References));
+            List<DataObject> references = ResolveReferences(property.References);
+            @object.SetValue("References", references);
 
-            DataTypeDescriptor descriptor = property.PropertyType;
-
-            if (descriptor.CanBeReference)
-            {
-                MetadataItem test;
-
-                if (descriptor.TypeCode == 0 && descriptor.Reference != Guid.Empty)
-                {
-                    FileLogger.Default.Write($"[ERROR] \"{property.Name}\" {{{property.Uuid}}} TypeCode is null when Reference is not");
-                }
-                else if (descriptor.TypeCode != 0 && descriptor.Reference == Guid.Empty)
-                {
-                    FileLogger.Default.Write($"[ERROR] \"{property.Name}\" {{{property.Uuid}}} Reference is null when TypeCode is not");
-                }
-                else if (descriptor.TypeCode != 0 && descriptor.Reference != Guid.Empty)
-                {
-                    test = _provider.GetMetadataItem(descriptor.TypeCode);
-
-                    if (test == MetadataItem.Empty)
-                    {
-                        FileLogger.Default.Write($"[ERROR] \"{property.Name}\" {{{property.Uuid}}} TypeCode not resolved");
-                    }
-
-                    test = _provider.GetMetadataItem(descriptor.Reference);
-
-                    if (test == MetadataItem.Empty)
-                    {
-                        FileLogger.Default.Write($"[ERROR] \"{property.Name}\" {{{property.Uuid}}} Reference not resolved");
-                    }
-                }
-                else if (descriptor.TypeCode == 0 && descriptor.Reference == Guid.Empty)
-                {
-                    if (property.References.Count == 0)
-                    {
-                        //FileLogger.Default.Write($"[ERROR] \"{property.Name}\" {{{property.Uuid}}} References is empty");
-                    }
-                }
-
-                if (property.References.Count == 0)
-                {
-                    if (property.Purpose == PropertyPurpose.System && property.Name == "Ссылка")
-                    {
-                        // Исключение из правил - это первичный ключ, а не внешний
-                    }
-                    else
-                    {
-                        //FIXME: стандартные реквизиты плана счетов !!! СчётДт, СчётКт, ПодразделениеКт и т.д. и т.п.
-                        FileLogger.Default.Write($"[ERROR] \"{property.Name}\" {{{property.Uuid}}} References is empty");
-                    }
-                }
-                else
-                {
-                    if (@object.TryGetValue("References", out object list) && list is List<DataObject> references)
-                    {
-                        foreach (DataObject reference in references)
-                        {
-                            if (reference.TryGetValue("Uuid", out object value) && value is Guid uuid)
-                            {
-                                if (uuid == Guid.Empty)
-                                {
-                                    if (reference.TryGetValue("Type", out object type) && type is string fullName)
-                                    {
-                                        FileLogger.Default.Write($"[WARNING] \"{property.Name}\" {{{property.Uuid}}} [{fullName}]");
-                                    }
-                                    else
-                                    {
-                                        FileLogger.Default.Write($"[FATAL ERROR] Reference.Type is not initialized");
-                                    }
-                                }
-                                else
-                                {
-                                    test = _provider.GetMetadataItem(uuid);
-
-                                    if (test == MetadataItem.Empty)
-                                    {
-                                        FileLogger.Default.Write($"[ERROR] \"{property.Name}\" {{{property.Uuid}}} failed to resolve reference");
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                FileLogger.Default.Write($"[FATAL ERROR] Reference.Uuid is not initialized");
-                            }
-                        }
-                    }
-                    else
-                    {
-                        FileLogger.Default.Write($"[FATAL ERROR] References is not initialized");
-                    }
-                }
-            }
+            CheckReferenceResolvation(in property, in references);
 
             return @object;
         }
@@ -477,6 +498,76 @@ namespace DaJet.Runtime
             }
 
             return articles;
+        }
+
+        //*********
+
+        private void CheckMetadataAgainstDatabaseSchema()
+        {
+            foreach (Guid type in MetadataTypes.ApplicationObjectTypes)
+            {
+                foreach (MetadataItem item in _provider.GetMetadataItems(type))
+                {
+                    MetadataObject metadata = _provider.GetMetadataObject(item.Type, item.Uuid);
+
+                    if (metadata is ApplicationObject entity)
+                    {
+                        string entityName = entity.Name;
+                        PerformDatabaseSchemaCheck(in entityName, entity.TableName, entity.Properties);
+
+                        if (entity is ITablePartOwner owner)
+                        {
+                            foreach (TablePart table in owner.TableParts)
+                            {
+                                string tableName = $"{entityName}.{table.Name}";
+                                PerformDatabaseSchemaCheck(in tableName, table.TableName, table.Properties);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        private void PerformDatabaseSchemaCheck(in string entityName, in string tableName, in List<MetadataProperty> properties)
+        {
+            SqlMetadataReader sql = new();
+            sql.UseDatabaseProvider(_provider.DatabaseProvider);
+            sql.UseConnectionString(_provider.ConnectionString);
+            
+            MetadataCompareAndMergeService comparator = new();
+
+            List<DaJet.Metadata.Services.SqlFieldInfo> fields = sql.GetSqlFieldsOrderedByName(tableName);
+
+            List<string> source = comparator.PrepareComparison(fields); // эталон (как должно быть)
+            List<string> target = comparator.PrepareComparison(properties); // испытуемый на соответствие эталону
+
+            comparator.Compare(target, source, out List<string> delete_list, out List<string> insert_list);
+
+            if (delete_list.Count == 0 && insert_list.Count == 0)
+            {
+                return; // success - проверка прошла успешно
+            }
+
+            FileLogger.Default.Write($"[{tableName}] {entityName}");
+
+            if (delete_list.Count > 0)
+            {
+                FileLogger.Default.Write($"* delete (лишние поля)");
+
+                foreach (string field in delete_list)
+                {
+                    FileLogger.Default.Write($"  - {field}");
+                }
+            }
+
+            if (insert_list.Count > 0)
+            {
+                FileLogger.Default.Write($"* insert (отсутствующие поля)");
+
+                foreach (string field in insert_list)
+                {
+                    FileLogger.Default.Write($"  - {field}");
+                }
+            }
         }
     }
 }

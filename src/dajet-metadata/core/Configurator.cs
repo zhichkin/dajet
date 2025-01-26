@@ -169,6 +169,16 @@ namespace DaJet.Metadata.Core
                         ? cache.GetSingleMetadataObjectUuid(identifier) // Пытаемся получить единственный конкретный тип
                         : entry.Uuid; // Иначе всё, как обычно
 
+                    if (entry.Type == MetadataTypes.NamedDataTypeDescriptor)
+                    {
+                        MetadataItem item = cache.GetMetadataItem(target.TypeCode);
+
+                        if (item != MetadataItem.Empty)
+                        {
+                            uuid = item.Uuid; // uuid объекта метаданных
+                        }
+                    }
+
                     target.Reference = uuid; // uuid объекта метаданных
 
                     if (cache.TryGetDbName(uuid, out DbName db)) // поиск собственных объектов конфигурации, в том числе расширений
@@ -196,11 +206,26 @@ namespace DaJet.Metadata.Core
                 }
                 else if (cache.TryGetCharacteristicType(identifier, out Guid uuid))
                 {
-                    target.Reference = uuid; // uuid объекта метаданных
+                    //NOTE: функция ResolveAndCountReferenceTypes уже применила DataTypeDescriptor характеристики к target,
+                    //NOTE: следовательно, свойство Reference содержит ссылку на актуальный ссылочный тип данных
 
-                    if (cache.TryGetDbName(uuid, out DbName db))
+                    if (cache.TryGetReferenceInfo(target.Reference, out MetadataItem item))
                     {
-                        target.TypeCode = db.Code; // код типа объекта метаданных
+                        target.Reference = item.Uuid;
+
+                        if (cache.TryGetDbName(item.Uuid, out DbName dbn))
+                        {
+                            target.TypeCode = dbn.Code;
+                        }
+                    }
+                    else // На всякий случай сохраним ссылку на ПланВидовХарактеристик, хотя этого не должно быть
+                    {
+                        target.Reference = uuid; // uuid объекта метаданных ПланВидовХарактеристик
+
+                        if (cache.TryGetDbName(uuid, out DbName db))
+                        {
+                            target.TypeCode = db.Code; // код типа объекта метаданных ПланВидовХарактеристик
+                        }
                     }
                 }
                 else
@@ -392,13 +417,17 @@ namespace DaJet.Metadata.Core
                     }
                     else
                     {
-                        //TODO: log error !!!
+                        throw new InvalidOperationException($"[REFERENCE RESOLVER] Characteristic reference is not resolved {{{reference}}}");
                     }
                 }
 
                 if (cache.TryGetReferenceInfo(reference, out MetadataItem item))
                 {
-                    if (item.Uuid == Guid.Empty) // Общий ссылочный тип, например: ЛюбаяСсылка или СправочникСсылка
+                    if (item == MetadataItem.Empty)
+                    {
+                        //TODO: [REFERENCE RESOLVER] ignore unsupported metadata type
+                    }
+                    else if (item.Uuid == Guid.Empty) // Общий ссылочный тип, например: ЛюбаяСсылка или СправочникСсылка
                     {
                         metadata.Add(item);
                     }
@@ -410,7 +439,7 @@ namespace DaJet.Metadata.Core
                         }
                         else
                         {
-                            //TODO: log error !!!
+                            throw new InvalidOperationException($"[REFERENCE RESOLVER] Named data type descriptor reference is not resolved {{{reference}}} [md:{item.Uuid}]");
                         }
                     }
                     else // Конкретный ссылочный тип, например: Справочник.НоменклатураСсылка
@@ -432,10 +461,13 @@ namespace DaJet.Metadata.Core
 
                     if (item == MetadataItem.Empty)
                     {
-                        //TODO: log error !!!
+                        //TODO: [REFERENCE RESOLVER] ignore unsupported metadata type
+                        //NOTE: [REFERENCE RESOLVER] Неподдерживаемые объекты метаданных или объектные типы, например, "СправочникОбъект"
                     }
-
-                    metadata.Add(item);
+                    else
+                    {
+                        metadata.Add(item);
+                    }
                 }
             }
 
@@ -466,12 +498,12 @@ namespace DaJet.Metadata.Core
                     continue;
                 }
 
-                ConfigurePropertyСсылка(in owner, in tablePart);
+                ConfigurePropertyСсылка(in cache, in owner, in tablePart);
                 ConfigurePropertyКлючСтроки(in tablePart);
                 ConfigurePropertyНомерСтроки(in cache, in tablePart);
             }
         }
-        private static void ConfigurePropertyСсылка(in ApplicationObject owner, in TablePart tablePart)
+        private static void ConfigurePropertyСсылка(in OneDbMetadataProvider cache, in ApplicationObject owner, in TablePart tablePart)
         {
             MetadataProperty property = new()
             {
@@ -485,15 +517,20 @@ namespace DaJet.Metadata.Core
             property.PropertyType.TypeCode = owner.TypeCode;
             property.PropertyType.Reference = owner.Uuid;
 
+            if (cache.ResolveReferences)
+            {
+                property.References.Add(owner.Uuid);
+            }
+
             // Собственная табличная часть расширения, но добавленная к заимствованному объекту основной конфигурации:
             // в таком случае у заимствованного объекта значения TypeCode и Uuid надо искать в основной конфигурации.
             // Однако, в данный момент мы находимся в контексте расширения и контекст основной конфигруации недоступен!
             //if (owner.Parent != Guid.Empty)
             //{
-                // TODO: нужно реализовать алгоритм разрешения ссылок на заимствованные объекты
-                // в процедуре применения расширения к основной конфиграции!
+            // TODO: нужно реализовать алгоритм разрешения ссылок на заимствованные объекты
+            // в процедуре применения расширения к основной конфиграции!
 
-                //MetadataObject parent = cache.GetMetadataObject(owner.Parent);
+            //MetadataObject parent = cache.GetMetadataObject(owner.Parent);
             //}
 
             //TODO: property.PropertyType.References.Add(new MetadataItem(MetadataTypes.Catalog, owner.Uuid, owner.Name));
@@ -668,7 +705,7 @@ namespace DaJet.Metadata.Core
                     TableName = $"{account.TableName}_ExtDim{entry.Code}"
                 };
 
-                ConfigurePropertyСсылка(account, in dimensionTypes);
+                ConfigurePropertyСсылка(in cache, account, in dimensionTypes);
                 ConfigurePropertyКлючСтроки(in dimensionTypes);
                 ConfigurePropertyНомерСтроки(in dimensionTypes);
                 ConfigurePropertyВидСубконто(in cache, in account, in dimensionTypes);
