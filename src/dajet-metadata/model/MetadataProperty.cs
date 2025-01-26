@@ -68,6 +68,11 @@ namespace DaJet.Metadata.Model
                 AccountingDimensionFlag = this.AccountingDimensionFlag
             };
 
+            foreach (Guid reference in this.References)
+            {
+                copy.References.Add(reference);
+            }
+
             for (int i = 0; i < this.Columns.Count; i++)
             {
                 copy.Columns.Add(this.Columns[i].Copy());

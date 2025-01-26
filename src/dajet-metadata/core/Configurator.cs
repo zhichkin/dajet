@@ -714,6 +714,14 @@ namespace DaJet.Metadata.Core
 
                 dimensionTypes.Properties.AddRange(dimensions);
 
+                foreach (MetadataProperty property in account.Properties)
+                {
+                    if (property is SharedProperty shared)
+                    {
+                        dimensionTypes.Properties.Add(property);
+                    }
+                }
+
                 account.TableParts.Add(dimensionTypes);
             }
         }
@@ -835,6 +843,11 @@ namespace DaJet.Metadata.Core
             property.PropertyType.TypeCode = typeCode.Code;
             property.PropertyType.Reference = account.DimensionTypes;
             property.PropertyType.CanBeReference = true;
+
+            if (cache.ResolveReferences)
+            {
+                property.References.Add(account.DimensionTypes);
+            }
 
             property.Columns.Add(new MetadataColumn()
             {
@@ -2353,6 +2366,11 @@ namespace DaJet.Metadata.Core
                 property.PropertyType.Reference = account;
                 property.PropertyType.CanBeReference = true;
 
+                if (cache.ResolveReferences)
+                {
+                    property.References.Add(account);
+                }
+
                 property.Columns.Add(new MetadataColumn()
                 {
                     Name = property.DbName,
@@ -2373,6 +2391,11 @@ namespace DaJet.Metadata.Core
                 property.PropertyType.TypeCode = dbn.Code;
                 property.PropertyType.Reference = account;
                 property.PropertyType.CanBeReference = true;
+
+                if (cache.ResolveReferences)
+                {
+                    property.References.Add(account);
+                }
 
                 property.Columns.Add(new MetadataColumn()
                 {
@@ -2396,6 +2419,11 @@ namespace DaJet.Metadata.Core
                 property.PropertyType.TypeCode = dbn.Code;
                 property.PropertyType.Reference = account;
                 property.PropertyType.CanBeReference = true;
+
+                if (cache.ResolveReferences)
+                {
+                    property.References.Add(account);
+                }
 
                 property.Columns.Add(new MetadataColumn()
                 {
