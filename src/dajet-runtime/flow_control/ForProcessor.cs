@@ -78,7 +78,7 @@ namespace DaJet.Runtime
 
             if (iterator.Count == 0)
             {
-                FileLogger.Default.Write("[Parallelizer] Nothing to process");
+                //FileLogger.Default.Write("[Parallelizer] Nothing to process");
 
                 return;
             }

@@ -107,14 +107,15 @@ namespace DaJet.Runtime
         {
             DataObject @object = new();
 
-            @object.SetValue("Type", "ИнформационнаяБаза");
-            @object.SetValue("Uuid", metadata.Uuid);
-            @object.SetValue("Name", metadata.Name);
-            @object.SetValue("Alias", metadata.Alias);
-            @object.SetValue("Comment", metadata.Comment);
-            @object.SetValue("YearOffset", metadata.YearOffset);
-            @object.SetValue("PlatformVersion", metadata.PlatformVersion);
-            @object.SetValue("CompatibilityVersion", metadata.CompatibilityVersion);
+            @object.SetValue("Тип", "ИнформационнаяБаза");
+            @object.SetValue("Ссылка", metadata.Uuid);
+            @object.SetValue("Имя", metadata.Name);
+            @object.SetValue("Синоним", metadata.Alias);
+            @object.SetValue("Комментарий", metadata.Comment);
+            @object.SetValue("СмещениеДат", metadata.YearOffset);
+            @object.SetValue("ВерсияКонфигурации", metadata.AppConfigVersion);
+            @object.SetValue("ВерсияПлатформы", metadata.PlatformVersion);
+            @object.SetValue("РежимСовместимости", metadata.CompatibilityVersion);
 
             return @object;
         }
@@ -134,9 +135,7 @@ namespace DaJet.Runtime
 
             DataObject @object = new(1);
             
-            @object.SetValue("Type", "UNKNOWN");
-
-            FileLogger.Default.Write($"[UNKNOWN] \"{metadata.Name}\" {{{metadata.Uuid}}}");
+            @object.SetValue("Тип", null);
 
             return @object;
         }
@@ -147,18 +146,18 @@ namespace DaJet.Runtime
 
             DataObject @object = new();
 
-            @object.SetValue("Type", typeName);
-            @object.SetValue("Code", metadata.TypeCode);
-            @object.SetValue("Uuid", metadata.Uuid);
-            @object.SetValue("Name", metadata.Name);
-            @object.SetValue("Alias", metadata.Alias);
-            @object.SetValue("DbName", metadata.TableName);
-            @object.SetValue("FullName", fullName);
-            @object.SetValue("Properties", ConvertToDataObject(metadata.Properties));
+            @object.SetValue("Тип", typeName);
+            @object.SetValue("Код", metadata.TypeCode);
+            @object.SetValue("Ссылка", metadata.Uuid);
+            @object.SetValue("Имя", metadata.Name);
+            @object.SetValue("Синоним", metadata.Alias);
+            @object.SetValue("Таблица", metadata.TableName);
+            @object.SetValue("ПолноеИмя", fullName);
+            @object.SetValue("Свойства", ConvertToDataObject(metadata.Properties));
 
             if (metadata is ITablePartOwner owner)
             {
-                @object.SetValue("TableParts", ConvertToDataObject(owner.TableParts, in fullName));
+                @object.SetValue("ТабличныеЧасти", ConvertToDataObject(owner.TableParts, in fullName));
             }
 
             return @object;
@@ -170,13 +169,13 @@ namespace DaJet.Runtime
 
             DataObject @object = new();
 
-            @object.SetValue("Type", typeName);
-            @object.SetValue("Uuid", metadata.Uuid);
-            @object.SetValue("Name", metadata.Name);
-            @object.SetValue("FullName", fullName);
-            @object.SetValue("DbName", metadata.DbName);
-            @object.SetValue("Descriptor", metadata.PropertyType.GetDescriptionRu());
-            @object.SetValue("References", ResolveReferences(metadata.References));
+            @object.SetValue("Тип", typeName);
+            @object.SetValue("Ссылка", metadata.Uuid);
+            @object.SetValue("Имя", metadata.Name);
+            @object.SetValue("ПолноеИмя", fullName);
+            @object.SetValue("ИмяДанных", metadata.DbName);
+            @object.SetValue("ОписаниеТипов", metadata.PropertyType.GetDescriptionRu());
+            @object.SetValue("ВнешниеСсылки", ResolveReferences(metadata.References));
 
             return @object;
         }
@@ -187,12 +186,12 @@ namespace DaJet.Runtime
 
             DataObject @object = new();
 
-            @object.SetValue("Type", typeName);
-            @object.SetValue("Uuid", metadata.Uuid);
-            @object.SetValue("Name", metadata.Name);
-            @object.SetValue("FullName", fullName);
-            @object.SetValue("Descriptor", metadata.DataTypeDescriptor.GetDescriptionRu());
-            @object.SetValue("References", ResolveReferences(metadata.References));
+            @object.SetValue("Тип", typeName);
+            @object.SetValue("Ссылка", metadata.Uuid);
+            @object.SetValue("Имя", metadata.Name);
+            @object.SetValue("ПолноеИмя", fullName);
+            @object.SetValue("ОписаниеТипов", metadata.DataTypeDescriptor.GetDescriptionRu());
+            @object.SetValue("ВнешниеСсылки", ResolveReferences(metadata.References));
 
             return @object;
         }
@@ -217,13 +216,13 @@ namespace DaJet.Runtime
             foreach (EnumValue item in metadata.Values)
             {
                 DataObject value = new();
-                value.SetValue("Name", item.Name);
-                value.SetValue("Uuid", item.Uuid);
-                value.SetValue("Alias", item.Alias);
+                value.SetValue("Имя", item.Name);
+                value.SetValue("Ссылка", item.Uuid);
+                value.SetValue("Синоним", item.Alias);
                 values.Add(value);
             }
 
-            @object.SetValue("Values", values);
+            @object.SetValue("Значения", values);
 
             return @object;
         }
@@ -246,6 +245,164 @@ namespace DaJet.Runtime
         private DataObject ConvertToDataObject(in AccumulationRegister metadata)
         {
             return ConvertToDataObject(metadata as ApplicationObject);
+        }
+
+        private DataObject ConvertToDataObject(in TablePart table, in string ownerFullName)
+        {
+            DataObject @object = new();
+
+            @object.SetValue("Тип", "ТабличнаяЧасть");
+            @object.SetValue("Код", table.TypeCode);
+            @object.SetValue("Ссылка", table.Uuid);
+            @object.SetValue("Имя", table.Name);
+            @object.SetValue("Синоним", table.Alias);
+            @object.SetValue("Таблица", table.TableName);
+            @object.SetValue("ПолноеИмя", $"{ownerFullName}.{table.Name}");
+            @object.SetValue("Свойства", ConvertToDataObject(table.Properties));
+
+            return @object;
+        }
+        private DataObject ConvertToDataObject(in MetadataColumn column)
+        {
+            DataObject @object = new(4);
+
+            @object.SetValue("Имя", column.Name);
+            @object.SetValue("ТипДанных", column.TypeName);
+            @object.SetValue("Обнуляемый", column.IsNullable);
+            @object.SetValue("Назначение", column.Purpose.GetNameRu());
+
+            return @object;
+        }
+        private DataObject ConvertToDataObject(in MetadataProperty property)
+        {
+            DataObject @object = new(8);
+
+            @object.SetValue("Имя", property.Name);
+            @object.SetValue("Ссылка", property.Uuid);
+            @object.SetValue("Синоним", property.Alias);
+            @object.SetValue("Назначение", property.Purpose.GetNameRu());
+            @object.SetValue("Колонки", ConvertToDataObject(property.Columns));
+            @object.SetValue("ОписаниеТипов", property.PropertyType.GetDescriptionRu());
+            @object.SetValue("ВнешниеСсылки", ResolveReferences(property.References));
+
+            //List<DataObject> references = ResolveReferences(property.References);
+            //CheckReferenceResolvation(in property, in references);
+
+            return @object;
+        }
+        private List<DataObject> ResolveReferences(in List<Guid> references)
+        {
+            List<MetadataItem> items = _provider.ResolveReferencesToMetadataItems(references);
+
+            List<DataObject> list = new(items.Count);
+
+            foreach (MetadataItem item in items)
+            {
+                DataObject @object = new(3);
+
+                @object.SetValue("Ссылка", item.Uuid);
+
+                if (item.Uuid == Guid.Empty) // Общий ссылочный тип
+                {
+                    @object.SetValue("КодТипа", 0);
+                    @object.SetValue("ПолноеИмя", item.Name);
+                }
+                else // Конкретный ссылочный тип
+                {
+                    string typeName = MetadataTypes.ResolveNameRu(item.Type);
+                    string fullName = $"{typeName}.{item.Name}";
+
+                    if (_provider.TryGetDbName(item.Uuid, out DbName dbn))
+                    {
+                        @object.SetValue("КодТипа", dbn.Code); // код типа объекта метаданных
+                    }
+                    else
+                    {
+                        @object.SetValue("КодТипа", 0);
+
+                        FileLogger.Default.Write($"[ERROR] REFERENCE type code is null [{item.Type}] {{{item.Uuid}}} \"{item.Name}\"");
+                    }
+
+                    @object.SetValue("ПолноеИмя", fullName);
+                }
+
+                if (@object.GetValue("ПолноеИмя") is string test && string.IsNullOrWhiteSpace(test))
+                {
+                    FileLogger.Default.Write($"[ERROR] REFERENCE type name is null [{item.Type}] {{{item.Uuid}}} \"{item.Name}\"");
+                }
+
+                list.Add(@object);
+            }
+
+            return list;
+        }
+        private List<DataObject> ConvertToDataObject(in List<MetadataColumn> columns)
+        {
+            List<DataObject> list = new(columns.Count);
+
+            foreach (MetadataColumn column in columns)
+            {
+                list.Add(ConvertToDataObject(in column));
+            }
+
+            return list;
+        }
+        private List<DataObject> ConvertToDataObject(in List<MetadataProperty> properties)
+        {
+            List<DataObject> list = new(properties.Count);
+
+            foreach (MetadataProperty property in properties)
+            {
+                list.Add(ConvertToDataObject(in property));
+            }
+
+            return list;
+        }
+        private List<DataObject> ConvertToDataObject(in List<TablePart> tables, in string ownerFullName)
+        {
+            List<DataObject> list = new(tables.Count);
+
+            foreach (TablePart table in tables)
+            {
+                list.Add(ConvertToDataObject(in table, in ownerFullName));
+            }
+
+            return list;
+        }
+
+        //***
+
+        private List<DataObject> ReturnPublicationArticles(in IMetadataProvider provider, in string metadataName)
+        {
+            List<DataObject> articles = new();
+
+            string[] identifiers = metadataName.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            string identifier = $"{identifiers[0]}.{identifiers[1]}";
+
+            MetadataObject metadata = provider.GetMetadataObject(identifier);
+
+            List<Guid> types = new();
+            types.AddRange(MetadataTypes.ReferenceObjectTypes);
+            types.AddRange(MetadataTypes.ValueObjectTypes);
+
+            if (metadata is Publication publication)
+            {
+                foreach (Guid uuid in publication.Articles.Keys)
+                {
+                    foreach (Guid type in types)
+                    {
+                        MetadataObject article = provider.GetMetadataObject(type, uuid);
+
+                        if (article is not null)
+                        {
+                            articles.Add(article.ToDataObject()); break;
+                        }
+                    }
+                }
+            }
+
+            return articles;
         }
 
         private void CheckReferenceResolvation(in MetadataProperty property, in List<DataObject> references)
@@ -342,162 +499,6 @@ namespace DaJet.Runtime
                     }
                 }
             }
-        }
-        private DataObject ConvertToDataObject(in MetadataColumn column)
-        {
-            DataObject @object = new(4);
-
-            @object.SetValue("Name", column.Name);
-            @object.SetValue("Type", column.TypeName);
-            @object.SetValue("IsNullable", column.IsNullable);
-            @object.SetValue("Purpose", column.Purpose.GetNameEn());
-
-            return @object;
-        }
-        private DataObject ConvertToDataObject(in MetadataProperty property)
-        {
-            DataObject @object = new(8);
-            
-            @object.SetValue("Type", property.Purpose.GetNameRu());
-            @object.SetValue("Uuid", property.Uuid);
-            @object.SetValue("Name", property.Name);
-            @object.SetValue("Alias", property.Alias);
-            @object.SetValue("DbName", property.DbName);
-            @object.SetValue("Columns", ConvertToDataObject(property.Columns));
-            @object.SetValue("Descriptor", property.PropertyType.GetDescriptionRu());
-            List<DataObject> references = ResolveReferences(property.References);
-            @object.SetValue("References", references);
-
-            CheckReferenceResolvation(in property, in references);
-
-            return @object;
-        }
-        private List<DataObject> ResolveReferences(in List<Guid> references)
-        {
-            List<MetadataItem> items = _provider.ResolveReferencesToMetadataItems(references);
-
-            List<DataObject> list = new(items.Count);
-
-            foreach (MetadataItem item in items)
-            {
-                DataObject @object = new(3);
-
-                @object.SetValue("Uuid", item.Uuid);
-
-                if (item.Uuid == Guid.Empty) // Общий ссылочный тип
-                {
-                    @object.SetValue("Code", 0);
-                    @object.SetValue("Type", item.Name);
-                }
-                else // Конкретный ссылочный тип
-                {
-                    string typeName = MetadataTypes.ResolveNameRu(item.Type);
-                    string fullName = $"{typeName}.{item.Name}";
-
-                    if (_provider.TryGetDbName(item.Uuid, out DbName dbn))
-                    {
-                        @object.SetValue("Code", dbn.Code); // код типа объекта метаданных
-                    }
-                    else
-                    {
-                        @object.SetValue("Code", 0);
-
-                        FileLogger.Default.Write($"[ERROR] REFERENCE TypeCode is null [{item.Type}] {{{item.Uuid}}} \"{item.Name}\"");
-                    }
-
-                    @object.SetValue("Type", fullName);
-                }
-
-                if (@object.GetValue("Type") is string test && string.IsNullOrWhiteSpace(test))
-                {
-                    FileLogger.Default.Write($"[ERROR] REFERENCE TypeName is null [{item.Type}] {{{item.Uuid}}} \"{item.Name}\"");
-                }
-
-                list.Add(@object);
-            }
-
-            return list;
-        }
-        private List<DataObject> ConvertToDataObject(in List<MetadataColumn> columns)
-        {
-            List<DataObject> list = new(columns.Count);
-
-            foreach (MetadataColumn column in columns)
-            {
-                list.Add(ConvertToDataObject(in column));
-            }
-
-            return list;
-        }
-        private List<DataObject> ConvertToDataObject(in List<MetadataProperty> properties)
-        {
-            List<DataObject> list = new(properties.Count);
-
-            foreach (MetadataProperty property in properties)
-            {
-                list.Add(ConvertToDataObject(in property));
-            }
-
-            return list;
-        }
-        private DataObject ConvertToDataObject(in TablePart table, in string ownerFullName)
-        {
-            DataObject @object = new();
-
-            @object.SetValue("Type", "ТабличнаяЧасть");
-            @object.SetValue("Code", table.TypeCode);
-            @object.SetValue("Uuid", table.Uuid);
-            @object.SetValue("Name", table.Name);
-            @object.SetValue("Alias", table.Alias);
-            @object.SetValue("DbName", table.TableName);
-            @object.SetValue("FullName", $"{ownerFullName}.{table.Name}");
-            @object.SetValue("Properties", ConvertToDataObject(table.Properties));
-
-            return @object;
-        }
-        private List<DataObject> ConvertToDataObject(in List<TablePart> tables, in string ownerFullName)
-        {
-            List<DataObject> list = new(tables.Count);
-
-            foreach (TablePart table in tables)
-            {
-                list.Add(ConvertToDataObject(in table, in ownerFullName));
-            }
-
-            return list;
-        }
-
-        private List<DataObject> ReturnPublicationArticles(in IMetadataProvider provider, in string metadataName)
-        {
-            List<DataObject> articles = new();
-
-            string[] identifiers = metadataName.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            string identifier = $"{identifiers[0]}.{identifiers[1]}";
-
-            MetadataObject metadata = provider.GetMetadataObject(identifier);
-
-            List<Guid> types = new();
-            types.AddRange(MetadataTypes.ReferenceObjectTypes);
-            types.AddRange(MetadataTypes.ValueObjectTypes);
-
-            if (metadata is Publication publication)
-            {
-                foreach (Guid uuid in publication.Articles.Keys)
-                {
-                    foreach (Guid type in types)
-                    {
-                        MetadataObject article = provider.GetMetadataObject(type, uuid);
-
-                        if (article is not null)
-                        {
-                            articles.Add(article.ToDataObject()); break;
-                        }
-                    }
-                }
-            }
-
-            return articles;
         }
 
         //*********

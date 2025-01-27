@@ -422,7 +422,7 @@ namespace DaJet.Metadata.Model
 
                     if (descriptor.CanBeNumeric)
                     {
-                        union.Add($"Число({descriptor.NumericPrecision}, {descriptor.NumericScale}, {descriptor.NumericKind.GetNameRu()})");
+                        union.Add($"Число({descriptor.NumericPrecision},{descriptor.NumericScale})");
                     }
 
                     if (descriptor.CanBeDateTime)
@@ -434,13 +434,13 @@ namespace DaJet.Metadata.Model
 
                     if (descriptor.CanBeString)
                     {
-                        union.Add($"Строка({descriptor.StringLength}, {descriptor.StringKind.GetNameRu()})");
+                        union.Add($"Строка({descriptor.StringLength},{descriptor.StringKind.GetNameRu()})");
                     }
                 }
 
                 if (canBeReference)
                 {
-                    union.Add($"Ссылка({descriptor.TypeCode}, {descriptor.Reference})");
+                    union.Add($"Ссылка({descriptor.TypeCode},{descriptor.Reference})");
                 }
 
                 return string.Join(' ', union);
@@ -448,7 +448,7 @@ namespace DaJet.Metadata.Model
             else if (descriptor.CanBeBoolean) { return "Булево"; }
             else if (descriptor.CanBeNumeric)
             {
-                return $"Число({descriptor.NumericPrecision}, {descriptor.NumericScale}, {descriptor.NumericKind.GetNameRu()})";
+                return $"Число({descriptor.NumericPrecision},{descriptor.NumericScale})";
             }
             else if (descriptor.CanBeDateTime)
             {
@@ -458,11 +458,11 @@ namespace DaJet.Metadata.Model
             }
             else if (descriptor.CanBeString)
             {
-                return $"Строка({descriptor.StringLength}, {descriptor.StringKind.GetNameRu()})";
+                return $"Строка({descriptor.StringLength},{descriptor.StringKind.GetNameRu()})";
             }
             else if (descriptor.CanBeReference)
             {
-                return $"Ссылка({descriptor.TypeCode}, {descriptor.Reference})";
+                return $"Ссылка({descriptor.TypeCode},{descriptor.Reference})";
             }
 
             return "Неопределено"; // Ошибка !!!
