@@ -13,4 +13,4 @@
 [Конфигурация "Реестр метаданных"](https://github.com/zhichkin/dajet/tree/main/1c)
 ![metadata-registry-database-schema](https://github.com/zhichkin/dajet/blob/main/1c/metadata-registry-database-schema.png)
 
-[Наверх](#анализ-метаданных-1с-предприятие-8)
+[Наверх](#анализ-метаданных-1спредприятие-8)
