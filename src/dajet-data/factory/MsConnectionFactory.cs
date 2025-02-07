@@ -13,11 +13,25 @@ namespace DaJet.Data.SqlServer
         }
         public string GetConnectionString(in Uri uri)
         {
+            string server = string.Empty;
+            string database = string.Empty;
+
+            if (uri.Segments.Length == 3)
+            {
+                server = $"{uri.Host}{(uri.Port > 0 ? ":" + uri.Port.ToString() : string.Empty)}\\{uri.Segments[1].TrimEnd('/')}";
+                database = uri.Segments[2].TrimEnd('/');
+            }
+            else
+            {
+                server = uri.Host + (uri.Port > 0 ? ":" + uri.Port.ToString() : string.Empty);
+                database = uri.Segments[1].TrimEnd('/');
+            }
+
             var builder = new SqlConnectionStringBuilder()
             {
                 Encrypt = false,
-                DataSource = uri.Host,
-                InitialCatalog = uri.Segments[1].TrimEnd('/') //uri.AbsolutePath.Remove(0, 1) // slash
+                DataSource = server,
+                InitialCatalog = database
             };
 
             string[] userpass = uri.UserInfo.Split(':');

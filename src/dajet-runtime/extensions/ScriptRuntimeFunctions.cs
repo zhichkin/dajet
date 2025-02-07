@@ -293,5 +293,71 @@ namespace DaJet.Runtime
             
             return property;
         }
+        [Function("GET_PROPERTY")] public static DataObject GetProperty(this IScriptRuntime runtime, in DataObject record, in string name)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+
+            object value = record.GetValue(name);
+            string type = (value is null) ? "NULL" : ParserHelper.GetDataTypeLiteral(value.GetType());
+
+            DataObject property = new(3);
+            property.SetValue("Name", name);
+            property.SetValue("Type", type);
+            property.SetValue("Value", value);
+
+            return property;
+        }
+
+        [Function("ARRAY_COUNT")] public static int ArrayCount(this IScriptRuntime runtime, in List<DataObject> array)
+        {
+            if (array is null)
+            {
+                return -1;
+            }
+
+            return array.Count;
+        }
+        [Function("ARRAY_CREATE")] public static List<DataObject> ArrayCreate(this IScriptRuntime runtime)
+        {
+            return new(3);
+        }
+        [Function("ARRAY_CREATE")] public static List<DataObject> ArrayCreate(this IScriptRuntime runtime, int capacity)
+        {
+            return capacity <= 0 ? new(): new(capacity);
+        }
+        [Function("ARRAY_APPEND")] public static int ArrayAppend(this IScriptRuntime runtime, in List<DataObject> array, in DataObject record)
+        {
+            ArgumentNullException.ThrowIfNull(array, nameof(array));
+            ArgumentNullException.ThrowIfNull(record, nameof(record));
+
+            array.Add(record);
+
+            return array.Count - 1;
+        }
+        [Function("ARRAY_SELECT")] public static DataObject ArraySelect(this IScriptRuntime runtime, in List<DataObject> array, int index)
+        {
+            ArgumentNullException.ThrowIfNull(array, nameof(array));
+
+            return array[index];
+        }
+        [Function("ARRAY_DELETE")] public static DataObject ArrayDelete(this IScriptRuntime runtime, in List<DataObject> array, int index)
+        {
+            ArgumentNullException.ThrowIfNull(array, nameof(array));
+
+            DataObject record = array[index];
+
+            array.RemoveAt(index);
+
+            return record;
+        }
+        [Function("ARRAY_INSERT")] public static int ArrayInsert(this IScriptRuntime runtime, in List<DataObject> array, int index, in DataObject record)
+        {
+            ArgumentNullException.ThrowIfNull(array, nameof(array));
+            ArgumentNullException.ThrowIfNull(record, nameof(record));
+
+            array.Insert(index, record);
+
+            return array.Count;
+        }
     }
 }
