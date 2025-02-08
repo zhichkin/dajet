@@ -8,6 +8,13 @@
 
 - [Создание ```array``` запросом к базе данных](#создание-array-запросом-к-базе-данных)
 - [Создание ```array``` при помощи функции JSON](#создание-array-при-помощи-функции-json)
+- [Функции для работы с типом ```array```](#функции-для-работы-с-типом-array)
+  - ARRAY_COUNT
+  - ARRAY_CREATE
+  - ARRAY_APPEND
+  - ARRAY_SELECT
+  - ARRAY_DELETE
+  - ARRAY_INSERT
 
 #### Создание ```array``` запросом к базе данных
 
@@ -141,6 +148,80 @@ END
 [2024-10-04 20:16:43] Свойство "value" = 321
 [2024-10-04 20:16:43] Свойство "name"  = name 3
 [2024-10-04 20:16:43] Свойство "value" = 333
+```
+
+[Наверх](#тип-array)
+
+#### Функции для работы с типом ```array```
+
+**Таблица функций типа ```array```**
+|**Функция**|**Возврат**|**Параметры**|**Описание**|**Команда USE**|**Запрос СУБД**|**Выражение<br>DaJet Script**|
+|---|---|---|---|---|---|---|
+|ARRAY_COUNT|number|array|Функция возвращает количество элементов соответствующего ```array```.|нет|нет|да|
+|ARRAY_CREATE|array|нет|Функция создаёт новый ```array```.|нет|нет|да|
+|ARRAY_CREATE|array|number|Функция создаёт новый ```array``` с указанием начального размера внутреннего буфера.|нет|нет|да|
+|ARRAY_APPEND|number|array<br>object|Функция добавляет ```object``` в самый конец ```array``` и возвращает индекс нового элемента.|нет|нет|да|
+|ARRAY_SELECT|object|array<br>number|Функция возвращает ссылку на ```object``` по его индексу в ```array```.|нет|нет|да|
+|ARRAY_DELETE|object|array<br>number|Функция удаляет элемент по его индексу в ```array``` и возвращает ссылку на удалённый ```object```.|нет|нет|да|
+|ARRAY_INSERT|number|array<br>number<br>object|Функция вставляет ```object``` по указанному индексу в ```array``` и возвращает новое количество элементов в массиве. Если по указанному индексу уже существует элемент, то он и все элементы, следующие за ним, смещаются на один индекс в большую сторону (плюс один).|нет|нет|да|
+
+**Пример использования функций типа ```array```**
+```SQL
+DECLARE @index number
+DECLARE @count number
+DECLARE @array array
+DECLARE @object object
+
+SET @index = 0
+SET @array = ARRAY_CREATE()
+
+SET @object = SELECT Индекс = @index, Имя = 'Code ' + @index
+SET @index = ARRAY_APPEND(@array, @object) + 1
+
+SET @object = SELECT Индекс = @index, Имя = 'Code ' + @index
+SET @index = ARRAY_APPEND(@array, @object) + 1
+
+SET @object = SELECT Индекс = @index, Имя = 'Code ' + @index
+SET @index = ARRAY_APPEND(@array, @object) + 1
+
+SET @index = 0
+SET @count = ARRAY_COUNT(@array)
+
+WHILE @index < @count
+   SET @object = ARRAY_SELECT(@array, @index)
+   PRINT JSON(@object)
+   SET @index = @index + 1
+END
+
+PRINT 'Количество элементов массива: ' + @count
+
+SET @object = ARRAY_DELETE(@array, 1)
+SET @count = ARRAY_INSERT(@array, 0, @object)
+PRINT 'Количество после DELETE и INSERT: ' + @count
+
+SET @object = ARRAY_SELECT(@array, 0)
+SET @index = ARRAY_APPEND(@array, @object)
+PRINT 'Количество после SELECT и APPEND: ' + ARRAY_COUNT(@array)
+PRINT 'Индекс последнего элемента: ' +  @index
+
+FOR @object IN @array
+   PRINT JSON(@object)
+END
+```
+
+**Результат выполнения скрипта**
+```
+[2025-02-08 17:03:15] {"Индекс":0,"Имя":"Code 0"}
+[2025-02-08 17:03:15] {"Индекс":1,"Имя":"Code 1"}
+[2025-02-08 17:03:15] {"Индекс":2,"Имя":"Code 2"}
+[2025-02-08 17:03:15] Количество элементов массива: 3
+[2025-02-08 17:03:15] Количество после DELETE и INSERT: 3
+[2025-02-08 17:03:15] Количество после SELECT и APPEND: 4
+[2025-02-08 17:03:15] Индекс последнего элемента: 3
+[2025-02-08 17:03:15] {"Индекс":1,"Имя":"Code 1"}
+[2025-02-08 17:03:15] {"Индекс":0,"Имя":"Code 0"}
+[2025-02-08 17:03:15] {"Индекс":2,"Имя":"Code 2"}
+[2025-02-08 17:03:15] {"Индекс":1,"Имя":"Code 1"}
 ```
 
 [Наверх](#тип-array)
