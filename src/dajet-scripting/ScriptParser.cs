@@ -399,6 +399,7 @@ namespace DaJet.Scripting
             else if (Match(TokenType.RETURN)) { return return_statement(); }
             else if (Match(TokenType.EXECUTE)) { return execute_statement(); }
             else if (Match(TokenType.PROCESS)) { return process_statement(); }
+            else if (Match(TokenType.WAIT)) { return wait_statement(); }
             else if (Match(TokenType.EndOfStatement)) { return null; }
 
             Ignore();
@@ -572,12 +573,41 @@ namespace DaJet.Scripting
         }
         private SyntaxNode execute_statement()
         {
+            ExecuteStatement statement = new();
+
+            if (Match(TokenType.TASK))
+            {
+                statement.Kind = ExecuteKind.Task;
+            }
+            else if (Match(TokenType.WORK))
+            {
+                statement.Kind = ExecuteKind.Work;
+            }
+            else if (Match(TokenType.SYNC))
+            {
+                statement.Kind = ExecuteKind.Sync;
+            }
+
             if (!Match(TokenType.String))
             {
                 throw new FormatException("[EXECUTE] uri expected");
             }
 
-            ExecuteStatement statement = new() { Uri = Previous().Lexeme };
+            statement.Uri = Previous().Lexeme;
+
+            Skip(TokenType.Comment);
+
+            if (Match(TokenType.DEFAULT))
+            {
+                if (Match(TokenType.String))
+                {
+                    statement.Default = Previous().Lexeme;
+                }
+                else
+                {
+                    throw new FormatException("[EXECUTE] default uri expected");
+                }
+            }
 
             Skip(TokenType.Comment);
 
@@ -685,6 +715,47 @@ namespace DaJet.Scripting
             }
 
             throw new FormatException("Unknown REVOKE statement");
+        }
+        private SyntaxNode wait_statement()
+        {
+            WaitStatement statement = new();
+
+            if (Match(TokenType.ALL))
+            {
+                statement.Kind = WaitKind.All;
+            }
+            else if (Match(TokenType.ANY))
+            {
+                statement.Kind = WaitKind.Any;
+            }
+            else
+            {
+                throw new FormatException("[WAIT] {ALL|ANY} keyword expected");
+            }
+
+            if (!Match(TokenType.Variable) || variable() is not VariableReference _variable)
+            {
+                throw new FormatException("[WAIT] task array variable expected");
+            }
+
+            statement.Tasks = _variable;
+
+            if (statement.Kind == WaitKind.Any)
+            {
+                if (!Match(TokenType.INTO))
+                {
+                    throw new FormatException("[WAIT] {INTO} keyword expected");
+                }
+
+                if (!Match(TokenType.Variable) || variable() is not VariableReference index)
+                {
+                    throw new FormatException("[WAIT] task object variable expected");
+                }
+
+                statement.Task = index;
+            }
+            
+            return statement;
         }
 
         #region "CREATE TABLE STATEMENT"

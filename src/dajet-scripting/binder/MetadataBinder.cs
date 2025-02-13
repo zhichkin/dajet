@@ -109,6 +109,7 @@ namespace DaJet.Scripting
             else if (node is PrintStatement print) { Bind(in print); }
             else if (node is ProcessStatement process) { Bind(in process); }
             else if (node is ExecuteStatement execute) { Bind(in execute); } // nothing to bind
+            else if (node is WaitStatement wait) { Bind(in wait); }
         }
         private void RegisterBindingError(TokenType token, string identifier)
         {
@@ -263,23 +264,6 @@ namespace DaJet.Scripting
             {
                 _scope.Variables.Add(node.Name, node.Type.Binding);
             }
-        }
-        private void Bind(in ForStatement node)
-        {
-            Bind(node.Iterator); // bind to array variable
-            Bind(node.Variable); // bind to object variable
-
-            if (node.Iterator.Binding is not TypeIdentifier itype || itype.Token != TokenType.Array)
-            {
-                RegisterBindingError(node.Token, node.Iterator.Identifier); return;
-            }
-
-            if (node.Variable.Binding is not TypeIdentifier vtype || vtype.Token != TokenType.Object)
-            {
-                RegisterBindingError(node.Token, node.Variable.Identifier); return;
-            }
-
-            vtype.Binding = itype.Binding; // columns schema
         }
         private void Bind(in VariableReference node)
         {
@@ -1266,6 +1250,23 @@ namespace DaJet.Scripting
                 Bind(node.ELSE);
             }
         }
+        private void Bind(in ForStatement node)
+        {
+            Bind(node.Iterator); // bind to array variable
+            Bind(node.Variable); // bind to object variable
+
+            if (node.Iterator.Binding is not TypeIdentifier itype || itype.Token != TokenType.Array)
+            {
+                RegisterBindingError(node.Token, node.Iterator.Identifier); return;
+            }
+
+            if (node.Variable.Binding is not TypeIdentifier vtype || vtype.Token != TokenType.Object)
+            {
+                RegisterBindingError(node.Token, node.Variable.Identifier); return;
+            }
+
+            vtype.Binding = itype.Binding; // columns schema
+        }
         private void Bind(in TryStatement node)
         {
             Bind(node.TRY);
@@ -1328,6 +1329,25 @@ namespace DaJet.Scripting
                 {
                     Bind(node.Options[i]);
                 }
+            }
+        }
+        private void Bind(in WaitStatement node)
+        {
+            if (node.Task is not null)
+            {
+                Bind(node.Task);
+            }
+
+            Bind(node.Tasks);
+
+            if (node.Task.Binding is not TypeIdentifier type1 || type1.Token != TokenType.Number)
+            {
+                RegisterBindingError(node.Token, node.Task.Identifier); return;
+            }
+
+            if (node.Tasks.Binding is not TypeIdentifier type2 || type2.Token != TokenType.Array)
+            {
+                RegisterBindingError(node.Token, node.Tasks.Identifier); return;
             }
         }
         #endregion

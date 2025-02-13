@@ -381,7 +381,7 @@ namespace DaJet.Runtime
         }
 
         private static readonly Regex _uri_template = new("{(.*?)}", RegexOptions.CultureInvariant);
-        public static string[] GetUriTemplates(in string uri)
+        public string[] GetUriTemplates(in string uri)
         {
             MatchCollection matches = _uri_template.Matches(uri);
 
@@ -399,15 +399,8 @@ namespace DaJet.Runtime
 
             return templates;
         }
-        public Uri GetUri(in string uri)
+        public string ReplaceUriTemplates(in string uri, in string[] templates)
         {
-            string[] templates = GetUriTemplates(in uri);
-
-            if (templates.Length == 0)
-            {
-                return new Uri(uri);
-            }
-
             string result = uri;
 
             for (int i = 0; i < templates.Length; i++)
@@ -424,6 +417,19 @@ namespace DaJet.Runtime
                 }
             }
 
+            return result;
+        }
+        public Uri GetUri(in string uri)
+        {
+            string[] templates = GetUriTemplates(in uri);
+
+            if (templates.Length == 0)
+            {
+                return new Uri(uri);
+            }
+
+            string result = ReplaceUriTemplates(in uri, in templates);
+
             return new Uri(result);
         }
         public Uri GetDatabaseUri()
@@ -436,28 +442,6 @@ namespace DaJet.Runtime
             }
 
             throw new InvalidOperationException("Owner UseStatement is not found");
-        }
-
-        private const string RETURN_VALUE_KEY = "_RETURN_VALUE_";
-        internal void SetReturnValue(in object value)
-        {
-            ScriptScope root = GetParent<ScriptModel>();
-
-            if (!root.Variables.TryAdd(RETURN_VALUE_KEY, value))
-            {
-                root.Variables[RETURN_VALUE_KEY] = value;
-            }
-        }
-        internal object GetReturnValue()
-        {
-            ScriptScope root = GetParent<ScriptModel>();
-
-            if (root.TryGetValue(RETURN_VALUE_KEY, out object value))
-            {
-                return value;
-            }
-
-            return null;
         }
     }
 }

@@ -503,6 +503,7 @@ namespace DaJet.Runtime
             else if (scope.Owner is PrintStatement) { return new PrintProcessor(in scope); }
             else if (scope.Owner is SleepStatement) { return new SleepProcessor(in scope); }
             else if (scope.Owner is ExecuteStatement) { return new ExecuteProcessor(in scope); }
+            else if (scope.Owner is WaitStatement) { return new WaitProcessor(in scope); }
             else if (scope.Owner is IfStatement) { return new IfProcessor(in scope); }
             else if (scope.Owner is CaseStatement) { return new CaseProcessor(in scope); }
             else if (scope.Owner is WhileStatement) { return new WhileProcessor(in scope); }

@@ -1,4 +1,5 @@
-﻿using DaJet.Scripting;
+﻿using DaJet.Data;
+using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using System.Text;
 
@@ -6,65 +7,164 @@ namespace DaJet.Runtime
 {
     public sealed class ExecuteProcessor : IProcessor
     {
+        private enum ProcessorMode { Direct, Switch }
+        private struct ExecuteTarget
+        {
+            internal ScriptModel Model;
+            internal ScriptScope Scope;
+            internal IProcessor Processor;
+            internal ExecuteTarget(ScriptModel model, ScriptScope scope, IProcessor processor)
+            {
+                Model = model;
+                Scope = scope;
+                Processor = processor;
+            }
+        }
+
         private IProcessor _next;
-        private IProcessor _script;
-        private ScriptScope _scope;
-        private readonly ScriptScope _parent; // caller
+        private readonly ScriptScope _scope;
         private readonly ExecuteStatement _statement;
+        private readonly ExecuteKind _kind = ExecuteKind.Default;
+        private readonly ProcessorMode _mode = ProcessorMode.Direct;
+        private readonly List<DataObject> _tasks;
+        private const string DIRECT_CALL_TARGET = "__DIRECT__";
+        private const string DEFAULT_SWITCH_TARGET = "__DEFAULT__";
+        private readonly Dictionary<string, ExecuteTarget> _targets = new();
         public ExecuteProcessor(in ScriptScope scope)
         {
-            _parent = scope ?? throw new ArgumentNullException(nameof(scope));
+            _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
-            if (_parent.Owner is not ExecuteStatement statement)
+            if (_scope.Owner is not ExecuteStatement statement)
             {
                 throw new ArgumentException(nameof(ExecuteStatement));
             }
 
             _statement = statement;
+            _kind = _statement.Kind;
+            _mode = _statement.Uri.Contains('@') ? ProcessorMode.Switch : ProcessorMode.Direct;
+
+            if (_kind == ExecuteKind.Task || _kind == ExecuteKind.Work)
+            {
+                _tasks = GetTaskArrayReference();
+            }
         }
-        public void Dispose() { _next?.Dispose(); }
-        public void Synchronize() { _next?.Synchronize(); }
+        public void Dispose()
+        {
+            foreach (ExecuteTarget target in _targets.Values)
+            {
+                target.Processor?.Dispose();
+            }
+
+            _targets.Clear();
+            _next?.Dispose();
+        }
+        public void Synchronize()
+        {
+            if (_kind == ExecuteKind.Sync)
+            {
+                Execute();
+            }
+
+            foreach (ExecuteTarget target in _targets.Values)
+            {
+                target.Processor?.Synchronize();
+            }
+
+            _next?.Synchronize();
+        }
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Process()
         {
+            if (_kind != ExecuteKind.Sync)
+            {
+                Execute(); // Default, Task, Work
+            }
+            
+            _next?.Process();
+        }
+        private void Execute()
+        {
             try
             {
-                _script ??= PrepareScript(); //THINK: avoid recursive script invocation !!!
+                ExecuteTarget target = GetExecuteTarget(); //THINK: avoid recursive script invocation !?
 
-                ConfigureInputParameters(); // copy input variable values from caller's scope
+                InitializeTargetScopeVariables(target.Scope); //NOTE: copy input variable values from caller's scope
 
-                _script?.Process();
+                IProcessor processor = target.Processor;
+
+                if (_kind == ExecuteKind.Task || _kind == ExecuteKind.Work)
+                {
+                    processor = StreamFactory.CreateStream(target.Scope);
+                }
+
+                if (processor is null)
+                {
+                    throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Failed to compile script");
+                }
+                
+                if (_kind == ExecuteKind.Task)
+                {
+                    StoreTaskToWait(Task.Factory.StartNew(processor.Process)); // Default .NET thread pool
+                }
+                else if (_kind == ExecuteKind.Work)
+                {
+                    StoreTaskToWait(Task.Factory.StartNew(processor.Process, TaskCreationOptions.LongRunning));
+                }
+                else // Default and Sync
+                {
+                    processor.Process();
+                }
             }
-            catch (ReturnException)
+            catch (ReturnException _return)
             {
-                object value = _scope.GetReturnValue();
+                if (_kind == ExecuteKind.Task || _kind == ExecuteKind.Work) // ???
+                {
+                    return; // IGNORE
+                }
+
+                object value = _return.Value;
 
                 if (_statement.Return is null)
                 {
                     throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Return variable is not defined");
                 }
 
-                if (!_parent.TrySetValue(_statement.Return.Identifier, value)) // set return value to the caller's scope variable
+                if (!_scope.TrySetValue(_statement.Return.Identifier, value)) // set return value to the caller's scope variable
                 {
                     throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Error returning into {_statement.Return.Identifier}");
                 }
 
                 ConfigureReturnObjectSchema();
-
-                _scope.SetReturnValue(null);
             }
-            catch (Exception error)
+            catch (Exception error) // Unexpected error
             {
                 FileLogger.Default.Write(error); throw;
             }
-
-            _next?.Process();
         }
-        private IProcessor PrepareScript()
+        
+        private string GetExecuteScriptPath()
         {
-            Uri uri = _parent.GetUri(_statement.Uri);
+            string[] templates = _scope.GetUriTemplates(_statement.Uri);
 
-            string file = Path.Combine(AppContext.BaseDirectory, uri.LocalPath[2..]);
+            Uri uri = templates.Length == 0
+                ? new(_statement.Uri)
+                : new(_scope.ReplaceUriTemplates(_statement.Uri, in templates));
+
+            return uri.LocalPath[2..];
+        }
+        private string GetDefaultScriptPath()
+        {
+            string[] templates = _scope.GetUriTemplates(_statement.Default);
+
+            Uri uri = templates.Length == 0
+                ? new(_statement.Default)
+                : new(_scope.ReplaceUriTemplates(_statement.Default, in templates));
+
+            return uri.LocalPath[2..];
+        }
+        private string GetScriptSourceCode(in string scriptPath)
+        {
+            string file = Path.Combine(AppContext.BaseDirectory, scriptPath);
 
             if (Environment.OSVersion.Platform == PlatformID.Unix)
             {
@@ -73,7 +173,7 @@ namespace DaJet.Runtime
 
             if (!File.Exists(file))
             {
-                throw new InvalidOperationException($"File not found {file}");
+                return string.Empty;
             }
 
             string script;
@@ -83,16 +183,9 @@ namespace DaJet.Runtime
                 script = reader.ReadToEnd();
             }
 
-            if (!new ScriptParser().TryParse(in script, out ScriptModel model, out string error))
-            {
-                FileLogger.Default.Write(error); return null;
-            }
-
-            _scope = _parent.Create(in model);
-            StreamFactory.InitializeVariables(in _scope);
-            return StreamFactory.CreateStream(in _scope);
+            return script;
         }
-        private void ConfigureInputParameters()
+        private void InitializeTargetScopeVariables(in ScriptScope target)
         {
             if (_statement.Parameters is null) { return; }
 
@@ -100,38 +193,286 @@ namespace DaJet.Runtime
             {
                 string identifier = "@" + parameter.Alias;
 
-                if (!_scope.Variables.ContainsKey(identifier))
-                {
-                    throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Parameter {identifier} is not found");
-                }
-
-                if (!StreamFactory.TryEvaluate(in _parent, parameter.Expression, out object value))
+                if (!StreamFactory.TryEvaluate(in _scope, parameter.Expression, out object value))
                 {
                     throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Error reading parameter {identifier}");
                 }
 
-                if (!_scope.TrySetValue(in identifier, in value))
+                if (!target.TrySetValue(in identifier, in value))
                 {
                     throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Error setting parameter {identifier}");
                 }
             }
         }
+
+        private ExecuteTarget GetExecuteTarget()
+        {
+            if (_kind == ExecuteKind.Task ||
+                _kind == ExecuteKind.Work)
+            {
+                return GetAsyncTarget();
+            }
+            else // Default or Sync
+            {
+                return GetSyncTarget();
+            }
+        }
+        private ExecuteTarget GetSyncTarget()
+        {
+            if (_mode == ProcessorMode.Direct)
+            {
+                return GetSyncDirectTarget();
+            }
+            else
+            {
+                return GetSyncSwitchTarget();
+            }
+        }
+        private ExecuteTarget GetSyncDirectTarget()
+        {
+            if (_targets.TryGetValue(DIRECT_CALL_TARGET, out ExecuteTarget target))
+            {
+                return target;
+            }
+
+            string scriptPath = GetExecuteScriptPath();
+            string sourceCode = GetScriptSourceCode(in scriptPath);
+
+            if (string.IsNullOrEmpty(sourceCode))
+            {
+                throw new InvalidOperationException($"Script not found: {scriptPath}");
+            }
+
+            if (!new ScriptParser().TryParse(in sourceCode, out ScriptModel model, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            ScriptScope scope = _scope.Create(in model);
+            StreamFactory.InitializeVariables(in scope);
+            IProcessor script = StreamFactory.CreateStream(in scope);
+
+            ExecuteTarget compiled = new(model, scope, script);
+
+            _targets.Add(DIRECT_CALL_TARGET, compiled);
+
+            return compiled;
+        }
+        private ExecuteTarget GetSyncSwitchTarget()
+        {
+            string scriptPath = GetExecuteScriptPath();
+
+            if (_targets.TryGetValue(scriptPath, out ExecuteTarget target))
+            {
+                return target;
+            }
+
+            bool useDefaultSwitch = false;
+
+            string sourceCode = GetScriptSourceCode(in scriptPath);
+
+            if (string.IsNullOrEmpty(sourceCode))
+            {
+                if (_targets.TryGetValue(DEFAULT_SWITCH_TARGET, out ExecuteTarget _default))
+                {
+                    return _default;
+                }
+                
+                if (!string.IsNullOrEmpty(_statement.Default))
+                {
+                    scriptPath = GetDefaultScriptPath();
+                    sourceCode = GetScriptSourceCode(in scriptPath);
+                    useDefaultSwitch = true;
+                }
+            }
+
+            if (string.IsNullOrEmpty(sourceCode))
+            {
+                throw new InvalidOperationException($"Script not found: {scriptPath}");
+            }
+
+            if (!new ScriptParser().TryParse(in sourceCode, out ScriptModel model, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            ScriptScope scope = _scope.Create(in model);
+            StreamFactory.InitializeVariables(in scope);
+            IProcessor script = StreamFactory.CreateStream(in scope);
+
+            ExecuteTarget compiled = new(model, scope, script);
+
+            if (useDefaultSwitch)
+            {
+                _targets.Add(DEFAULT_SWITCH_TARGET, compiled);
+            }
+            else
+            {
+                _targets.Add(scriptPath, compiled);
+            }
+
+            return compiled;
+        }
+        private ExecuteTarget GetAsyncTarget()
+        {
+            if (_mode == ProcessorMode.Direct)
+            {
+                return GetAsyncDirectTarget();
+            }
+            else
+            {
+                return GetAsyncSwitchTarget();
+            }
+        }
+        private ExecuteTarget GetAsyncDirectTarget()
+        {
+            if (_targets.TryGetValue(DIRECT_CALL_TARGET, out ExecuteTarget target))
+            {
+                return target;
+            }
+
+            string scriptPath = GetExecuteScriptPath();
+            string sourceCode = GetScriptSourceCode(in scriptPath);
+
+            if (string.IsNullOrEmpty(sourceCode))
+            {
+                throw new InvalidOperationException($"Script not found: {scriptPath}");
+            }
+
+            if (!new ScriptParser().TryParse(in sourceCode, out ScriptModel model, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            ScriptScope scope = _scope.Create(in model);
+            StreamFactory.InitializeVariables(in scope);
+            
+            ExecuteTarget compiled = new(model, scope, null);
+
+            _targets.Add(DIRECT_CALL_TARGET, compiled);
+
+            return compiled;
+        }
+        private ExecuteTarget GetAsyncSwitchTarget()
+        {
+            string scriptPath = GetExecuteScriptPath();
+
+            if (_targets.TryGetValue(scriptPath, out ExecuteTarget target))
+            {
+                return target;
+            }
+
+            bool useDefaultSwitch = false;
+
+            string sourceCode = GetScriptSourceCode(in scriptPath);
+
+            if (string.IsNullOrEmpty(sourceCode))
+            {
+                if (_targets.TryGetValue(DEFAULT_SWITCH_TARGET, out ExecuteTarget _default))
+                {
+                    return _default;
+                }
+
+                if (!string.IsNullOrEmpty(_statement.Default))
+                {
+                    scriptPath = GetDefaultScriptPath();
+                    sourceCode = GetScriptSourceCode(in scriptPath);
+                    useDefaultSwitch = true;
+                }
+            }
+
+            if (string.IsNullOrEmpty(sourceCode))
+            {
+                throw new InvalidOperationException($"Script not found: {scriptPath}");
+            }
+
+            if (!new ScriptParser().TryParse(in sourceCode, out ScriptModel model, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            ScriptScope scope = _scope.Create(in model);
+            StreamFactory.InitializeVariables(in scope);
+
+            ExecuteTarget compiled = new(model, scope, null);
+
+            if (useDefaultSwitch)
+            {
+                _targets.Add(DEFAULT_SWITCH_TARGET, compiled);
+            }
+            else
+            {
+                _targets.Add(scriptPath, compiled);
+            }
+
+            return compiled;
+        }
+
+        private void StoreTaskToWait(in Task task)
+        {
+            if (_tasks is null) { return; }
+
+            DataObject item = new(8);
+            item.SetValue("Id", task.Id);
+            item.SetValue("Task", task);
+            item.SetValue("Result", null);
+            item.SetValue("Status", task.Status.ToString());
+            item.SetValue("IsFaulted", task.IsFaulted);
+            item.SetValue("IsCanceled", task.IsCanceled);
+            item.SetValue("IsCompleted", task.IsCompleted);
+            item.SetValue("IsSucceeded", task.IsCompletedSuccessfully);
+            _tasks.Add(item);
+        }
+        private List<DataObject> GetTaskArrayReference()
+        {
+            if (_statement.Return is null) { return null; }
+
+            string identifier = _statement.Return.Identifier;
+
+            if (!_scope.TryGetDeclaration(in identifier, out _, out DeclareStatement target))
+            {
+                throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Declaration of {identifier} is not found");
+            }
+
+            if (target.Type.Token != TokenType.Array)
+            {
+                throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Variable {identifier} must be of type [array]");
+            }
+
+            if (!_scope.TryGetValue(in identifier, out object value))
+            {
+                throw new InvalidOperationException($"[EXECUTE] task array variable {identifier} is not found");
+            }
+
+            if (value is not List<DataObject> tasks)
+            {
+                tasks = new List<DataObject>();
+
+                if (!_scope.TrySetValue(in identifier, tasks))
+                {
+                    throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Error setting value of {identifier}");
+                }
+            }
+
+            return tasks;
+        }
+
         private void ConfigureReturnObjectSchema()
         {
             if (_statement.Return is null) { return; }
 
             string identifier = _statement.Return.Identifier;
 
-            if (!_parent.TryGetDeclaration(in identifier, out _, out DeclareStatement target))
+            if (!_scope.TryGetDeclaration(in identifier, out _, out DeclareStatement target))
             {
                 throw new InvalidOperationException($"Declaration of {identifier} is not found");
             }
 
-            if (_scope.TryGetDeclaration(in identifier, out _, out DeclareStatement source))
-            {
-                //TODO: get return value schema from return statement
-                target.Type.Binding = source.Type.Binding;
-            }
+            //if (_scope.TryGetDeclaration(in identifier, out _, out DeclareStatement source))
+            //{
+            //    //TODO: get return value schema from return statement
+            //    target.Type.Binding = source.Type.Binding;
+            //}
         }
     }
 }

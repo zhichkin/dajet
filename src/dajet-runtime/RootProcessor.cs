@@ -19,6 +19,7 @@ namespace DaJet.Runtime
 
             _next = StreamFactory.CreateStream(in _scope);
         }
+        public object ReturnValue { get; set; }
         public void LinkTo(in IProcessor next) { throw new NotImplementedException(); }
         public void Synchronize() { _next?.Synchronize(); }
         public void Dispose() { _next?.Dispose(); }
@@ -28,18 +29,14 @@ namespace DaJet.Runtime
             {
                 _next?.Process();
             }
-            catch (ReturnException)
+            catch (ReturnException _return)
             {
-                return; //TODO: avoid exception hack !?
+                ReturnValue = _return.Value; //TODO: avoid exception hack !?
             }
             finally
             {
                 //TODO: root processor : dispose pipeline !?
             }
-        }
-        public object GetReturnValue()
-        {
-            return _scope.GetReturnValue();
         }
     }
 }

@@ -4,7 +4,7 @@
     {
         Ignore, Script, Comment, Comma, EndOfStatement, USE, IF, WHILE, BREAK, CONTINUE, RETURN, PRINT,
 
-        TRY, CATCH, FINALLY, THROW, SLEEP,
+        TRY, CATCH, FINALLY, THROW, SLEEP, DEFAULT, TASK, WORK, SYNC, WAIT,
 
         SELECT, INTO, DISTINCT, TOP, FROM, WHERE, GROUP, HAVING, ORDER, BY, ASC, DESC,
         AND, OR, AS, NOT,

@@ -140,7 +140,7 @@ namespace DaJet.Runtime
 
             if (stream is RootProcessor root)
             {
-                result = root.GetReturnValue();
+                result = root.ReturnValue;
             }
         }
         public static bool TryExecute(in string filePath, in Dictionary<string, object> parameters, out object result, out string error)

@@ -2,7 +2,14 @@
 
 namespace DaJet.Runtime
 {
-    public sealed class ReturnException : Exception { }
+    internal sealed class ReturnException : Exception
+    {
+        internal ReturnException(object value)
+        {
+            Value = value;
+        }
+        internal object Value { get; } 
+    }
     public sealed class ReturnProcessor : IProcessor
     {
         private readonly ScriptScope _scope;
@@ -30,9 +37,7 @@ namespace DaJet.Runtime
                 throw new InvalidOperationException($"Failed to evaluate return expression");
             }
 
-            _scope.SetReturnValue(in value);
-
-            throw new ReturnException();
+            throw new ReturnException(value);
         }
     }
 }

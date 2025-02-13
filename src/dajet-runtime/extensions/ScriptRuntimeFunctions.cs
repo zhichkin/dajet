@@ -317,6 +317,17 @@ namespace DaJet.Runtime
 
             return array.Count;
         }
+        [Function("ARRAY_CLEAR")] public static int ArrayClear(this IScriptRuntime runtime, in List<DataObject> array)
+        {
+            if (array is null)
+            {
+                return -1;
+            }
+
+            array.Clear();
+
+            return 0;
+        }
         [Function("ARRAY_CREATE")] public static List<DataObject> ArrayCreate(this IScriptRuntime runtime)
         {
             return new(3);

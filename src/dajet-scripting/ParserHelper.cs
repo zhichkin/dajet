@@ -177,7 +177,12 @@ namespace DaJet.Scripting
             { "CATCH", TokenType.CATCH },
             { "FINALLY", TokenType.FINALLY },
             { "THROW", TokenType.THROW },
-            { "SLEEP", TokenType.SLEEP }
+            { "SLEEP", TokenType.SLEEP },
+            { "DEFAULT", TokenType.DEFAULT },
+            { "TASK", TokenType.TASK },
+            { "WORK", TokenType.WORK },
+            { "SYNC", TokenType.SYNC },
+            { "WAIT", TokenType.WAIT }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {
