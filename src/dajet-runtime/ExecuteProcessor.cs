@@ -1,6 +1,7 @@
 ﻿using DaJet.Data;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
+using System.Numerics;
 using System.Text;
 
 namespace DaJet.Runtime
@@ -142,6 +143,55 @@ namespace DaJet.Runtime
             }
         }
         
+        private void StoreTaskToWait(in Task task)
+        {
+            if (_tasks is null) { return; }
+
+            DataObject item = new(8);
+            item.SetValue("Id", task.Id);
+            item.SetValue("Task", task);
+            item.SetValue("Result", null);
+            item.SetValue("Status", task.Status.ToString());
+            item.SetValue("IsFaulted", task.IsFaulted);
+            item.SetValue("IsCanceled", task.IsCanceled);
+            item.SetValue("IsCompleted", task.IsCompleted);
+            item.SetValue("IsSucceeded", task.IsCompletedSuccessfully);
+            _tasks.Add(item);
+        }
+        private List<DataObject> GetTaskArrayReference()
+        {
+            if (_statement.Return is null) { return null; }
+
+            string identifier = _statement.Return.Identifier;
+
+            if (!_scope.TryGetDeclaration(in identifier, out _, out DeclareStatement target))
+            {
+                throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Declaration of {identifier} is not found");
+            }
+
+            if (target.Type.Token != TokenType.Array)
+            {
+                throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Variable {identifier} must be of type [array]");
+            }
+
+            if (!_scope.TryGetValue(in identifier, out object value))
+            {
+                throw new InvalidOperationException($"[EXECUTE] task array variable {identifier} is not found");
+            }
+
+            if (value is not List<DataObject> tasks)
+            {
+                tasks = new List<DataObject>();
+
+                if (!_scope.TrySetValue(in identifier, tasks))
+                {
+                    throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Error setting value of {identifier}");
+                }
+            }
+
+            return tasks;
+        }
+
         private string GetExecuteScriptPath()
         {
             string[] templates = _scope.GetUriTemplates(_statement.Uri);
@@ -185,6 +235,32 @@ namespace DaJet.Runtime
 
             return script;
         }
+        private object CopySourceScopeVariableValue(in object value)
+        {
+            object copy;
+
+            if (value is DataObject record)
+            {
+                copy = record.Copy();
+            }
+            else if (value is List<DataObject> source)
+            {
+                List<DataObject> array = new(source.Count);
+
+                for (int i = 0; i < source.Count; i++)
+                {
+                    array.Add(source[i].Copy());
+                }
+
+                copy = array;
+            }
+            else
+            {
+                copy = value; //THINK: !?
+            }
+
+            return copy;
+        }
         private void InitializeTargetScopeVariables(in ScriptScope target)
         {
             if (_statement.Parameters is null) { return; }
@@ -198,7 +274,18 @@ namespace DaJet.Runtime
                     throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Error reading parameter {identifier}");
                 }
 
-                if (!target.TrySetValue(in identifier, in value))
+                object result;
+
+                if (_kind == ExecuteKind.Task || _kind == ExecuteKind.Work)
+                {
+                    result = CopySourceScopeVariableValue(in value);
+                }
+                else
+                {
+                    result = value;
+                }
+
+                if (!target.TrySetValue(in identifier, in result))
                 {
                     throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Error setting parameter {identifier}");
                 }
@@ -326,135 +413,106 @@ namespace DaJet.Runtime
         }
         private ExecuteTarget GetAsyncDirectTarget()
         {
+            ScriptModel script = null;
+
             if (_targets.TryGetValue(DIRECT_CALL_TARGET, out ExecuteTarget target))
             {
-                return target;
+                script = target.Model;
             }
-
-            string scriptPath = GetExecuteScriptPath();
-            string sourceCode = GetScriptSourceCode(in scriptPath);
-
-            if (string.IsNullOrEmpty(sourceCode))
+            else
             {
-                throw new InvalidOperationException($"Script not found: {scriptPath}");
+                string scriptPath = GetExecuteScriptPath();
+                string sourceCode = GetScriptSourceCode(in scriptPath);
+
+                if (string.IsNullOrEmpty(sourceCode))
+                {
+                    throw new InvalidOperationException($"Script not found: {scriptPath}");
+                }
+
+                if (!new ScriptParser().TryParse(in sourceCode, out script, out string error))
+                {
+                    throw new InvalidOperationException(error);
+                }
+
+                ExecuteTarget cache = new(script, null, null);
+
+                _targets.Add(DIRECT_CALL_TARGET, cache);
             }
 
-            if (!new ScriptParser().TryParse(in sourceCode, out ScriptModel model, out string error))
+            if (script is null)
             {
-                throw new InvalidOperationException(error);
+                throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} failed to create script");
             }
 
-            ScriptScope scope = _scope.Create(in model);
+            ScriptScope scope = _scope.Create(in script);
             StreamFactory.InitializeVariables(in scope);
-            
-            ExecuteTarget compiled = new(model, scope, null);
-
-            _targets.Add(DIRECT_CALL_TARGET, compiled);
-
-            return compiled;
+            return new ExecuteTarget(script, scope, null);
         }
         private ExecuteTarget GetAsyncSwitchTarget()
         {
+            ScriptModel script = null;
+
             string scriptPath = GetExecuteScriptPath();
 
             if (_targets.TryGetValue(scriptPath, out ExecuteTarget target))
             {
-                return target;
+                script = target.Model;
             }
 
-            bool useDefaultSwitch = false;
-
-            string sourceCode = GetScriptSourceCode(in scriptPath);
-
-            if (string.IsNullOrEmpty(sourceCode))
+            if (script is null) // switch cache missed
             {
-                if (_targets.TryGetValue(DEFAULT_SWITCH_TARGET, out ExecuteTarget _default))
-                {
-                    return _default;
-                }
+                string sourceCode = GetScriptSourceCode(in scriptPath);
 
-                if (!string.IsNullOrEmpty(_statement.Default))
+                bool useDefaultSwitch = false;
+
+                if (string.IsNullOrEmpty(sourceCode)) // switch script is not found, try default path
                 {
-                    scriptPath = GetDefaultScriptPath();
-                    sourceCode = GetScriptSourceCode(in scriptPath);
+                    if (string.IsNullOrEmpty(_statement.Default))
+                    {
+                        throw new InvalidOperationException($"Script not found: {scriptPath}");
+                    }
+
                     useDefaultSwitch = true;
+
+                    if (_targets.TryGetValue(DEFAULT_SWITCH_TARGET, out ExecuteTarget _default))
+                    {
+                        script = _default.Model;
+                    }
+                    else
+                    {
+                        scriptPath = GetDefaultScriptPath();
+                        sourceCode = GetScriptSourceCode(in scriptPath);
+
+                        if (string.IsNullOrEmpty(sourceCode))
+                        {
+                            throw new InvalidOperationException($"Script not found: {scriptPath}");
+                        }
+                    }
                 }
-            }
 
-            if (string.IsNullOrEmpty(sourceCode))
-            {
-                throw new InvalidOperationException($"Script not found: {scriptPath}");
-            }
-
-            if (!new ScriptParser().TryParse(in sourceCode, out ScriptModel model, out string error))
-            {
-                throw new InvalidOperationException(error);
-            }
-
-            ScriptScope scope = _scope.Create(in model);
-            StreamFactory.InitializeVariables(in scope);
-
-            ExecuteTarget compiled = new(model, scope, null);
-
-            if (useDefaultSwitch)
-            {
-                _targets.Add(DEFAULT_SWITCH_TARGET, compiled);
-            }
-            else
-            {
-                _targets.Add(scriptPath, compiled);
-            }
-
-            return compiled;
-        }
-
-        private void StoreTaskToWait(in Task task)
-        {
-            if (_tasks is null) { return; }
-
-            DataObject item = new(8);
-            item.SetValue("Id", task.Id);
-            item.SetValue("Task", task);
-            item.SetValue("Result", null);
-            item.SetValue("Status", task.Status.ToString());
-            item.SetValue("IsFaulted", task.IsFaulted);
-            item.SetValue("IsCanceled", task.IsCanceled);
-            item.SetValue("IsCompleted", task.IsCompleted);
-            item.SetValue("IsSucceeded", task.IsCompletedSuccessfully);
-            _tasks.Add(item);
-        }
-        private List<DataObject> GetTaskArrayReference()
-        {
-            if (_statement.Return is null) { return null; }
-
-            string identifier = _statement.Return.Identifier;
-
-            if (!_scope.TryGetDeclaration(in identifier, out _, out DeclareStatement target))
-            {
-                throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Declaration of {identifier} is not found");
-            }
-
-            if (target.Type.Token != TokenType.Array)
-            {
-                throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Variable {identifier} must be of type [array]");
-            }
-
-            if (!_scope.TryGetValue(in identifier, out object value))
-            {
-                throw new InvalidOperationException($"[EXECUTE] task array variable {identifier} is not found");
-            }
-
-            if (value is not List<DataObject> tasks)
-            {
-                tasks = new List<DataObject>();
-
-                if (!_scope.TrySetValue(in identifier, tasks))
+                if (script is null) // default cache missed
                 {
-                    throw new InvalidOperationException($"[EXECUTE] {_statement.Uri} Error setting value of {identifier}");
+                    if (!new ScriptParser().TryParse(in sourceCode, out script, out string error))
+                    {
+                        throw new InvalidOperationException(error);
+                    }
+
+                    ExecuteTarget cache = new(script, null, null);
+
+                    if (useDefaultSwitch)
+                    {
+                        _targets.Add(DEFAULT_SWITCH_TARGET, cache);
+                    }
+                    else
+                    {
+                        _targets.Add(scriptPath, cache);
+                    }
                 }
             }
 
-            return tasks;
+            ScriptScope scope = _scope.Create(in script);
+            StreamFactory.InitializeVariables(in scope);
+            return new ExecuteTarget(script, scope, null);
         }
 
         private void ConfigureReturnObjectSchema()

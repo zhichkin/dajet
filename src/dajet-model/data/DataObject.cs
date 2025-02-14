@@ -128,5 +128,53 @@ namespace DaJet.Data
             return TrySetValue(binder.Name, value);
         }
         #endregion
+
+        public DataObject Copy()
+        {
+            int count = this.Count();
+
+            DataObject copy = new(this.Count());
+
+            string name;
+            object value;
+
+            for (int i = 0; i < count; i++)
+            {
+                name = this.GetName(i);
+                value = this.GetValue(i);
+
+                if (value is DataObject record)
+                {
+                    copy.SetNameAndValue(in name, record.Copy());
+                }
+                else if (value is List<DataObject> table)
+                {
+                    copy.SetNameAndValue(in name, CopyArray(in table));
+                }
+                else
+                {
+                    copy.SetNameAndValue(in name, in value);
+                }
+            }
+
+            return copy;
+        }
+        private List<DataObject> CopyArray(in List<DataObject> source)
+        {
+            List<DataObject> target = new(source.Count);
+
+            for (int i = 0; i < source.Count; i++)
+            {
+                target.Add(source[i].Copy());
+            }
+
+            return target;
+        }
+        private void SetNameAndValue(in string name, in object value)
+        {
+            _names.Add(name);
+            _values.Add(value);
+            _map.Add(name, _values.Count - 1);
+        }
     }
 }

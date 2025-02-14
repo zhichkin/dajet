@@ -1,6 +1,5 @@
 ﻿using DaJet.Data;
 using DaJet.Scripting.Model;
-using System.Threading.Tasks;
 
 namespace DaJet.Runtime
 {
@@ -36,7 +35,10 @@ namespace DaJet.Runtime
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Process()
         {
-            WaitForTasksToComplete();
+            if (_tasks.Count > 0)
+            {
+                WaitForTasksToComplete();
+            }
 
             _next?.Process();
         }
@@ -96,42 +98,6 @@ namespace DaJet.Runtime
             return task;
         }
 
-        private void UpdateTaskObjectValues(in DataObject task)
-        {
-            if (task.TryGetValue("Task", out object value))
-            {
-                if (value is Task job)
-                {
-                    task.SetValue("Status", job.Status.ToString());
-                    task.SetValue("IsFaulted", job.IsFaulted);
-                    task.SetValue("IsCanceled", job.IsCanceled);
-                    task.SetValue("IsCompleted", job.IsCompleted);
-                    task.SetValue("IsSucceeded", job.IsCompletedSuccessfully);
-
-                    if (job.Exception is null)
-                    {
-                        task.SetValue("Result", null);
-                    }
-                    else
-                    {
-                        if (job.Exception.InnerException is not ReturnException _return)
-                        {
-                            task.SetValue("Result", job.Exception.Message);
-                        }
-                        else
-                        {
-                            task.SetValue("Result", _return.Value);
-
-                            if (job.IsCompleted)
-                            {
-                                task.SetValue("IsFaulted", false);
-                                task.SetValue("IsSucceeded", true);
-                            }
-                        }
-                    }
-                }
-            }
-        }
         private void WaitForTasksToComplete()
         {
             Task[] tasks = new Task[_tasks.Count];
@@ -188,6 +154,43 @@ namespace DaJet.Runtime
             if (!_scope.TrySetValue(_task, task))
             {
                 throw new InvalidOperationException($"[WAIT] Error setting task object variable {_task}");
+            }
+        }
+        private void UpdateTaskObjectValues(in DataObject task)
+        {
+            if (task.TryGetValue("Task", out object value))
+            {
+                if (value is Task job)
+                {
+                    task.SetValue("Status", job.Status.ToString());
+                    task.SetValue("IsFaulted", job.IsFaulted);
+                    task.SetValue("IsCanceled", job.IsCanceled);
+                    task.SetValue("IsCompleted", job.IsCompleted);
+                    task.SetValue("IsSucceeded", job.IsCompletedSuccessfully);
+
+                    if (job.Exception is null) // no return value
+                    {
+                        task.SetValue("Result", null);
+                    }
+                    else
+                    {
+                        if (job.Exception.InnerException is not ReturnException _return)
+                        {
+                            task.SetValue("Result", job.Exception.Message); // faulted
+                        }
+                        else
+                        {
+                            task.SetValue("Result", _return.Value); // success
+
+                            if (job.IsCompleted)
+                            {
+                                task.SetValue("Status", TaskStatus.RanToCompletion.ToString());
+                                task.SetValue("IsFaulted", false);
+                                task.SetValue("IsSucceeded", true);
+                            }
+                        }
+                    }
+                }
             }
         }
     }
