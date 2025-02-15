@@ -1,7 +1,6 @@
 ﻿using DaJet.Data;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
-using System.Numerics;
 using System.Text;
 
 namespace DaJet.Runtime
