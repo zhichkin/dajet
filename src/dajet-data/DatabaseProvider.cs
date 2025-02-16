@@ -1,11 +1,11 @@
 ﻿namespace DaJet.Data
 {
     /// <summary>
-    /// Список поддерживаемых провайдеров баз данных (Microsoft SQL Server или PostgreSQL)
+    /// Список поддерживаемых провайдеров баз данных
     /// </summary>
     public enum DatabaseProvider
     {
-        ///<summary>Microsoft SQL Server database provider</summary>
+        ///<summary>MS SQL Server database provider</summary>
         SqlServer,
         ///<summary>PostgreSQL database provider</summary>
         PostgreSql,

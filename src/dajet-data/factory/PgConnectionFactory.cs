@@ -11,6 +11,10 @@ namespace DaJet.Data.PostgreSql
         {
             return new NpgsqlConnection(GetConnectionString(in uri));
         }
+        public DbConnection Create(in string connectionString)
+        {
+            return new NpgsqlConnection(connectionString);
+        }
         public string GetConnectionString(in Uri uri)
         {
             var builder = new NpgsqlConnectionStringBuilder()

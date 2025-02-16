@@ -8,6 +8,7 @@ namespace DaJet.Data
     {
         int GetYearOffset(in Uri uri);
         DbConnection Create(in Uri uri);
+        DbConnection Create(in string connectionString);
         string GetConnectionString(in Uri uri);
         void ConfigureParameters(in DbCommand command, in Dictionary<string, object> parameters, int yearOffset);
     }
@@ -33,6 +34,19 @@ namespace DaJet.Data
             }
 
             throw new InvalidOperationException($"Unsupported database: [{uri.Scheme}]");
+        }
+        public static IDbConnectionFactory GetFactory(DatabaseProvider provider)
+        {
+            if (provider == DatabaseProvider.SqlServer)
+            {
+                return new MsConnectionFactory();
+            }
+            else if (provider == DatabaseProvider.PostgreSql)
+            {
+                return new PgConnectionFactory();
+            }
+
+            throw new InvalidOperationException($"Unsupported provider: [{provider}]");
         }
     }
 }

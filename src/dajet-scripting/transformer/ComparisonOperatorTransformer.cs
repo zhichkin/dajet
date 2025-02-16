@@ -1,7 +1,6 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata.Model;
 using DaJet.Scripting.Model;
-using static Npgsql.Replication.PgOutput.Messages.RelationMessage;
 
 namespace DaJet.Scripting
 {

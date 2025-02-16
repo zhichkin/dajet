@@ -1,4 +1,5 @@
 ﻿using Microsoft.Data.SqlClient;
+using System;
 using System.Data.Common;
 using System.Text;
 using System.Web;
@@ -10,6 +11,10 @@ namespace DaJet.Data.SqlServer
         public DbConnection Create(in Uri uri)
         {
             return new SqlConnection(GetConnectionString(in uri));
+        }
+        public DbConnection Create(in string connectionString)
+        {
+            return new SqlConnection(connectionString);
         }
         public string GetConnectionString(in Uri uri)
         {

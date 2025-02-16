@@ -370,5 +370,70 @@ namespace DaJet.Runtime
 
             return array.Count;
         }
+
+        [Function("OBJECT")] public static DataObject CreateObject(this IScriptRuntime runtime, in string metadataName)
+        {
+            if (runtime is not ScriptScope scope)
+            {
+                throw new ArgumentException("Parameter must be of type ScriptScope", nameof(runtime));
+            }
+
+            if (!scope.TryGetMetadataProvider(out IMetadataProvider provider, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            DataObject dataObject = provider.CreateObject(in metadataName);
+
+            return dataObject;
+        }
+        [Function("OBJECT")] public static DataObject SelectObject(this IScriptRuntime runtime, in Entity key)
+        {
+            if (runtime is not ScriptScope scope)
+            {
+                throw new ArgumentException("Parameter must be of type ScriptScope", nameof(runtime));
+            }
+
+            if (!scope.TryGetMetadataProvider(out IMetadataProvider provider, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            DataObject dataObject = provider.SelectObject(in key);
+
+            return dataObject;
+        }
+        [Function("OBJECT")] public static DataObject SelectObject(this IScriptRuntime runtime, in string metadataName, in Entity key)
+        {
+            if (runtime is not ScriptScope scope)
+            {
+                throw new ArgumentException("Parameter must be of type ScriptScope", nameof(runtime));
+            }
+
+            if (!scope.TryGetMetadataProvider(out IMetadataProvider provider, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            DataObject dataObject = provider.SelectObject(in metadataName, in key);
+
+            return dataObject;
+        }
+        [Function("OBJECT")] public static DataObject SelectObject(this IScriptRuntime runtime, in string metadataName, in DataObject key)
+        {
+            if (runtime is not ScriptScope scope)
+            {
+                throw new ArgumentException("Parameter must be of type ScriptScope", nameof(runtime));
+            }
+
+            if (!scope.TryGetMetadataProvider(out IMetadataProvider provider, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            DataObject dataObject = provider.SelectObject(in metadataName, in key);
+
+            return dataObject;
+        }
     }
 }
