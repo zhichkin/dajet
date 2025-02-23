@@ -152,7 +152,7 @@ namespace DaJet.Runtime
             
             DataObject _object = SelectDataObject(in context, in sql, in parameters);
 
-            _object.SetCodeAndName(entity.TypeCode, metadataName);
+            _object?.SetCodeAndName(entity.TypeCode, metadataName);
             
             return _object;
         }
@@ -224,7 +224,7 @@ namespace DaJet.Runtime
 
             DataObject _object = SelectDataObject(in context, in sql, in parameters);
 
-            _object.SetCodeAndName(entity.TypeCode, metadataName);
+            _object?.SetCodeAndName(entity.TypeCode, metadataName);
 
             return _object;
         }
