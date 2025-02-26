@@ -435,5 +435,22 @@ namespace DaJet.Runtime
 
             return dataObject;
         }
+
+        [Function("OBJECT")] public static DataObject SelectObject(this IScriptRuntime runtime, in Union union)
+        {
+            if (runtime is not ScriptScope scope)
+            {
+                throw new ArgumentException("Parameter must be of type ScriptScope", nameof(runtime));
+            }
+
+            if (!scope.TryGetMetadataProvider(out IMetadataProvider provider, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            DataObject dataObject = provider.SelectObject(union.GetEntity());
+
+            return dataObject;
+        }
     }
 }
