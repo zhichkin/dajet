@@ -435,9 +435,10 @@ namespace DaJet.Runtime
 
             return dataObject;
         }
-
         [Function("OBJECT")] public static DataObject SelectObject(this IScriptRuntime runtime, in Union union)
         {
+            //TODO: calling this method from DaJet Script does not work yet ...
+
             if (runtime is not ScriptScope scope)
             {
                 throw new ArgumentException("Parameter must be of type ScriptScope", nameof(runtime));

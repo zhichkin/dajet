@@ -122,7 +122,7 @@ namespace DaJet.Json
                 {
                     break; // end of object
                 }
-                else
+                else //TODO: process DaJet.Union
                 {
                     throw new FormatException();
                 }
@@ -205,7 +205,7 @@ namespace DaJet.Json
                     }
                     writer.WriteEndArray();
                 }
-                else
+                else //TODO: process DaJet.Union
                 {
                     writer.WriteString(name, value.ToString());
                 }

@@ -3145,6 +3145,15 @@ namespace DaJet.Metadata.Core
                     }
                 }
             }
+            else if (entity is AccumulationRegister)
+            {
+                MetadataProperty recorder = entity.Properties.Where(p => p.Name == "Регистратор").FirstOrDefault();
+
+                if (recorder is not null)
+                {
+                    table.Properties.Add(recorder);
+                }
+            }
         }
         private static void ConfigurePropertyУзелПланаОбмена(in ChangeTrackingTable table)
         {
