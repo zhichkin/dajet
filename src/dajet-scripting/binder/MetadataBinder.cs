@@ -1333,19 +1333,14 @@ namespace DaJet.Scripting
         }
         private void Bind(in WaitStatement node)
         {
-            if (node.Task is not null)
+            if (node.Result is not null)
             {
-                Bind(node.Task);
+                Bind(node.Result);
             }
 
             Bind(node.Tasks);
 
-            if (node.Task.Binding is not TypeIdentifier type1 || type1.Token != TokenType.Number)
-            {
-                RegisterBindingError(node.Token, node.Task.Identifier); return;
-            }
-
-            if (node.Tasks.Binding is not TypeIdentifier type2 || type2.Token != TokenType.Array)
+            if (node.Tasks.Binding is not TypeIdentifier type || type.Token != TokenType.Array)
             {
                 RegisterBindingError(node.Token, node.Tasks.Identifier); return;
             }

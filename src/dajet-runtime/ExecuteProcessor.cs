@@ -90,10 +90,12 @@ namespace DaJet.Runtime
 
                 InitializeTargetScopeVariables(target.Scope); //NOTE: copy input variable values from caller's scope
 
+                string taskName = string.Empty;
                 IProcessor processor = target.Processor;
 
                 if (_kind == ExecuteKind.Task || _kind == ExecuteKind.Work)
                 {
+                    taskName = GetTaskName();
                     processor = StreamFactory.CreateStream(target.Scope);
                 }
 
@@ -104,11 +106,11 @@ namespace DaJet.Runtime
                 
                 if (_kind == ExecuteKind.Task)
                 {
-                    StoreTaskToWait(Task.Factory.StartNew(processor.Process)); // Default .NET thread pool
+                    StoreTaskToWait(Task.Factory.StartNew(processor.Process), in taskName); // Default .NET thread pool
                 }
                 else if (_kind == ExecuteKind.Work)
                 {
-                    StoreTaskToWait(Task.Factory.StartNew(processor.Process, TaskCreationOptions.LongRunning));
+                    StoreTaskToWait(Task.Factory.StartNew(processor.Process, TaskCreationOptions.LongRunning), in taskName);
                 }
                 else // Default and Sync
                 {
@@ -117,7 +119,7 @@ namespace DaJet.Runtime
             }
             catch (ReturnException _return)
             {
-                if (_kind == ExecuteKind.Task || _kind == ExecuteKind.Work) // ???
+                if (_kind == ExecuteKind.Task || _kind == ExecuteKind.Work)
                 {
                     return; // IGNORE
                 }
@@ -142,12 +144,27 @@ namespace DaJet.Runtime
             }
         }
         
-        private void StoreTaskToWait(in Task task)
+        private string GetTaskName()
+        {
+            if (_statement.Name is not null)
+            {
+                if (!StreamFactory.TryEvaluate(in _scope, _statement.Name, out object value) || value is not string name)
+                {
+                    throw new InvalidOperationException("[EXECUTE] Failed to evaluate task name expression");
+                }
+
+                return name;
+            }
+
+            return string.Empty;
+        }
+        private void StoreTaskToWait(in Task task, in string name)
         {
             if (_tasks is null) { return; }
 
             DataObject item = new(8);
             item.SetValue("Id", task.Id);
+            item.SetValue("Name", name);
             item.SetValue("Task", task);
             item.SetValue("Result", null);
             item.SetValue("Status", task.Status.ToString());

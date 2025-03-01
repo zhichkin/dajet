@@ -597,7 +597,7 @@ namespace DaJet.Scripting
 
             Skip(TokenType.Comment);
 
-            if (Match(TokenType.DEFAULT))
+            if (Match(TokenType.DEFAULT)) // optional
             {
                 if (Match(TokenType.String))
                 {
@@ -607,6 +607,13 @@ namespace DaJet.Scripting
                 {
                     throw new FormatException("[EXECUTE] default uri expected");
                 }
+            }
+
+            Skip(TokenType.Comment);
+
+            if (Match(TokenType.AS)) // optional
+            {
+                statement.Name = expression();
             }
 
             Skip(TokenType.Comment);
@@ -733,12 +740,12 @@ namespace DaJet.Scripting
                 throw new FormatException("[WAIT] {ALL|ANY} keyword expected");
             }
 
-            if (!Match(TokenType.Variable) || variable() is not VariableReference _variable)
+            if (!Match(TokenType.Variable) || variable() is not VariableReference array)
             {
                 throw new FormatException("[WAIT] task array variable expected");
             }
 
-            statement.Tasks = _variable;
+            statement.Tasks = array;
 
             if (statement.Kind == WaitKind.Any)
             {
@@ -747,12 +754,43 @@ namespace DaJet.Scripting
                     throw new FormatException("[WAIT] {INTO} keyword expected");
                 }
 
-                if (!Match(TokenType.Variable) || variable() is not VariableReference index)
+                if (!Match(TokenType.Variable) || variable() is not VariableReference task)
                 {
                     throw new FormatException("[WAIT] task object variable expected");
                 }
 
-                statement.Task = index;
+                statement.Result = task; //NOTE: DataObject
+            }
+            else if (statement.Kind == WaitKind.All)
+            {
+                if (Match(TokenType.INTO)) // optional
+                {
+                    if (!Match(TokenType.Variable) || variable() is not VariableReference completed)
+                    {
+                        throw new FormatException("[WAIT] completed variable expected");
+                    }
+
+                    statement.Result = completed; //NOTE: boolean
+                }
+            }
+
+            if (Match(TokenType.TIMEOUT)) // optional
+            {
+                if (!Match(TokenType.Number) || scalar() is not ScalarExpression _scalar)
+                {
+                    throw new FormatException("[WAIT] timeout value expected");
+                }
+
+                int timeout = int.Parse(_scalar.Literal);
+
+                if (timeout > 0)
+                {
+                    statement.Timeout = timeout;
+                }
+                else
+                {
+                    throw new FormatException("[WAIT] timeout value must be greater then zero");
+                }
             }
             
             return statement;

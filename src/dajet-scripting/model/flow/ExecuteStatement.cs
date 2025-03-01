@@ -8,6 +8,7 @@
         public ExecuteKind Kind { get; set; } = ExecuteKind.Default;
         public string Uri { get; set; } // script uri template
         public string Default { get; set; } // default script uri
+        public SyntaxNode Name { get; set; } // AS clause: task or work name
         public List<ColumnExpression> Parameters { get; set; } = new(); // WITH clause
         public VariableReference Return { get; set; } // INTO clause
         public override string ToString()

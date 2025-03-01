@@ -9,7 +9,8 @@ namespace DaJet.Runtime
         private readonly WaitKind _kind;
         private readonly ScriptScope _scope;
         private readonly WaitStatement _statement;
-        private readonly string _task;
+        private readonly int _timeout;
+        private readonly string _result;
         private readonly List<DataObject> _tasks;
         public WaitProcessor(in ScriptScope scope)
         {
@@ -22,13 +23,17 @@ namespace DaJet.Runtime
 
             _statement = statement;
             _kind = _statement.Kind;
+            _timeout = _statement.Timeout;
+            _tasks = GetTaskArrayReference();
 
             if (_kind == WaitKind.Any)
             {
-                _task = GetTaskObjectReference();
+                _result = GetResultVariableIdentifier();
             }
-
-            _tasks = GetTaskArrayReference();
+            else if (_kind == WaitKind.All && _timeout > 0)
+            {
+                _result = GetResultVariableIdentifier();
+            }
         }
         public void Dispose() { _next?.Dispose(); }
         public void Synchronize() { _next?.Synchronize(); }
@@ -42,18 +47,18 @@ namespace DaJet.Runtime
 
             _next?.Process();
         }
-        private string GetTaskObjectReference()
+        private string GetResultVariableIdentifier()
         {
-            if (_statement.Task is not VariableReference variable)
+            if (_statement.Result is not VariableReference variable)
             {
-                throw new InvalidOperationException($"[WAIT] task object is not variable");
+                throw new InvalidOperationException($"[WAIT] result variable is not defined");
             }
 
-            string identifier = _statement.Task.Identifier;
+            string identifier = _statement.Result.Identifier;
 
-            if (!_scope.TryGetValue(in identifier, out object value))
+            if (!_scope.TryGetValue(in identifier, out _))
             {
-                throw new InvalidOperationException($"[WAIT] task object variable {identifier} is not found");
+                throw new InvalidOperationException($"[WAIT] result variable {identifier} is not found");
             }
 
             return identifier;
@@ -84,20 +89,7 @@ namespace DaJet.Runtime
 
             return tasks;
         }
-        private DataObject CreateTaskObject()
-        {
-            DataObject task = new(8);
-            task.SetValue("Id", 0);
-            task.SetValue("Task", null);
-            task.SetValue("Result", null);
-            task.SetValue("Status", string.Empty);
-            task.SetValue("IsFaulted", false);
-            task.SetValue("IsCanceled", false);
-            task.SetValue("IsCompleted", false);
-            task.SetValue("IsSucceeded", false);
-            return task;
-        }
-
+        
         private void WaitForTasksToComplete()
         {
             Task[] tasks = new Task[_tasks.Count];
@@ -126,9 +118,18 @@ namespace DaJet.Runtime
         }
         private void WaitForAllTasksToComplete(in Task[] tasks)
         {
+            bool completed = true;
+
             try
             {
-                Task.WaitAll(tasks);
+                if (_timeout > 0)
+                {
+                    completed = Task.WaitAll(tasks, TimeSpan.FromSeconds(_timeout));
+                }
+                else
+                {
+                    Task.WaitAll(tasks);
+                }
             }
             catch { /* DO NOTHING */ }
 
@@ -136,24 +137,43 @@ namespace DaJet.Runtime
             {
                 UpdateTaskObjectValues(in task);
             }
+
+            if (!string.IsNullOrEmpty(_result))
+            {
+                if (!_scope.TrySetValue(_result, completed))
+                {
+                    throw new InvalidOperationException($"[WAIT] Error setting completed variable {_result}");
+                }
+            }
         }
         private void WaitForAnyTasksToComplete(in Task[] tasks)
         {
             int index = -1;
+            DataObject task = null;
 
             try
             {
-                index = Task.WaitAny(tasks);
+                if (_timeout > 0)
+                {
+                    index = Task.WaitAny(tasks, TimeSpan.FromSeconds(_timeout));
+                }
+                else
+                {
+                    index = Task.WaitAny(tasks);
+                }
             }
             catch { /* DO NOTHING */ }
 
-            DataObject task = _tasks[index];
-            UpdateTaskObjectValues(in task);
-            _tasks.RemoveAt(index);
-
-            if (!_scope.TrySetValue(_task, task))
+            if (index >= 0)
             {
-                throw new InvalidOperationException($"[WAIT] Error setting task object variable {_task}");
+                task = _tasks[index];
+                UpdateTaskObjectValues(in task);
+                _tasks.RemoveAt(index);
+            }
+
+            if (!_scope.TrySetValue(_result, task))
+            {
+                throw new InvalidOperationException($"[WAIT] Error setting task object variable {_result}");
             }
         }
         private void UpdateTaskObjectValues(in DataObject task)

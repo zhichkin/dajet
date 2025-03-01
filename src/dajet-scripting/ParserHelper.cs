@@ -182,7 +182,8 @@ namespace DaJet.Scripting
             { "TASK", TokenType.TASK },
             { "WORK", TokenType.WORK },
             { "SYNC", TokenType.SYNC },
-            { "WAIT", TokenType.WAIT }
+            { "WAIT", TokenType.WAIT },
+            { "TIMEOUT", TokenType.TIMEOUT },
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {
