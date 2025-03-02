@@ -4,7 +4,6 @@
 
 ### Команда EXECUTE
 - [Асинхронный вызов скриптов](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/execute/async/README.md)
-- [Реализаця паттерна "Стратегия"](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/execute/strategy/README.md)
 - [Синхронизация потока сообщений](https://github.com/zhichkin/dajet/tree/main/doc/dajet-script/execute/sync/README.md)
 
 Вызов одного скрипта DaJet Script из другого выполняется при помощи команды **EXECUTE**. Синтаксис этой команды выглядит следующим образом:
