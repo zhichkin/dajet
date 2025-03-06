@@ -1,77 +1,94 @@
 ﻿using DaJet.Data;
 using DaJet.Metadata;
-using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Metadata.Services;
 using DaJet.Scripting.Model;
+using System.Text;
 
 namespace DaJet.Runtime
 {
     public sealed class DbViewProcessor : UserDefinedProcessor
     {
         private string _command;
+        private string _outputFile;
+        private IDbViewGenerator _generator;
         private IDbConnectionFactory _factory;
         private OneDbMetadataProvider _provider;
         public DbViewProcessor(in ScriptScope scope) : base(scope) { }
         public override void Process()
         {
-            _command = GetCommandName();
-
             Initialize();
 
-            if (_command == "SELECT SCHEMAS")
-            {
-                foreach (string schema in SelectDatabaseSchemas())
-                {
-                    SetReturnValue(schema);
+            _command = GetCommandName();
+            _outputFile = GetOutputFileFullPath();
+            string metadataName = GetMetadataObjectName();
+            _generator.Options.Schema = GetDatabaseSchemaName();
 
-                    _next?.Process();
-                }
-            }
-            else if (_command == "CREATE SCHEMA")
-            {
-                CreateDatabaseSchema();
-                SetReturnValue(true);
-            }
-            else if (_command == "DROP SCHEMA")
-            {
-                DeleteDatabaseSchema();
-                SetReturnValue(true);
-            }
-            else if (_command == "SELECT VIEWS")
-            {
+            MetadataObject @object = _provider.GetMetadataObject(metadataName);
 
-            }
-            else if (_command == "SCRIPT VIEWS")
+            if (@object is not ApplicationObject metadata)
             {
-
+                SetReturnValue($"[UNSUPPORTED] {metadataName}");
             }
             else if (_command == "SCRIPT VIEW")
             {
-
-            }
-            else if (_command == "CREATE VIEWS")
-            {
-
+                ScriptView(in _generator, in metadata, in metadataName);
             }
             else if (_command == "CREATE VIEW")
             {
-                // single object
+                CreateView(in _generator, in metadata, in metadataName);
             }
-            else if (_command == "DROP VIEWS")
+            else if (_command == "DELETE VIEW")
             {
-
-            }
-            else if (_command == "DROP VIEW")
-            {
-                // single object
+                DeleteView(in _generator, in metadata, in metadataName);
             }
             else
             {
-                
+                SetReturnValue($"UNKNOWN OR UNSUPPORTED COMMAND: {_command}");
             }
 
-            SetReturnValue(null);
+            _next?.Process();
+        }
+        private void Initialize()
+        {
+            if (_provider is not null) { return; }
+
+            Uri uri = _scope.GetDatabaseUri();
+
+            _factory = DbConnectionFactory.GetFactory(in uri);
+
+            OneDbMetadataProviderOptions options = new()
+            {
+                UseExtensions = false,
+                ResolveReferences = false,
+                ConnectionString = DbConnectionFactory.GetConnectionString(in uri)
+            };
+
+            if (uri.Scheme == "mssql")
+            {
+                options.DatabaseProvider = DatabaseProvider.SqlServer;
+            }
+            else if (uri.Scheme == "pgsql")
+            {
+                options.DatabaseProvider = DatabaseProvider.PostgreSql;
+            }
+            else
+            {
+                throw new NotSupportedException($"[{nameof(DbViewProcessor)}] database {uri.Scheme} is not supported");
+            }
+
+            if (!OneDbMetadataProvider.TryCreateMetadataProvider(in options, out _provider, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            DbViewGeneratorOptions settings = new()
+            {
+                DatabaseProvider = _provider.DatabaseProvider,
+                ConnectionString = _provider.ConnectionString
+            };
+
+            _generator = DaJet.Metadata.Services.DbViewGenerator.Create(settings);
         }
         private string GetCommandName()
         {
@@ -101,81 +118,39 @@ namespace DaJet.Runtime
 
             throw new InvalidOperationException($"[{nameof(DbViewProcessor)}] option \"SchemaName\" is not defined");
         }
-        private void Initialize()
+        private string GetMetadataObjectName()
         {
-            if (_provider is not null) { return; }
-
-            Uri uri = _scope.GetDatabaseUri(); //_scope.GetUri(source);
-
-            _factory = DbConnectionFactory.GetFactory(in uri);
-
-            OneDbMetadataProviderOptions options = new()
+            foreach (ColumnExpression option in _statement.Options)
             {
-                UseExtensions = false,
-                ResolveReferences = true,
-                ConnectionString = DbConnectionFactory.GetConnectionString(in uri)
-            };
-
-            if (uri.Scheme == "mssql")
-            {
-                options.DatabaseProvider = DatabaseProvider.SqlServer;
-            }
-            else if (uri.Scheme == "pgsql")
-            {
-                options.DatabaseProvider = DatabaseProvider.PostgreSql;
-            }
-            else
-            {
-                throw new NotSupportedException($"[{nameof(MetadataStreamer)}] database {uri.Scheme} is not supported");
+                if (option.Alias == "ObjectName")
+                {
+                    if (StreamFactory.TryEvaluate(in _scope, option.Expression, out object value)
+                        && value is string objectName
+                        && !string.IsNullOrWhiteSpace(objectName))
+                    {
+                        return objectName;
+                    }
+                }
             }
 
-            if (!OneDbMetadataProvider.TryCreateMetadataProvider(in options, out _provider, out string error))
-            {
-                FileLogger.Default.Write(error);
-            }
+            throw new InvalidOperationException($"[{nameof(DbViewProcessor)}] option \"ObjectName\" is not defined");
         }
-        private IEnumerable<string> SelectDatabaseSchemas()
+        private string GetOutputFileFullPath()
         {
-            DbViewGeneratorOptions options = new()
+            foreach (ColumnExpression option in _statement.Options)
             {
-                DatabaseProvider = _provider.DatabaseProvider,
-                ConnectionString = _provider.ConnectionString
-            };
-
-            IDbViewGenerator generator = DaJet.Metadata.Services.DbViewGenerator.Create(options);
-
-            foreach (string schema in generator.SelectSchemas())
-            {
-                yield return schema;
+                if (option.Alias == "OutputFile")
+                {
+                    if (StreamFactory.TryEvaluate(in _scope, option.Expression, out object value)
+                        && value is string outputFile
+                        && !string.IsNullOrWhiteSpace(outputFile))
+                    {
+                        return outputFile;
+                    }
+                }
             }
-        }
-        private void CreateDatabaseSchema()
-        {
-            string schema = GetDatabaseSchemaName();
 
-            DbViewGeneratorOptions options = new()
-            {
-                DatabaseProvider = _provider.DatabaseProvider,
-                ConnectionString = _provider.ConnectionString
-            };
-
-            IDbViewGenerator generator = DaJet.Metadata.Services.DbViewGenerator.Create(options);
-
-            generator.CreateSchema(schema);
-        }
-        private void DeleteDatabaseSchema()
-        {
-            string schema = GetDatabaseSchemaName();
-
-            DbViewGeneratorOptions options = new()
-            {
-                DatabaseProvider = _provider.DatabaseProvider,
-                ConnectionString = _provider.ConnectionString
-            };
-
-            IDbViewGenerator generator = DaJet.Metadata.Services.DbViewGenerator.Create(options);
-
-            generator.DropSchema(schema);
+            return string.Empty;
         }
         private void SetReturnValue(in object value)
         {
@@ -184,74 +159,50 @@ namespace DaJet.Runtime
                 throw new InvalidOperationException($"Error setting return variable {_statement.Return.Identifier}");
             }
         }
-        
-        //*********
 
-        private void CheckMetadataAgainstDatabaseSchema()
+        private void ScriptView(in IDbViewGenerator generator, in ApplicationObject metadata, in string metadataName)
         {
-            foreach (Guid type in MetadataTypes.ApplicationObjectTypes)
+            try
             {
-                foreach (MetadataItem item in _provider.GetMetadataItems(type))
+                using (StreamWriter writer = new(_outputFile, true, Encoding.UTF8))
                 {
-                    MetadataObject metadata = _provider.GetMetadataObject(item.Type, item.Uuid);
-
-                    if (metadata is ApplicationObject entity)
+                    if (generator.TryScriptView(in metadata, in writer, out string error))
                     {
-                        string entityName = entity.Name;
-                        PerformDatabaseSchemaCheck(in entityName, entity.TableName, entity.Properties);
-
-                        if (entity is ITablePartOwner owner)
-                        {
-                            foreach (TablePart table in owner.TableParts)
-                            {
-                                string tableName = $"{entityName}.{table.Name}";
-                                PerformDatabaseSchemaCheck(in tableName, table.TableName, table.Properties);
-                            }
-                        }
+                        SetReturnValue("OK");
+                    }
+                    else
+                    {
+                        SetReturnValue($"[ERROR] {error}");
                     }
                 }
             }
+            catch (Exception exception)
+            {
+                SetReturnValue($"[ERROR] {ExceptionHelper.GetErrorMessage(exception)}");
+            }
         }
-        private void PerformDatabaseSchemaCheck(in string entityName, in string tableName, in List<MetadataProperty> properties)
+        private void CreateView(in IDbViewGenerator generator, in ApplicationObject metadata, in string metadataName)
         {
-            SqlMetadataReader sql = new();
-            sql.UseDatabaseProvider(_provider.DatabaseProvider);
-            sql.UseConnectionString(_provider.ConnectionString);
-            
-            MetadataCompareAndMergeService comparator = new();
-
-            List<DaJet.Metadata.Services.SqlFieldInfo> fields = sql.GetSqlFieldsOrderedByName(tableName);
-
-            List<string> source = comparator.PrepareComparison(fields); // эталон (как должно быть)
-            List<string> target = comparator.PrepareComparison(properties); // испытуемый на соответствие эталону
-
-            comparator.Compare(target, source, out List<string> delete_list, out List<string> insert_list);
-
-            if (delete_list.Count == 0 && insert_list.Count == 0)
+            if (generator.TryCreateView(in metadata, out string error))
             {
-                return; // success - проверка прошла успешно
+                SetReturnValue("OK");
             }
-
-            FileLogger.Default.Write($"[{tableName}] {entityName}");
-
-            if (delete_list.Count > 0)
+            else
             {
-                FileLogger.Default.Write($"* delete (лишние поля)");
-
-                foreach (string field in delete_list)
-                {
-                    FileLogger.Default.Write($"  - {field}");
-                }
+                SetReturnValue($"[ERROR] {error}");
             }
-
-            if (insert_list.Count > 0)
+        }
+        private void DeleteView(in IDbViewGenerator generator, in ApplicationObject metadata, in string metadataName)
+        {
+            try
             {
-                FileLogger.Default.Write($"* insert (отсутствующие поля)");
+                generator.DropView(in metadata);
 
-                foreach (string field in insert_list)
-                {
-                    FileLogger.Default.Write($"  - {field}");
-                }
+                SetReturnValue("OK");
+            }
+            catch (Exception error)
+            {
+                SetReturnValue($"[ERROR] {ExceptionHelper.GetErrorMessage(error)}");
             }
         }
     }

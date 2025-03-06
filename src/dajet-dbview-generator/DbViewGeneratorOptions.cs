@@ -17,10 +17,9 @@ namespace DaJet.Metadata.Services
             "Перечисление",
             "РегистрСведений",
             "РегистрНакопления",
-            "ПланВидовХарактеристик"
-            //TODO: not supported "Constant" (Константа)
-            //TODO: not supported "Account" (ПланСчетов)
-            //TODO: not supported "AccountingRegister" (РегистрБухгалтерии)
+            "ПланВидовХарактеристик",
+            "ПланСчетов",
+            "РегистрБухгалтерии"
         };
         public static void Configure(in DbViewGeneratorOptions options, Dictionary<string, string> values)
         {

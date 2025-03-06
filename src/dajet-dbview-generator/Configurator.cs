@@ -26,10 +26,6 @@ namespace DaJet.DbViewGenerator
             {
                 return $"Перечисление";
             }
-            else if (metadata is Constant)
-            {
-                return $"Константа";
-            }
             else if (metadata is Characteristic)
             {
                 return $"ПланВидовХарактеристик";
@@ -37,6 +33,14 @@ namespace DaJet.DbViewGenerator
             else if (metadata is Publication)
             {
                 return $"ПланОбмена";
+            }
+            else if (metadata is Account)
+            {
+                return $"ПланСчетов";
+            }
+            else if (metadata is AccountingRegister)
+            {
+                return $"РегистрБухгалтерии";
             }
 
             return "Unsupported";
