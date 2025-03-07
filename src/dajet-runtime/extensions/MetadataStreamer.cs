@@ -3,15 +3,31 @@ using DaJet.Metadata;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Metadata.Services;
+using DaJet.Scripting.Model;
+using TokenType = DaJet.Scripting.TokenType;
 
 namespace DaJet.Runtime
 {
     public sealed class MetadataStreamer : UserDefinedProcessor
     {
-        private string _command;
+        private bool _targetIsArray = false;
+        private string _target; // output variable
+        private string _command; // input variable
         private IDbConnectionFactory _factory;
         private OneDbMetadataProvider _provider;
-        public MetadataStreamer(in ScriptScope scope) : base(scope) { }
+        public MetadataStreamer(in ScriptScope scope) : base(scope)
+        {
+            _target = _statement.Return.Identifier;
+
+            if (!_scope.TryGetDeclaration(in _target, out _, out DeclareStatement declare))
+            {
+                throw new InvalidOperationException($"Declaration of {_target} is not found");
+            }
+
+            declare.Type.Binding = CreateReturnObjectSchema();
+
+            _targetIsArray = (declare.Type.Token == TokenType.Array);
+        }
         public override void Process()
         {
             _command = GetCommandName();
@@ -22,12 +38,17 @@ namespace DaJet.Runtime
             {
                 CheckMetadataAgainstDatabaseSchema();
             }
+            else if (_targetIsArray)
+            {
+                List<DataObject> array = SelectApplicationObjects();
+                SetReturnValue(array);
+                _next?.Process();
+            }
             else
             {
                 foreach (DataObject metadata in MetadataStream())
                 {
                     SetReturnValue(metadata);
-
                     _next?.Process();
                 }
             }
@@ -56,7 +77,7 @@ namespace DaJet.Runtime
             OneDbMetadataProviderOptions options = new()
             {
                 UseExtensions = false,
-                ResolveReferences = true,
+                ResolveReferences = true, //FIXME: Из-за этой опции создаём собственного провайдера !
                 ConnectionString = DbConnectionFactory.GetConnectionString(in uri)
             };
 
@@ -78,11 +99,24 @@ namespace DaJet.Runtime
                 FileLogger.Default.Write(error);
             }
         }
+        private List<ColumnExpression> CreateReturnObjectSchema()
+        {
+            return new List<ColumnExpression>()
+            {
+                new() { Alias = "Тип", Expression = new ScalarExpression() { Token = TokenType.String, Literal = string.Empty } },
+                new() { Alias = "Имя", Expression = new ScalarExpression() { Token = TokenType.String, Literal = string.Empty } },
+                new() { Alias = "Код", Expression = new ScalarExpression() { Token = TokenType.Number, Literal = "0" } },
+                new() { Alias = "Ссылка", Expression = new ScalarExpression() { Token = TokenType.Uuid, Literal = "00000000-0000-0000-0000-000000000000" } },
+                new() { Alias = "Синоним", Expression = new ScalarExpression() { Token = TokenType.String, Literal = string.Empty } },
+                new() { Alias = "ПолноеИмя", Expression = new ScalarExpression() { Token = TokenType.String, Literal = string.Empty } },
+                new() { Alias = "Таблица", Expression = new ScalarExpression() { Token = TokenType.String, Literal = string.Empty } }
+            };
+        }
         private void SetReturnValue(in object value)
         {
-            if (!_scope.TrySetValue(_statement.Return.Identifier, value))
+            if (!_scope.TrySetValue(in _target, value))
             {
-                throw new InvalidOperationException($"Error setting return variable {_statement.Return.Identifier}");
+                throw new InvalidOperationException($"Error setting return variable {_target}");
             }
         }
         private IEnumerable<DataObject> MetadataStream()
@@ -102,6 +136,24 @@ namespace DaJet.Runtime
                     yield return @object;
                 }
             }
+        }
+        private List<DataObject> SelectApplicationObjects()
+        {
+            List<DataObject> array = new();
+
+            foreach (Guid type in MetadataTypes.ApplicationObjectTypes)
+            {
+                foreach (MetadataItem item in _provider.GetMetadataItems(type))
+                {
+                    MetadataObject metadata = _provider.GetMetadataObject(item.Type, item.Uuid);
+
+                    DataObject @object = ConvertToDataObject(in metadata);
+
+                    array.Add(@object);
+                }
+            }
+
+            return array;
         }
         private DataObject ConvertToDataObject(in InfoBase metadata)
         {

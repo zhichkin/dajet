@@ -1,5 +1,4 @@
-﻿using DaJet.Data;
-using DaJet.Metadata;
+﻿using DaJet.Metadata;
 using DaJet.Metadata.Model;
 using DaJet.Metadata.Services;
 using DaJet.Scripting.Model;
@@ -12,8 +11,7 @@ namespace DaJet.Runtime
         private string _command;
         private string _outputFile;
         private IDbViewGenerator _generator;
-        private IDbConnectionFactory _factory;
-        private OneDbMetadataProvider _provider;
+        private IMetadataProvider _provider;
         public DbViewProcessor(in ScriptScope scope) : base(scope) { }
         public override void Process()
         {
@@ -30,21 +28,21 @@ namespace DaJet.Runtime
             {
                 SetReturnValue($"[UNSUPPORTED] {metadataName}");
             }
-            else if (_command == "SCRIPT VIEW")
+            else if (_command == "SCRIPT")
             {
                 ScriptView(in _generator, in metadata, in metadataName);
             }
-            else if (_command == "CREATE VIEW")
+            else if (_command == "CREATE")
             {
                 CreateView(in _generator, in metadata, in metadataName);
             }
-            else if (_command == "DELETE VIEW")
+            else if (_command == "DELETE")
             {
                 DeleteView(in _generator, in metadata, in metadataName);
             }
             else
             {
-                SetReturnValue($"UNKNOWN OR UNSUPPORTED COMMAND: {_command}");
+                throw new InvalidOperationException($"[{nameof(DbViewProcessor)}] unknown command name \"{_command}\"");
             }
 
             _next?.Process();
@@ -53,31 +51,7 @@ namespace DaJet.Runtime
         {
             if (_provider is not null) { return; }
 
-            Uri uri = _scope.GetDatabaseUri();
-
-            _factory = DbConnectionFactory.GetFactory(in uri);
-
-            OneDbMetadataProviderOptions options = new()
-            {
-                UseExtensions = false,
-                ResolveReferences = false,
-                ConnectionString = DbConnectionFactory.GetConnectionString(in uri)
-            };
-
-            if (uri.Scheme == "mssql")
-            {
-                options.DatabaseProvider = DatabaseProvider.SqlServer;
-            }
-            else if (uri.Scheme == "pgsql")
-            {
-                options.DatabaseProvider = DatabaseProvider.PostgreSql;
-            }
-            else
-            {
-                throw new NotSupportedException($"[{nameof(DbViewProcessor)}] database {uri.Scheme} is not supported");
-            }
-
-            if (!OneDbMetadataProvider.TryCreateMetadataProvider(in options, out _provider, out string error))
+            if (!_scope.TryGetMetadataProvider(out _provider, out string error))
             {
                 throw new InvalidOperationException(error);
             }
@@ -96,7 +70,7 @@ namespace DaJet.Runtime
 
             if (value is not string command)
             {
-                throw new ArgumentException($"[{nameof(MetadataStreamer)}] command name is missing");
+                throw new ArgumentException($"[{nameof(DbViewProcessor)}] command name is missing");
             }
 
             return command;

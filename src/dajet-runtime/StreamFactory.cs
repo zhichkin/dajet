@@ -1362,7 +1362,10 @@ namespace DaJet.Runtime
                 throw new InvalidOperationException($"Declaration of {item} is not found");
             }
 
-            declare.Type.Binding = schema.Type.Binding;
+            if (schema.Type.Binding is List<ColumnExpression> binding)
+            {
+                declare.Type.Binding = binding;
+            }
         }
         internal static List<string> GetClosureVariables(in ScriptScope scope)
         {
