@@ -129,7 +129,7 @@ DECLARE @count number  -- Количество объектов метаданн
 
 PRINT '[DbViewProcessor] {' + @action + '}'
 
-USE 'mssql://zhichkin/unf'
+USE 'mssql://server/unf'
    
    PROCESS @stream WITH DaJet.Runtime.MetadataStreamer INTO @config
 
