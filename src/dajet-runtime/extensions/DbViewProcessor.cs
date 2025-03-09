@@ -26,7 +26,8 @@ namespace DaJet.Runtime
 
             if (@object is not ApplicationObject metadata)
             {
-                SetReturnValue($"[UNSUPPORTED] {metadataName}");
+                //SetReturnValue($"[UNSUPPORTED] {metadataName}");
+                FileLogger.Default.Write($"[UNSUPPORTED] {metadataName}");
             }
             else if (_command == "SCRIPT")
             {
@@ -128,9 +129,12 @@ namespace DaJet.Runtime
         }
         private void SetReturnValue(in object value)
         {
-            if (!_scope.TrySetValue(_statement.Return.Identifier, value))
+            if (_statement.Return is not null)
             {
-                throw new InvalidOperationException($"Error setting return variable {_statement.Return.Identifier}");
+                if (!_scope.TrySetValue(_statement.Return.Identifier, value))
+                {
+                    throw new InvalidOperationException($"Error setting return variable {_statement.Return.Identifier}");
+                }
             }
         }
 
@@ -140,43 +144,37 @@ namespace DaJet.Runtime
             {
                 using (StreamWriter writer = new(_outputFile, true, Encoding.UTF8))
                 {
-                    if (generator.TryScriptView(in metadata, in writer, out string error))
+                    if (!generator.TryScriptView(in metadata, in writer, out string error))
                     {
-                        SetReturnValue("OK");
-                    }
-                    else
-                    {
-                        SetReturnValue($"[ERROR] {error}");
+                        //SetReturnValue($"[ERROR] {error}");
+                        FileLogger.Default.Write($"[ERROR] {error}");
                     }
                 }
             }
             catch (Exception exception)
             {
-                SetReturnValue($"[ERROR] {ExceptionHelper.GetErrorMessage(exception)}");
+                //SetReturnValue($"[ERROR] {ExceptionHelper.GetErrorMessage(exception)}");
+                FileLogger.Default.Write($"[ERROR] {ExceptionHelper.GetErrorMessage(exception)}");
             }
         }
         private void CreateView(in IDbViewGenerator generator, in ApplicationObject metadata, in string metadataName)
         {
-            if (generator.TryCreateView(in metadata, out string error))
+            if (!generator.TryCreateView(in metadata, out string error))
             {
-                SetReturnValue("OK");
-            }
-            else
-            {
-                SetReturnValue($"[ERROR] {error}");
+                //SetReturnValue($"[ERROR] {error}");
+                FileLogger.Default.Write($"[ERROR] {error}");
             }
         }
         private void DeleteView(in IDbViewGenerator generator, in ApplicationObject metadata, in string metadataName)
         {
             try
             {
-                generator.DropView(in metadata);
-
-                SetReturnValue("OK");
+                generator.DropView(in metadata); // SetReturnValue("OK");
             }
             catch (Exception error)
             {
-                SetReturnValue($"[ERROR] {ExceptionHelper.GetErrorMessage(error)}");
+                //SetReturnValue($"[ERROR] {ExceptionHelper.GetErrorMessage(error)}");
+                FileLogger.Default.Write($"[ERROR] {ExceptionHelper.GetErrorMessage(error)}");
             }
         }
     }
