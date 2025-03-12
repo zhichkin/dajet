@@ -116,9 +116,9 @@ namespace DaJet.Sqlite
             }
         }
 
-        public EntityDefinition Convert(in EntityRecord record)
+        public TableDefinition Convert(in EntityRecord record)
         {
-            EntityDefinition definition = new()
+            TableDefinition definition = new()
             {
                 Uuid = record.Identity,
                 Name = record.Name,
