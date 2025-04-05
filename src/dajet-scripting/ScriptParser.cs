@@ -400,6 +400,7 @@ namespace DaJet.Scripting
             else if (Match(TokenType.EXECUTE)) { return execute_statement(); }
             else if (Match(TokenType.PROCESS)) { return process_statement(); }
             else if (Match(TokenType.WAIT)) { return wait_statement(); }
+            else if (Match(TokenType.MODIFY)) { return modify_statement(); }
             else if (Match(TokenType.EndOfStatement)) { return null; }
 
             Ignore();
@@ -620,7 +621,7 @@ namespace DaJet.Scripting
 
             if (Match(TokenType.WITH)) // optional
             {
-                parse_columns(statement.Parameters);
+                parse_column_expressions(statement.Parameters);
             }
 
             Skip(TokenType.Comment);
@@ -1367,7 +1368,31 @@ namespace DaJet.Scripting
                 Expression = node, Alias = alias()
             };
         }
-        private void parse_columns(in List<ColumnExpression> columns)
+        private ColumnReference column_identifier()
+        {
+            if (!Match(TokenType.Identifier))
+            {
+                throw new FormatException("Column identifier expected.");
+            }
+
+            return new ColumnReference() { Identifier = Previous().Lexeme };
+        }
+        private void parse_column_references(in List<ColumnReference> columns)
+        {
+            columns.Add(column_identifier());
+
+            Skip(TokenType.Comment);
+
+            while (Match(TokenType.Comma))
+            {
+                Skip(TokenType.Comment);
+
+                columns.Add(column_identifier());
+
+                Skip(TokenType.Comment);
+            }
+        }
+        private void parse_column_expressions(in List<ColumnExpression> columns)
         {
             columns.Add(column());
 
@@ -2327,15 +2352,6 @@ namespace DaJet.Scripting
             
             return new TableReference() { Identifier = Previous().Lexeme };
         }
-        private ColumnReference column_identifier()
-        {
-            if (!Match(TokenType.Identifier))
-            {
-                throw new FormatException("Column identifier expected.");
-            }
-
-            return new ColumnReference() { Identifier = Previous().Lexeme };
-        }
         #endregion
 
         #region "UPDATE STATEMENT"
@@ -2904,7 +2920,7 @@ namespace DaJet.Scripting
 
             if (Match(TokenType.WITH))
             {
-                parse_columns(produce.Options);
+                parse_column_expressions(produce.Options);
             }
 
             if (!Match(TokenType.SELECT))
@@ -2912,7 +2928,7 @@ namespace DaJet.Scripting
                 throw new FormatException($"PRODUCE: SELECT keyword expected");
             }
 
-            parse_columns(produce.Columns);
+            parse_column_expressions(produce.Columns);
 
             return produce;
         }
@@ -2946,12 +2962,12 @@ namespace DaJet.Scripting
 
             if (Match(TokenType.WITH)) // optional
             {
-                parse_columns(request.Headers);
+                parse_column_expressions(request.Headers);
             }
 
             if (Match(TokenType.SELECT)) // optional
             {
-                parse_columns(request.Options);
+                parse_column_expressions(request.Options);
             }
 
             if (!Match(TokenType.INTO))
@@ -3011,8 +3027,62 @@ namespace DaJet.Scripting
 
             if (Match(TokenType.SELECT)) // optional
             {
-                parse_columns(statement.Options);
+                parse_column_expressions(statement.Options);
             }
+
+            return statement;
+        }
+        #endregion
+
+        #region "MODIFY STATEMENT"
+        private SyntaxNode modify_statement()
+        {
+            ModifyStatement statement = new();
+
+            if (!Match(TokenType.Variable) || variable() is not VariableReference target)
+            {
+                throw new FormatException("[MODIFY] target object variable expected");
+            }
+
+            statement.Target = target;
+
+            Skip(TokenType.Comment);
+
+            if (Match(TokenType.FROM)) // optional
+            {
+                if (!Match(TokenType.Variable) || variable() is not VariableReference source)
+                {
+                    throw new FormatException("[MODIFY] source object variable expected");
+                }
+
+                statement.Source = source;
+            }
+
+            Skip(TokenType.Comment);
+
+            if (Match(TokenType.DELETE)) // optional
+            {
+                parse_column_references(statement.Delete);
+
+                if (statement.Delete.Count == 0)
+                {
+                    throw new FormatException("[MODIFY][DELETE] object property identifier expected");
+                }
+            }
+
+            Skip(TokenType.Comment);
+
+            if (Match(TokenType.SELECT)) // optional
+            {
+                parse_column_expressions(statement.Select);
+
+                if (statement.Select.Count == 0)
+                {
+                    throw new FormatException("[MODIFY][SELECT] object property expression expected");
+                }
+            }
+
+            Skip(TokenType.Comment);
 
             return statement;
         }

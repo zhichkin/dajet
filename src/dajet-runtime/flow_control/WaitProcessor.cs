@@ -18,7 +18,7 @@ namespace DaJet.Runtime
 
             if (_scope.Owner is not WaitStatement statement)
             {
-                throw new ArgumentException(nameof(ForStatement));
+                throw new ArgumentException(nameof(WaitStatement));
             }
 
             _statement = statement;

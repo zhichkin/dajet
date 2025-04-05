@@ -7,7 +7,7 @@ namespace DaJet.Metadata.Test
 {
     [TestClass] public class MetadataDump
     {
-        private static readonly string MS_CONNECTION = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
+        private static readonly string MS_CONNECTION = "Data Source=ZHICHKIN;Initial Catalog=unf;Integrated Security=True;Encrypt=False;";
         private static readonly string PG_CONNECTION = "Host=127.0.0.1;Port=5432;Database=dajet-exchange;Username=postgres;Password=postgres;";
         static MetadataDump()
         {
@@ -54,12 +54,12 @@ namespace DaJet.Metadata.Test
         {
             IMetadataProvider metadata = new OneDbMetadataProvider(MS_CONNECTION);
 
-            //string metadataName = "Справочник.Тестовый";
-            //string dumpFilePath = "C:\\temp\\1c-dump\\Справочник.Тестовый.dump.txt";
+            string metadataName = "Справочник.Номенклатура";
+            string dumpFilePath = "C:\\temp\\1c-dump\\Справочник.Номенклатура.dump.txt";
             //string metadataName = "ПланСчетов.ПланСчетов1";
             //string dumpFilePath = "C:\\temp\\1c-dump\\ПланСчетов.ПланСчетов1.dump.txt";
-            string metadataName = "РегистрБухгалтерии.РегистрБухгалтерии1";
-            string dumpFilePath = "C:\\temp\\1c-dump\\РегистрБухгалтерии.РегистрБухгалтерии1.dump.txt";
+            //string metadataName = "РегистрБухгалтерии.РегистрБухгалтерии1";
+            //string dumpFilePath = "C:\\temp\\1c-dump\\РегистрБухгалтерии.РегистрБухгалтерии1.dump.txt";
 
             MetadataObject entity = metadata.GetMetadataObject(metadataName);
 

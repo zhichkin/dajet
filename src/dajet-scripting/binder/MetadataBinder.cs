@@ -110,6 +110,7 @@ namespace DaJet.Scripting
             else if (node is ProcessStatement process) { Bind(in process); }
             else if (node is ExecuteStatement execute) { Bind(in execute); } // nothing to bind
             else if (node is WaitStatement wait) { Bind(in wait); }
+            else if (node is ModifyStatement modify) { Bind(in modify); } // nothing to bind
         }
         private void RegisterBindingError(TokenType token, string identifier)
         {
@@ -1345,6 +1346,7 @@ namespace DaJet.Scripting
                 RegisterBindingError(node.Token, node.Tasks.Identifier); return;
             }
         }
+        private void Bind(in ModifyStatement node) { /* nothing to bind */ }
         #endregion
     }
 }
