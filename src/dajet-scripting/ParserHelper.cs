@@ -184,7 +184,8 @@ namespace DaJet.Scripting
             { "SYNC", TokenType.SYNC },
             { "WAIT", TokenType.WAIT },
             { "TIMEOUT", TokenType.TIMEOUT },
-            { "MODIFY", TokenType.MODIFY }
+            { "MODIFY", TokenType.MODIFY },
+            { "DEFINE", TokenType.DEFINE }
         };
         private static Dictionary<string, TokenType> _keywords_ru = new()
         {
@@ -437,6 +438,23 @@ namespace DaJet.Scripting
                 };
             }
 
+            return CreateDefaultScalar(type);
+        }
+        public static ScalarExpression CreateDefaultScalar(in TypeIdentifier identifier)
+        {
+            if (!IsDataType(identifier.Identifier, out Type type))
+            {
+                return new ScalarExpression()
+                {
+                    Token = TokenType.Uuid,
+                    Literal = "00000000-0000-0000-0000-000000000000"
+                };
+            }
+
+            return CreateDefaultScalar(type);
+        }
+        public static ScalarExpression CreateDefaultScalar(Type type)
+        {
             string literal = string.Empty;
             TokenType token = TokenType.String;
 
@@ -479,6 +497,14 @@ namespace DaJet.Scripting
             {
                 literal = "{0:00000000-0000-0000-0000-000000000000}";
                 token = TokenType.Entity;
+            }
+            else if (type == typeof(object))
+            {
+                token = TokenType.Object;
+            }
+            else if (type == typeof(Array))
+            {
+                token = TokenType.Array;
             }
 
             return new ScalarExpression() { Token = token, Literal = literal };

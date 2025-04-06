@@ -129,13 +129,21 @@ namespace DaJet.Runtime
                 if (statement is DeclareStatement declare)
                 {
                     scope.Variables.Add(declare.Name, null);
-                    
+
                     scope.Declarations.Add(declare);
+                }
+                else if (statement is TypeDefinition definition)
+                {
+                    //TODO:
+                }
+                else if (statement is ImportStatement import)
+                {
+                    //TODO:
                 }
                 else
                 {
                     ScriptScope child = new(statement, scope);
-                    
+
                     scope.Children.Add(child);
                 }
             }

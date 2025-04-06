@@ -167,6 +167,17 @@ namespace DaJet.Scripting
                     throw new FormatException("Variable initializer expression expected.");
                 }
             }
+            else if (Match(TokenType.OF))
+            {
+                if (!Match(TokenType.Identifier))
+                {
+                    throw new FormatException("[DECLARE][OF] Type identifier expected.");
+                }
+                else
+                {
+                    declare.TypeOf = new TypeReference() { Identifier = Previous().Lexeme };
+                }
+            }
 
             if (Match(TokenType.EndOfStatement)) { /* IGNORE */ }
 
@@ -401,6 +412,7 @@ namespace DaJet.Scripting
             else if (Match(TokenType.PROCESS)) { return process_statement(); }
             else if (Match(TokenType.WAIT)) { return wait_statement(); }
             else if (Match(TokenType.MODIFY)) { return modify_statement(); }
+            else if (Match(TokenType.DEFINE)) { return define_type(); }
             else if (Match(TokenType.EndOfStatement)) { return null; }
 
             Ignore();
@@ -2545,7 +2557,7 @@ namespace DaJet.Scripting
         }
         #endregion
 
-        #region "CREATE TYPE STATEMENT"
+        #region "CREATE AND DEFINE TYPE STATEMENT"
         private SyntaxNode create_type()
         {
             CreateTypeStatement statement = new();
@@ -2587,6 +2599,48 @@ namespace DaJet.Scripting
             column.Type = type();
 
             return column;
+        }
+        private SyntaxNode define_type()
+        {
+            TypeDefinition statement = new();
+
+            if (!Match(TokenType.Identifier))
+            {
+                throw new FormatException("[DEFINE] Type identifier expected");
+            }
+
+            statement.Identifier = Previous().Lexeme;
+
+            if (!Match(TokenType.OpenRoundBracket))
+            {
+                throw new FormatException("[DEFINE] Open round bracket expected.");
+            }
+
+            statement.Properties.Add(property_definition());
+
+            while (Match(TokenType.Comma))
+            {
+                statement.Properties.Add(property_definition());
+            }
+
+            if (!Match(TokenType.CloseRoundBracket))
+            {
+                throw new FormatException("[DEFINE] Close round bracket expected.");
+            }
+
+            return statement;
+        }
+        private PropertyDefinition property_definition()
+        {
+            if (!Match(TokenType.Identifier)) { throw new FormatException("Property identifier expected"); }
+
+            PropertyDefinition property = new() { Name = Previous().Lexeme };
+
+            if (!Match(TokenType.Identifier)) { throw new FormatException("Data type identifier expected"); }
+
+            property.Type = type();
+
+            return property;
         }
         #endregion
 
@@ -2860,20 +2914,16 @@ namespace DaJet.Scripting
 
             Skip(TokenType.Comment);
 
-            if (!Match(TokenType.INTO))
+            if (Match(TokenType.INTO))
             {
-                throw new FormatException("INTO keyword expected.");
+                statement.Target = table_variables();
+
+                Skip(TokenType.Comment);
+
+                if (Match(TokenType.EndOfStatement)) { /* IGNORE */ }
+
+                Skip(TokenType.Comment);
             }
-
-            Skip(TokenType.Comment);
-
-            statement.Target = table_variables();
-            
-            Skip(TokenType.Comment);
-
-            if (Match(TokenType.EndOfStatement)) { /* IGNORE */ }
-
-            Skip(TokenType.Comment);
 
             return statement;
         }
