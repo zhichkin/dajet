@@ -371,11 +371,27 @@ namespace DaJet.Runtime
             return array.Count;
         }
 
+        private static DataObject CreateObject(in TypeDefinition defintition)
+        {
+            DataObject dataObject = new(defintition.Properties.Count);
+
+            foreach (PropertyDefinition property in defintition.Properties)
+            {
+                dataObject.SetValue(property.Name, ParserHelper.GetDefaultValue(property.Type));
+            }
+
+            return dataObject;
+        }
         [Function("OBJECT")] public static DataObject CreateObject(this IScriptRuntime runtime, in string metadataName)
         {
             if (runtime is not ScriptScope scope)
             {
                 throw new ArgumentException("Parameter must be of type ScriptScope", nameof(runtime));
+            }
+
+            if (scope.TryGetDefinition(metadataName, out TypeDefinition definition))
+            {
+                return CreateObject(in definition);
             }
 
             if (!scope.TryGetMetadataProvider(out IMetadataProvider provider, out string error))

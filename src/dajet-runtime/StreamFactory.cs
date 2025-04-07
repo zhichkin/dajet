@@ -7,21 +7,13 @@ using System.Data;
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace DaJet.Runtime
 {
     public static class StreamFactory
     {
-        #region "TYPE REGISTRY"
-        private static readonly Dictionary<string, TypeDefinition> _registry = new();
-        public static Dictionary<string, TypeDefinition> TypeRegistry { get { return _registry; } }
-        #endregion
-
         #region "UDF - USER DEFINED FUNCTIONS"
-
         private static AssemblyManager AssemblyManager { get; set; }
-
         static StreamFactory()
         {
             AssemblyManager = new();
@@ -304,7 +296,7 @@ namespace DaJet.Runtime
 
             return null; // not found
         }
-
+        
         #endregion
 
         public static bool TryCreateStream(in string script, in Dictionary<string, object> parameters, out IProcessor stream, out string error)
@@ -756,113 +748,7 @@ namespace DaJet.Runtime
         #region "DECLARE INITIALIZE VARIABLES"
         internal static void InitializeVariables(in ScriptScope scope)
         {
-            if (scope.Owner is ScriptModel script)
-            {
-                ImportTypeDefinitions(in script);
-
-                foreach (DeclareStatement declare in scope.Declarations)
-                {
-                    InitializeTypeDefinitions(in declare);
-                }
-            }
-
             InitializeVariables(in scope, null);
-        }
-        internal static void ImportTypeDefinitions(in ScriptModel script)
-        {
-            foreach (SyntaxNode node in script.Statements)
-            {
-                if (node is TypeDefinition definition)
-                {
-                    _ = TypeRegistry.TryAdd(definition.Identifier, definition);
-                }
-                else if (node is ImportStatement import)
-                {
-                    string scriptPath = GetScriptFilePath(in import);
-                    string sourceCode = GetScriptSourceCode(in scriptPath);
-
-                    if (!new ScriptParser().TryParse(in sourceCode, out ScriptModel model, out string error))
-                    {
-                        throw new InvalidOperationException(error);
-                    }
-
-                    ImportTypeDefinitions(in model);
-                }
-            }
-        }
-        private static string GetScriptFilePath(in ImportStatement import)
-        {
-            Uri uri = new(import.Source);
-
-            string localPath = uri.LocalPath[2..];
-
-            string scriptPath = Path.Combine(AppContext.BaseDirectory, localPath);
-
-            if (Environment.OSVersion.Platform == PlatformID.Unix)
-            {
-                scriptPath = scriptPath.Replace('\\', '/');
-            }
-
-            return scriptPath;
-        }
-        private static string GetScriptSourceCode(in string scriptPath)
-        {
-            if (!File.Exists(scriptPath))
-            {
-                throw new FileNotFoundException(scriptPath);
-            }
-
-            string script;
-
-            using (StreamReader reader = new(scriptPath, Encoding.UTF8))
-            {
-                script = reader.ReadToEnd();
-            }
-
-            return script;
-        }
-        internal static void InitializeTypeDefinitions(in DeclareStatement declare)
-        {
-            if (declare.TypeOf is null || declare.Type.Binding is List<ColumnExpression>)
-            {
-                return;
-            }
-
-            string _array = ParserHelper.GetDataTypeLiteral(typeof(Array));
-            string _object = ParserHelper.GetDataTypeLiteral(typeof(object));
-
-            if (!(declare.Type.Identifier.SequenceEqual(_object)
-                || declare.Type.Identifier.SequenceEqual(_array)))
-            {
-                return;
-            }
-
-            if (!TypeRegistry.TryGetValue(declare.TypeOf.Identifier, out TypeDefinition definition))
-            {
-                throw new InvalidOperationException($"[{declare.TypeOf.Identifier}] Type definition is not found");
-            }
-
-            List<ColumnExpression> schema = new();
-
-            foreach (PropertyDefinition property in definition.Properties)
-            {
-                schema.Add(new ColumnExpression()
-                {
-                    Alias = property.Name,
-                    Expression = ParserHelper.CreateDefaultScalar(property.Type)
-                });
-            }
-
-            declare.Type.Binding = schema;
-
-            if (declare.Type.Identifier.SequenceEqual(_object))
-            {
-                declare.Type.Token = TokenType.Object;
-            }
-            else if (declare.Type.Identifier.SequenceEqual(_array))
-            {
-                declare.Type.Token = TokenType.Array;
-            }
         }
         internal static void InitializeVariables(in ScriptScope scope, in IMetadataProvider database)
         {

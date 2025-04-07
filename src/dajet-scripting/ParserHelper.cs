@@ -500,10 +500,12 @@ namespace DaJet.Scripting
             }
             else if (type == typeof(object))
             {
+                literal = "NULL";
                 token = TokenType.Object;
             }
             else if (type == typeof(Array))
             {
+                literal = "NULL";
                 token = TokenType.Array;
             }
 
@@ -562,6 +564,24 @@ namespace DaJet.Scripting
             }
 
             return value;
+        }
+
+        public static object GetDefaultValue(in TypeIdentifier identifier)
+        {
+            if (IsDataType(identifier.Identifier, out Type type))
+            {
+                if (type == typeof(bool)) { return false; }
+                else if (type == typeof(int)) { return 0; }
+                else if (type == typeof(decimal)) { return 0.00M; }
+                else if (type == typeof(DateTime)) { return DateTime.MinValue; }
+                else if (type == typeof(string)) { return string.Empty; }
+                else if (type == typeof(byte[])) { return Array.Empty<byte>(); }
+                else if (type == typeof(Guid)) { return Guid.Empty; }
+                else if (type == typeof(Entity)) { return Entity.Undefined; }
+                else if (type == typeof(object)) { return null; }
+                else if (type == typeof(Array)) { return null; }
+            }
+            return null;
         }
 
         public static List<string> GetAccessMembers(in string expression)

@@ -3,6 +3,7 @@ using DaJet.Metadata;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using System.Collections.Concurrent;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace DaJet.Runtime
@@ -134,11 +135,11 @@ namespace DaJet.Runtime
                 }
                 else if (statement is TypeDefinition definition)
                 {
-                    //TODO:
+                    scope.Definitions.Add(definition.Identifier, definition);
                 }
                 else if (statement is ImportStatement import)
                 {
-                    //TODO:
+                    ImportTypeDefinitions(in scope, in import);
                 }
                 else
                 {
@@ -148,9 +149,15 @@ namespace DaJet.Runtime
                 }
             }
 
+            foreach (DeclareStatement declare in scope.Declarations)
+            {
+                ConfigureTypeDefinition(in declare, in scope);
+            }
+
             return scope;
         }
         public ScriptScope Create(in ScriptModel script) { return Create(in script, this); }
+        public Dictionary<string, TypeDefinition> Definitions { get; } = new(); // object and array schema definitions
         public List<DeclareStatement> Declarations { get; } = new(); // order is important for binding
         public Dictionary<string, object> Variables { get; } = new(); // scope variables and their values
         public Dictionary<SyntaxNode, SqlStatement> Transpilations { get; } = new(); // script transpilations cache
@@ -307,6 +314,24 @@ namespace DaJet.Runtime
             value = null;
             return false;
         }
+        public bool TryGetDefinition(in string identifier, out TypeDefinition definition)
+        {
+            definition = null;
+
+            ScriptScope scope = this;
+
+            while (scope is not null)
+            {
+                if (scope.Definitions.TryGetValue(identifier, out definition))
+                {
+                    return true;
+                }
+
+                scope = scope.Parent;
+            }
+
+            return false;
+        }
         public bool TryGetDeclaration(in string name, out bool local, out DeclareStatement declare)
         {
             local = true;
@@ -450,6 +475,127 @@ namespace DaJet.Runtime
             }
 
             throw new InvalidOperationException("Owner UseStatement is not found");
+        }
+
+        private static string GetScriptFilePath(in ImportStatement import)
+        {
+            Uri uri = new(import.Source);
+
+            string localPath = uri.LocalPath[2..];
+
+            string scriptPath = Path.Combine(AppContext.BaseDirectory, localPath);
+
+            if (Environment.OSVersion.Platform == PlatformID.Unix)
+            {
+                scriptPath = scriptPath.Replace('\\', '/');
+            }
+
+            return scriptPath;
+        }
+        private static string GetScriptSourceCode(in string scriptPath)
+        {
+            if (!File.Exists(scriptPath))
+            {
+                throw new FileNotFoundException(scriptPath);
+            }
+
+            string script;
+
+            using (StreamReader reader = new(scriptPath, Encoding.UTF8))
+            {
+                script = reader.ReadToEnd();
+            }
+
+            return script;
+        }
+        private static void ImportTypeDefinitions(in ScriptScope scope, in ImportStatement import)
+        {
+            string scriptPath = GetScriptFilePath(in import);
+            string sourceCode = GetScriptSourceCode(in scriptPath);
+
+            if (!new ScriptParser().TryParse(in sourceCode, out ScriptModel script, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            foreach (SyntaxNode node in script.Statements)
+            {
+                if (node is TypeDefinition definition)
+                {
+                    _ = scope.Definitions.TryAdd(definition.Identifier, definition);
+                }
+            }
+        }
+        private static void ConfigureTypeDefinition(in DeclareStatement declare, in ScriptScope scope)
+        {
+            if (declare.TypeOf is null || declare.Type.Binding is List<ColumnExpression>)
+            {
+                return;
+            }
+
+            string _array = ParserHelper.GetDataTypeLiteral(typeof(Array));
+            string _object = ParserHelper.GetDataTypeLiteral(typeof(object));
+
+            if (declare.Type.Identifier.SequenceEqual(_object))
+            {
+                declare.Type.Token = TokenType.Object;
+            }
+            else if (declare.Type.Identifier.SequenceEqual(_array))
+            {
+                declare.Type.Token = TokenType.Array;
+            }
+            else
+            {
+                return;
+            }
+
+            if (!scope.TryGetDefinition(declare.TypeOf.Identifier, out TypeDefinition definition))
+            {
+                throw new InvalidOperationException($"[{declare.TypeOf.Identifier}] Type definition is not found");
+            }
+
+            List<ColumnExpression> schema = new();
+
+            foreach (PropertyDefinition property in definition.Properties)
+            {
+                ColumnExpression column = new() { Alias = property.Name };
+
+                if (property.Type.Identifier.SequenceEqual("object"))
+                {
+                    column.Expression = new VariableReference()
+                    {
+                        Identifier = declare.Name,
+                        Binding = new TypeIdentifier()
+                        {
+                            Token = TokenType.Object,
+                            Binding = typeof(object),
+                            Identifier = ParserHelper.GetDataTypeLiteral(typeof(object))
+                        }
+                    };
+                }
+                else if (property.Type.Identifier.SequenceEqual("array"))
+                {
+                    column.Expression = new VariableReference()
+                    {
+                        Identifier = declare.Name,
+                        Binding = new TypeIdentifier()
+                        {
+                            Token = TokenType.Array,
+                            Binding = typeof(Array),
+                            Identifier = ParserHelper.GetDataTypeLiteral(typeof(Array))
+                        }
+                    };
+                }
+                else
+                {
+                    column.Expression = ParserHelper.CreateDefaultScalar(property.Type);
+                }
+
+                schema.Add(column);
+            }
+
+
+            declare.Type.Binding = schema;
         }
     }
 }
