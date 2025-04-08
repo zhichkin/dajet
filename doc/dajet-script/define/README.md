@@ -81,7 +81,7 @@ DEFINE МоиТипыДанных.Тестовый(
 -- **************************
 -- * Скрипт test-import.djs *
 -- **************************
-IMPORT 'file://code/define/imports.djs'
+IMPORT 'file://imports.djs'
 
 DECLARE @object object OF МоиТипыДанных.Тестовый
 DECLARE @data string = '{
