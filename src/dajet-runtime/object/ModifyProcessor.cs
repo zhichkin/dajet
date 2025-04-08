@@ -78,6 +78,8 @@ namespace DaJet.Runtime
                             Alias = column.Alias, // TODO: infer column data type
                             Expression = new ScalarExpression() { Token = TokenType.String }
                         });
+
+                        ///<see cref="DaJet.Scripting.DataMapper.Infer(in SyntaxNode)" />
                     }
                 }
             }
@@ -89,6 +91,8 @@ namespace DaJet.Runtime
                     Alias = column.Alias, // TODO: infer column data type
                     Expression = new ScalarExpression() { Token = TokenType.String }
                 });
+
+                ///<see cref="DaJet.Scripting.DataMapper.Infer(in SyntaxNode)" />
             }
 
             return schema;
