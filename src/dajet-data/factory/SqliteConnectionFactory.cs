@@ -1,64 +1,67 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.Sqlite;
 using System.Data.Common;
-using System.Text;
-using System.Web;
 
 namespace DaJet.Data.SqlServer
 {
-    internal sealed class MsConnectionFactory : IDbConnectionFactory
+    internal sealed class SqliteConnectionFactory : IDbConnectionFactory
     {
         public DbConnection Create(in Uri uri)
         {
-            return new SqlConnection(GetConnectionString(in uri));
+            return new SqliteConnection(GetConnectionString(in uri));
         }
         public DbConnection Create(in string connectionString)
         {
-            return new SqlConnection(connectionString);
+            return new SqliteConnection(connectionString);
+        }
+        private static string GetDatabaseFilePath(in Uri uri)
+        {
+            if (uri.Scheme != "sqlite")
+            {
+                throw new InvalidOperationException(uri.ToString());
+            }
+
+            string filePath = uri.AbsoluteUri.Replace("sqlite://", string.Empty);
+
+            int question = filePath.IndexOf('?');
+
+            if (question > -1)
+            {
+                filePath = filePath[..question];
+            }
+
+            filePath = filePath.TrimEnd('/').TrimEnd('\\').Replace('/', '\\');
+
+            string databasePath = Path.Combine(AppContext.BaseDirectory, filePath);
+
+            if (!File.Exists(databasePath))
+            {
+                throw new FileNotFoundException(databasePath);
+            }
+
+            if (Environment.OSVersion.Platform == PlatformID.Unix)
+            {
+                databasePath = databasePath.Replace('\\', '/');
+            }
+
+            return databasePath;
         }
         public string GetConnectionString(in Uri uri)
         {
-            string server = string.Empty;
-            string database = string.Empty;
-
-            if (uri.Segments.Length == 3)
+            var builder = new SqliteConnectionStringBuilder()
             {
-                server = $"{uri.Host}{(uri.Port > 0 ? ":" + uri.Port.ToString() : string.Empty)}\\{uri.Segments[1].TrimEnd('/')}";
-                database = uri.Segments[2].TrimEnd('/');
-            }
-            else
-            {
-                server = uri.Host + (uri.Port > 0 ? ":" + uri.Port.ToString() : string.Empty);
-                database = uri.Segments[1].TrimEnd('/');
-            }
-
-            var builder = new SqlConnectionStringBuilder()
-            {
-                Encrypt = false,
-                DataSource = server,
-                InitialCatalog = database
+                Mode = SqliteOpenMode.ReadWriteCreate,
+                DataSource = GetDatabaseFilePath(in uri)
             };
-
-            string[] userpass = uri.UserInfo.Split(':');
-
-            if (userpass is not null && userpass.Length == 2)
-            {
-                builder.UserID = HttpUtility.UrlDecode(userpass[0], Encoding.UTF8);
-                builder.Password = HttpUtility.UrlDecode(userpass[1], Encoding.UTF8);
-            }
-            else
-            {
-                builder.IntegratedSecurity = true;
-            }
 
             return builder.ToString();
         }
         public int GetYearOffset(in Uri uri)
         {
-            using (SqlConnection connection = new(GetConnectionString(in uri)))
+            using (SqliteConnection connection = new(GetConnectionString(in uri)))
             {
                 connection.Open();
 
-                using (SqlCommand command = connection.CreateCommand())
+                using (SqliteCommand command = connection.CreateCommand())
                 {
                     command.CommandText = "SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '_YearOffset';";
 
@@ -84,9 +87,9 @@ namespace DaJet.Data.SqlServer
         }
         public void ConfigureParameters(in DbCommand command, in Dictionary<string, object> parameters, int yearOffset)
         {
-            if (command is not SqlCommand cmd)
+            if (command is not SqliteCommand cmd)
             {
-                throw new InvalidOperationException($"{nameof(command)} is not type of {typeof(SqlCommand)}");
+                throw new InvalidOperationException($"{nameof(command)} is not type of {typeof(SqliteCommand)}");
             }
 
             cmd.Parameters.Clear();

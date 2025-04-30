@@ -5,6 +5,7 @@ using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
+using System;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -129,11 +130,7 @@ namespace DaJet.Runtime
             return null;
         }
 
-        [Function("NOW")] public static DateTime GetCurrentDateTime(this IScriptRuntime runtime)
-        {
-            return DateTime.Now;
-        }
-        [Function("NEWUUID")] public static Guid GenerateNewUuid(this IScriptRuntime runtime)
+        [Function("NEWUUID")] public static Guid GenerateNewUuid(this IScriptRuntime _)
         {
             return Guid.NewGuid();
         }
@@ -149,6 +146,7 @@ namespace DaJet.Runtime
             return string.Empty;
         }
 
+        #region "ENTITY"
         [Function("ENTITY")] public static Entity CreateEntity(this IScriptRuntime runtime, in string name)
         {
             return CreateEntity(runtime, in name, Guid.Empty);
@@ -239,7 +237,74 @@ namespace DaJet.Runtime
 
             return string.Empty;
         }
+        #endregion
 
+        #region "ARRAY"
+        [Function("ARRAY_COUNT")] public static int ArrayCount(this IScriptRuntime runtime, in List<DataObject> array)
+        {
+            if (array is null)
+            {
+                return -1;
+            }
+
+            return array.Count;
+        }
+        [Function("ARRAY_CLEAR")] public static int ArrayClear(this IScriptRuntime runtime, in List<DataObject> array)
+        {
+            if (array is null)
+            {
+                return -1;
+            }
+
+            array.Clear();
+
+            return 0;
+        }
+        [Function("ARRAY_CREATE")] public static List<DataObject> ArrayCreate(this IScriptRuntime runtime)
+        {
+            return new(3);
+        }
+        [Function("ARRAY_CREATE")] public static List<DataObject> ArrayCreate(this IScriptRuntime runtime, int capacity)
+        {
+            return capacity <= 0 ? new() : new(capacity);
+        }
+        [Function("ARRAY_APPEND")] public static int ArrayAppend(this IScriptRuntime runtime, in List<DataObject> array, in DataObject record)
+        {
+            ArgumentNullException.ThrowIfNull(array, nameof(array));
+            ArgumentNullException.ThrowIfNull(record, nameof(record));
+
+            array.Add(record);
+
+            return array.Count - 1;
+        }
+        [Function("ARRAY_SELECT")] public static DataObject ArraySelect(this IScriptRuntime runtime, in List<DataObject> array, int index)
+        {
+            ArgumentNullException.ThrowIfNull(array, nameof(array));
+
+            return array[index];
+        }
+        [Function("ARRAY_DELETE")] public static DataObject ArrayDelete(this IScriptRuntime runtime, in List<DataObject> array, int index)
+        {
+            ArgumentNullException.ThrowIfNull(array, nameof(array));
+
+            DataObject record = array[index];
+
+            array.RemoveAt(index);
+
+            return record;
+        }
+        [Function("ARRAY_INSERT")] public static int ArrayInsert(this IScriptRuntime runtime, in List<DataObject> array, int index, in DataObject record)
+        {
+            ArgumentNullException.ThrowIfNull(array, nameof(array));
+            ArgumentNullException.ThrowIfNull(record, nameof(record));
+
+            array.Insert(index, record);
+
+            return array.Count;
+        }
+        #endregion
+
+        #region "OBJECT"
         [Function("PROPERTY_COUNT")] public static int PropertyCount(this IScriptRuntime runtime, in DataObject record)
         {
             if (record is null)
@@ -290,7 +355,7 @@ namespace DaJet.Runtime
             //        new() { Alias = "Value", Expression = new ScalarExpression() { Token = TokenType.Union } }
             //    };
             //}
-            
+
             return property;
         }
         [Function("GET_PROPERTY")] public static DataObject GetProperty(this IScriptRuntime runtime, in DataObject record, in string name)
@@ -306,69 +371,6 @@ namespace DaJet.Runtime
             property.SetValue("Value", value);
 
             return property;
-        }
-
-        [Function("ARRAY_COUNT")] public static int ArrayCount(this IScriptRuntime runtime, in List<DataObject> array)
-        {
-            if (array is null)
-            {
-                return -1;
-            }
-
-            return array.Count;
-        }
-        [Function("ARRAY_CLEAR")] public static int ArrayClear(this IScriptRuntime runtime, in List<DataObject> array)
-        {
-            if (array is null)
-            {
-                return -1;
-            }
-
-            array.Clear();
-
-            return 0;
-        }
-        [Function("ARRAY_CREATE")] public static List<DataObject> ArrayCreate(this IScriptRuntime runtime)
-        {
-            return new(3);
-        }
-        [Function("ARRAY_CREATE")] public static List<DataObject> ArrayCreate(this IScriptRuntime runtime, int capacity)
-        {
-            return capacity <= 0 ? new(): new(capacity);
-        }
-        [Function("ARRAY_APPEND")] public static int ArrayAppend(this IScriptRuntime runtime, in List<DataObject> array, in DataObject record)
-        {
-            ArgumentNullException.ThrowIfNull(array, nameof(array));
-            ArgumentNullException.ThrowIfNull(record, nameof(record));
-
-            array.Add(record);
-
-            return array.Count - 1;
-        }
-        [Function("ARRAY_SELECT")] public static DataObject ArraySelect(this IScriptRuntime runtime, in List<DataObject> array, int index)
-        {
-            ArgumentNullException.ThrowIfNull(array, nameof(array));
-
-            return array[index];
-        }
-        [Function("ARRAY_DELETE")] public static DataObject ArrayDelete(this IScriptRuntime runtime, in List<DataObject> array, int index)
-        {
-            ArgumentNullException.ThrowIfNull(array, nameof(array));
-
-            DataObject record = array[index];
-
-            array.RemoveAt(index);
-
-            return record;
-        }
-        [Function("ARRAY_INSERT")] public static int ArrayInsert(this IScriptRuntime runtime, in List<DataObject> array, int index, in DataObject record)
-        {
-            ArgumentNullException.ThrowIfNull(array, nameof(array));
-            ArgumentNullException.ThrowIfNull(record, nameof(record));
-
-            array.Insert(index, record);
-
-            return array.Count;
         }
 
         private static DataObject CreateObject(in TypeDefinition defintition)
@@ -469,5 +471,85 @@ namespace DaJet.Runtime
 
             return dataObject;
         }
+        #endregion
+
+        #region "UUID CONVERTION"
+        [Function("UUID1C")] public static Guid CONVERT_UUID_DB_TO_1C(this IScriptRuntime runtime, Guid uuid)
+        {
+            return new Guid(DbUtilities.Get1CUuid(uuid));
+        }
+        [Function("UUID1C")] public static Guid CONVERT_UUID_DB_TO_1C(this IScriptRuntime runtime, in byte[] source)
+        {
+            if (source is null || source.Length != 16)
+            {
+                return Guid.Empty;
+            }
+            Guid uuid = new(source);
+            return new Guid(DbUtilities.Get1CUuid(uuid));
+        }
+        [Function("UUID1C")] public static Guid CONVERT_UUID_DB_TO_1C(this IScriptRuntime runtime, in string source)
+        {
+            if (!Guid.TryParse(source, out Guid uuid))
+            {
+                return Guid.Empty;
+            }
+            return new Guid(DbUtilities.Get1CUuid(uuid));
+        }
+        [Function("UUID1C")] public static Guid CONVERT_UUID_DB_TO_1C(this IScriptRuntime runtime, in Entity entity)
+        {
+            Guid uuid = GetEntityIdentity(runtime, in entity);
+            return new Guid(DbUtilities.Get1CUuid(uuid));
+        }
+
+        [Function("UUIDDB")] public static Guid CONVERT_UUID_1C_TO_DB(this IScriptRuntime _, Guid uuid)
+        {
+            return new Guid(DbUtilities.GetSqlUuid(uuid));
+        }
+        [Function("UUIDDB")] public static Guid CONVERT_UUID_1C_TO_DB(this IScriptRuntime _, in byte[] source)
+        {
+            if (source is null || source.Length != 16)
+            {
+                return Guid.Empty;
+            }
+            Guid uuid = new(source);
+            return new Guid(DbUtilities.GetSqlUuid(uuid));
+        }
+        [Function("UUIDDB")] public static Guid CONVERT_UUID_1C_TO_DB(this IScriptRuntime _, in string source)
+        {
+            if (!Guid.TryParse(source, out Guid uuid))
+            {
+                return Guid.Empty;
+            }
+            return new Guid(DbUtilities.GetSqlUuid(uuid));
+        }
+        [Function("UUIDDB")] public static Guid CONVERT_UUID_1C_TO_DB(this IScriptRuntime runtime, in Entity entity)
+        {
+            Guid uuid = GetEntityIdentity(runtime, in entity);
+            return new Guid(DbUtilities.GetSqlUuid(uuid));
+        }
+        #endregion
+
+        #region "DATE & TIME"
+        [Function("NOW")] public static DateTime GetCurrentDateTime(this IScriptRuntime _)
+        {
+            return DateTime.Now; // The resolution ranges from 0.5 to 15 ms, depending on the operating system.
+        }
+        [Function("NOW")] public static DateTime GetCurrentDateTime(this IScriptRuntime _, int adjustment)
+        {
+            DateTime now = DateTime.Now;
+            now = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second);
+            return now.AddSeconds(adjustment);
+        }
+        [Function("UTC")] public static DateTime GetCurrentUtcDateTime(this IScriptRuntime _)
+        {
+            return DateTime.UtcNow; // The same resolution as for the NOW function.
+        }
+        [Function("UTC")] public static DateTime GetCurrentUtcDateTime(this IScriptRuntime _, int timeZone)
+        {
+            DateTime utc = DateTime.UtcNow;
+            utc = new DateTime(utc.Year, utc.Month, utc.Day, utc.Hour, utc.Minute, utc.Second);
+            return utc.AddHours(timeZone);
+        }
+        #endregion
     }
 }

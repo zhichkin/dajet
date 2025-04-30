@@ -58,7 +58,13 @@ namespace DaJet.Data
 
         public static byte[] Get1CUuid(byte[] uuid_sql)
         {
-            // CAST(REVERSE(SUBSTRING(@uuid_sql, 9, 8)) AS binary(8)) + SUBSTRING(@uuid_sql, 1, 8)
+            // CREATE OR ALTER FUNCTION [dbo].[fn_sql_to_1c_uuid] (@uuid_sql binary(16))
+            // RETURNS nvarchar(36)
+            // AS
+            // BEGIN
+            // DECLARE @uuid_1c binary(16) = CAST(REVERSE(SUBSTRING(@uuid_sql, 9, 8)) AS binary(8)) + SUBSTRING(@uuid_sql, 1, 8);
+            // RETURN CAST(CAST(@uuid_1c AS uniqueidentifier) AS nvarchar(36));
+            // END;
 
             byte[] uuid_1c = new byte[16];
 
@@ -69,6 +75,10 @@ namespace DaJet.Data
             }
 
             return uuid_1c;
+        }
+        public static byte[] Get1CUuid(Guid guid_sql)
+        {
+            return Get1CUuid(guid_sql.ToByteArray());
         }
         public static byte[] GetSqlUuid(byte[] uuid_1c)
         {

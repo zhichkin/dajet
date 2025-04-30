@@ -32,6 +32,10 @@ namespace DaJet.Data
             {
                 return new PgConnectionFactory();
             }
+            else if (uri.Scheme == "sqlite")
+            {
+                return new SqliteConnectionFactory();
+            }
 
             throw new InvalidOperationException($"Unsupported database: [{uri.Scheme}]");
         }
@@ -44,6 +48,10 @@ namespace DaJet.Data
             else if (provider == DatabaseProvider.PostgreSql)
             {
                 return new PgConnectionFactory();
+            }
+            else if (provider == DatabaseProvider.Sqlite)
+            {
+                return new SqliteConnectionFactory();
             }
 
             throw new InvalidOperationException($"Unsupported provider: [{provider}]");

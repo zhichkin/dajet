@@ -3,7 +3,6 @@ using DaJet.Metadata;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using System.Collections.Concurrent;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace DaJet.Runtime
@@ -477,41 +476,10 @@ namespace DaJet.Runtime
             throw new InvalidOperationException("Owner UseStatement is not found");
         }
 
-        private static string GetScriptFilePath(in ImportStatement import)
-        {
-            Uri uri = new(import.Source);
-
-            string localPath = uri.LocalPath[2..];
-
-            string scriptPath = Path.Combine(AppContext.BaseDirectory, localPath);
-
-            if (Environment.OSVersion.Platform == PlatformID.Unix)
-            {
-                scriptPath = scriptPath.Replace('\\', '/');
-            }
-
-            return scriptPath;
-        }
-        private static string GetScriptSourceCode(in string scriptPath)
-        {
-            if (!File.Exists(scriptPath))
-            {
-                throw new FileNotFoundException(scriptPath);
-            }
-
-            string script;
-
-            using (StreamReader reader = new(scriptPath, Encoding.UTF8))
-            {
-                script = reader.ReadToEnd();
-            }
-
-            return script;
-        }
         private static void ImportTypeDefinitions(in ScriptScope scope, in ImportStatement import)
         {
-            string scriptPath = GetScriptFilePath(in import);
-            string sourceCode = GetScriptSourceCode(in scriptPath);
+            string scriptPath = UriHelper.GetScriptFilePath(import.Source);
+            string sourceCode = UriHelper.GetScriptSourceCode(in scriptPath);
 
             if (!new ScriptParser().TryParse(in sourceCode, out ScriptModel script, out string error))
             {

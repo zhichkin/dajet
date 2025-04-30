@@ -123,7 +123,7 @@ namespace DaJet.Scripting
                     Functions.Add(function);
                 }
             }
-            else if (name == "NOW") // GETUTCDATE()
+            else if (name == "NOW")
             {
                 if (YearOffset == 0)
                 {
@@ -132,6 +132,17 @@ namespace DaJet.Scripting
                 else
                 {
                     script.Append("DATEADD(year, " + YearOffset.ToString() + ", GETDATE())");
+                }
+            }
+            else if (name == "UTC")
+            {
+                if (YearOffset == 0)
+                {
+                    script.Append("GETUTCDATE()");
+                }
+                else
+                {
+                    script.Append("DATEADD(year, " + YearOffset.ToString() + ", GETUTCDATE())");
                 }
             }
             else if (name == "VECTOR")

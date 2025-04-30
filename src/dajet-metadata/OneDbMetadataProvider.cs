@@ -788,6 +788,30 @@ namespace DaJet.Metadata
                     _ = _extensions.TryAdd(extension.Identity, metadata); //FIXME: process errors loading extension
                 }
             }
+
+            //TODO: ApplyDbNameExt1(); + ExtensionRootFileParser > FileMap collection + Configurator.ConfigureArticles
+
+            //NOTE: Добавление собственных планов обмена расширений
+            //NOTE: доступно, начиная с версии 1С:Предприятие 8.3.11
+        }
+        private void ApplyDbNameExt1()
+        {
+            if (_extension is not null) { return; } // Check if this is the main configuration
+
+            string fileName = ConfigFiles.DbNames + "-Ext-1";
+
+            using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Params, in fileName))
+            {
+                new DbNamesParser().Parse(in reader, out DbNameCache xnames);
+
+                if (xnames is not null)
+                {
+                    foreach (DbName entry in xnames.DbNames)
+                    {
+                        _database.Add(entry.Uuid, entry.Code, entry.Name);
+                    }
+                }
+            }
         }
 
         #endregion

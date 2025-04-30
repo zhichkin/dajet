@@ -1744,7 +1744,7 @@ namespace DaJet.Scripting
             {
                 //union.IsString = true; return;
             }
-            else if (functionName == "NOW")
+            else if (functionName == "NOW" || functionName == "UTC")
             {
                 //union.IsDateTime = true; return;
             }

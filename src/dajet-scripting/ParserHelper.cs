@@ -17,7 +17,9 @@ namespace DaJet.Scripting
             { "entity", typeof(Entity) }, // #
             { "union", typeof(Union) },
             { "array", typeof(Array) },
-            { "object", typeof(object) }
+            { "object", typeof(object) },
+            { "integer", typeof(int) },
+            { "decimal", typeof(decimal) }
         };
         private static Dictionary<Type, string> _datatype_literal = new()
         {
@@ -54,6 +56,7 @@ namespace DaJet.Scripting
         {
             { TokenType.Boolean, typeof(bool) },
             { TokenType.Number, typeof(decimal) },
+            { TokenType.Decimal, typeof(decimal) },
             { TokenType.Integer, typeof(int) },
             { TokenType.Version, typeof(ulong) },
             { TokenType.DateTime, typeof(DateTime) },
@@ -237,6 +240,7 @@ namespace DaJet.Scripting
             { "SUBSTRING", TokenType.SUBSTRING },
             { "DATALENGTH", TokenType.DATALENGTH },
             { "NOW", TokenType.NOW },
+            { "UTC", TokenType.UTC },
             { "VECTOR", TokenType.VECTOR },
             { "STRING_AGG", TokenType.STRING_AGG },
             { "CHARLENGTH", TokenType.CHARLENGTH },

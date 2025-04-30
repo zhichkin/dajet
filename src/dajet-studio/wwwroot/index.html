@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DaJet Studio © 3.9.7</title>
+    <title>DaJet Studio © 3.9.8</title>
     <link rel="icon" href="/img/vuk.png" type="image/png">
     <base href="/" />
     <link href="css/app.css" rel="stylesheet" />
@@ -142,11 +142,14 @@
                 sql.language.operators.push('deleted');
                 sql.language.operators.push('inserted');
 
+                sql.language.builtinFunctions.push('UTC');
                 sql.language.builtinFunctions.push('NOW');
                 sql.language.builtinFunctions.push('JSON');
                 sql.language.builtinFunctions.push('ENTITY');
                 sql.language.builtinFunctions.push('TYPEOF');
                 sql.language.builtinFunctions.push('UUIDOF');
+                sql.language.builtinFunctions.push('UUID1C');
+                sql.language.builtinFunctions.push('UUIDDB');
                 sql.language.builtinFunctions.push('NAMEOF');
                 sql.language.builtinFunctions.push('VECTOR');
                 sql.language.builtinFunctions.push('NEWUUID');
@@ -165,7 +168,7 @@
                 sql.language.builtinFunctions.push('PROPERTY_COUNT');
                 sql.language.builtinFunctions.push('PROPERTY_EXISTS');
 
-                sql.language.typeIdentifiers = ['boolean','number','datetime','string','binary','uuid','entity','object','array'];
+                sql.language.typeIdentifiers = ['boolean','number','datetime','string','binary','uuid','entity','object','array','integer','decimal','union'];
 
                 sql.language.tokenizer.typeIdentifiers = [[/[\w@#$]+/,
                     {
@@ -186,15 +189,6 @@
                         break;
                     }
                 }
-
-                //for (var i = 0; i < rules.length; i++) {
-                //    if (rules[i] instanceof Array &&
-                //        rules[i][0] instanceof RegExp &&
-                //        rules[i][0].source === /[\w@#$]+/.source) {
-                //        rules[i][1].cases['@typeIdentifiers'] = 'number';
-                //        break;
-                //    }
-                //}
             });
         }
 

@@ -17,11 +17,11 @@
         OVER, PARTITION, RANGE, BETWEEN, UNBOUNDED, PRECEDING, CURRENT, FOLLOWING,
         CASE, WHEN, THEN, ELSE, BEGIN, END, EXISTS, EXECUTE,
         SUBSTRING,
-        NOW,
+        NOW, UTC,
 
         Identifier, Type, Table, Column, Variable, Enumeration, Star, Array, Object, APPEND, FOR, EACH, MAXDOP,
 
-        IS, NULL, ISNULL, Boolean, Number, DateTime, String, Binary, Uuid, Entity, Union, Version, Integer,
+        IS, NULL, ISNULL, Boolean, Number, DateTime, String, Binary, Uuid, Entity, Union, Version, Decimal, Integer,
 
         Equals, NotEquals, Less, Greater, LessOrEquals, GreaterOrEquals, ANY, IN, LIKE,
 

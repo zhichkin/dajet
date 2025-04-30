@@ -275,7 +275,7 @@ namespace DaJet.Scripting
             {
                 union.IsString = true; return;
             }
-            else if (name == "NOW")
+            else if (name == "NOW" || name == "UTC")
             {
                 union.IsDateTime = true; return;
             }

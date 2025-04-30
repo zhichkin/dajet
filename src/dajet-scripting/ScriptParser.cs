@@ -1,4 +1,5 @@
-﻿using DaJet.Scripting.Model;
+﻿using DaJet.Metadata.Core;
+using DaJet.Scripting.Model;
 
 namespace DaJet.Scripting
 {
@@ -2636,7 +2637,10 @@ namespace DaJet.Scripting
 
             PropertyDefinition property = new() { Name = Previous().Lexeme };
 
-            if (!Match(TokenType.Identifier)) { throw new FormatException("Data type identifier expected"); }
+            if (!Match(TokenType.Identifier, TokenType.UNION)) //NOTE: exceptional keyword
+            {
+                throw new FormatException("Data type identifier expected");
+            }
 
             property.Type = type();
 
@@ -3020,20 +3024,20 @@ namespace DaJet.Scripting
                 parse_column_expressions(request.Options);
             }
 
-            if (!Match(TokenType.INTO))
+            if (Match(TokenType.INTO)) //NOTE: optional for databases
             {
-                throw new FormatException($"REQUEST: INTO keyword expected");
-            }
+                //throw new FormatException($"REQUEST: INTO keyword expected");
 
-            if (!Match(TokenType.Variable))
-            {
-                throw new FormatException($"REQUEST: variable identifier expected");
-            }
+                if (!Match(TokenType.Variable))
+                {
+                    throw new FormatException($"REQUEST: variable identifier expected");
+                }
 
-            request.Response = new VariableReference()
-            {
-                Identifier = Previous().Lexeme
-            };
+                request.Response = new VariableReference()
+                {
+                    Identifier = Previous().Lexeme
+                };
+            }
 
             Skip(TokenType.Comment);
 

@@ -344,9 +344,13 @@ namespace DaJet.Scripting
                 script.Append(')');
                 return; //TODO: OCTET_LENGTH - what if data type of column is bytea ?
             }
-            else if (name == "NOW")
+            else if (name == "NOW") // timestamp without time zone
             {
                 script.Append("NOW()::timestamp"); return;
+            }
+            else if (name == "UTC") // timestamp without time zone
+            {
+                script.Append("NOW() AT TIME ZONE 'UTC'"); return;
             }
             else if (name == "VECTOR")
             {

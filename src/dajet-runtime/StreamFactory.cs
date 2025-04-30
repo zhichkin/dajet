@@ -481,13 +481,13 @@ namespace DaJet.Runtime
             else if (scope.Owner is ForStatement) { return new ForProcessor(in scope); }
             else if (scope.Owner is RequestStatement request)
             {
-                if (request.Target.StartsWith("mssql") || request.Target.StartsWith("pgsql"))
+                if (request.Target.StartsWith("http") || request.Target.StartsWith("https"))
                 {
-                    return new ProcedureProcessor(in scope);
+                    return new Http.Request(in scope);
                 }
                 else
                 {
-                    return new Http.Request(in scope);
+                    return RequestProcessorSelector.GetProcessor(in request, in scope);
                 }
             }
             else if (scope.Owner is ConsumeStatement consume && !string.IsNullOrEmpty(consume.Target))
@@ -1530,6 +1530,10 @@ namespace DaJet.Runtime
             {
                 return TryEvaluate(in scope, in case_when_then, out value);
             }
+            else if (expression is UnaryOperator unary)
+            {
+                return TryEvaluate(in scope, in unary, out value);
+            }
             else
             {
                 value = null;
@@ -1617,6 +1621,42 @@ namespace DaJet.Runtime
             if (expression.ELSE is not null)
             {
                 return TryEvaluate(in scope, expression.ELSE, out value);
+            }
+
+            return true;
+        }
+        private static bool TryEvaluate(in ScriptScope scope, in UnaryOperator expression, out object value)
+        {
+            value = string.Empty;
+
+            if (!TryEvaluate(in scope, expression.Expression, out value))
+            {
+                return false;
+            }
+
+            if (value is int sint32)
+            {
+                value = expression.Token == TokenType.Minus ? -sint32 : sint32;
+            }
+            else if (value is uint uint32)
+            {
+                value = uint32;
+            }
+            else if (value is long sint64)
+            {
+                value = expression.Token == TokenType.Minus ? -sint64 : sint64;
+            }
+            else if (value is ulong uint64)
+            {
+                value = uint64;
+            }
+            else if (value is decimal number)
+            {
+                value = expression.Token == TokenType.Minus ? -number : number;
+            }
+            else
+            {
+                return false;
             }
 
             return true;
@@ -1757,15 +1797,80 @@ namespace DaJet.Runtime
                 right = null;
             }
 
-            if (left is int intlv && right is int intrv)
+            if (left is int left_int32)
             {
-                return CompareNumbers(comparison.Token, intlv, intrv);
+                if (right is null)
+                {
+                    throw new InvalidOperationException($"Unsupported comparison operator: int32 {comparison.Token} null");
+                }
+                else if (right is int right_int32)
+                {
+                    return CompareNumbers(comparison.Token, left_int32, right_int32);
+                }
+                else if (right is long right_int64)
+                {
+                    return CompareNumbers(comparison.Token, left_int32, right_int64);
+                }
+                else if (right is decimal right_dec64)
+                {
+                    return CompareNumbers(comparison.Token, left_int32, right_dec64);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Unsupported comparison operator: int32 {comparison.Token} {right.GetType()}");
+                }
             }
-            else if (left is decimal declv && right is decimal decrv)
+            else if (left is long left_int64)
             {
-                return CompareNumbers(comparison.Token, declv, decrv);
+                if (right is null)
+                {
+                    throw new InvalidOperationException($"Unsupported comparison operator: int64 {comparison.Token} null");
+                }
+                else if (right is int right_int32)
+                {
+                    return CompareNumbers(comparison.Token, left_int64, right_int32);
+                }
+                else if (right is long right_int64)
+                {
+                    return CompareNumbers(comparison.Token, left_int64, right_int64);
+                }
+                else if (right is decimal right_dec64)
+                {
+                    return CompareNumbers(comparison.Token, left_int64, right_dec64);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Unsupported comparison operator: int64 {comparison.Token} {right.GetType()}");
+                }
             }
-
+            else if (left is decimal left_dec64)
+            {
+                if (right is null)
+                {
+                    throw new InvalidOperationException($"Unsupported comparison operator: dec64 {comparison.Token} null");
+                }
+                else if (right is int right_int32)
+                {
+                    return CompareNumbers(comparison.Token, left_dec64, right_int32);
+                }
+                else if (right is long right_int64)
+                {
+                    return CompareNumbers(comparison.Token, left_dec64, right_int64);
+                }
+                else if (right is decimal right_dec64)
+                {
+                    return CompareNumbers(comparison.Token, left_dec64, right_dec64);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Unsupported comparison operator: dec64 {comparison.Token} {right.GetType()}");
+                }
+            }
+            else if (left is DateTime left_date && right is DateTime right_date)
+            {
+                return CompareDateTime(comparison.Token, left_date, right_date);
+            }
+            
             string first = left is null ? string.Empty : left.ToString();
             string second = right is null ? string.Empty : right.ToString();
 
@@ -1795,7 +1900,111 @@ namespace DaJet.Runtime
                 throw new InvalidOperationException($"Unknown comparison operator [{_operator}]");
             }
         }
+        private static bool CompareNumbers(TokenType _operator, int left, long right)
+        {
+            if (_operator == TokenType.Equals) { return left == right; }
+            else if (_operator == TokenType.Less) { return left < right; }
+            else if (_operator == TokenType.Greater) { return left > right; }
+            else if (_operator == TokenType.NotEquals) { return left != right; }
+            else if (_operator == TokenType.LessOrEquals) { return left <= right; }
+            else if (_operator == TokenType.GreaterOrEquals) { return left >= right; }
+            else
+            {
+                throw new InvalidOperationException($"Unknown comparison operator [{_operator}]");
+            }
+        }
+        private static bool CompareNumbers(TokenType _operator, long left, int right)
+        {
+            if (_operator == TokenType.Equals) { return left == right; }
+            else if (_operator == TokenType.Less) { return left < right; }
+            else if (_operator == TokenType.Greater) { return left > right; }
+            else if (_operator == TokenType.NotEquals) { return left != right; }
+            else if (_operator == TokenType.LessOrEquals) { return left <= right; }
+            else if (_operator == TokenType.GreaterOrEquals) { return left >= right; }
+            else
+            {
+                throw new InvalidOperationException($"Unknown comparison operator [{_operator}]");
+            }
+        }
+        private static bool CompareNumbers(TokenType _operator, long left, long right)
+        {
+            if (_operator == TokenType.Equals) { return left == right; }
+            else if (_operator == TokenType.Less) { return left < right; }
+            else if (_operator == TokenType.Greater) { return left > right; }
+            else if (_operator == TokenType.NotEquals) { return left != right; }
+            else if (_operator == TokenType.LessOrEquals) { return left <= right; }
+            else if (_operator == TokenType.GreaterOrEquals) { return left >= right; }
+            else
+            {
+                throw new InvalidOperationException($"Unknown comparison operator [{_operator}]");
+            }
+        }
         private static bool CompareNumbers(TokenType _operator, decimal left, decimal right)
+        {
+            if (_operator == TokenType.Equals) { return left == right; }
+            else if (_operator == TokenType.Less) { return left < right; }
+            else if (_operator == TokenType.Greater) { return left > right; }
+            else if (_operator == TokenType.NotEquals) { return left != right; }
+            else if (_operator == TokenType.LessOrEquals) { return left <= right; }
+            else if (_operator == TokenType.GreaterOrEquals) { return left >= right; }
+            else
+            {
+                throw new InvalidOperationException($"Unknown comparison operator [{_operator}]");
+            }
+        }
+        private static bool CompareNumbers(TokenType _operator, int left, decimal right)
+        {
+            if (_operator == TokenType.Equals) { return left == right; }
+            else if (_operator == TokenType.Less) { return left < right; }
+            else if (_operator == TokenType.Greater) { return left > right; }
+            else if (_operator == TokenType.NotEquals) { return left != right; }
+            else if (_operator == TokenType.LessOrEquals) { return left <= right; }
+            else if (_operator == TokenType.GreaterOrEquals) { return left >= right; }
+            else
+            {
+                throw new InvalidOperationException($"Unknown comparison operator [{_operator}]");
+            }
+        }
+        private static bool CompareNumbers(TokenType _operator, decimal left, int right)
+        {
+            if (_operator == TokenType.Equals) { return left == right; }
+            else if (_operator == TokenType.Less) { return left < right; }
+            else if (_operator == TokenType.Greater) { return left > right; }
+            else if (_operator == TokenType.NotEquals) { return left != right; }
+            else if (_operator == TokenType.LessOrEquals) { return left <= right; }
+            else if (_operator == TokenType.GreaterOrEquals) { return left >= right; }
+            else
+            {
+                throw new InvalidOperationException($"Unknown comparison operator [{_operator}]");
+            }
+        }
+        private static bool CompareNumbers(TokenType _operator, long left, decimal right)
+        {
+            if (_operator == TokenType.Equals) { return left == right; }
+            else if (_operator == TokenType.Less) { return left < right; }
+            else if (_operator == TokenType.Greater) { return left > right; }
+            else if (_operator == TokenType.NotEquals) { return left != right; }
+            else if (_operator == TokenType.LessOrEquals) { return left <= right; }
+            else if (_operator == TokenType.GreaterOrEquals) { return left >= right; }
+            else
+            {
+                throw new InvalidOperationException($"Unknown comparison operator [{_operator}]");
+            }
+        }
+        private static bool CompareNumbers(TokenType _operator, decimal left, long right)
+        {
+            if (_operator == TokenType.Equals) { return left == right; }
+            else if (_operator == TokenType.Less) { return left < right; }
+            else if (_operator == TokenType.Greater) { return left > right; }
+            else if (_operator == TokenType.NotEquals) { return left != right; }
+            else if (_operator == TokenType.LessOrEquals) { return left <= right; }
+            else if (_operator == TokenType.GreaterOrEquals) { return left >= right; }
+            else
+            {
+                throw new InvalidOperationException($"Unknown comparison operator [{_operator}]");
+            }
+        }
+        private static bool CompareDateTime(TokenType _operator, DateTime left, DateTime right)
         {
             if (_operator == TokenType.Equals) { return left == right; }
             else if (_operator == TokenType.Less) { return left < right; }
