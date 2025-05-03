@@ -1,5 +1,4 @@
-﻿using DaJet.Metadata.Core;
-using DaJet.Scripting.Model;
+﻿using DaJet.Scripting.Model;
 
 namespace DaJet.Scripting
 {
