@@ -33,11 +33,6 @@ namespace DaJet.Data.SqlServer
 
             string databasePath = Path.Combine(AppContext.BaseDirectory, filePath);
 
-            if (!File.Exists(databasePath))
-            {
-                throw new FileNotFoundException(databasePath);
-            }
-
             if (Environment.OSVersion.Platform == PlatformID.Unix)
             {
                 databasePath = databasePath.Replace('\\', '/');
@@ -45,11 +40,47 @@ namespace DaJet.Data.SqlServer
 
             return databasePath;
         }
+        private static SqliteOpenMode GetConnectionMode(in Uri uri)
+        {
+            if (uri.Query is null)
+            {
+                return SqliteOpenMode.ReadWriteCreate;
+            }
+
+            string mode = string.Empty;
+
+            string[] parameters = uri.Query.Split('?', '&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            if (parameters is not null && parameters.Length > 0)
+            {
+                for (int i = 0; i < parameters.Length; i++)
+                {
+                    string[] parameter = parameters[i].Split('=', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                    if (parameter.Length == 2 && parameter[0] == "mode")
+                    {
+                        mode = parameter[1]; break;
+                    }
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(mode))
+            {
+                return SqliteOpenMode.ReadWriteCreate;
+            }
+
+            if (!Enum.TryParse(mode, out SqliteOpenMode value))
+            {
+                return SqliteOpenMode.ReadWriteCreate;
+            }
+
+            return value;
+        }
         public string GetConnectionString(in Uri uri)
         {
             var builder = new SqliteConnectionStringBuilder()
             {
-                Mode = SqliteOpenMode.ReadWriteCreate,
+                Mode = GetConnectionMode(in uri),
                 DataSource = GetDatabaseFilePath(in uri)
             };
 
@@ -122,31 +153,6 @@ namespace DaJet.Data.SqlServer
                 {
                     cmd.Parameters.AddWithValue(name, parameter.Value);
                 }
-
-                //TODO: user-defined type - table-valued parameter
-                //else if (parameter.Value is List<DataObject> table)
-                //{
-                //    DeclareStatement declare = GetDeclareStatementByName(in model, parameter.Key);
-
-                //    parameters[parameter.Key] = new TableValuedParameter()
-                //    {
-                //        Name = parameter.Key,
-                //        Value = table,
-                //        DbName = declare is null ? string.Empty : declare.Type.Identifier
-                //    };
-                //}
-
-                //else if (parameter.Value is List<Dictionary<string, object>> table)
-                //{
-                //    DeclareStatement declare = GetDeclareStatementByName(in model, parameter.Key);
-
-                //    parameters[parameter.Key] = new TableValuedParameter()
-                //    {
-                //        Name = parameter.Key,
-                //        Value = table,
-                //        DbName = declare is null ? string.Empty : declare.Type.Identifier
-                //    };
-                //}
             }
         }
     }

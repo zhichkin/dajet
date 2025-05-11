@@ -3,13 +3,18 @@ using System.Reflection;
 
 namespace DaJet.Data
 {
-    public sealed class EntityMapper
+    public sealed class EntityMapper : IEntityMapper
     {
         private int ordinal = -1;
         public EntityMapper() { }
         public string Name { get; set; } //NOTE: SELECT, CONSUME, DELETE OUTPUT : table name if present
         public int YearOffset { get; set; } = 0;
         public List<PropertyMapper> Properties { get; } = new();
+        public void Add(PropertyMapper mapper)
+        {
+            ArgumentNullException.ThrowIfNull(mapper);
+            AddPropertyMapper(mapper.Name, mapper.DataType);
+        }
         public void AddPropertyMapper(in string name, in UnionType type)
         {
             PropertyMapper property = new()

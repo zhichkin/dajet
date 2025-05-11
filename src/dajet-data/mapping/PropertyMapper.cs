@@ -11,7 +11,7 @@ namespace DaJet.Data
         public int YearOffset { get; set; } = 0;
         public string Name { get; set; } = string.Empty;
         public bool IsDbGenerated { get; set; } = false;
-        public UnionType DataType { get; } = new();
+        public UnionType DataType { get; set; } = new();
         public Type Type { get { return UnionType.MapToType(DataType); } }
         public Dictionary<UnionTag, ColumnMapper> Columns { get; } = new();
         public List<ColumnMapper> ColumnSequence
