@@ -39,6 +39,6 @@ REQUEST 'url?sql'
 |Transaction|string|Необязательная опция для выполнения команды SQL в транзакции. По умолчанию команда выполняется без открытия транзакции СУБД. Допустимые значения (разные СУБД поддерживают только те или иные значения):<br>- 'ReadUncommitted'<br>- 'ReadCommitted'<br>- 'RepeatableRead'<br>- 'Serializable'<br>- 'Snapshot'|
 |Stream|boolean|Необязательная опция выполнения команды REQUEST в потоковом (TRUE) или обычном (FALSE) режиме. Значение по умолчанию: FALSE. |
 
-> Более подробно про потоковые команды и их поведение можно посмотреть в соответствующей документации по командам **STREAM** или **CONSUME**.
+> Более подробно про потоковые команды и их поведение можно посмотреть в соответствующей документации по командам [**STREAM**](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/databases/stream/README.md) или [**CONSUME**](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/databases/consume/README.md). В случае использования команды **REQUEST** в потоковом режиме в предложении **INTO** должна использоваться переменная типа ```object```.
 
 [Наверх](#произвольные-запросы-субд-на-родном-sql)
