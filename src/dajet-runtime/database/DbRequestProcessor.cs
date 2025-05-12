@@ -143,9 +143,9 @@ namespace DaJet.Runtime
             {
                 AddWithValueDelegate = pg.Parameters.AddWithValue;
             }
-            else if (command is SqliteCommand sql)
+            else if (command is SqliteCommand sqlite)
             {
-                AddWithValueDelegate = sql.Parameters.AddWithValue;
+                AddWithValueDelegate = sqlite.Parameters.AddWithValue;
             }
             else
             {
@@ -241,9 +241,20 @@ namespace DaJet.Runtime
                 {
                     _ = Scope.TrySetValue(_output, _table);
                 }
-                else if (_type == TokenType.Object && _table.Count > 0)
+                else if (_type == TokenType.Object)
                 {
-                    _ = Scope.TrySetValue(_output, _table[0]); _table.Clear();
+                    if (_stream)
+                    {
+                        _ = Scope.TrySetValue(_output, _record);
+                    }
+                    else if (_table.Count > 0)
+                    {
+                        _ = Scope.TrySetValue(_output, _table[0]); _table.Clear();
+                    }
+                    else // empty table
+                    {
+                        _ = Scope.TrySetValue(_output, null);
+                    }
                 }
                 else if (!string.IsNullOrEmpty(_output))
                 {
@@ -333,6 +344,7 @@ namespace DaJet.Runtime
 
             if (_stream)
             {
+                SetOutputValue();
                 _next?.Process();
             }
             else

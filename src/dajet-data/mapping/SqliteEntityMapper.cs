@@ -1,8 +1,9 @@
-﻿using System.Data;
+﻿using Microsoft.Data.Sqlite;
+using System.Data;
 
 namespace DaJet.Data
 {
-    public sealed class SqliteEntityMapper : IEntityMapper
+    public sealed class SqliteDataMapper : IEntityMapper
     {
         private int _ordinal = -1;
         private readonly List<SqlitePropertyMapper> _properties = new();
@@ -13,6 +14,56 @@ namespace DaJet.Data
             Properties.Add(mapper); //TODO: убрать этот костыль !!!
             _ordinal++;
             _properties.Add(new SqlitePropertyMapper(mapper.Name, _ordinal, mapper.DataType));
+        }
+        public void Map(in IDbCommand command, in Dictionary<string, object> parameters)
+        {
+            if (command is not SqliteCommand cmd)
+            {
+                throw new InvalidOperationException();
+            }
+
+            foreach (var parameter in parameters)
+            {
+                string name = parameter.Key;
+                object value = parameter.Value;
+
+                if (value is null)
+                {
+                    cmd.Parameters.AddWithValue(name, DBNull.Value);
+                }
+                else if (value is bool boolean)
+                {
+                    cmd.Parameters.AddWithValue(name, boolean ? 1 : 0);
+                }
+                else if (value is int integer)
+                {
+                    cmd.Parameters.AddWithValue(name, integer);
+                }
+                else if (value is long int64)
+                {
+                    cmd.Parameters.AddWithValue(name, int64);
+                }
+                else if (value is decimal number)
+                {
+                    cmd.Parameters.AddWithValue(name, number);
+                }
+                else if (value is DateTime dateTime)
+                {
+                    cmd.Parameters.AddWithValue(name, dateTime.ToString("yyyy-MM-dd HH:mm:ss"));
+                }
+                else if (value is string text)
+                {
+                    cmd.Parameters.AddWithValue(name, text);
+                }
+                else if (value is Guid uuid)
+                {
+                    cmd.Parameters.AddWithValue(name, uuid.ToByteArray());
+                }
+                else // byte[] -> BLOB
+                {
+                    cmd.Parameters.AddWithValue(name, value);
+                }
+            }
         }
         public void Map(in IDataReader reader, in DataObject record)
         {
@@ -33,6 +84,7 @@ namespace DaJet.Data
     }
     internal sealed class SqlitePropertyMapper
     {
+        private byte[] _uuid = new byte[16];
         internal SqlitePropertyMapper(string name, int ordinal, UnionType type)
         {
             Name = name;
@@ -57,20 +109,11 @@ namespace DaJet.Data
         }
         private object GetBoolean(in IDataReader reader)
         {
-            return reader.GetInt32(Ordinal) == 1;
+            return reader.GetInt64(Ordinal) == 1;
         }
         private object GetInteger(in IDataReader reader)
         {
-            Type type = reader.GetFieldType(Ordinal);
-
-            if (type == typeof(long))
-            {
-                return reader.GetInt64(Ordinal);
-            }
-            else
-            {
-                return reader.GetInt32(Ordinal);
-            }
+            return reader.GetInt64(Ordinal);
         }
         private object GetDecimal(in IDataReader reader)
         {
@@ -99,11 +142,9 @@ namespace DaJet.Data
         }
         private object GetUuid(in IDataReader reader)
         {
-            byte[] buffer = new byte[16];
+            _ = reader.GetBytes(Ordinal, 0, _uuid, 0, 16);
             
-            _ = reader.GetBytes(Ordinal, 0, buffer, 0, 16);
-            
-            return new Guid(buffer);
+            return new Guid(_uuid);
         }
     }
 }

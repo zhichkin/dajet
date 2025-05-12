@@ -268,11 +268,11 @@ namespace DaJet.Scripting
         
         internal static bool IsKeyword(string identifier, out TokenType token)
         {
-            if (_keywords_ru.TryGetValue(identifier.ToUpperInvariant(), out token))
+            if (_keywords_ru.TryGetValue(identifier, out token))
             {
                 return true;
             }
-            return _keywords_en.TryGetValue(identifier.ToUpperInvariant(), out token);
+            return _keywords_en.TryGetValue(identifier, out token);
         }
         public static bool IsDataType(string identifier, out Type type)
         {
@@ -319,7 +319,7 @@ namespace DaJet.Scripting
             {
                 return false;
             }
-            return ("true" == literal.ToLowerInvariant());
+            return ("true".Equals(literal, StringComparison.InvariantCultureIgnoreCase));
         }
         internal static bool IsFalseLiteral(string literal)
         {
@@ -327,7 +327,7 @@ namespace DaJet.Scripting
             {
                 return false;
             }
-            return ("false" == literal.ToLowerInvariant());
+            return ("false".Equals(literal, StringComparison.InvariantCultureIgnoreCase));
         }
         internal static bool IsBooleanLiteral(string identifier)
         {
@@ -377,7 +377,7 @@ namespace DaJet.Scripting
             {
                 return true;
             }
-            return _function_en.TryGetValue(identifier.ToUpperInvariant(), out token);
+            return _function_en.TryGetValue(identifier, out token);
         }
 
         internal static void GetColumnIdentifiers(string identifier, out string tableAlias, out string columnName)
@@ -527,11 +527,11 @@ namespace DaJet.Scripting
             }
             else if (token == TokenType.Boolean)
             {
-                if (literal.ToLowerInvariant() == "true")
+                if (literal.Equals("true", StringComparison.InvariantCultureIgnoreCase))
                 {
                     value = true;
                 }
-                else if (literal.ToLowerInvariant() == "false")
+                else if (literal.Equals("false", StringComparison.InvariantCultureIgnoreCase))
                 {
                     value = false;
                 }
