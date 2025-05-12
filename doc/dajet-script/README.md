@@ -16,6 +16,7 @@
 - **Базы данных (mssql + pgsql)**
   - [USE (контекст базы данных)](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/use/README.md)
   - [Язык запросов DaJet Script](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/databases/README.md)
+  - [Произвольные запросы SQL](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/request-sql/README.md)
   - [Управление последовательностью](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/sequence/README.md)
   - [Анализ метаданных 1С:Предприятие 8](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/md-streamer/README.md)
 - [REQUEST](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/request/README.md) (http, web api)
