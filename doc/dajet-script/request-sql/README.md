@@ -5,9 +5,9 @@
 ### Произвольные запросы СУБД на "родном" SQL
 
 Начиная с версии **DaJet Script 3.9.8**, расширены возможности команды **REQUEST** для выполнения произвольных запросов к СУБД на соответствующем "родном" для неё диалекте SQL. Для возврата результата выполнения запроса SQL требуется использование команды [**DEFINE**](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/define/README.md), которая в данном случае используется как определение контракта данных между DaJet Script и СУБД. Ниже по ссылкам можно найти примеры использования команды **REQUEST** для каждой конкретной СУБД:
-- Sqlite
-- SQL Server
-- PostgreSQL
+- [Sqlite](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/request-sql/sqlite/README.md)
+- [SQL Server](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/request-sql/mssql/README.md)
+- [PostgreSQL](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/request-sql/pgsql/README.md)
 
 Для переключения команды **REQUEST** в режим выполнения произвольных запросов SQL необходимо в строке подключения после ```?``` добавить параметр ```sql```. Например вот так:
 
