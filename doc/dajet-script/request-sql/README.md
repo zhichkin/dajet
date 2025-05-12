@@ -40,3 +40,6 @@ REQUEST 'url?sql'
 > Более подробно про потоковые команды и их поведение можно посмотреть в соответствующей документации по командам [**STREAM**](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/databases/stream/README.md) или [**CONSUME**](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/databases/consume/README.md). В случае использования команды **REQUEST** в потоковом режиме в предложении **INTO** должна использоваться переменная типа ```object```.
 
 [Наверх](#произвольные-запросы-субд-на-родном-sql)
+
+**Визуальная схема сопоставления скриптов SQL и DaJet Script**
+![Схема сопоставления скриптов SQL и DaJet Script](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-database-request-sql.png)
