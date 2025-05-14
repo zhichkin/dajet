@@ -62,8 +62,12 @@ namespace DaJet.Metadata.Extensions
         /// <br>у которых свойство "РаспределеннаяИнформационнаяБаза" установлено в значение "Истина".</br>
         /// </summary>
         public bool IsDistributed { get; set; } // Доступно, начиная с версии 8.3.12
-
-        [JsonIgnore] public Dictionary<Guid, string> FileMap { get; } = new();
+        ///<summary>
+        ///<b>Сопоставление имён файлов метаданных расширения:</b>
+        ///<br><b>Ключ:</b> стандартное имя файла, образованное от UUID'а объекта метаданных.</br>
+        ///<br><b>Значение:</b> реальное имя файла в таблице ConfigCAS (вероятно хэш данных).</br>
+        ///</summary>
+        [JsonIgnore] public Dictionary<string, string> FileMap { get; } = new();
     }
 }
 

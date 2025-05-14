@@ -530,6 +530,7 @@ namespace DaJet.Metadata
         public InfoBase InfoBase { get { return _infoBase; } }
         public int YearOffset { get { return _infoBase is null ? 0 : _infoBase.YearOffset; } }
         public ExtensionInfo Extension { get { return _extension; } }
+        public ConcurrentDictionary<Guid, OneDbMetadataProvider> Extensions { get { return _extensions; } }
         public string ConnectionString { get { return _connectionString; } }
         public DatabaseProvider DatabaseProvider { get { return _provider; } }
         public IDbConfigurator GetDbConfigurator()
@@ -721,7 +722,7 @@ namespace DaJet.Metadata
                     continue;
                 }
 
-                fileName = (_extension == null) ? entry.Key.ToString() : _extension.FileMap[entry.Key];
+                fileName = (_extension == null) ? entry.Key.ToString() : _extension.FileMap[entry.Key.ToString()];
 
                 using (ConfigFileReader reader = new(_provider, in _connectionString, in tableName, in fileName))
                 {
@@ -779,9 +780,10 @@ namespace DaJet.Metadata
                     throw new InvalidOperationException($"Failed to apply extension {extension.Name}: {error}");
                 }
 
-                //FIXME: FileName and FileMap is already read
-                extension.FileName = null;
-                extension.FileMap.Clear();
+                //FIXME: TryApplyExtension и следующий ниже TryGetMetadata оба заполняют FileMap
+                //FileName and FileMap is already read
+                //extension.FileName = null;
+                //extension.FileMap.Clear();
 
                 if (TryGetMetadata(in extension, out OneDbMetadataProvider metadata, out _))
                 {
@@ -789,7 +791,7 @@ namespace DaJet.Metadata
                 }
             }
 
-            //TODO: ApplyDbNameExt1(); + ExtensionRootFileParser > FileMap collection + Configurator.ConfigureArticles
+            ApplyDbNameExt1();
 
             //NOTE: Добавление собственных планов обмена расширений
             //NOTE: доступно, начиная с версии 1С:Предприятие 8.3.11
@@ -798,7 +800,7 @@ namespace DaJet.Metadata
         {
             if (_extension is not null) { return; } // Check if this is the main configuration
 
-            string fileName = ConfigFiles.DbNames + "-Ext-1";
+            string fileName = ConfigFiles.DbNames + "-ext-1";
 
             using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Params, in fileName))
             {
@@ -822,17 +824,17 @@ namespace DaJet.Metadata
         {
             if (_extension != null)
             {
-                return _extension.FileMap[uuid];
+                return _extension.FileMap[uuid.ToString()];
             }
 
             if (_extended.TryGetValue(uuid, out MetadataItemEx item))
             {
-                return (item.Uuid == item.Parent) ? item.File : uuid.ToString();
+                return (item.IsExtensionOwnObject ? item.File : uuid.ToString());
             }
 
             return uuid.ToString();
         }
-        private string GetConfigTableName(Guid uuid)
+        internal string GetConfigTableName(Guid uuid)
         {
             if (_extension != null) { return ConfigTables.ConfigCAS; }
 
@@ -840,7 +842,7 @@ namespace DaJet.Metadata
 
             if (_extended.TryGetValue(uuid, out MetadataItemEx item))
             {
-                return (item.Uuid == item.Parent) ? ConfigTables.ConfigCAS : ConfigTables.Config;
+                return (item.IsExtensionOwnObject ? ConfigTables.ConfigCAS : ConfigTables.Config);
             }
 
             return ConfigTables.Config;
@@ -945,7 +947,7 @@ namespace DaJet.Metadata
                 return; // Объект не имеет расширения и не является собственным объектом расширения
             }
 
-            if (item.Uuid == item.Parent)
+            if (item.IsExtensionOwnObject)
             {
                 // Cобственный объект расширения - родительский объект основной конфигурации отсутствует
 
@@ -1949,7 +1951,7 @@ namespace DaJet.Metadata
                 
                 foreach (var uuid in type.Value)
                 {
-                    if (!extension.FileMap.TryGetValue(uuid, out fileName)) { continue; }
+                    if (!extension.FileMap.TryGetValue(uuid.ToString(), out fileName)) { continue; }
 
                     if (string.IsNullOrWhiteSpace(fileName)) { continue; }
 

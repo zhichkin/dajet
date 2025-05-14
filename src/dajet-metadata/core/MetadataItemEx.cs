@@ -24,6 +24,10 @@ namespace DaJet.Metadata.Core
         public Guid Parent { get; } = Guid.Empty;
         public string Name { get; } = string.Empty;
         public string File { get; } = string.Empty;
+        /// <summary>
+        /// Cобственный объект расширения (не заимствованный из основной конфигурации)
+        /// </summary>
+        internal bool IsExtensionOwnObject { get { return Uuid == Parent; } }
         internal MetadataItemEx SetParent(Guid parent) { return new MetadataItemEx(Extension, Type, Uuid, Name, File, parent); }
         public override string ToString()
         {

@@ -84,16 +84,7 @@ namespace DaJet.Metadata.Extensions
                 byte[] hex = Convert.FromBase64String(value);
                 string file = Convert.ToHexString(hex).ToLower();
 
-                if (Guid.TryParse(key, out Guid uuid))
-                {
-                    extension.FileMap.Add(uuid, file);
-                }
-                else
-                {
-                    // TODO: состав плана обмена расширения
-                    // Пример uuid : 8daa2f38-04c2-4e36-83c9-8eb828e4131d.1
-                    // Пример file : 52621f02c2b6a123de616603c376f3d319817441
-                }
+                _ = extension.FileMap.TryAdd(key, file);
 
                 if (key == root)
                 {

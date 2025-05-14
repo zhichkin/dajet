@@ -2778,11 +2778,28 @@ namespace DaJet.Metadata.Core
 
         public static void ConfigureArticles(in OneDbMetadataProvider cache, in Publication publication)
         {
+            string tableName = cache.GetConfigTableName(publication.Uuid);
+
             string fileName = publication.Uuid.ToString() + ".1"; // файл описания состава плана обмена
+
+            if (cache.TryGetExtendedInfo(publication.Uuid, out MetadataItemEx item))
+            {
+                if (item.IsExtensionOwnObject)
+                {
+                    if (cache.Extensions.TryGetValue(item.Extension, out OneDbMetadataProvider extension))
+                    {
+                        fileName = extension.Extension.FileMap[fileName];
+                    }
+                    else
+                    {
+                        return; // This should not happen - extension is not found in the cache!
+                    }
+                }
+            }
 
             ConfigObject configObject;
 
-            using (ConfigFileReader reader = new(cache.DatabaseProvider, cache.ConnectionString, ConfigTables.Config, fileName))
+            using (ConfigFileReader reader = new(cache.DatabaseProvider, cache.ConnectionString, tableName, fileName))
             {
                 configObject = new ConfigFileParser().Parse(reader);
             }
@@ -3085,11 +3102,42 @@ namespace DaJet.Metadata.Core
                 return;
             }
 
+            bool extended = false;
+
+            //foreach (var extension in cache.Extensions)
+            //{
+            //    extension.Value.TryGetChngR() ???
+            //}
+
+            // Если объект только заимствован и при этом входит в состав плана обмена расширения,
+            // то такой объект не попадает в коллекцию _extended и не находится !!!
+            // А что если объект расширен, но не входит в план обмена ? !!!
+            if (cache.TryGetExtendedInfo(table.Entity.Uuid, out MetadataItemEx item))
+            {
+                if (item.IsExtensionOwnObject)
+                {
+                    extended = true;
+
+                    if (cache.Extensions.TryGetValue(item.Extension, out OneDbMetadataProvider extension))
+                    {
+                        //fileName = extension.Extension.FileMap[fileName];
+                    }
+                    else
+                    {
+                        return; // This should not happen - extension is not found in the cache!
+                    }
+                }
+                else
+                {
+                    // Заимствованный из основной конфигурации объект метаданных расширения
+                }
+            }
+
             table.Uuid = table.Entity.Uuid;
             table.Name = table.Entity.Name + ".Изменения";
             table.Alias = "Таблица регистрации изменений";
             table.TypeCode = table.Entity.TypeCode;
-            table.TableName = $"_{changeTable.Name}{changeTable.Code}";
+            table.TableName = $"_{changeTable.Name}{changeTable.Code}{(extended ? "x1" : string.Empty)}";
 
             ConfigurePropertyУзелПланаОбмена(in table);
             ConfigurePropertyНомерСообщения(in table);
