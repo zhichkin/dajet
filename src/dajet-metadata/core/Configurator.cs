@@ -1,4 +1,5 @@
-﻿using DaJet.Metadata.Model;
+﻿using DaJet.Data;
+using DaJet.Metadata.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -2775,7 +2776,6 @@ namespace DaJet.Metadata.Core
         #endregion
 
         #region "PUBLICATION ARTICLES"
-
         public static void ConfigureArticles(in OneDbMetadataProvider cache, in Publication publication)
         {
             string tableName = cache.GetConfigTableName(publication.Uuid);
@@ -2797,24 +2797,32 @@ namespace DaJet.Metadata.Core
                 }
             }
 
+            publication.Articles = GetPublicationArticles(cache.DatabaseProvider, cache.ConnectionString, tableName, fileName);
+        }
+        internal static Dictionary<Guid, AutoPublication> GetPublicationArticles(DatabaseProvider provider, string connectionString, string tableName, string fileName)
+        {
+            Dictionary<Guid, AutoPublication> articles = new();
+
             ConfigObject configObject;
 
-            using (ConfigFileReader reader = new(cache.DatabaseProvider, cache.ConnectionString, tableName, fileName))
+            using (ConfigFileReader reader = new(provider, connectionString, tableName, fileName))
             {
                 configObject = new ConfigFileParser().Parse(reader);
             }
 
             if (configObject == null || configObject.Count == 0)
             {
-                return; // Publication has no articles file in Config table
+                return articles; // Publication has no articles file in Config/ConfigCAS table
             }
 
             int count = configObject.GetInt32(new int[] { 1 }); // количество объектов в составе плана обмена
 
             if (count == 0)
             {
-                return;
+                return articles; // Publication has no articles defined
             }
+
+            articles.TrimExcess(count);
 
             int offset = 2;
 
@@ -2824,10 +2832,11 @@ namespace DaJet.Metadata.Core
 
                 AutoPublication setting = (AutoPublication)configObject.GetInt32(new int[] { (i * offset) + 1 });
 
-                publication.Articles.Add(uuid, setting);
+                articles.Add(uuid, setting);
             }
-        }
 
+            return articles;
+        }
         #endregion
 
         #region "CONFIGURE DATABASE NAMES"
@@ -3104,33 +3113,9 @@ namespace DaJet.Metadata.Core
 
             bool extended = false;
 
-            //foreach (var extension in cache.Extensions)
-            //{
-            //    extension.Value.TryGetChngR() ???
-            //}
-
-            // Если объект только заимствован и при этом входит в состав плана обмена расширения,
-            // то такой объект не попадает в коллекцию _extended и не находится !!!
-            // А что если объект расширен, но не входит в план обмена ? !!!
             if (cache.TryGetExtendedInfo(table.Entity.Uuid, out MetadataItemEx item))
             {
-                if (item.IsExtensionOwnObject)
-                {
-                    extended = true;
-
-                    if (cache.Extensions.TryGetValue(item.Extension, out OneDbMetadataProvider extension))
-                    {
-                        //fileName = extension.Extension.FileMap[fileName];
-                    }
-                    else
-                    {
-                        return; // This should not happen - extension is not found in the cache!
-                    }
-                }
-                else
-                {
-                    // Заимствованный из основной конфигурации объект метаданных расширения
-                }
+                extended = item.ExtensionType.IsChangeTracking();
             }
 
             table.Uuid = table.Entity.Uuid;

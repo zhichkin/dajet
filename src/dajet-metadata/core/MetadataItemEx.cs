@@ -5,16 +5,17 @@ namespace DaJet.Metadata.Core
     public readonly struct MetadataItemEx
     {
         internal static MetadataItemEx Empty { get; } = new();
-        internal MetadataItemEx(Guid extension, Guid type, Guid uuid, string name, string file)
+        internal MetadataItemEx(Guid extension, Guid type, Guid uuid, string name, string file, ExtensionType extensionType)
         {
             Extension = extension;
             Type = type;
             Uuid = uuid;
             Name = name;
             File = file;
+            ExtensionType = extensionType;
         }
-        internal MetadataItemEx(Guid extension, Guid type, Guid uuid, string name, string file, Guid parent)
-            : this(extension, type, uuid, name, file)
+        internal MetadataItemEx(Guid extension, Guid type, Guid uuid, string name, string file, Guid parent, ExtensionType extensionType)
+            : this(extension, type, uuid, name, file, extensionType)
         {
             Parent = parent;
         }
@@ -24,11 +25,15 @@ namespace DaJet.Metadata.Core
         public Guid Parent { get; } = Guid.Empty;
         public string Name { get; } = string.Empty;
         public string File { get; } = string.Empty;
+        public ExtensionType ExtensionType { get; }
         /// <summary>
         /// Cобственный объект расширения (не заимствованный из основной конфигурации)
         /// </summary>
         internal bool IsExtensionOwnObject { get { return Uuid == Parent; } }
-        internal MetadataItemEx SetParent(Guid parent) { return new MetadataItemEx(Extension, Type, Uuid, Name, File, parent); }
+        internal MetadataItemEx SetParent(Guid parent)
+        {
+            return new MetadataItemEx(Extension, Type, Uuid, Name, File, parent, ExtensionType);
+        }
         public override string ToString()
         {
             if (this == Empty) { return "Неопределено"; }

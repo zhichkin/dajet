@@ -25,7 +25,11 @@ namespace DaJet.Metadata.Model
         public readonly int Code { get; } = 0;
         public readonly Guid Uuid { get; } = Guid.Empty;
         public readonly string Name { get; } = string.Empty;
-        public readonly List<DbName> Children { get; } = new List<DbName>(); // VT + LineNo | Reference + ReferenceChngR
+        /// <summary>
+        /// Дочерние идентификаторы основных объектов СУБД.<br/>
+        /// Например, VT + LineNo или Reference + ReferenceChngR.
+        /// </summary>
+        public readonly List<DbName> Children { get; } = new();
         public override string ToString()
         {
             return $"{Name} {{{Code}:{Uuid}}}";
@@ -89,21 +93,6 @@ namespace DaJet.Metadata.Model
             }
 
             return _cache.TryGetValue(uuid, out entry);
-        }
-        public void AddRange(IEnumerable<DbName> entries)
-        {
-            foreach (DbName entry in entries)
-            {
-                if (_main.Contains(entry.Name)) // check if it is the main table
-                {
-                    if (_tref.Contains(entry.Name))
-                    {
-                        _ = _codes.TryAdd(entry.Code, entry.Uuid); // Ссылочные типы данных
-                    }
-
-                    _cache.Add(entry.Uuid, entry); // Включая дочерние DbName, например, LineNo и ChngR
-                }
-            }
         }
         public void Add(Guid uuid, int code, string name)
         {

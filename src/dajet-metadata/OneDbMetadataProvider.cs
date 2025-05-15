@@ -773,17 +773,19 @@ namespace DaJet.Metadata
 
             List<ExtensionInfo> extensions = GetExtensions();
 
+            DbNameCache dbextensions = new(); // DBNames всех расширений + Ext-1
+
             foreach (ExtensionInfo extension in extensions)
             {
-                if (!TryApplyExtension(in extension, out string error))
+                ApplyDbNamesExt(in extension, in dbextensions);
+                ApplyDbNameExt1(in dbextensions);
+
+                if (!TryApplyExtension(in extension, in dbextensions, out string error))
                 {
                     throw new InvalidOperationException($"Failed to apply extension {extension.Name}: {error}");
                 }
 
                 //FIXME: TryApplyExtension и следующий ниже TryGetMetadata оба заполняют FileMap
-                //FileName and FileMap is already read
-                //extension.FileName = null;
-                //extension.FileMap.Clear();
 
                 if (TryGetMetadata(in extension, out OneDbMetadataProvider metadata, out _))
                 {
@@ -791,29 +793,8 @@ namespace DaJet.Metadata
                 }
             }
 
-            ApplyDbNameExt1();
-
             //NOTE: Добавление собственных планов обмена расширений
             //NOTE: доступно, начиная с версии 1С:Предприятие 8.3.11
-        }
-        private void ApplyDbNameExt1()
-        {
-            if (_extension is not null) { return; } // Check if this is the main configuration
-
-            string fileName = ConfigFiles.DbNames + "-ext-1";
-
-            using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Params, in fileName))
-            {
-                new DbNamesParser().Parse(in reader, out DbNameCache xnames);
-
-                if (xnames is not null)
-                {
-                    foreach (DbName entry in xnames.DbNames)
-                    {
-                        _database.Add(entry.Uuid, entry.Code, entry.Name);
-                    }
-                }
-            }
         }
 
         #endregion
@@ -962,6 +943,11 @@ namespace DaJet.Metadata
                 parent.TableName += "x1"; // _Document123X1
 
                 return;
+            }
+
+            if (!item.ExtensionType.IsDataTracking())
+            {
+                return; // Расширение заимствованного объекта путём включения его в состав плана обмена
             }
 
             // Заимствованный объект основной конфигурации - требуется применение расширения
@@ -1899,7 +1885,49 @@ namespace DaJet.Metadata
 
             return null;
         }
-        public bool TryApplyExtension(in ExtensionInfo extension, out string error)
+        private void ApplyDbNameExt1(in DbNameCache dbextensions)
+        {
+            string fileName = ConfigFiles.DbNames + "-ext-1";
+
+            using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Params, in fileName))
+            {
+                new DbNamesParser().Parse(in reader, out DbNameCache dbnames);
+                
+                foreach (DbName entry in dbnames.DbNames)
+                {
+                    _database.Add(entry.Uuid, entry.Code, entry.Name); // DBNames основной конфигурации
+                    dbextensions.Add(entry.Uuid, entry.Code, entry.Name); // DBNames всех расширений
+
+                    foreach (DbName child in entry.Children) // Дочерние идентификаторы объектов СУБД
+                    {
+                        _database.Add(child.Uuid, child.Code, child.Name);
+                        dbextensions.Add(child.Uuid, child.Code, child.Name);
+                    }
+                }
+            }
+        }
+        private void ApplyDbNamesExt(in ExtensionInfo extension, in DbNameCache dbextensions)
+        {
+            string fileName = ConfigFiles.DbNames + "-ext-" + extension.Identity.ToString().ToLower();
+
+            using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Params, in fileName))
+            {
+                new DbNamesParser().Parse(in reader, out DbNameCache dbnames);
+
+                foreach (DbName entry in dbnames.DbNames)
+                {
+                    _database.Add(entry.Uuid, entry.Code, entry.Name); // DBNames основной конфигурации
+                    dbextensions.Add(entry.Uuid, entry.Code, entry.Name); // DBNames всех расширений
+
+                    foreach (DbName child in entry.Children) // Дочерние идентификаторы объектов СУБД
+                    {
+                        _database.Add(child.Uuid, child.Code, child.Name);
+                        dbextensions.Add(child.Uuid, child.Code, child.Name);
+                    }
+                }
+            }
+        }
+        public bool TryApplyExtension(in ExtensionInfo extension, in DbNameCache dbextensions, out string error)
         {
             //TODO: extensive error and logging handling !!!
 
@@ -1919,19 +1947,6 @@ namespace DaJet.Metadata
                 return false;
             }
 
-            // Initialize extension DbNames
-
-            string fileName = ConfigFiles.DbNames + "-ext-" + extension.Identity.ToString().ToLower();
-
-            DbNameCache database;
-
-            using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Params, in fileName))
-            {
-                new DbNamesParser().Parse(in reader, out database);
-
-                _database.AddRange(database.DbNames);
-            }
-
             // Initialize extension metadata types and items list
 
             Dictionary<Guid, List<Guid>> metadata = CreateSupportedMetadataDictionary();
@@ -1941,6 +1956,12 @@ namespace DaJet.Metadata
                 new InfoBaseParser(this).Parse(in reader, extension.Uuid, out _, in metadata);
             }
 
+            HashSet<Guid> articles = new();
+            if (metadata.TryGetValue(MetadataTypes.Publication, out List<Guid> publications))
+            {
+                CollectPublicationArticles(in extension, in publications, in articles);
+            }
+
             foreach (var type in metadata)
             {
                 IMetadataObjectParser parser = CreateExtensionParser(type.Key);
@@ -1948,21 +1969,25 @@ namespace DaJet.Metadata
                 if (parser is null) { continue; }
                 if (type.Key == MetadataTypes.SharedProperty) { continue; }
                 if (type.Key == MetadataTypes.NamedDataTypeDescriptor) { continue; } //TODO: (!) заполнить коллекцию OneDbMetadataProvider._references.
-                
+
                 foreach (var uuid in type.Value)
                 {
-                    if (!extension.FileMap.TryGetValue(uuid.ToString(), out fileName)) { continue; }
+                    if (!extension.FileMap.TryGetValue(uuid.ToString(), out string fileName)) { continue; }
 
                     if (string.IsNullOrWhiteSpace(fileName)) { continue; }
 
                     options.FileName = fileName;
                     options.MetadataUuid = uuid;
 
-                    if (!ExtendsDatabaseSchema(in database, in options, in parser)) { continue; }
+                    ExtensionType extentionType = GetExtensionType(in dbextensions, in articles, in options, in parser);
+
+                    if (extentionType == ExtensionType.None) { continue; }
 
                     parser.Parse(in options, out MetadataInfo info);
 
-                    MetadataItemEx item = new(extension.Identity, info.MetadataType, info.MetadataUuid, info.Name, fileName, info.MetadataParent);
+                    MetadataItemEx item = new(extension.Identity,
+                        info.MetadataType, info.MetadataUuid, info.Name,
+                        fileName, info.MetadataParent, extentionType);
 
                     ApplyMetadataObjectExtension(in item);
                 }
@@ -1970,12 +1995,44 @@ namespace DaJet.Metadata
 
             return string.IsNullOrEmpty(error);
         }
-        private bool ExtendsDatabaseSchema(in DbNameCache database, in ConfigFileOptions options, in IMetadataObjectParser parser)
+        private void CollectPublicationArticles(in ExtensionInfo extension, in List<Guid> publications, in HashSet<Guid> articles)
         {
-            if (database.TryGet(options.MetadataUuid, out _))
+            foreach (Guid uuid in publications)
             {
-                return true; // Собственный объект расширения
+                string fileName = uuid.ToString() + ".1";
+
+                if (!extension.FileMap.TryGetValue(fileName, out fileName))
+                {
+                    continue; // Заимствованный план обмена
+                }
+                
+                // Собственный план обмена расширения
+
+                Dictionary<Guid, AutoPublication>  publication = Configurator.GetPublicationArticles(_provider, _connectionString, ConfigTables.ConfigCAS, fileName);
+
+                foreach (Guid article in publication.Keys)
+                {
+                    _ = articles.Add(article);
+                }
             }
+        }
+        private ExtensionType GetExtensionType(in DbNameCache dbextensions, in HashSet<Guid> articles, in ConfigFileOptions options, in IMetadataObjectParser parser)
+        {
+            ExtensionType extentionType = ExtensionType.None;
+
+            if (dbextensions.TryGet(options.MetadataUuid, out _))
+            {
+                extentionType |= ExtensionType.DataSchema;
+
+                if (IsChangeTrackingExtensionType(options.MetadataUuid, in articles))
+                {
+                    extentionType |= ExtensionType.ChangeTracking;
+                }
+
+                return extentionType; // Собственный объект расширения
+            }
+
+            // Заимствованный из основной конфигурации объект расширения
 
             MetadataObject metadata;
 
@@ -1986,12 +2043,26 @@ namespace DaJet.Metadata
 
             if (metadata is not ApplicationObject entity)
             {
-                return false; // Utility metadata objects do not change the database schema
+                return ExtensionType.None; // Utility metadata objects do not change the database schema
             }
 
+            if (IsDataSchemaExtensionType(in entity, in dbextensions))
+            {
+                extentionType |= ExtensionType.DataSchema; // Заимствованный объект метаданных расширен дополнительными реквизитами
+            }
+
+            if (IsChangeTrackingExtensionType(metadata.Uuid, in articles))
+            {
+                extentionType |= ExtensionType.ChangeTracking; // Заимствованный объект метаданных входит в состав плана обмена
+            }
+
+            return extentionType;
+        }
+        private bool IsDataSchemaExtensionType(in ApplicationObject entity, in DbNameCache dbextensions)
+        {
             foreach (MetadataProperty property in entity.Properties)
             {
-                if (database.TryGet(property.Uuid, out _))
+                if (dbextensions.TryGet(property.Uuid, out _))
                 {
                     return true; // Собственное свойство расширения заимствованного объекта основной конфигурации
                 }
@@ -2001,14 +2072,14 @@ namespace DaJet.Metadata
             {
                 foreach (TablePart table in owner.TableParts)
                 {
-                    if (database.TryGet(table.Uuid, out _))
+                    if (dbextensions.TryGet(table.Uuid, out _))
                     {
                         return true; // Собственная табличная часть расширения заимствованного объекта основной конфигурации
                     }
 
                     foreach (MetadataProperty property in table.Properties)
                     {
-                        if (database.TryGet(property.Uuid, out _))
+                        if (dbextensions.TryGet(property.Uuid, out _))
                         {
                             return true; // Собственное свойство табличной части заимствованного объекта основной конфигурации
                         }
@@ -2017,6 +2088,10 @@ namespace DaJet.Metadata
             }
 
             return false;
+        }
+        private bool IsChangeTrackingExtensionType(Guid uuid, in HashSet<Guid> articles)
+        {
+            return articles.Contains(uuid);
         }
         private void ApplyMetadataObjectExtension(in MetadataItemEx item)
         {
