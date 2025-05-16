@@ -17,6 +17,7 @@ namespace DaJet.Metadata.Parsers
                 { MetadataTypes.Account, CreateAccountParser },
                 { MetadataTypes.Catalog, CreateCatalogParser },
                 { MetadataTypes.Document, CreateDocumentParser },
+                { MetadataTypes.Constant, CreateConstantParser },
                 { MetadataTypes.Enumeration, CreateEnumerationParser },
                 { MetadataTypes.Publication, CreatePublicationParser },
                 { MetadataTypes.Characteristic, CreateCharacteristicParser },
@@ -56,6 +57,10 @@ namespace DaJet.Metadata.Parsers
         private IMetadataObjectParser CreateDocumentParser()
         {
             return new DocumentParser(_metadata);
+        }
+        private IMetadataObjectParser CreateConstantParser()
+        {
+            return new ConstantParser(_metadata);
         }
         private IMetadataObjectParser CreateEnumerationParser()
         {

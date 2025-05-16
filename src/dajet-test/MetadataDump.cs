@@ -99,7 +99,7 @@ namespace DaJet.Metadata.Test
         }
         [TestMethod] public void DumpConfigFileByUuid()
         {
-            Guid file_uuid = new("738577f7-2f37-4c05-a9e9-70f9d835939f");
+            Guid file_uuid = new("f70823fb-0cc1-4b00-8b03-fdbf44e9127a");
             DatabaseProvider provider = DatabaseProvider.SqlServer;
 
             ConfigFileParser parser = new();
@@ -108,7 +108,7 @@ namespace DaJet.Metadata.Test
             using (ConfigFileReader reader = new(provider, in MS_CONNECTION, ConfigTables.Config, file_uuid))
             {
                 ConfigObject config = parser.Parse(in reader);
-                writer.Write(config, @"C:\temp\1c-dump\file_dump.txt");
+                writer.Write(config, @"C:\temp\1c-dump\constant_file_dump.txt");
             }
 
             Console.WriteLine("Done");
@@ -117,8 +117,10 @@ namespace DaJet.Metadata.Test
         {
             IMetadataProvider metadata = new OneDbMetadataProvider(MS_CONNECTION);
 
-            string metadataName = "Справочник.Номенклатура";
-            string dumpFilePath = "C:\\temp\\1c-dump\\Справочник.Номенклатура.dump.txt";
+            string metadataName = "Константа.Булево";
+            string dumpFilePath = "C:\\temp\\1c-dump\\Константа.Булево.dump.txt";
+            //string metadataName = "Справочник.Номенклатура";
+            //string dumpFilePath = "C:\\temp\\1c-dump\\Справочник.Номенклатура.dump.txt";
             //string metadataName = "ПланСчетов.ПланСчетов1";
             //string dumpFilePath = "C:\\temp\\1c-dump\\ПланСчетов.ПланСчетов1.dump.txt";
             //string metadataName = "РегистрБухгалтерии.РегистрБухгалтерии1";

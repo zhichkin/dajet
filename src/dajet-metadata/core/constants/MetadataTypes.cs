@@ -32,6 +32,7 @@ namespace DaJet.Metadata.Core
                     Account,
                     Catalog,
                     Document,
+                    Constant,
                     Enumeration,
                     Publication,
                     Characteristic,
@@ -50,6 +51,7 @@ namespace DaJet.Metadata.Core
                     Account,
                     Catalog,
                     Document,
+                    Constant,
                     Enumeration,
                     Publication,
                     Characteristic,
@@ -93,6 +95,7 @@ namespace DaJet.Metadata.Core
             {
                 return new List<Guid>()
                 {
+                    Constant,
                     AccountingRegister,
                     InformationRegister,
                     AccumulationRegister

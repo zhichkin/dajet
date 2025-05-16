@@ -164,6 +164,25 @@ namespace DaJet.Metadata
         {
             return _database.TryGet(uuid, out entry);
         }
+        internal bool TryGetFld(Guid uuid, out DbName entry)
+        {
+            if (!_database.TryGet(uuid, out entry))
+            {
+                return false;
+            }
+
+            foreach (DbName child in entry.Children)
+            {
+                if (child.Name == MetadataTokens.Fld)
+                {
+                    entry = child;
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
         internal bool TryGetLineNo(Guid uuid, out DbName entry)
         {
             if (!_database.TryGet(uuid, out entry))
@@ -589,13 +608,13 @@ namespace DaJet.Metadata
         {
             return new()
             {
-                //{ MetadataTypes.Constant,             new List<Guid>() }, // Константы
                 //{ MetadataTypes.Subsystem,            new List<Guid>() }, // Подсистемы
                 { MetadataTypes.NamedDataTypeDescriptor,     new List<Guid>() }, // Определяемые типы
                 { MetadataTypes.SharedProperty,       new List<Guid>() }, // Общие реквизиты
                 { MetadataTypes.Account,              new List<Guid>() }, // Планы счетов
                 { MetadataTypes.Catalog,              new List<Guid>() }, // Справочники
                 { MetadataTypes.Document,             new List<Guid>() }, // Документы
+                { MetadataTypes.Constant,             new List<Guid>() }, // Константы
                 { MetadataTypes.Enumeration,          new List<Guid>() }, // Перечисления
                 { MetadataTypes.Publication,          new List<Guid>() }, // Планы обмена
                 { MetadataTypes.Characteristic,       new List<Guid>() }, // Планы видов характеристик

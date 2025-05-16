@@ -22,6 +22,10 @@ namespace DaJet.Metadata.Core
             {
                 ConfigureDocument(in document);
             }
+            else if (metadata is Constant constant)
+            {
+                ConfigureConstant(in cache, in constant);
+            }
             else if (metadata is Enumeration enumeration)
             {
                 ConfigureEnumeration(in enumeration);
@@ -634,6 +638,54 @@ namespace DaJet.Metadata.Core
             enumeration.Properties.Add(property);
         }
 
+        #endregion
+
+        #region "CONSTANT"
+        private static void ConfigureConstant(in OneDbMetadataProvider cache, in Constant constant)
+        {
+            ConfigurePropertyRecordKey(in constant);
+            ConfigurePropertyЗначение(in cache, in constant);
+            ConfigureDatabaseNames(in cache, constant);
+        }
+        private static void ConfigurePropertyRecordKey(in Constant constant)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "RecordKey",
+                Uuid = Guid.Empty,
+                Alias = "КлючЗаписи",
+                Purpose = PropertyPurpose.System,
+                DbName = "_RecordKey"
+            };
+            property.PropertyType.IsBinary = true;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = "_RecordKey",
+                Length = 1,
+                TypeName = "binary",
+                IsPrimaryKey = true
+            });
+
+            constant.Properties.Add(property);
+        }
+        private static void ConfigurePropertyЗначение(in OneDbMetadataProvider cache, in Constant constant)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "Значение",
+                Uuid = constant.Uuid,
+                Purpose = PropertyPurpose.Property
+            };
+            property.PropertyType = constant.DataTypeDescriptor;
+
+            if (cache.ResolveReferences && constant.References is not null && constant.References.Count > 0)
+            {
+                property.References.AddRange(constant.References);
+            }
+
+            constant.Properties.Add(property);
+        }
         #endregion
 
         #region "ACCOUNT"
@@ -2910,11 +2962,23 @@ namespace DaJet.Metadata.Core
                     continue;
                 }
 
-                if (!cache.TryGetDbName(property.Uuid, out DbName entry))
-                {
-                    continue;
-                }
+                DbName entry;
 
+                if (entity is Constant) // Единственное свойство "Значение"
+                {
+                    if (!cache.TryGetFld(property.Uuid, out entry))
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (!cache.TryGetDbName(property.Uuid, out entry))
+                    {
+                        continue;
+                    }
+                }
+                
                 property.DbName = CreateDbName(entry.Name, entry.Code);
 
                 ConfigureDatabaseColumns(in cache, in property);
