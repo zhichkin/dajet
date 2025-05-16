@@ -5,10 +5,10 @@
 ### Функция UUID1C
 
 Функция **UUID1C** выполняет преобразование значений типа ```uuid```, полученных из базы данных, в формат 1С:Предприятие 8. Функция имеет следующие варианты использования (перегрузки):
-- UUID1C(uuid)   -> uuid
-- UUID1C(string) -> uuid
-- UUID1C(binary) -> uuid
-- UUID1C(entity) -> uuid
+- **UUID1C**(uuid)   -> uuid
+- **UUID1C**(string) -> uuid
+- **UUID1C**(binary) -> uuid
+- **UUID1C**(entity) -> uuid
 
 > **На заметку:** функция ```UUID1C``` имеет "зеркальный" аналог ```UUIDDB```.
 
