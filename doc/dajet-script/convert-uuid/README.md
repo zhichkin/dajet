@@ -37,6 +37,7 @@ RETURN @object
 |{98:643c479d-cacf-4048-11f0-2426af738206}|98|af738206-2426-11f0-9d47-3c64cfca4840|{98:af738206-2426-11f0-9d47-3c64cfca4840}|
 
 **Использование преобразованного значения в 1С**
+
 ![Использование uuid в 1С](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-script-database-convert-uuid-1c-code.png)
 
 [Наверх](#функция-uuid1c)
