@@ -13,6 +13,7 @@ namespace DaJet.Studio.Components
     public partial class MainTreeView : ComponentBase, IDisposable
     {
         #region "CONSTANTS"
+        private readonly Guid CONSTANT_TYPE = new("0195e80c-b157-11d4-9435-004095e12fc7");
         private readonly Guid ENUMERATION_TYPE = new("f6a80749-5ad7-400b-8519-39dc5dff2542");
         private readonly Guid SHARED_PROPERTY_TYPE = new("15794563-ccec-41f6-a83c-ec5f7b9a5bc1");
         private readonly Guid NAMED_DATA_TYPE_TYPE = new("c045099e-13b9-4fb6-9d50-fca00202971e");
@@ -22,6 +23,7 @@ namespace DaJet.Studio.Components
         private const string NODE_TYPE_NAMED_DATA_TYPE = "ОпределяемыйТип";
         private const string NODE_TYPE_CONFIGURATION = "Конфигурация";
         private const string NODE_TYPE_EXTENSIONS = "Расширения";
+        private const string NODE_TYPE_CONSTANT = "Константа";
         private const string NODE_TYPE_PUBLICATION = "ПланОбмена";
         private const string NODE_TYPE_ENUMERATION = "Перечисление";
         private const string NODE_TYPE_CATALOG = "Справочник";
@@ -259,6 +261,14 @@ namespace DaJet.Studio.Components
             {
                 Parent = parent,
                 Tag = parent.Tag,
+                Title = NODE_TYPE_CONSTANT,
+                Url = $"{parent.Url}/{NODE_TYPE_CONSTANT}",
+                OpenNodeHandler = OpenMetadataNodeHandler
+            });
+            parent.Nodes.Add(new TreeNodeModel()
+            {
+                Parent = parent,
+                Tag = parent.Tag,
                 Title = NODE_TYPE_PUBLICATION,
                 Url = $"{parent.Url}/{NODE_TYPE_PUBLICATION}",
                 OpenNodeHandler = OpenMetadataNodeHandler
@@ -405,7 +415,9 @@ namespace DaJet.Studio.Components
                 {
                     bool toggle = true;
 
-                    if (item.Type == SHARED_PROPERTY_TYPE || item.Type == NAMED_DATA_TYPE_TYPE)
+                    if (item.Type == SHARED_PROPERTY_TYPE ||
+                        item.Type == NAMED_DATA_TYPE_TYPE ||
+                        item.Type == CONSTANT_TYPE)
                     {
                         toggle = false;
                     }
