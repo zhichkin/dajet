@@ -33,7 +33,7 @@ namespace DaJet.Metadata.Parsers
             
             if (options.IsExtension)
             {
-                // ??? _converter[1][9][1][9] += Parent;
+                _converter[1][1][1][1][11] += Parent; // uuid расширяемого объекта метаданных
             }
 
             using (ConfigFileReader reader = new(options.DatabaseProvider, options.ConnectionString, options.TableName, options.FileName))
@@ -94,11 +94,10 @@ namespace DaJet.Metadata.Parsers
         {
             _converter = new ConfigFileConverter();
 
-            // 1.9.1.6 (= 0 если заимствование отстутствует) смещение ??? "1"х2+1 = [1][9][1][9]
-            if (_cache is not null && _cache.Extension is not null) // 1.9.1.8 = 0 если заимствование отстутствует
+            // 1.1.1.1.8 (= 0 если заимствование отстутствует)
+            if (_cache is not null && _cache.Extension is not null)
             {
-                // ??? _converter[1][9][1][9] += Parent; // uuid расширяемого объекта метаданных
-                // _converter[1][1][1][2] += ExtensionDataTypeDescriptor;
+                _converter[1][1][1][1][11] += Parent; // uuid расширяемого объекта метаданных
             }
 
             _converter[1][1][1][1][2] += Name;
@@ -151,19 +150,6 @@ namespace DaJet.Metadata.Parsers
             {
                 _target.Parent = source.GetUuid();
             }
-        }
-        private void ExtensionDataTypeDescriptor(in ConfigFileReader source, in CancelEventArgs args)
-        {
-            // Корневой узел объекта "ОписаниеТипов"
-
-            if (source.Token != TokenType.StartObject)
-            {
-                return;
-            }
-
-            _typeParser.Parse(in source, out DataTypeDescriptor type, out List<Guid> references);
-
-            _target.ExtensionDataTypeDescriptor = type;
         }
     }
 }

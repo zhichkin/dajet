@@ -1894,6 +1894,7 @@ namespace DaJet.Metadata
         {
             if (type == MetadataTypes.Catalog) { return new CatalogParser(); }
             if (type == MetadataTypes.Document) { return new DocumentParser(); }
+            if (type == MetadataTypes.Constant) { return new ConstantParser(); }
             if (type == MetadataTypes.Enumeration) { return new EnumerationParser(); }
             if (type == MetadataTypes.Publication) { return new PublicationParser(); }
             if (type == MetadataTypes.Characteristic) { return new CharacteristicParser(); }

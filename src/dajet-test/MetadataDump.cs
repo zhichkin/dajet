@@ -148,7 +148,7 @@ namespace DaJet.Metadata.Test
         }
         [TestMethod] public void DumpExtensionFileByUuid()
         {
-            string file_name = "854ea467e8efd89a31fde76625a8ba9ed02c88f2"; //"6279e33b76e69f7b58e53f1ab0d5ce26050a0e57";
+            string file_name = "d8822b02cb494379dc95ab9916f82acafd06f62e";
             DatabaseProvider provider = DatabaseProvider.SqlServer;
 
             ConfigFileParser parser = new();
@@ -157,7 +157,7 @@ namespace DaJet.Metadata.Test
             using (ConfigFileReader reader = new(provider, in MS_CONNECTION, ConfigTables.ConfigCAS, file_name))
             {
                 ConfigObject config = parser.Parse(in reader);
-                writer.Write(config, @"C:\temp\1c-dump\cas_file_dump_test.txt");
+                writer.Write(config, @"C:\temp\1c-dump\constant_file_dump_borrowed_ext.txt");
             }
 
             Console.WriteLine("Done");
