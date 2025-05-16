@@ -19,6 +19,7 @@
   - [Произвольные запросы SQL](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/request-sql/README.md)
   - [Управление последовательностью](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/sequence/README.md)
   - [Анализ метаданных 1С:Предприятие 8](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/md-streamer/README.md)
+  - [Конвертация ```uuid``` СУБД в формат 1С:Предприятие 8](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/convert-uuid/README.md)
 - [REQUEST](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/request/README.md) (http, web api)
 - [RabbitMQ](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/rabbitmq/README.md)
 - [Apache Kafka](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/kafka/README.md)

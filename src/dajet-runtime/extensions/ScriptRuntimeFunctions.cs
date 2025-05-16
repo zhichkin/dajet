@@ -5,7 +5,6 @@ using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
-using System;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -154,6 +153,14 @@ namespace DaJet.Runtime
         [Function("ENTITY")] public static Entity CreateEntity(this IScriptRuntime runtime, int typeCode, Guid identity)
         {
             return new Entity(typeCode, identity);
+        }
+        [Function("ENTITY")] public static Entity CreateEntity(this IScriptRuntime runtime, long typeCode, Guid identity)
+        {
+            return new Entity((int)typeCode, identity);
+        }
+        [Function("ENTITY")] public static Entity CreateEntity(this IScriptRuntime runtime, decimal typeCode, Guid identity)
+        {
+            return new Entity(decimal.ToInt32(typeCode), identity);
         }
         [Function("ENTITY")] public static Entity CreateEntity(this IScriptRuntime runtime, in string name, Guid identity)
         {
