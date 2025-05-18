@@ -140,17 +140,5 @@ namespace DaJet.Studio
                 Snackbar.Add(error.Message, Severity.Error);
             }
         }
-        protected void CreateNewScript(MouseEventArgs args)
-        {
-            Navigator.NavigateTo("/script-editor");
-        }
-        protected void OpenKafkaProducerPage(MouseEventArgs args)
-        {
-            Navigator.NavigateTo("/create-kafka-producer");
-        }
-        protected void OpenKafkaConsumerPage(MouseEventArgs args)
-        {
-            Navigator.NavigateTo("/create-kafka-consumer");
-        }
     }
 }

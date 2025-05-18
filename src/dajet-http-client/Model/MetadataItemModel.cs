@@ -1,4 +1,4 @@
-﻿namespace DaJet.Studio.Model
+﻿namespace DaJet.Http.Model
 {
     public sealed class MetadataItemModel
     {

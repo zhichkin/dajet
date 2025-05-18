@@ -1,4 +1,5 @@
 ﻿using DaJet.Data;
+using DaJet.Http.Model;
 using DaJet.Json;
 using DaJet.Model;
 using System.Net;
@@ -718,5 +719,14 @@ namespace DaJet.Http.Client
             }
         }
         #endregion
+
+        public async Task<EntityModel> GetMetadataObject(string url)
+        {
+            HttpResponseMessage response = await _client.GetAsync(url);
+            
+            EntityModel entity = await response.Content.ReadFromJsonAsync<EntityModel>();
+
+            return entity;
+        }
     }
 }

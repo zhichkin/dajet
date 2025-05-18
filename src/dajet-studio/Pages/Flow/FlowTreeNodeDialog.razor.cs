@@ -1,5 +1,6 @@
 ﻿using DaJet.Studio.Components;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using MudBlazor;
 
 namespace DaJet.Studio.Pages.Flow
@@ -74,6 +75,14 @@ namespace DaJet.Studio.Pages.Flow
             };
 
             MudDialog.Close(result);
+        }
+        protected void OpenKafkaProducerPage(MouseEventArgs args)
+        {
+            Navigator.NavigateTo("/create-kafka-producer");
+        }
+        protected void OpenKafkaConsumerPage(MouseEventArgs args)
+        {
+            Navigator.NavigateTo("/create-kafka-consumer");
         }
     }
 }

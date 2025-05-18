@@ -1,4 +1,6 @@
 ﻿
+@inject NavigationManager Navigator;
+
 <MudDialog OnBackdropClick="CloseDialog" DefaultFocus="DefaultFocus.Element" DisableSidePadding="true">
 
     <DialogContent>
@@ -25,6 +27,13 @@
 
                 <MudTooltip Text="Создать новый конвейер">
                     <MudIconButton Icon="@Icons.Material.Outlined.SyncAlt" Color="Color.Warning" Size="Size.Large" OnClick="CreatePipeline" />
+                </MudTooltip>
+
+                <MudTooltip Text="Создать продюсера">
+                    <img src="/img/kafka-produce.png" style="margin-left:20px; width:24px; height:24px; vertical-align:middle; cursor:pointer" @onclick="OpenKafkaProducerPage" />
+                </MudTooltip>
+                <MudTooltip Text="Создать консюмера">
+                    <img src="/img/kafka-consume.png" style="width:24px; height:24px;vertical-align:middle;cursor:pointer" @onclick="OpenKafkaConsumerPage" />
                 </MudTooltip>
 
                 @if (!(record.Parent.IsEmpty || record.Parent.IsUndefined))

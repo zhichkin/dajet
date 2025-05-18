@@ -14,6 +14,7 @@
 @*https://mudblazor.com/docs/overview*@
 
 <DaJetContextMenu />
+<MetadataEntityContextMenu />
 
 <div class="app-layout">
     <div class="app-header">
@@ -41,12 +42,6 @@
                 </MudTooltip>
                 <MudTooltip Text="Удалить базу данных">
                     <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Error" Size="Size.Small" OnClick="UnRegisterInfoBase" />
-                </MudTooltip>
-                <MudTooltip Text="Создать продюсера">
-                    <img src="/img/kafka-produce.png" style="margin-left:20px; width:24px; height:24px; vertical-align:middle; cursor:pointer" @onclick="OpenKafkaProducerPage" />
-                </MudTooltip>
-                <MudTooltip Text="Создать консюмера">
-                    <img src="/img/kafka-consume.png" style="width:24px; height:24px;vertical-align:middle;cursor:pointer" @onclick="OpenKafkaConsumerPage" />
                 </MudTooltip>
             </MudContainer>
 

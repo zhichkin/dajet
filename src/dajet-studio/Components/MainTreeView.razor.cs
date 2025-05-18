@@ -1,7 +1,7 @@
 ﻿using DaJet.Http.Client;
+using DaJet.Http.Model;
 using DaJet.Model;
 using DaJet.Studio.Controllers;
-using DaJet.Studio.Model;
 using DaJet.Studio.Pages;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
@@ -18,6 +18,16 @@ namespace DaJet.Studio.Components
         private readonly Guid SHARED_PROPERTY_TYPE = new("15794563-ccec-41f6-a83c-ec5f7b9a5bc1");
         private readonly Guid NAMED_DATA_TYPE_TYPE = new("c045099e-13b9-4fb6-9d50-fca00202971e");
         private readonly Guid ACCOUNTING_REGISTER = new("2deed9b8-0056-4ffe-a473-c20a6c32a0bc");
+        private readonly HashSet<Guid> METADATA_ENTITY =
+        [
+            new Guid("c045099e-13b9-4fb6-9d50-fca00202971e"), // Определяемые типы
+            new Guid("cf4abea6-37b2-11d4-940f-008048da11f9"), // Справочники
+            new Guid("061d872a-5787-460e-95ac-ed74ea3a3e84"), // Документы
+            new Guid("857c4a91-e5f4-4fac-86ec-787626f1c108"), // Планы обмена
+            new Guid("82a1b659-b220-4d94-a9bd-14d757b95a48"), // Планы видов характеристик
+            new Guid("13134201-f60b-11d5-a3c7-0050bae0a776"), // Регистры сведений
+            new Guid("b64d9a40-1642-11d6-a3c7-0050bae0a776")  // Регистры накопления
+        ];
         private const string NODE_TYPE_SERVICE = "Служебные";
         private const string NODE_TYPE_SHARED_PROPERTY = "ОбщийРеквизит";
         private const string NODE_TYPE_NAMED_DATA_TYPE = "ОпределяемыйТип";
@@ -38,6 +48,7 @@ namespace DaJet.Studio.Components
         protected List<TreeNodeModel> Nodes { get; set; } = new();
         [Inject] private DaJetHttpClient DaJetClient { get; set; }
         [Inject] private DaJetCodeController CodeController { get; set; }
+        [Inject] private MdTreeViewController MdTreeViewController { get; set; }
         [Inject] private FlowTreeViewController FlowController { get; set; }
         [Inject] private DbViewController DbViewController { get; set; }
         [Inject] private ApiTreeViewController ApiTreeViewController { get; set; }
@@ -431,6 +442,11 @@ namespace DaJet.Studio.Components
                         UseToggle = toggle,
                         OpenNodeHandler = (toggle ? OpenEntityNodeHandler : null)
                     };
+
+                    if (METADATA_ENTITY.Contains(item.Type))
+                    {
+                        model.ContextMenuHandler = MdTreeViewController.OpenEntityNodeContextMenuHandler;
+                    }
 
                     node.Nodes.Add(model);
                 }
