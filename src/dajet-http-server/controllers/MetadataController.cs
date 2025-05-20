@@ -1,4 +1,5 @@
 ﻿using DaJet.Data;
+using DaJet.Json;
 using DaJet.Metadata;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
@@ -137,60 +138,7 @@ namespace DaJet.Http.Controllers
 
             return Content(json);
         }
-        [HttpGet("{infobase}/{type}/{name}")] public ActionResult SelectMetadataObject(
-            [FromRoute] string infobase, [FromRoute] string type, [FromRoute] string name)
-        {
-            if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(name))
-            {
-                return BadRequest();
-            }
-
-            InfoBaseRecord entity = _source.Select<InfoBaseRecord>(infobase);
-
-            if (entity == null)
-            {
-                return NotFound();
-            }
-
-            JsonSerializerOptions options = new()
-            {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-            };
-
-            if (!_metadataService.TryGetMetadataProvider(entity.Identity.ToString(), out IMetadataProvider provider, out string error))
-            {
-                return NotFound(error);
-            }
-
-            Guid uuid = MetadataTypes.ResolveName(type);
-
-            if (uuid == Guid.Empty)
-            {
-                return NotFound(type);
-            }
-
-            MetadataObject @object;
-
-            try
-            {
-                @object = provider.GetMetadataObject($"{type}.{name}");
-            }
-            catch (Exception exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, ExceptionHelper.GetErrorMessage(exception));
-            }
-
-            if (@object == null)
-            {
-                return NotFound();
-            }
-
-            string json = JsonSerializer.Serialize(@object, @object.GetType(), options);
-
-            return Content(json);
-        }
-
+       
         [HttpPost("")] public ActionResult Insert([FromBody] InfoBaseRecord entity)
         {
             if (string.IsNullOrWhiteSpace(entity.Name) ||
@@ -270,6 +218,125 @@ namespace DaJet.Http.Controllers
             _metadataService.Remove(entity.Identity.ToString());
 
             return Ok();
+        }
+
+        [HttpGet("{infobase}/{type}/{name}")] // ? details = full
+        public ActionResult GetMetadataObject([FromRoute] string infobase, [FromRoute] string type, [FromRoute] string name)
+        {
+            if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(name))
+            {
+                return BadRequest();
+            }
+
+            InfoBaseRecord entity = _source.Select<InfoBaseRecord>(infobase);
+
+            if (entity == null) { return NotFound(infobase); }
+
+            if (Request.Query["details"].FirstOrDefault() == "full")
+            {
+                return GetMetadataObjectDetailsFull(in infobase, in type, in name);
+            }
+
+            JsonSerializerOptions options = new()
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+            };
+
+            if (!_metadataService.TryGetMetadataProvider(entity.Identity.ToString(), out IMetadataProvider provider, out string error))
+            {
+                return NotFound(error);
+            }
+
+            Guid uuid = MetadataTypes.ResolveName(type);
+
+            if (uuid == Guid.Empty)
+            {
+                return NotFound(type);
+            }
+
+            MetadataObject @object;
+
+            try
+            {
+                @object = provider.GetMetadataObject($"{type}.{name}");
+            }
+            catch (Exception exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ExceptionHelper.GetErrorMessage(exception));
+            }
+
+            if (@object == null)
+            {
+                return NotFound();
+            }
+
+            string json = JsonSerializer.Serialize(@object, @object.GetType(), options);
+
+            return Content(json);
+        }
+        private ActionResult GetMetadataObjectDetailsFull(in string infobase, in string type, in string name)
+        {
+            if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(name))
+            {
+                return BadRequest();
+            }
+
+            InfoBaseRecord entity = _source.Select<InfoBaseRecord>(infobase);
+
+            if (entity is null) { return NotFound(infobase); }
+
+            if (!Enum.TryParse(entity.DatabaseProvider, out DatabaseProvider database))
+            {
+                return NotFound(entity.DatabaseProvider);
+            }
+
+            OneDbMetadataProviderOptions options = new()
+            {
+                UseExtensions = false,
+                ResolveReferences = true,
+                DatabaseProvider = database,
+                ConnectionString = entity.ConnectionString
+            };
+
+            if (!OneDbMetadataProvider.TryCreateMetadataProvider(in options, out OneDbMetadataProvider provider, out string error))
+            {
+                return NotFound(error);
+            }
+
+            string metadataName = $"{type}.{name}";
+
+            MetadataObject metadata = provider.GetMetadataObject(metadataName);
+
+            if (metadata is null)
+            {
+                return NotFound(metadataName);
+            }
+
+            DataObject description;
+
+            try
+            {
+                description = new MetadataObjectConverter(in provider).Convert(in metadata);
+            }
+            catch (Exception exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ExceptionHelper.GetErrorMessage(exception));
+            }
+
+            if (description is null) { return NotFound(metadataName); }
+
+            JsonSerializerOptions JsonOptions = new()
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+            };
+
+            JsonOptions.Converters.Add(new DataObjectJsonConverter());
+
+            string json = JsonSerializer.Serialize(description, JsonOptions);
+
+            return Content(json);
         }
     }
 }

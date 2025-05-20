@@ -2277,6 +2277,33 @@ namespace DaJet.Metadata
             return false;
         }
         #endregion
+
+        #region "GET FULL METADATA OBJECT DESCRIPTION"
+        public DataObject GetMetadataObjectDescription(string metadataName)
+        {
+            OneDbMetadataProviderOptions options = new()
+            {
+                UseExtensions = false,
+                ResolveReferences = true, //FIXME: Из-за этой опции создаём провайдера.
+                DatabaseProvider = _provider,
+                ConnectionString = _connectionString
+            };
+
+            if (!TryCreateMetadataProvider(in options, out OneDbMetadataProvider provider, out string error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            MetadataObject metadata = provider.GetMetadataObject(metadataName);
+
+            if (metadata is null)
+            {
+                throw new InvalidOperationException($"Metadata object not found: [{metadataName}]");
+            }
+
+             return new MetadataObjectConverter(in provider).Convert(in metadata);
+        }
+        #endregion
     }
 }
 

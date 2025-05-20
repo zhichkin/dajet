@@ -18,9 +18,9 @@ namespace DaJet.Studio.Controllers
 
             if (string.IsNullOrWhiteSpace(model.Url)) { return; }
 
-            string url = model.Url.Replace('/', '_');
+            string url = model.Url.Replace('/', '~');
 
-            Navigator.NavigateTo($"/metadata-entity-page/{url}");
+            Navigator.NavigateTo($"/metadata-object-page/{url}");
         }
         public Task ShowEntityNodeContextMenu(TreeNodeModel node, ElementReference source)
         {

@@ -720,13 +720,13 @@ namespace DaJet.Http.Client
         }
         #endregion
 
-        public async Task<EntityModel> GetMetadataObject(string url)
+        public async Task<DataObject> GetMetadataObject(string url)
         {
-            HttpResponseMessage response = await _client.GetAsync(url);
-            
-            EntityModel entity = await response.Content.ReadFromJsonAsync<EntityModel>();
+            HttpResponseMessage response = await _client.GetAsync($"{url}?details=full");
 
-            return entity;
+            DataObject metadata = await response.Content.ReadFromJsonAsync<DataObject>(JsonOptions);
+
+            return metadata;
         }
     }
 }

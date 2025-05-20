@@ -1,4 +1,5 @@
 ﻿using DaJet.Data;
+using DaJet.Json;
 using DaJet.Metadata;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Extensions;
@@ -116,8 +117,9 @@ namespace DaJet.Http.Controllers
 
             return Content(json);
         }
-        [HttpGet("{infobase}/{extension}/{type}/{name}")] public ActionResult SelectMetadataObject(
-            [FromRoute] string infobase, [FromRoute] string extension, [FromRoute] string type, [FromRoute] string name)
+        
+        [HttpGet("{infobase}/{extension}/{type}/{name}")] // ? details = full
+        public ActionResult GetMetadataObject([FromRoute] string infobase, [FromRoute] string extension, [FromRoute] string type, [FromRoute] string name)
         {
             if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(name))
             {
@@ -126,9 +128,16 @@ namespace DaJet.Http.Controllers
 
             InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
-            if (database == null)
+            if (database is null)
             {
-                return NotFound();
+                return NotFound(infobase);
+            }
+
+            string metadataName = $"{type}.{name}";
+
+            if (Request.Query["details"].FirstOrDefault() == "full")
+            {
+                return GetMetadataObjectDetailsFull(in database, in metadataName);
             }
 
             if (!_metadataService.TryGetOneDbMetadataProvider(database.Identity.ToString(), out OneDbMetadataProvider cache, out string error))
@@ -162,7 +171,7 @@ namespace DaJet.Http.Controllers
 
             try
             {
-                entity = metadata.GetMetadataObject($"{type}.{name}");
+                entity = metadata.GetMetadataObject(metadataName);
             }
             catch (Exception exception)
             {
@@ -181,6 +190,58 @@ namespace DaJet.Http.Controllers
             };
 
             string json = JsonSerializer.Serialize(entity, entity.GetType(), options);
+
+            return Content(json);
+        }
+        private ActionResult GetMetadataObjectDetailsFull(in InfoBaseRecord database, in string metadataName)
+        {
+            if (!Enum.TryParse(database.DatabaseProvider, out DatabaseProvider databaseProvider))
+            {
+                return NotFound(database.DatabaseProvider);
+            }
+
+            OneDbMetadataProviderOptions options = new()
+            {
+                UseExtensions = true,
+                ResolveReferences = true,
+                DatabaseProvider = databaseProvider,
+                ConnectionString = database.ConnectionString
+            };
+
+            if (!OneDbMetadataProvider.TryCreateMetadataProvider(in options, out OneDbMetadataProvider provider, out string error))
+            {
+                return NotFound(error);
+            }
+
+            MetadataObject metadata = provider.GetMetadataObject(metadataName);
+
+            if (metadata is null)
+            {
+                return NotFound(metadataName);
+            }
+
+            DataObject description;
+
+            try
+            {
+                description = new MetadataObjectConverter(in provider).Convert(in metadata);
+            }
+            catch (Exception exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ExceptionHelper.GetErrorMessage(exception));
+            }
+
+            if (description is null) { return NotFound(metadataName); }
+
+            JsonSerializerOptions JsonOptions = new()
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+            };
+
+            JsonOptions.Converters.Add(new DataObjectJsonConverter());
+
+            string json = JsonSerializer.Serialize(description, JsonOptions);
 
             return Content(json);
         }

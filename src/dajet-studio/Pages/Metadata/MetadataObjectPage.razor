@@ -1,0 +1,67 @@
+﻿@page "/metadata-object-page/{url}"
+
+@inject DaJetHttpClient DaJetClient;
+@inject NavigationManager Navigator;
+
+<div>
+    <h4>URL: @Url</h4>
+    <h4>Тип: @Type</h4>
+    @* <h4>Имя: @Metadata?.Name</h4>
+    <h4>Полное имя: @Metadata?.FullName</h4> *@
+</div>
+
+<div style="overflow:auto">
+    <span>Код типа: @Code</span><br>
+    @* <span>UUID типа: @Metadata?.Uuid</span><br>
+    <span>Синоним: @Metadata?.Alias</span><br>
+    <span>Таблица: @Metadata?.Table</span><br> *@
+</div>
+
+<div style="overflow:auto">
+    <table style="border-collapse:collapse;width:100%;">
+
+        <thead>
+            <tr>
+                @* <th></th> *@
+                <th>Свойство</th>
+                <th>Назначение</th>
+                @* <th>Состояние</th>
+                <th>Начало</th>
+                <th>Завершение</th>
+                <th style="min-width:30px;max-width:200px;">Комментарий</th> *@
+            </tr>
+        </thead>
+
+        <tbody>
+
+            @foreach (dynamic property in GetProperties())
+            {
+                @* @if (!info.IsVisible) { continue; } *@
+
+                <tr>
+                    @* <td>
+                        @if (info.Model.State == PipelineState.Idle)
+                        {
+                            <img src="/img/start.png" class="dajet-icon-button" @onclick="async () => await ExecutePipeline(info.Model)" />
+                        }
+                        else if (info.Model.State != PipelineState.None)
+                        {
+                            <img src="/img/stop.png" class="dajet-icon-button" @onclick="async () => await DisposePipeline(info.Model)" />
+                        }
+                    </td> *@
+                    @* <td>
+                        <span @onclick="async () => await NavigateToPipelinePage(info.Model)"
+                              style="color:blue;text-decoration:underline;cursor:pointer;">@info.Model.Name</span>
+                    </td> *@
+                    <td>@property.Name</td>
+                    <td>@property.Purpose</td>
+                    @* <td>@property.Start.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td>@property.Finish.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td>@property.Status</td> *@
+                </tr>
+            }
+
+        </tbody>
+
+    </table>
+</div>
