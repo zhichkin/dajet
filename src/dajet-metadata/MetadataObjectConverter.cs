@@ -37,12 +37,13 @@ namespace DaJet.Metadata
 
             DataObject @object = new();
 
-            @object.SetValue("Type", typeName);
             @object.SetValue("Code", metadata.TypeCode);
             @object.SetValue("Uuid", metadata.Uuid);
+            @object.SetValue("Type", typeName);
             @object.SetValue("Name", metadata.Name);
             @object.SetValue("Alias", metadata.Alias);
-            @object.SetValue("Table", metadata.TableName);
+            @object.SetValue("DbTable", metadata.TableName);
+            @object.SetValue("Comment", metadata.Comment);
             @object.SetValue("FullName", fullName);
             @object.SetValue("Properties", Convert(metadata.Properties));
 
@@ -169,12 +170,13 @@ namespace DaJet.Metadata
         {
             DataObject @object = new();
 
-            @object.SetValue("Type", "ТабличнаяЧасть");
             @object.SetValue("Code", table.TypeCode);
             @object.SetValue("Uuid", table.Uuid);
+            @object.SetValue("Type", "ТабличнаяЧасть");
             @object.SetValue("Name", table.Name);
             @object.SetValue("Alias", table.Alias);
-            @object.SetValue("Table", table.TableName);
+            @object.SetValue("DbTable", table.TableName);
+            @object.SetValue("Comment", table.Comment);
             @object.SetValue("FullName", $"{ownerFullName}.{table.Name}");
             @object.SetValue("Properties", Convert(table.Properties));
 
@@ -182,12 +184,13 @@ namespace DaJet.Metadata
         }
         private DataObject Convert(in MetadataColumn column)
         {
-            DataObject @object = new(4);
+            DataObject @object = new(2);
 
-            @object.SetValue("Name", column.Name);
-            @object.SetValue("Type", column.TypeName);
-            @object.SetValue("IsNullable", column.IsNullable);
+            @object.SetValue("DbName", column.Name);
             @object.SetValue("Purpose", column.Purpose.GetNameRu());
+
+            //@object.SetValue("Type", column.TypeName);
+            //@object.SetValue("IsNullable", column.IsNullable);
 
             return @object;
         }
@@ -195,9 +198,10 @@ namespace DaJet.Metadata
         {
             DataObject @object = new(8);
 
-            @object.SetValue("Name", property.Name);
             @object.SetValue("Uuid", property.Uuid);
+            @object.SetValue("Name", property.Name);
             @object.SetValue("Alias", property.Alias);
+            @object.SetValue("Comment", property.Comment);
             @object.SetValue("Purpose", property.Purpose.GetNameRu());
             @object.SetValue("Columns", Convert(property.Columns));
             @object.SetValue("DataType", Convert(property.PropertyType));
@@ -215,38 +219,39 @@ namespace DaJet.Metadata
             {
                 string typeName = MetadataTypes.ResolveNameRu(item.Type);
 
-                DataObject @object = new(5);
-                @object.SetValue("Uuid", item.Uuid);
-                @object.SetValue("Type", typeName);
+                DataObject @object = new(1);
+                //DataObject @object = new(5);
+                //@object.SetValue("Uuid", item.Uuid);
+                //@object.SetValue("Type", typeName);
 
                 if (item.Uuid == Guid.Empty) // Общий ссылочный тип
                 {
-                    @object.SetValue("Code", 0);
-                    @object.SetValue("Name", item.Name);
+                    //@object.SetValue("Code", 0);
+                    //@object.SetValue("Name", item.Name);
                     @object.SetValue("FullName", item.Name);
                 }
                 else // Конкретный ссылочный тип
                 {
                     string fullName = $"{typeName}.{item.Name}";
-                    @object.SetValue("Name", item.Name);
+                    //@object.SetValue("Name", item.Name);
                     @object.SetValue("FullName", fullName);
 
-                    if (_provider.TryGetDbName(item.Uuid, out DbName dbn))
-                    {
-                        @object.SetValue("Code", dbn.Code); // код типа объекта метаданных
-                    }
-                    else
-                    {
-                        @object.SetValue("Code", 0);
+                    //if (_provider.TryGetDbName(item.Uuid, out DbName dbn))
+                    //{
+                    //    @object.SetValue("Code", dbn.Code); // код типа объекта метаданных
+                    //}
+                    //else
+                    //{
+                    //    @object.SetValue("Code", 0);
 
-                        //FileLogger.Default.Write($"[ERROR] REFERENCE type code is null [{item.Type}] {{{item.Uuid}}} \"{item.Name}\"");
-                    }
+                    //    //FileLogger.Default.Write($"[ERROR] REFERENCE type code is null [{item.Type}] {{{item.Uuid}}} \"{item.Name}\"");
+                    //}
                 }
 
-                if (@object.GetValue("Name") is string test && string.IsNullOrWhiteSpace(test))
-                {
-                    //FileLogger.Default.Write($"[ERROR] REFERENCE type name is null [{item.Type}] {{{item.Uuid}}} \"{item.Name}\"");
-                }
+                //if (@object.GetValue("Name") is string test && string.IsNullOrWhiteSpace(test))
+                //{
+                //    //FileLogger.Default.Write($"[ERROR] REFERENCE type name is null [{item.Type}] {{{item.Uuid}}} \"{item.Name}\"");
+                //}
 
                 list.Add(@object);
             }

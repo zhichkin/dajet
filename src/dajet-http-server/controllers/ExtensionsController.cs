@@ -155,7 +155,7 @@ namespace DaJet.Http.Controllers
                 return NotFound($"{extension}: {ExceptionHelper.GetErrorMessage(exception)}");
             }
 
-            if (!cache.TryGetMetadata(in info, out OneDbMetadataProvider metadata, out error))
+            if (!cache.TryGetMetadata(in info, out OneDbMetadataProvider provider, out error))
             {
                 return NotFound($"{extension}: {error}");
             }
@@ -167,29 +167,33 @@ namespace DaJet.Http.Controllers
                 return NotFound(type);
             }
 
-            MetadataObject entity;
+            MetadataObject metadata;
 
             try
             {
-                entity = metadata.GetMetadataObject(metadataName);
+                metadata = provider.GetMetadataObject(metadataName);
             }
             catch (Exception exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, ExceptionHelper.GetErrorMessage(exception));
             }
 
-            if (entity == null)
+            if (metadata == null)
             {
                 return NotFound($"{infobase}.{extension}.{type}.{name}");
             }
+
+            MetadataObjectConverter converter = new(provider);
+            DataObject @object = converter.Convert(in metadata);
 
             JsonSerializerOptions options = new()
             {
                 WriteIndented = true,
                 Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
             };
+            options.Converters.Add(new DataObjectJsonConverter());
 
-            string json = JsonSerializer.Serialize(entity, entity.GetType(), options);
+            string json = JsonSerializer.Serialize(@object, options);
 
             return Content(json);
         }
@@ -220,28 +224,27 @@ namespace DaJet.Http.Controllers
                 return NotFound(metadataName);
             }
 
-            DataObject description;
+            DataObject @object;
 
             try
             {
-                description = new MetadataObjectConverter(in provider).Convert(in metadata);
+                @object = new MetadataObjectConverter(in provider).Convert(in metadata);
             }
             catch (Exception exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, ExceptionHelper.GetErrorMessage(exception));
             }
 
-            if (description is null) { return NotFound(metadataName); }
+            if (@object is null) { return NotFound(metadataName); }
 
             JsonSerializerOptions JsonOptions = new()
             {
                 WriteIndented = true,
                 Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
             };
-
             JsonOptions.Converters.Add(new DataObjectJsonConverter());
 
-            string json = JsonSerializer.Serialize(description, JsonOptions);
+            string json = JsonSerializer.Serialize(@object, JsonOptions);
 
             return Content(json);
         }

@@ -242,6 +242,7 @@ namespace DaJet.Http.Controllers
                 WriteIndented = true,
                 Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
             };
+            options.Converters.Add(new DataObjectJsonConverter());
 
             if (!_metadataService.TryGetMetadataProvider(entity.Identity.ToString(), out IMetadataProvider provider, out string error))
             {
@@ -255,23 +256,26 @@ namespace DaJet.Http.Controllers
                 return NotFound(type);
             }
 
-            MetadataObject @object;
+            MetadataObject metadata;
+            MetadataObjectConverter converter = new(provider as OneDbMetadataProvider);
 
             try
             {
-                @object = provider.GetMetadataObject($"{type}.{name}");
+                metadata = provider.GetMetadataObject($"{type}.{name}");
             }
             catch (Exception exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, ExceptionHelper.GetErrorMessage(exception));
             }
 
-            if (@object == null)
+            if (metadata == null)
             {
                 return NotFound();
             }
 
-            string json = JsonSerializer.Serialize(@object, @object.GetType(), options);
+            DataObject @object = converter.Convert(in metadata);
+
+            string json = JsonSerializer.Serialize(@object, options);
 
             return Content(json);
         }
@@ -313,18 +317,18 @@ namespace DaJet.Http.Controllers
                 return NotFound(metadataName);
             }
 
-            DataObject description;
+            DataObject @object;
 
             try
             {
-                description = new MetadataObjectConverter(in provider).Convert(in metadata);
+                @object = new MetadataObjectConverter(in provider).Convert(in metadata);
             }
             catch (Exception exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, ExceptionHelper.GetErrorMessage(exception));
             }
 
-            if (description is null) { return NotFound(metadataName); }
+            if (@object is null) { return NotFound(metadataName); }
 
             JsonSerializerOptions JsonOptions = new()
             {
@@ -334,7 +338,7 @@ namespace DaJet.Http.Controllers
 
             JsonOptions.Converters.Add(new DataObjectJsonConverter());
 
-            string json = JsonSerializer.Serialize(description, JsonOptions);
+            string json = JsonSerializer.Serialize(@object, JsonOptions);
 
             return Content(json);
         }

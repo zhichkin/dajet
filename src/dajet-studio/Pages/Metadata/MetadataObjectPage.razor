@@ -5,16 +5,16 @@
 
 <div>
     <h4>URL: @Url</h4>
-    <h4>Тип: @Type</h4>
-    @* <h4>Имя: @Metadata?.Name</h4>
-    <h4>Полное имя: @Metadata?.FullName</h4> *@
+    <h4>Тип: @Model.Type</h4>
+    <h4>Имя: @Model.Name</h4>
+    <h4>Полное имя: @Model.FullName</h4>
 </div>
 
 <div style="overflow:auto">
-    <span>Код типа: @Code</span><br>
-    @* <span>UUID типа: @Metadata?.Uuid</span><br>
-    <span>Синоним: @Metadata?.Alias</span><br>
-    <span>Таблица: @Metadata?.Table</span><br> *@
+    <span>Код типа: @Model.Code</span><br>
+    <span>UUID типа: @Model.Uuid</span><br>
+    <span>Синоним: @Model.Alias</span><br>
+    <span>Таблица: @Model.DbTable</span><br>
 </div>
 
 <div style="overflow:auto">
@@ -34,7 +34,7 @@
 
         <tbody>
 
-            @foreach (dynamic property in GetProperties())
+            @foreach (PropertyModel property in Model.Properties)
             {
                 @* @if (!info.IsVisible) { continue; } *@
 
