@@ -65,12 +65,15 @@ namespace DaJet.Metadata
 
             DataObject @object = new();
 
-            @object.SetValue("Type", typeName);
+            @object.SetValue("Code", metadata.TypeCode);
             @object.SetValue("Uuid", metadata.Uuid);
+            @object.SetValue("Type", typeName);
             @object.SetValue("Name", metadata.Name);
+            @object.SetValue("Alias", metadata.Alias);
+            @object.SetValue("DbTable", metadata.TableName);
+            @object.SetValue("Comment", metadata.Comment);
             @object.SetValue("FullName", fullName);
-            @object.SetValue("DataType", Convert(metadata.DataTypeDescriptor));
-            @object.SetValue("References", ResolveReferences(metadata.References));
+            @object.SetValue("Properties", Convert(metadata.Properties));
 
             return @object;
         }
@@ -188,9 +191,6 @@ namespace DaJet.Metadata
 
             @object.SetValue("DbName", column.Name);
             @object.SetValue("Purpose", column.Purpose.GetNameRu());
-
-            //@object.SetValue("Type", column.TypeName);
-            //@object.SetValue("IsNullable", column.IsNullable);
 
             return @object;
         }

@@ -5,7 +5,7 @@ using Microsoft.JSInterop;
 
 namespace DaJet.Studio.Components.Metadata
 {
-    public partial class MetadataEntityContextMenu : ComponentBase, IDisposable
+    public partial class MetadataObjectContextMenu : ComponentBase, IDisposable
     {
         protected string Title { get; set; }
         protected TreeNodeModel Model { get; set; }
@@ -23,7 +23,7 @@ namespace DaJet.Studio.Components.Metadata
 
             StateHasChanged();
 
-            await JSRuntime.InvokeVoidAsync("OpenMetadataEntityContextMenu", source);
+            await JSRuntime.InvokeVoidAsync("OpenMetadataObjectContextMenu", source);
         }
         public void Dispose()
         {
@@ -34,13 +34,13 @@ namespace DaJet.Studio.Components.Metadata
         }
         private async Task CloseContextMenu()
         {
-            await JSRuntime.InvokeVoidAsync("CloseMetadataEntityContextMenu");
+            await JSRuntime.InvokeVoidAsync("CloseMetadataObjectContextMenu");
         }
-        private async Task OpenMetadataEntityPage(MouseEventArgs args)
+        private async Task OpenMetadataObjectPage(MouseEventArgs args)
         {
             await CloseContextMenu();
 
-            MdTreeViewController.NavigateToMetadataEntityPage(Model);
+            MdTreeViewController.NavigateToMetadataObjectPage(Model);
         }
     }
 }

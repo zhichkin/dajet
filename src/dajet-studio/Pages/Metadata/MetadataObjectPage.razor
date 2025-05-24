@@ -1,5 +1,6 @@
 ﻿@page "/metadata-object-page/{url}"
 
+@inject IJSRuntime JSRuntime;
 @inject DaJetHttpClient DaJetClient;
 @inject NavigationManager Navigator;
 
@@ -26,57 +27,139 @@
         word-wrap: break-word;
         white-space: pre-wrap;
     }
+    img {
+        width: 16px;
+        height: 16px;
+        vertical-align: middle;
+    }
+    .metadata-object-tab-title-normal {
+        margin: 5px 0px 5px 5px;
+        padding: 5px;
+        cursor: pointer;
+        border: none;
+    }
+
+    .metadata-object-tab-title-selected {
+        margin: 5px 0px 5px 5px;
+        padding: 5px;
+        font-weight: bold;
+        cursor: pointer;
+        border: 1px solid black;
+    }
 </style>
 
 <div style="overflow:hidden;display:grid;grid-template-rows:repeat(3);align-self:stretch;justify-self:stretch;align-content:start;">
 
     <div style="margin:5px 0px 5px 5px;align-self:start;justify-self:start;">
-        <h4>URL: @Url</h4>
+        <input type="button" value="✕" class="script-editor-close-button" @onclick="NavigateToHomePage">
+        <span style="font-weight:bold;">@Url</span>
     </div>
 
     <div style="margin-left:5px;align-self:start;justify-self:start;">
-        <span style="display:block;">Тип: @Model.Type</span>
-        <span style="display:block;">Имя: @Model.Name</span>
-        <span style="display:block;">Полное имя: @Model.FullName</span>
-        <span style="display:block;">Синоним: @Model.Alias</span>
-        <span style="display:block;">Код типа: @Model.Code</span>
-        <span style="display:block;">Таблица: @Model.DbTable</span>
-        <span style="display:block;">Идентификатор: @Model.Uuid</span>
+        <table style="width:max-content;">
+            <tr style="border:none;">
+                <td style="border:none;padding:3px;"><b>Идентификатор:</b></td>
+                <td style="border:none;padding:3px;">@Model.Uuid</td>
+            </tr>
+            <tr style="border:none;">
+                <td style="border:none;padding:3px;"><b>Тип объекта:</b></td>
+                <td style="border:none;padding:3px;">@Model.Type</td>
+            </tr>
+            <tr style="border:none;">
+                <td style="border:none;padding:3px;"><b>Имя объекта:</b></td>
+                <td style="border:none;padding:3px;">@Model.Name</td>
+            </tr>
+            <tr style="border:none;">
+                <td style="border:none;padding:3px;"><b>Полное имя:</b></td>
+                <td style="border:none;padding:3px;">@Model.FullName</td>
+            </tr>
+            <tr style="border:none;">
+                <td style="border:none;padding:3px;"><b>Синоним:</b></td>
+                <td style="border:none;padding:3px;">@Model.Alias</td>
+            </tr>
+            <tr style="border:none;">
+                <td style="border:none;padding:3px;"><b>Код типа:</b></td>
+                <td style="border:none;padding:3px;">@Model.Code</td>
+            </tr>
+            <tr style="border:none;">
+                <td style="border:none;padding:3px;"><b>Таблица СУБД:</b></td>
+                <td style="border:none;padding:3px;">@SelectedEntity.DbTable</td>
+            </tr>
+        </table>
     </div>
 
     <div style="overflow:hidden;display:grid;align-self:stretch;justify-self:stretch;">
 
-        <span style="margin:5px;"><b>Свойства</b></span>
+        <div style="margin: 5px 0px 5px 0px;padding-top: 5px; overflow-x:auto;">
+            
+            <span class="@GetTabStyle(Model)" @onclick="() => ActivateTab(Model)">@GetTabTitle(Model)</span>
+
+            @foreach (EntityModel model in Model.TableParts)
+            {
+                <span class="@GetTabStyle(model)" @onclick="() => ActivateTab(model)">@GetTabTitle(model)</span>
+            }
+        </div>
 
         <div style="overflow:auto;">
             <table>
 
                 <thead>
                     <tr>
-                        <th>Свойство</th>
+                        <th style="resize:none;width:16px;height:16px">
+                            <img src="@GetMetadataObjectIconPath()" alt="@Model.Type" />
+                        </th>
                         <th>Наименоввание</th>
-                        <th>Поля СУБД</th>
                         <th>Тип данных</th>
+                        <th style="resize:none;">Поля СУБД</th>
                     </tr>
                 </thead>
 
                 <tbody>
-                    @foreach (PropertyModel property in Model.Properties)
+                    @foreach (PropertyModel property in SelectedEntity.Properties)
                     {
                         <tr>
-                            <td>@property.Purpose</td>
+                            <td><img src="@GetPropertyIconPath(property)" alt="@property.Purpose" /></td>
                             <td>@property.Name</td>
+                            <td>
+                                @if (property.DataType.Count > 1)
+                                {
+                                    <span @onclick="() => ShowPropertyReferencesPopup(property)"
+                                          style="color:blue;text-decoration:underline;cursor:pointer;">Составной тип</span>
+                                }
+                                else if (property.DataType.Count > 0)
+                                {
+                                    string typeName = @property.DataType[0].Type;
+
+                                    if (typeName == "Ссылка")
+                                    {
+                                        <span @onclick="() => ShowPropertyReferencesPopup(property)"
+                                              style="color:blue;text-decoration:underline;cursor:pointer;">Ссылка</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@property.DataType[0].Type</span>
+                                    }
+                                }
+                            </td>
                             <td>
                                 @if (property.Columns.Count > 1)
                                 {
                                     @if (IsPropertyColumnPopupActive(property))
                                     {
                                         <div>
-                                            <input type="button" value="-" @onclick="() => HidePropertyColumnPopup(property)"
-                                                   style="margin-right:3px;cursor:pointer;border:none;background:none;" />
-                                            @foreach (ColumnModel column in property.Columns)
+                                            @for (int i = 0; i < property.Columns.Count; i++)
                                             {
-                                                <span style="display:block;">@column.DbName</span>
+                                                ColumnModel column = property.Columns[i];
+
+                                                if (i == 0)
+                                                {
+                                                    <span @onclick="() => HidePropertyColumnPopup(property)"
+                                                          style="cursor:pointer;">- @property.Columns[0].DbName</span>
+                                                }
+                                                else
+                                                {
+                                                    <span style="display:block;">&nbsp;&nbsp;@column.DbName</span>
+                                                }
                                             }
                                         </div>
                                     }
@@ -91,29 +174,34 @@
                                     <span>@property.Columns[0].DbName</span>
                                 }
                             </td>
-                            <td>
-                                @if (property.DataType.Count > 1 || property.References.Count > 1)
-                                {
-                                    <span @onclick="() => ShowPropertyReferencesPopup(property)"
-                                          style="color:blue;text-decoration:underline;cursor:pointer;">Составной тип</span>
-                                }
-                                else if (property.DataType.Count > 0)
-                                {
-                                    <span>@property.DataType[0].Type</span>
-                                }
-                            </td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
+
     </div>
 
 </div>
 
-@* <div style="@(PropertyColumnPopupIsActive ? "display: block;" : "display: none;")">
-    @foreach (ColumnModel column in SelectedProperty.Columns)
-    {
-        <span style="display:block;">@column.DbName</span>
-    }
-</div> *@
+<dialog id="@PropertyReferencesPopupId" class="dajet-context-menu">
+
+    <div>
+        <span class="dajet-context-menu-close-button" @onclick="HidePropertyReferencesPopup">✕</span>
+        <span class="dajet-context-menu-title"><b>@PopupTitle</b></span>
+    </div>
+
+    <ul style="width:210px;height:280px;overflow:auto;resize:both;">
+        @foreach (TypeModel dataType in SelectedProperty.DataType)
+        {
+            if (dataType.Type == "Ссылка") { continue; }
+
+            <li>@dataType.Type</li>
+        }
+        @foreach (ReferenceModel reference in SelectedProperty.References)
+        {
+            <li>@reference.FullName</li>
+        }
+    </ul>
+
+</dialog>

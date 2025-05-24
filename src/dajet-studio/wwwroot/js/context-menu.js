@@ -45,12 +45,12 @@ function DialogClickHandler(event)
     }
 }
 
-const metadata_entity_context_menu_id = "metadata-entity-context-menu";
-function OpenMetadataEntityContextMenu(element)
+const metadata_object_context_menu_id = "metadata-object-context-menu";
+function OpenMetadataObjectContextMenu(element)
 {
     if (!element) { return; }
 
-    let dialog = document.getElementById(metadata_entity_context_menu_id);
+    let dialog = document.getElementById(metadata_object_context_menu_id);
 
     if (dialog)
     {
@@ -59,25 +59,25 @@ function OpenMetadataEntityContextMenu(element)
         dialog.style.top = box.bottom + "px";
         dialog.style.left = box.left + "px";
 
-        dialog.addEventListener("click", MetadataEntityContextMenuClickHandler);
+        dialog.addEventListener("click", MetadataObjectContextMenuClickHandler);
 
         dialog.showModal();
     }
 }
-function CloseMetadataEntityContextMenu()
+function CloseMetadataObjectContextMenu()
 {
-    let dialog = document.getElementById(metadata_entity_context_menu_id);
+    let dialog = document.getElementById(metadata_object_context_menu_id);
 
     if (dialog)
     {
         dialog.close();
 
-        dialog.removeEventListener("click", MetadataEntityContextMenuClickHandler);
+        dialog.removeEventListener("click", MetadataObjectContextMenuClickHandler);
     }
 }
-function MetadataEntityContextMenuClickHandler(event)
+function MetadataObjectContextMenuClickHandler(event)
 {
-    let dialog = document.getElementById(metadata_entity_context_menu_id);
+    let dialog = document.getElementById(metadata_object_context_menu_id);
 
     if (dialog)
     {
@@ -88,7 +88,51 @@ function MetadataEntityContextMenuClickHandler(event)
             event.clientY < box.top ||
             event.clientY > box.bottom)
         {
-            CloseMetadataEntityContextMenu();
+            CloseMetadataObjectContextMenu();
+        }
+    }
+}
+
+var dajet_modal_dialog_id = "";
+function OpenDaJetModalDialog(id)
+{
+    dajet_modal_dialog_id = id;
+
+    let dialog = document.getElementById(dajet_modal_dialog_id);
+
+    if (dialog)
+    {
+        dialog.addEventListener("click", DaJetModalDialogClickHandler);
+
+        dialog.showModal();
+    }
+}
+function CloseDaJetModalDialog(id)
+{
+    let dialog = document.getElementById(id);
+
+    if (dialog)
+    {
+        dialog.close();
+
+        dialog.removeEventListener("click", DaJetModalDialogClickHandler);
+
+        dajet_modal_dialog_id = "";
+    }
+}
+function DaJetModalDialogClickHandler(event)
+{
+    let dialog = document.getElementById(dajet_modal_dialog_id);
+
+    if (dialog)
+    {
+        let box = dialog.getBoundingClientRect();
+
+        if (event.clientX < box.left ||
+            event.clientX > box.right ||
+            event.clientY < box.top ||
+            event.clientY > box.bottom) {
+            CloseDaJetModalDialog(dajet_modal_dialog_id);
         }
     }
 }

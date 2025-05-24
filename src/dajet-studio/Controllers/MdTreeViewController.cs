@@ -12,7 +12,7 @@ namespace DaJet.Studio.Controllers
         {
             Navigator = navigator ?? throw new ArgumentNullException(nameof(navigator));
         }
-        public void NavigateToMetadataEntityPage(in TreeNodeModel model)
+        public void NavigateToMetadataObjectPage(in TreeNodeModel model)
         {
             if (model.Tag is not MetadataItemModel) { return; }
 
