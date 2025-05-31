@@ -720,6 +720,82 @@ namespace DaJet.Http.Client
         }
         #endregion
 
+        public async Task<List<ExtensionModel>> GetExtensions(string url)
+        {
+            HttpResponseMessage response = await _client.GetAsync(url);
+            return await response.Content.ReadFromJsonAsync<List<ExtensionModel>>();
+        }
+        public async Task<List<MetadataItemModel>> GetMetadataItems(string url)
+        {
+            HttpResponseMessage response = await _client.GetAsync(url);
+            return await response.Content.ReadFromJsonAsync<List<MetadataItemModel>>();
+        }
+        public async Task<EnumModel> GetEnumObject(string url)
+        {
+            HttpResponseMessage response = await _client.GetAsync(url);
+            return await response.Content.ReadFromJsonAsync<EnumModel>();
+        }
+        public async Task<EntityModel> GetEntityObject(string url)
+        {
+            HttpResponseMessage response = await _client.GetAsync(url);
+            return await response.Content.ReadFromJsonAsync<EntityModel>();
+        }
+        public async Task<QueryResponse> ClearInfoBaseMetadataCache(string name)
+        {
+            HttpResponseMessage response = await _client.GetAsync($"/md/reset/{name}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception(response.ReasonPhrase);
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                return new QueryResponse()
+                {
+                    Success = true,
+                    Message = $"Кэш базы данных [{name}] обновлён успешно."
+                };
+            }
+            else
+            {
+                string message = string.Empty;
+
+                if (!string.IsNullOrWhiteSpace(response.ReasonPhrase))
+                {
+                    message = $"[{response.ReasonPhrase}]";
+                }
+
+                string content = string.Empty;
+
+                try
+                {
+                    content = await response.Content.ReadAsStringAsync();
+                }
+                catch (Exception error)
+                {
+                    content = ExceptionHelper.GetErrorMessage(error);
+                }
+
+                if (!string.IsNullOrWhiteSpace(content))
+                {
+                    if (string.IsNullOrWhiteSpace(message))
+                    {
+                        message = content;
+                    }
+                    else
+                    {
+                        message += " " + content;
+                    }
+                }
+
+                return new QueryResponse()
+                {
+                    Success = false,
+                    Message = message
+                };
+            }
+        }
         public async Task<EntityModel> GetMetadataObject(string url)
         {
             HttpResponseMessage response = await _client.GetAsync($"{url}?details=full");

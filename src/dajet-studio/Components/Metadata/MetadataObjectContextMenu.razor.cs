@@ -13,10 +13,10 @@ namespace DaJet.Studio.Components.Metadata
         {
             if (MdTreeViewController is not null)
             {
-                MdTreeViewController.OpenEntityNodeContextMenuHandler = OpenEntityNodeContextMenuHandler;
+                MdTreeViewController.OpenMetadataObjectContextMenuHandler = OpenContextMenu;
             }
         }
-        private async Task OpenEntityNodeContextMenuHandler(TreeNodeModel node, ElementReference source)
+        private async Task OpenContextMenu(TreeNodeModel node, ElementReference source)
         {
             Model = node;
             Title = node.Url;
@@ -25,16 +25,16 @@ namespace DaJet.Studio.Components.Metadata
 
             await JSRuntime.InvokeVoidAsync("OpenMetadataObjectContextMenu", source);
         }
+        private async Task CloseContextMenu()
+        {
+            await JSRuntime.InvokeVoidAsync("CloseMetadataObjectContextMenu");
+        }
         public void Dispose()
         {
             if (MdTreeViewController is not null)
             {
-                MdTreeViewController.OpenEntityNodeContextMenuHandler = null;
+                MdTreeViewController.OpenMetadataObjectContextMenuHandler = null;
             }
-        }
-        private async Task CloseContextMenu()
-        {
-            await JSRuntime.InvokeVoidAsync("CloseMetadataObjectContextMenu");
         }
         private async Task OpenMetadataObjectPage(MouseEventArgs args)
         {

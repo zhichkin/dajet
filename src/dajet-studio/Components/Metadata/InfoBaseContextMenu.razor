@@ -1,0 +1,28 @@
+﻿@using DaJet.Studio.Controllers
+
+@inject IJSRuntime JSRuntime;
+@inject MdTreeViewController MdTreeViewController;
+
+<dialog id="infobase-context-menu" class="dajet-context-menu">
+
+    <div>
+        <span class="dajet-context-menu-close-button" onclick="CloseInfoBaseContextMenu()">✕</span>
+        <span class="dajet-context-menu-title">@Title</span>
+    </div>
+
+    <ul>
+        <li>
+            <img src="/img/settings.png" alt="" class="dajet-context-menu-item-icon" />
+            <span class="dajet-context-menu-item" @onclick="OpenInfoBaseSettingsPage">Свойства...</span>
+        </li>
+        <li>
+            <img src="/img/settings.png" alt="" class="dajet-context-menu-item-icon" />
+            <span class="dajet-context-menu-item" @onclick="OpenDatabaseDiagnosticPage">Диагностика...</span>
+        </li>
+        <li>
+            <img src="/img/settings.png" alt="" class="dajet-context-menu-item-icon" />
+            <span class="dajet-context-menu-item" @onclick="ClearInfoBaseMetadataCache">Очистить кэш...</span>
+        </li>
+    </ul>
+
+</dialog>
