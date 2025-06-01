@@ -39,20 +39,22 @@ namespace DaJet.Studio.Components.Metadata
         private async Task ClearInfoBaseMetadataCache()
         {
             await CloseContextMenu();
-
             await MdTreeViewController.ClearInfoBaseMetadataCache(Model);
         }
         private async Task OpenInfoBaseSettingsPage()
         {
             await CloseContextMenu();
-
             await MdTreeViewController.OpenInfoBaseSettingsDialog(Model);
         }
-        private async Task OpenDatabaseDiagnosticPage(MouseEventArgs args)
+        private async Task OpenMetadataDiagnosticPage(MouseEventArgs args)
         {
             await CloseContextMenu();
-
-            MdTreeViewController.NavigateToDbSchemaDiagnosticPage(Model);
+            MdTreeViewController.NavigateToMetadataDiagnosticPage(Model);
+        }
+        private async Task OpenDbViewGeneratorPage(MouseEventArgs args)
+        {
+            await CloseContextMenu();
+            MdTreeViewController.NavigateToDbViewGeneratorPage(Model);
         }
     }
 }

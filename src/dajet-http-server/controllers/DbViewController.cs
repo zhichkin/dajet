@@ -4,6 +4,7 @@ using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Metadata.Services;
 using DaJet.Model;
+using DaJet.Model.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.FileProviders;
 using System.Text;
@@ -296,12 +297,6 @@ namespace DaJet.Http.Controllers
 
         #region "CREATE VIEWS"
 
-        public sealed class CreateViewsResponse
-        {
-            public int Result { get; set; }
-            public List<string> Errors { get; set; } = new();
-        }
-
         [Produces("application/json")]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -338,7 +333,7 @@ namespace DaJet.Http.Controllers
 
             _ = generator.TryCreateViews(in cache, out int result, out List<string> errors);
 
-            CreateViewsResponse response = new()
+            CreateDbViewsResponse response = new()
             {
                 Result = result,
                 Errors = errors

@@ -6,7 +6,11 @@ namespace DaJet.DbViewGenerator
     {
         internal static string GetMetadataTypeName(in ApplicationObject metadata)
         {
-            if (metadata is Catalog)
+            if (metadata is Constant)
+            {
+                return $"Константа";
+            }
+            else if (metadata is Catalog)
             {
                 return $"Справочник";
             }

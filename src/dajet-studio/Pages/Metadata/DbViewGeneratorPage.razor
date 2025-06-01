@@ -1,0 +1,59 @@
+﻿@page "/dbview-generator-page/{infobase}"
+
+@inject IJSRuntime JSRuntime;
+@inject DaJetHttpClient DaJetClient;
+@inject NavigationManager Navigator;
+
+<div style="overflow:hidden;display:grid;grid-template-rows:repeat(3);align-self:stretch;justify-self:stretch;align-content:start;">
+
+    <div style="margin:5px 0px 5px 5px;align-self:start;justify-self:start;">
+        <input type="button" value="✕" class="script-editor-close-button" @onclick="NavigateToHomePage">
+        <span style="font-weight:bold;">Генератор представлений 1С:Предприятие 8</span>
+    </div>
+
+    <div style="margin-left:5px;align-self:start;justify-self:start;overflow-x:auto;">
+        <table style="width:max-content;">
+            <tr style="border:none;">
+                <td style="border:none;padding:3px;"><b>Идентификатор:</b></td>
+                <td style="border:none;padding:3px;">@InfoBase</td>
+            </tr>
+            <tr style="border:none;">
+                <td style="border:none;padding:3px;"><b>Схема данных:</b></td>
+                <td style="border:none;padding:3px;">
+                    <input type="text" size="20" @bind-value="@DatabaseSchema" />
+                </td>
+            </tr>
+            <tr style="border:none;">
+                <td style="border:none;padding:3px;"><b>Провайдер данных:</b></td>
+                <td style="border:none;padding:3px;">@DatabaseProvider</td>
+            </tr>
+            <tr style="border:none;">
+                <td style="border:none;padding:3px;"><b>Строка подключения:</b></td>
+                <td style="border:none;padding:3px;">@ConnectionString</td>
+            </tr>
+            <tr style="border:none;">
+                <td style="border:none;padding:3px;">
+                    <input type="button" class="script-editor-button" value="Создать" @onclick="CreateViews" />
+                    <input type="button" class="script-editor-button" value="Удалить" @onclick="DeleteViews" />
+                </td>
+                <td style="border:none;padding:3px;">
+                    <span style="font-weight:bold;">Начало: </span><span>@StartTime</span>
+                    <span style="font-weight:bold;">Завершение: </span><span>@FinishTime</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div style="margin-left:5px;display:grid;align-self:stretch;justify-self:stretch;overflow:hidden;">
+
+        <div style="margin: 5px 0px 5px 0px;">
+            <span style="font-weight:bold;">Журнал выполнения:</span>
+        </div>
+
+        <div style="overflow:auto;">
+            <span style="word-wrap:break-word;white-space:pre-wrap;">@LogText</span>
+        </div>
+
+    </div>
+
+</div>

@@ -2,8 +2,10 @@
 using DaJet.Http.Model;
 using DaJet.Json;
 using DaJet.Model;
+using DaJet.Model.Http;
 using System.Net;
 using System.Net.Http.Json;
+using System.Net.NetworkInformation;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -718,6 +720,28 @@ namespace DaJet.Http.Client
                 return content;
             }
         }
+        #endregion
+
+        #region "DATABASE VIEW GENERATOR API"
+        public async Task<CreateDbViewsResponse> CreateDbViews(string infobase, string schema)
+        {
+            string url = $"/db/view/{infobase}";
+            CreateDbViewsRequest options = new() { Schema = schema };
+            HttpResponseMessage response = await _client.PostAsJsonAsync(url, options);
+            return await response.Content.ReadFromJsonAsync<CreateDbViewsResponse>();
+        }
+        public async Task<string> DeleteDbViews(string infobase, string schema)
+        {
+            string url = $"/db/view/{infobase}?schema={schema}";
+            HttpResponseMessage response = await _client.DeleteAsync(url);
+            return await response.Content.ReadAsStringAsync();
+        }
+        //public async Task<string> ScriptDbViews(string infobase, string schema)
+        //{
+        //    string url = $"/db/view/{infobase}?schema={schema}";
+        //    HttpResponseMessage response = await _client.GetAsync(url);
+        //    return await response.Content.ReadAsStringAsync();
+        //}
         #endregion
 
         public async Task<List<ExtensionModel>> GetExtensions(string url)

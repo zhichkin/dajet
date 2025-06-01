@@ -62,11 +62,11 @@ namespace DaJet.Studio.Controllers
             DbViewController = services.GetRequiredService<DbViewController>();
             ApiTreeViewController = services.GetRequiredService<ApiTreeViewController>();
         }
-        public void NavigateToDbSchemaDiagnosticPage(in TreeNodeModel model)
+        public void NavigateToMetadataDiagnosticPage(in TreeNodeModel model)
         {
             if (model.Tag is not InfoBaseRecord infoBase) { return; }
 
-            Navigator.NavigateTo($"/db-schema-diagnostic-page/{infoBase.Name}");
+            Navigator.NavigateTo($"/metadata-diagnostic-page/{infoBase.Name}");
         }
         public void NavigateToMetadataObjectPage(in TreeNodeModel model)
         {
@@ -77,6 +77,12 @@ namespace DaJet.Studio.Controllers
             string url = model.Url.Replace('/', '~');
 
             Navigator.NavigateTo($"/metadata-object-page/{url}");
+        }
+        public void NavigateToDbViewGeneratorPage(in TreeNodeModel model)
+        {
+            if (model.Tag is not InfoBaseRecord infoBase) { return; }
+
+            Navigator.NavigateTo($"/dbview-generator-page/{infoBase.Name}");
         }
         public async Task ClearInfoBaseMetadataCache(TreeNodeModel node)
         {

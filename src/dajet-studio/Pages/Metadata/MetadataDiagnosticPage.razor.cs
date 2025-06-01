@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Components.Web;
 
 namespace DaJet.Studio.Pages.Metadata
 {
-    public partial class DbSchemaDiagnosticPage : ComponentBase
+    public partial class MetadataDiagnosticPage : ComponentBase
     {
         [Parameter] public string InfoBase { get; set; }
         public string ConnectionString { get; set; } = string.Empty;

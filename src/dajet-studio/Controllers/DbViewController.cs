@@ -1,4 +1,5 @@
 ﻿using DaJet.Model;
+using DaJet.Model.Http;
 using DaJet.Studio.Components;
 using DaJet.Studio.Pages;
 using Microsoft.AspNetCore.Components;
@@ -9,16 +10,6 @@ using System.Net.Http.Json;
 
 namespace DaJet.Studio.Controllers
 {
-    public sealed class CreateViewsRequest
-    {
-        public string Schema { get; set; } = string.Empty;
-        public bool Codify { get; set; } = false;
-    }
-    public sealed class CreateViewsResponse
-    {
-        public int Result { get; set; }
-        public List<string> Errors { get; set; } = new();
-    }
     public sealed class DbViewController
     {
         private HttpClient Http { get; set; }
@@ -324,9 +315,9 @@ namespace DaJet.Studio.Controllers
             try
             {
                 string url = $"/db/view/{infobase.Name}";
-                CreateViewsRequest options = new() { Schema = schema };
+                CreateDbViewsRequest options = new() { Schema = schema };
                 HttpResponseMessage response = await Http.PostAsJsonAsync(url, options);
-                CreateViewsResponse result = await response.Content.ReadFromJsonAsync<CreateViewsResponse>();
+                CreateDbViewsResponse result = await response.Content.ReadFromJsonAsync<CreateDbViewsResponse>();
                 if (result.Errors != null && result.Errors.Count > 0)
                 {
                     AppState.LastErrorText = string.Join(Environment.NewLine, result.Errors);

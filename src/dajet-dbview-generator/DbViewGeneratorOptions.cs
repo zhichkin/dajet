@@ -11,6 +11,7 @@ namespace DaJet.Metadata.Services
         public string ConnectionString { get; set; } = string.Empty;
         public List<string> MetadataTypes { get; set; } = new()
         {
+            "Константа",
             "Документ",
             "Справочник",
             "ПланОбмена",
