@@ -740,6 +740,15 @@ namespace DaJet.Http.Client
             HttpResponseMessage response = await _client.GetAsync(url);
             return await response.Content.ReadFromJsonAsync<EntityModel>();
         }
+        public async Task<EntityModel> GetMetadataObject(string url)
+        {
+            HttpResponseMessage response = await _client.GetAsync($"{url}?details=full");
+
+            EntityModel metadata = await response.Content.ReadFromJsonAsync<EntityModel>();
+
+            return metadata;
+        }
+
         public async Task<QueryResponse> ClearInfoBaseMetadataCache(string name)
         {
             HttpResponseMessage response = await _client.GetAsync($"/md/reset/{name}");
@@ -796,13 +805,11 @@ namespace DaJet.Http.Client
                 };
             }
         }
-        public async Task<EntityModel> GetMetadataObject(string url)
+        public async Task<string> CompareMetadataAndDatabaseSchema(string infobase)
         {
-            HttpResponseMessage response = await _client.GetAsync($"{url}?details=full");
-
-            EntityModel metadata = await response.Content.ReadFromJsonAsync<EntityModel>();
-
-            return metadata;
+            string url = $"/md/diagnostic/{infobase}";
+            HttpResponseMessage response = await _client.GetAsync(url);
+            return await response.Content.ReadAsStringAsync();
         }
     }
 }

@@ -3,8 +3,10 @@ using DaJet.Json;
 using DaJet.Metadata;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
+using DaJet.Metadata.Services;
 using DaJet.Model;
 using Microsoft.AspNetCore.Mvc;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
@@ -341,6 +343,93 @@ namespace DaJet.Http.Controllers
             string json = JsonSerializer.Serialize(@object, JsonOptions);
 
             return Content(json);
+        }
+
+        [HttpGet("diagnostic/{infobase}")] public ActionResult CompareMetadataAndDatabaseSchema([FromRoute] string infobase)
+        {
+            InfoBaseRecord settings = _source.Select<InfoBaseRecord>(infobase);
+
+            if (settings is null) { return Content($"Настройки базы данных [{infobase}] не найдены!"); }
+
+            string key = settings.Identity.ToString();
+
+            if (!_metadataService.TryGetMetadataProvider(key, out IMetadataProvider provider, out string error))
+            {
+                return Content($"Провайдер метаданных для [{infobase}] не найден!");
+            }
+
+            StringBuilder logger = new();
+
+            CompareMetadataAndDatabaseSchema(in provider, in logger);
+
+            return Content(logger.ToString());
+        }
+        private static void CompareMetadataAndDatabaseSchema(in IMetadataProvider provider, in StringBuilder logger)
+        {
+            foreach (Guid type in MetadataTypes.ApplicationObjectTypes)
+            {
+                foreach (MetadataItem item in provider.GetMetadataItems(type))
+                {
+                    MetadataObject metadata = provider.GetMetadataObject(item.Type, item.Uuid);
+
+                    if (metadata is ApplicationObject entity)
+                    {
+                        string entityName = entity.Name;
+                        PerformDatabaseSchemaCheck(in provider, in entityName, entity.TableName, entity.Properties, in logger);
+
+                        if (entity is ITablePartOwner owner)
+                        {
+                            foreach (TablePart table in owner.TableParts)
+                            {
+                                string tableName = $"{entityName}.{table.Name}";
+                                PerformDatabaseSchemaCheck(in provider, in tableName, table.TableName, table.Properties, in logger);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        private static void PerformDatabaseSchemaCheck(in IMetadataProvider provider, in string entityName, in string tableName, in List<MetadataProperty> properties, in StringBuilder logger)
+        {
+            SqlMetadataReader sql = new();
+            sql.UseDatabaseProvider(provider.DatabaseProvider);
+            sql.UseConnectionString(provider.ConnectionString);
+
+            MetadataCompareAndMergeService comparator = new();
+
+            List<Metadata.Services.SqlFieldInfo> fields = sql.GetSqlFieldsOrderedByName(tableName);
+
+            List<string> source = comparator.PrepareComparison(fields); // эталон (как должно быть)
+            List<string> target = comparator.PrepareComparison(properties); // испытуемый на соответствие эталону
+
+            comparator.Compare(target, source, out List<string> delete_list, out List<string> insert_list);
+
+            if (delete_list.Count == 0 && insert_list.Count == 0)
+            {
+                return; // success - проверка прошла успешно
+            }
+
+            logger.AppendLine($"[{tableName}] {entityName}");
+
+            if (delete_list.Count > 0)
+            {
+                logger.AppendLine($"* delete (лишние поля)");
+
+                foreach (string field in delete_list)
+                {
+                    logger.AppendLine($"  - {field}");
+                }
+            }
+
+            if (insert_list.Count > 0)
+            {
+                logger.AppendLine($"* insert (отсутствующие поля)");
+
+                foreach (string field in insert_list)
+                {
+                    logger.AppendLine($"  - {field}");
+                }
+            }
         }
     }
 }

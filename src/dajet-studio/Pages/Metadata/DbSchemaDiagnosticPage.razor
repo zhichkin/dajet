@@ -1,4 +1,4 @@
-﻿@page "/db-schema-diagnostic-page/{database}"
+﻿@page "/db-schema-diagnostic-page/{infobase}"
 
 @inject IJSRuntime JSRuntime;
 @inject DaJetHttpClient DaJetClient;
@@ -11,11 +11,11 @@
         <span style="font-weight:bold;">Диагностика чтения метаданных 1С:Предприятие 8</span>
     </div>
 
-    <div style="margin-left:5px;align-self:start;justify-self:start;">
+    <div style="margin-left:5px;align-self:start;justify-self:start;overflow-x:auto;">
         <table style="width:max-content;">
             <tr style="border:none;">
                 <td style="border:none;padding:3px;"><b>Идентификатор:</b></td>
-                <td style="border:none;padding:3px;">@Database</td>
+                <td style="border:none;padding:3px;">@InfoBase</td>
             </tr>
             <tr style="border:none;">
                 <td style="border:none;padding:3px;"><b>Провайдер данных:</b></td>
@@ -27,13 +27,17 @@
             </tr>
             <tr style="border:none;">
                 <td style="border:none;padding:3px;">
-                    <input type="button" value="Выполнить" @onclick="DoDiagnostic" />
+                    <input type="button" class="script-editor-button" value="Выполнить" @onclick="DoDiagnostic" />
+                </td>
+                <td style="border:none;padding:3px;">
+                    <span style="font-weight:bold;">Начало: </span><span>@StartTime</span>
+                    <span style="font-weight:bold;">Завершение: </span><span>@FinishTime</span>
                 </td>
             </tr>
         </table>
     </div>
 
-    <div style="display:grid;align-self:stretch;justify-self:stretch;overflow:hidden;">
+    <div style="margin-left:5px;display:grid;align-self:stretch;justify-self:stretch;overflow:hidden;">
 
         <div style="margin: 5px 0px 5px 0px;">
             <span style="font-weight:bold;">Журнал выполнения:</span>
