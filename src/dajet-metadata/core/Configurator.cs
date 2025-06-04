@@ -3191,7 +3191,7 @@ namespace DaJet.Metadata.Core
             ConfigurePropertyУзелПланаОбмена(in table);
             ConfigurePropertyНомерСообщения(in table);
 
-            if (entity is Catalog || entity is Document)
+            if (entity is Catalog || entity is Document || entity is Account)
             {
                 MetadataProperty reference = entity.Properties.Where(p => p.Name == "Ссылка").FirstOrDefault();
 
@@ -3242,13 +3242,21 @@ namespace DaJet.Metadata.Core
                     }
                 }
             }
-            else if (entity is AccumulationRegister)
+            else if (entity is AccumulationRegister || entity is AccountingRegister)
             {
                 MetadataProperty recorder = entity.Properties.Where(p => p.Name == "Регистратор").FirstOrDefault();
 
                 if (recorder is not null)
                 {
                     table.Properties.Add(recorder);
+                }
+            }
+
+            foreach (MetadataProperty property in entity.Properties)
+            {
+                if (property is SharedProperty shared)
+                {
+                    table.Properties.Add(shared);
                 }
             }
         }

@@ -1213,7 +1213,7 @@ namespace DaJet.Metadata
             reference.SetTarget(metadata);
         }
         
-        private RegisterTotalsTable GetRegisterTotalsTable(in AccumulationRegister register)
+        public RegisterTotalsTable GetRegisterTotalsTable(in AccumulationRegister register)
         {
             if (!TryGetAccumRgT(register.Uuid, out _))
             {
@@ -1226,7 +1226,7 @@ namespace DaJet.Metadata
 
             return table;
         }
-        private RegisterSettingsTable GetRegisterSettingsTable(in AccumulationRegister register)
+        public RegisterSettingsTable GetRegisterSettingsTable(in AccumulationRegister register)
         {
             if (!TryGetAccumRgOpt(register.Uuid, out _))
             {
@@ -1240,7 +1240,7 @@ namespace DaJet.Metadata
             return table;
         }
 
-        private AccountingDimensionValuesTable GetAccountingDimensionValuesTable(in AccountingRegister register)
+        public AccountingDimensionValuesTable GetAccountingDimensionValuesTable(in AccountingRegister register)
         {
             if (!TryGetAccRgED(register.Uuid, out _))
             {

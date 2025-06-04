@@ -152,8 +152,11 @@ namespace DaJet.Metadata.Services
 
                 if (metadata is Enumeration enumeration)
                 {
-                    script.AppendLine(GenerateEnumViewScript(enumeration, viewName));
-                    scripts.Add(script.ToString());
+                    if (enumeration.Values is not null && enumeration.Values.Count > 0)
+                    {
+                        script.AppendLine(GenerateEnumViewScript(enumeration, viewName));
+                        scripts.Add(script.ToString());
+                    }
                 }
                 else
                 {
@@ -180,7 +183,10 @@ namespace DaJet.Metadata.Services
                     }
                 }
 
-                _executor.TxExecuteNonQuery(scripts, 10);
+                if (scripts.Count > 0)
+                {
+                    _executor.TxExecuteNonQuery(scripts, 10);
+                }
             }
             catch (Exception exception)
             {
@@ -222,10 +228,31 @@ namespace DaJet.Metadata.Services
                         errors.Add(error);
                     }
 
-                    if (!TryCreateChangeTrackingTableView(in cache, in @object, out string errorMessage))
+                    if (!TryCreateChangeTrackingTableView(in cache, in @object, out string changeTrackingError))
                     {
-                        errors.Add(error);
+                        errors.Add(changeTrackingError);
                     }
+
+                    if (metadata is AccumulationRegister register)
+                    {
+                        if (!TryCreateRegisterSettingsTableView(in cache, in register, out string settingsError))
+                        {
+                            errors.Add(settingsError);
+                        }
+
+                        if (!TryCreateRegisterTotalsTableView(in cache, in register, out string totalsError))
+                        {
+                            errors.Add(totalsError);
+                        }
+                    }
+                    else if (metadata is AccountingRegister accounting)
+                    {
+                        if (!TryCreateAccountingDimensionValuesTableView(in cache, in accounting, out string accountingError))
+                        {
+                            errors.Add(accountingError);
+                        }
+                    }
+
                 }
             }
 
@@ -267,6 +294,147 @@ namespace DaJet.Metadata.Services
 
                 script.AppendLine(GenerateViewScript(table, viewName));
                 
+                scripts.Add(script.ToString());
+
+                _executor.TxExecuteNonQuery(scripts, 10);
+            }
+            catch (Exception exception)
+            {
+                error = $"[{table.Name}] [{table.TableName}] {ExceptionHelper.GetErrorMessage(exception)}";
+            }
+
+            return string.IsNullOrEmpty(error);
+        }
+        private bool TryCreateRegisterSettingsTableView(in OneDbMetadataProvider cache, in AccumulationRegister register, out string error)
+        {
+            error = string.Empty;
+            List<string> scripts = new();
+            StringBuilder script = new();
+            RegisterSettingsTable table = null!;
+
+            try
+            {
+                table = cache.GetRegisterSettingsTable(in register);
+            }
+            catch (Exception exception)
+            {
+                error = $"[{register.Name}] [RegisterSettingsTable] {ExceptionHelper.GetErrorMessage(exception)}";
+            }
+
+            if (!string.IsNullOrEmpty(error))
+            {
+                return false;
+            }
+
+            if (table is null) { return true; }
+
+            try
+            {
+                string viewName = Configurator.CreateViewName(register, _options.Codify) + ".Настройки";
+
+                scripts.Add(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
+
+                if (_options.Codify)
+                {
+                    script.AppendLine($"--{{{Configurator.CreateViewName(register)}}}");
+                }
+
+                script.AppendLine(GenerateViewScript(table, viewName));
+
+                scripts.Add(script.ToString());
+
+                _executor.TxExecuteNonQuery(scripts, 10);
+            }
+            catch (Exception exception)
+            {
+                error = $"[{table.Name}] [{table.TableName}] {ExceptionHelper.GetErrorMessage(exception)}";
+            }
+
+            return string.IsNullOrEmpty(error);
+        }
+        private bool TryCreateRegisterTotalsTableView(in OneDbMetadataProvider cache, in AccumulationRegister register, out string error)
+        {
+            error = string.Empty;
+            List<string> scripts = new();
+            StringBuilder script = new();
+            RegisterTotalsTable table = null!;
+
+            try
+            {
+                table = cache.GetRegisterTotalsTable(in register);
+            }
+            catch (Exception exception)
+            {
+                error = $"[{register.Name}] [RegisterTotalsTable] {ExceptionHelper.GetErrorMessage(exception)}";
+            }
+
+            if (!string.IsNullOrEmpty(error))
+            {
+                return false;
+            }
+
+            if (table is null) { return true; }
+
+            try
+            {
+                string viewName = Configurator.CreateViewName(register, _options.Codify) + ".Итоги";
+
+                scripts.Add(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
+
+                if (_options.Codify)
+                {
+                    script.AppendLine($"--{{{Configurator.CreateViewName(register)}}}");
+                }
+
+                script.AppendLine(GenerateViewScript(table, viewName));
+
+                scripts.Add(script.ToString());
+
+                _executor.TxExecuteNonQuery(scripts, 10);
+            }
+            catch (Exception exception)
+            {
+                error = $"[{table.Name}] [{table.TableName}] {ExceptionHelper.GetErrorMessage(exception)}";
+            }
+
+            return string.IsNullOrEmpty(error);
+        }
+        private bool TryCreateAccountingDimensionValuesTableView(in OneDbMetadataProvider cache, in AccountingRegister register, out string error)
+        {
+            error = string.Empty;
+            List<string> scripts = new();
+            StringBuilder script = new();
+            AccountingDimensionValuesTable table = null!;
+
+            try
+            {
+                table = cache.GetAccountingDimensionValuesTable(in register);
+            }
+            catch (Exception exception)
+            {
+                error = $"[{register.Name}] [AccountingDimensionValuesTable] {ExceptionHelper.GetErrorMessage(exception)}";
+            }
+
+            if (!string.IsNullOrEmpty(error))
+            {
+                return false;
+            }
+
+            if (table is null) { return true; }
+
+            try
+            {
+                string viewName = Configurator.CreateViewName(register, _options.Codify) + ".ЗначенияСубконто";
+
+                scripts.Add(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
+
+                if (_options.Codify)
+                {
+                    script.AppendLine($"--{{{Configurator.CreateViewName(register)}}}");
+                }
+
+                script.AppendLine(GenerateViewScript(table, viewName));
+
                 scripts.Add(script.ToString());
 
                 _executor.TxExecuteNonQuery(scripts, 10);

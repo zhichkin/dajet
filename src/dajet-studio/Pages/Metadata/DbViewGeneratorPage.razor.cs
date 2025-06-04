@@ -81,15 +81,20 @@ namespace DaJet.Studio.Pages.Metadata
                 LogText = "Не указана схема базы данных!"; return;
             }
 
+            LogText = "Выполняется...";
+            StartTime = DateTime.Now.ToString("HH:mm:ss");
+            FinishTime = string.Empty;
+
             string message = "Создать/обновить представления СУБД ?";
 
             bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", message);
 
-            if (!confirmed) { return; }
-
-            LogText = "Выполняется...";
-            StartTime = DateTime.Now.ToString("HH:mm:ss");
-            FinishTime = string.Empty;
+            if (!confirmed)
+            {
+                LogText = "Операция отменена.";
+                StartTime = string.Empty;
+                return;
+            }
 
             if (string.IsNullOrWhiteSpace(DatabaseProvider))
             {
@@ -100,6 +105,8 @@ namespace DaJet.Studio.Pages.Metadata
             {
                 LogText = "Не указана строка подключения!"; return;
             }
+
+            StartTime = DateTime.Now.ToString("HH:mm:ss");
 
             try
             {
@@ -130,15 +137,20 @@ namespace DaJet.Studio.Pages.Metadata
                 LogText = "Не указана схема базы данных!"; return;
             }
 
+            LogText = "Выполняется...";
+            StartTime = DateTime.Now.ToString("HH:mm:ss");
+            FinishTime = string.Empty;
+
             string message = "Удалить представления СУБД ?";
 
             bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", message);
 
-            if (!confirmed) { return; }
-
-            LogText = "Выполняется...";
-            StartTime = DateTime.Now.ToString("HH:mm:ss");
-            FinishTime = string.Empty;
+            if (!confirmed)
+            {
+                LogText = "Операция отменена.";
+                StartTime = string.Empty;
+                return;
+            }
 
             if (string.IsNullOrWhiteSpace(DatabaseProvider))
             {
@@ -149,6 +161,8 @@ namespace DaJet.Studio.Pages.Metadata
             {
                 LogText = "Не указана строка подключения!"; return;
             }
+
+            StartTime = DateTime.Now.ToString("HH:mm:ss");
 
             try
             {
