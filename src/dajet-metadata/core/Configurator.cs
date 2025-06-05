@@ -3254,7 +3254,7 @@ namespace DaJet.Metadata.Core
 
             foreach (MetadataProperty property in entity.Properties)
             {
-                if (property is SharedProperty shared)
+                if (property is SharedProperty shared && shared.DataSeparationUsage == DataSeparationUsage.Use)
                 {
                     table.Properties.Add(shared);
                 }
