@@ -414,21 +414,25 @@ namespace DaJet.Http.Controllers
                 generator.Options.Codify = options.Codify;
             }
 
-            try
+            CreateDbViewsResponse response = new();
+
+            if (generator.TryCreateView(in @object, out error))
             {
-                if (!generator.TryCreateView(in @object, out error))
-                {
-                    return StatusCode(StatusCodes.Status500InternalServerError, error);
-                }
+                response.Result = 1;
             }
-            catch (Exception exception)
+            else
             {
-                return StatusCode(
-                    StatusCodes.Status500InternalServerError,
-                    ExceptionHelper.GetErrorMessage(exception));
+                response.Errors.Add(error);
             }
 
-            return Created("view", null);
+            string json = JsonSerializer.Serialize(response,
+                new JsonSerializerOptions()
+                {
+                    WriteIndented = true,
+                    Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+                });
+
+            return Content(json, "application/json; charset=utf-8", Encoding.UTF8);
         }
 
         #endregion

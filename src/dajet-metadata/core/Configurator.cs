@@ -686,6 +686,30 @@ namespace DaJet.Metadata.Core
 
             constant.Properties.Add(property);
         }
+        ///<summary>
+        ///Идентификатор объекта метаданных "Константа", значение которой было изменено
+        ///</summary>
+        private static void ConfigurePropertyConstID(in ChangeTrackingTable table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "ConstID",
+                Uuid = Guid.Empty,
+                Alias = "ConstID",
+                Purpose = PropertyPurpose.System,
+                DbName = "_ConstID"
+            };
+            property.PropertyType.IsBinary = true;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = "_ConstID",
+                Length = 16,
+                TypeName = "binary"
+            });
+
+            table.Properties.Add(property);
+        }
         #endregion
 
         #region "ACCOUNT"
@@ -3191,7 +3215,11 @@ namespace DaJet.Metadata.Core
             ConfigurePropertyУзелПланаОбмена(in table);
             ConfigurePropertyНомерСообщения(in table);
 
-            if (entity is Catalog || entity is Document || entity is Account)
+            if (entity is Constant constant)
+            {
+                ConfigurePropertyConstID(in table);
+            }
+            else if (entity is Catalog || entity is Document || entity is Account)
             {
                 MetadataProperty reference = entity.Properties.Where(p => p.Name == "Ссылка").FirstOrDefault();
 

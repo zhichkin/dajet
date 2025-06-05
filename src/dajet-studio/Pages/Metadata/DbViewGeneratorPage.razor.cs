@@ -13,6 +13,7 @@ namespace DaJet.Studio.Pages.Metadata
         public string DatabaseSchema { get; set; } = string.Empty;
         public string ConnectionString { get; set; } = string.Empty;
         public string DatabaseProvider { get; set; } = string.Empty;
+        public string MetadataObjectName { get; set; } = string.Empty;
         public string LogText { get; set; } = string.Empty;
         public string StartTime { get; set; } = string.Empty;
         public string FinishTime { get; set; } = string.Empty;
@@ -21,6 +22,7 @@ namespace DaJet.Studio.Pages.Metadata
             LogText = string.Empty;
             StartTime = string.Empty;
             FinishTime = string.Empty;
+            MetadataObjectName = string.Empty;
 
             try
             {
@@ -74,8 +76,18 @@ namespace DaJet.Studio.Pages.Metadata
 
             FinishTime = DateTime.Now.ToString("HH:mm:ss");
         }
-        public async Task CreateViews(MouseEventArgs args)
+        public async Task CreateCommand(MouseEventArgs args)
         {
+            if (string.IsNullOrWhiteSpace(DatabaseProvider))
+            {
+                LogText = "Не указан провайдер данных!"; return;
+            }
+
+            if (string.IsNullOrWhiteSpace(ConnectionString))
+            {
+                LogText = "Не указана строка подключения!"; return;
+            }
+
             if (string.IsNullOrWhiteSpace(DatabaseSchema))
             {
                 LogText = "Не указана схема базы данных!"; return;
@@ -96,36 +108,15 @@ namespace DaJet.Studio.Pages.Metadata
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(DatabaseProvider))
-            {
-                LogText = "Не указан провайдер данных!"; return;
-            }
-
-            if (string.IsNullOrWhiteSpace(ConnectionString))
-            {
-                LogText = "Не указана строка подключения!"; return;
-            }
-
             StartTime = DateTime.Now.ToString("HH:mm:ss");
 
-            try
+            if (!string.IsNullOrWhiteSpace(MetadataObjectName))
             {
-                CreateDbViewsResponse response = await DaJetClient.CreateDbViews(InfoBase, DatabaseSchema);
-
-                StringBuilder logger = new();
-                
-                logger.AppendLine($"Создано {response.Result} представлений.");
-                
-                foreach (string error in response.Errors)
-                {
-                    logger.AppendLine(error);
-                }
-
-                LogText = logger.ToString();
+                await CreateView();
             }
-            catch (Exception error)
+            else
             {
-                LogText = ExceptionHelper.GetErrorMessage(error);
+                await CreateViews();
             }
 
             FinishTime = DateTime.Now.ToString("HH:mm:ss");
@@ -174,6 +165,58 @@ namespace DaJet.Studio.Pages.Metadata
             }
 
             FinishTime = DateTime.Now.ToString("HH:mm:ss");
+        }
+
+        private async Task CreateView()
+        {
+            try
+            {
+                CreateDbViewsResponse response = await DaJetClient.CreateDbView(InfoBase, DatabaseSchema, MetadataObjectName);
+
+                StringBuilder logger = new();
+
+                if (response.Result == 1)
+                {
+                    logger.AppendLine($"Выполнено успешно.");
+                }
+                else
+                {
+                    logger.AppendLine($"Выполнено c ошибками:");
+
+                    foreach (string error in response.Errors)
+                    {
+                        logger.AppendLine(error);
+                    }
+                }
+                
+                LogText = logger.ToString();
+            }
+            catch (Exception error)
+            {
+                LogText = ExceptionHelper.GetErrorMessage(error);
+            }
+        }
+        private async Task CreateViews()
+        {
+            try
+            {
+                CreateDbViewsResponse response = await DaJetClient.CreateDbViews(InfoBase, DatabaseSchema);
+
+                StringBuilder logger = new();
+
+                logger.AppendLine($"Создано {response.Result} представлений.");
+
+                foreach (string error in response.Errors)
+                {
+                    logger.AppendLine(error);
+                }
+
+                LogText = logger.ToString();
+            }
+            catch (Exception error)
+            {
+                LogText = ExceptionHelper.GetErrorMessage(error);
+            }
         }
     }
 }

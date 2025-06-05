@@ -32,8 +32,14 @@
                 <td style="border:none;padding:3px;">@ConnectionString</td>
             </tr>
             <tr style="border:none;">
+                <td style="border:none;padding:3px;"><b>Объект метаданных:</b></td>
                 <td style="border:none;padding:3px;">
-                    <input type="button" class="script-editor-button" value="Создать" @onclick="CreateViews" />
+                    <input type="text" size="50" @bind-value="@MetadataObjectName" />
+                </td>
+            </tr>
+            <tr style="border:none;">
+                <td style="border:none;padding:3px;">
+                    <input type="button" class="script-editor-button" value="Создать" @onclick="CreateCommand" />
                     <input type="button" class="script-editor-button" value="Удалить" @onclick="DeleteViews" />
                 </td>
                 <td style="border:none;padding:3px;">

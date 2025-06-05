@@ -730,6 +730,13 @@ namespace DaJet.Http.Client
             HttpResponseMessage response = await _client.PostAsJsonAsync(url, options);
             return await response.Content.ReadFromJsonAsync<CreateDbViewsResponse>();
         }
+        public async Task<CreateDbViewsResponse> CreateDbView(string infobase, string schema, string metadataName)
+        {
+            string url = $"/db/view/{infobase}/{metadataName.Replace('.', '/')}";
+            CreateDbViewsRequest options = new() { Schema = schema };
+            HttpResponseMessage response = await _client.PostAsJsonAsync(url, options);
+            return await response.Content.ReadFromJsonAsync<CreateDbViewsResponse>();
+        }
         public async Task<string> DeleteDbViews(string infobase, string schema)
         {
             string url = $"/db/view/{infobase}?schema={schema}";
