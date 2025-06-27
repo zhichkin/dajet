@@ -94,6 +94,7 @@ namespace DaJet.Runtime
                 else if (type == typeof(string)) { _token = TokenType.String; }
                 else if (type == typeof(byte[])) { _token = TokenType.Binary; }
                 else if (type == typeof(Guid)) { _token = TokenType.Uuid; }
+                else if (type == typeof(Union)) { _token = TokenType.Union; }
                 else
                 {
                     throw new FormatException($"[SET] invalid variable {_target} binding {type}");

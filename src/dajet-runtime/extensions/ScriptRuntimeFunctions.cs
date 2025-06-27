@@ -5,6 +5,7 @@ using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
+using System.Globalization;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -556,6 +557,335 @@ namespace DaJet.Runtime
             DateTime utc = DateTime.UtcNow;
             utc = new DateTime(utc.Year, utc.Month, utc.Day, utc.Hour, utc.Minute, utc.Second);
             return utc.AddHours(timeZone);
+        }
+        #endregion
+
+        #region "CAST"
+        private static NumberFormatInfo _numberFormatter = new()
+        {
+            NumberDecimalSeparator = ".",
+            NumberGroupSeparator = string.Empty
+        };
+        [Function("TYPEOF")] public static string GetUnionType(this IScriptRuntime _, in Union union)
+        {
+            if (union is null) { return "NULL"; }
+            else if (union.Tag == UnionTag.Undefined) { return "undefined"; }
+            else if (union.Tag == UnionTag.Boolean) { return "boolean"; }
+            else if (union.Tag == UnionTag.Numeric) { return "number"; }
+            else if (union.Tag == UnionTag.DateTime) { return "datetime"; }
+            else if (union.Tag == UnionTag.String) { return "string"; }
+            else if (union.Tag == UnionTag.Entity) { return "entity"; }
+
+            throw new InvalidOperationException("The union value contains an invalid type.");
+        }
+        private static void ThrowTypeCastException(in string source, in string target)
+        {
+            string message = $"Error casting source type [{source}] to target type [{target}]";
+
+            throw new InvalidCastException(message);
+        }
+        
+        [Function("CAST")] public static object CastUnion(this IScriptRuntime _, in Union union, in TypeIdentifier type)
+        {
+            ArgumentNullException.ThrowIfNull(union);
+            
+            if (union.IsUndefined)
+            {
+                return null;
+            }
+            else if (type.Identifier == "boolean")
+            {
+                return CastUnionToBoolean(in union);
+            }
+            else if (type.Identifier == "integer")
+            {
+                return CastUnionToInteger(in union);
+            }
+            else if (type.Identifier == "number" || type.Identifier == "decimal")
+            {
+                return CastUnionToDecimal(in union);
+            }
+            else if (type.Identifier == "datetime")
+            {
+                return CastUnionToDateTime(in union);
+            }
+            else if (type.Identifier == "string")
+            {
+                return CastUnionToString(in union);
+            }
+            else if (type.Identifier == "entity")
+            {
+                return CastUnionToEntity(in union);
+            }
+
+            ThrowTypeCastException("union", type.Identifier);
+            
+            return null;
+        }
+        private static bool CastUnionToBoolean(in Union union)
+        {
+            ArgumentNullException.ThrowIfNull(union);
+
+            if (union.Tag != UnionTag.Boolean)
+            {
+                ThrowTypeCastException("union", "boolean");
+            }
+
+            return union.GetBoolean();
+        }
+        private static decimal CastUnionToDecimal(in Union union)
+        {
+            ArgumentNullException.ThrowIfNull(union);
+
+            if (union.Tag != UnionTag.Numeric)
+            {
+                ThrowTypeCastException("union", "decimal");
+            }
+
+            return union.GetNumeric();
+        }
+        private static int CastUnionToInteger(in Union union)
+        {
+            ArgumentNullException.ThrowIfNull(union);
+
+            if (union.Tag != UnionTag.Numeric)
+            {
+                ThrowTypeCastException("union", "integer");
+            }
+
+            return decimal.ToInt32(union.GetNumeric());
+        }
+        private static DateTime CastUnionToDateTime(in Union union)
+        {
+            ArgumentNullException.ThrowIfNull(union);
+
+            if (union.Tag != UnionTag.DateTime)
+            {
+                ThrowTypeCastException("union", "datetime");
+            }
+
+            return union.GetDateTime();
+        }
+        private static string CastUnionToString(in Union union)
+        {
+            ArgumentNullException.ThrowIfNull(union);
+
+            if (union.Tag != UnionTag.String)
+            {
+                ThrowTypeCastException("union", "string");
+            }
+
+            return union.GetString();
+        }
+        private static Entity CastUnionToEntity(in Union union)
+        {
+            ArgumentNullException.ThrowIfNull(union);
+
+            if (union.Tag != UnionTag.Entity)
+            {
+                ThrowTypeCastException("union", "entity");
+            }
+
+            return union.GetEntity();
+        }
+
+        [Function("CAST")] public static object CastBoolean(this IScriptRuntime _, in bool value, in TypeIdentifier type)
+        {
+            if (type.Identifier == "integer")
+            {
+                return value ? 1 : 0;
+            }
+            else if (type.Identifier == "string")
+            {
+                return value ? "true" : "false";
+            }
+            else if (type.Identifier == "binary")
+            {
+                return value ? new byte[] { 1 } : new byte[] { 0 };
+            }
+
+            ThrowTypeCastException("boolean", type.Identifier);
+            
+            return null;
+        }
+        [Function("CAST")] public static object CastInteger(this IScriptRuntime _, in int value, in TypeIdentifier type)
+        {
+            if (type.Identifier == "boolean")
+            {
+                return value != 0;
+            }
+            else if (type.Identifier == "datetime")
+            {
+                return DateTime.MinValue.AddSeconds(value);
+            }
+            else if (type.Identifier == "string")
+            {
+                return value.ToString(_numberFormatter);
+            }
+            else if (type.Identifier == "binary")
+            {
+                if (type.Qualifier1 == 1) // binary(1)
+                {
+                    return new byte[] { DbUtilities.GetByteArray(value)[3] };
+                }
+                else // binary(4)
+                {
+                    return DbUtilities.GetByteArray(value);
+                }
+            }
+
+            ThrowTypeCastException("integer", type.Identifier);
+
+            return null;
+        }
+        [Function("CAST")] public static object CastBigInteger(this IScriptRuntime _, in long value, in TypeIdentifier type)
+        {
+            if (type.Identifier == "boolean")
+            {
+                return value != 0L;
+            }
+            else if (type.Identifier == "datetime")
+            {
+                return DateTime.MinValue.AddSeconds(value);
+            }
+            else if (type.Identifier == "string")
+            {
+                return value.ToString(_numberFormatter);
+            }
+            else if (type.Identifier == "binary")
+            {
+                return DbUtilities.GetByteArray(value);
+            }
+
+            ThrowTypeCastException("integer", type.Identifier);
+
+            return null;
+        }
+        [Function("CAST")] public static object CastDecimal(this IScriptRuntime _, in decimal value, in TypeIdentifier type)
+        {
+            if (type.Identifier == "boolean")
+            {
+                return value != 0M;
+            }
+            else if (type.Identifier == "datetime")
+            {
+                return DateTime.MinValue.AddSeconds(decimal.ToInt64(value));
+            }
+            else if (type.Identifier == "string")
+            {
+                return value.ToString(_numberFormatter);
+            }
+            else if (type.Identifier == "binary")
+            {
+                return decimal.GetBits(value); //TODO: convert to byte array
+            }
+
+            ThrowTypeCastException("decimal", type.Identifier);
+
+            return null;
+        }
+        [Function("CAST")] public static object CastDateTime(this IScriptRuntime _, in DateTime value, in TypeIdentifier type)
+        {
+            if (type.Identifier == "integer")
+            {
+                return Convert.ToInt64(value.Subtract(DateTime.MinValue).TotalSeconds);
+            }
+            else if (type.Identifier == "string")
+            {
+                return value.ToString("yyyy-MM-dd HH:mm:ss");
+            }
+            else if (type.Identifier == "binary")
+            {
+                return value.ToBinary(); //TODO: convert to byte array
+            }
+
+            ThrowTypeCastException("datetime", type.Identifier);
+
+            return null;
+        }
+        [Function("CAST")] public static object CastString(this IScriptRuntime _, in string value, in TypeIdentifier type)
+        {
+            if (type.Identifier == "boolean")
+            {
+                return value == "true";
+            }
+            else if (type.Identifier == "integer")
+            {
+                return int.Parse(value); //TODO: parse to long on error
+            }
+            else if (type.Identifier == "decimal" || type.Identifier == "number")
+            {
+                return decimal.Parse(value);
+            }
+            else if (type.Identifier == "datetime")
+            {
+                return DateTime.Parse(value);
+            }
+            else if (type.Identifier == "string")
+            {
+                return value;
+            }
+            else if (type.Identifier == "binary")
+            {
+                return Encoding.UTF8.GetBytes(value);
+            }
+            else if (type.Identifier == "uuid")
+            {
+                return new Guid(value);
+            }
+            else if (type.Identifier == "entity")
+            {
+                return Entity.Parse(value);
+            }
+
+            ThrowTypeCastException("string", type.Identifier);
+
+            return null;
+        }
+        [Function("CAST")] public static object CastBinary(this IScriptRuntime _, in byte[] value, in TypeIdentifier type)
+        {
+            if (type.Identifier == "string")
+            {
+                return "0x" + DbUtilities.ByteArrayToString(value);
+            }
+
+            ThrowTypeCastException("binary", type.Identifier);
+
+            return null;
+        }
+        [Function("CAST")] public static object CastUuid(this IScriptRuntime _, in Guid value, in TypeIdentifier type)
+        {
+            if (type.Identifier == "string")
+            {
+                return value.ToString(); //TODO formatting !?
+            }
+            else if (type.Identifier == "binary")
+            {
+                return value.ToByteArray();
+            }
+            
+            ThrowTypeCastException("uuid", type.Identifier);
+
+            return null;
+        }
+        [Function("CAST")] public static object CastEntity(this IScriptRuntime _, in Entity value, in TypeIdentifier type)
+        {
+            if (type.Identifier == "string")
+            {
+                return value.ToString();
+            }
+            else if (type.Identifier == "uuid")
+            {
+                return value.Identity;
+            }
+            else if (type.Identifier == "integer")
+            {
+                return value.TypeCode;
+            }
+
+            ThrowTypeCastException("entity", type.Identifier);
+
+            return null;
         }
         #endregion
     }

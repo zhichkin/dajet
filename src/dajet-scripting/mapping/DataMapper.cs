@@ -119,7 +119,7 @@ namespace DaJet.Scripting
             {
                 union.IsBoolean = true;
             }
-            else if (scalar.Token == TokenType.Number)
+            else if (scalar.Token == TokenType.Number || scalar.Token == TokenType.Decimal)
             {
                 union.IsNumeric = true;
             }
@@ -154,6 +154,10 @@ namespace DaJet.Scripting
             else if (scalar.Token == TokenType.Integer)
             {
                 union.IsInteger = true;
+            }
+            else if (scalar.Token == TokenType.Union)
+            {
+                union.Add(typeof(Union));
             }
             else if (scalar.Token == TokenType.NULL)
             {
@@ -205,6 +209,15 @@ namespace DaJet.Scripting
             else if (type == typeof(int))
             {
                 union.IsInteger = true;
+            }
+            else if (type == typeof(Union))
+            {
+                union.IsBoolean = true;
+                union.IsNumeric = true;
+                union.IsDateTime = true;
+                union.IsString = true;
+                union.TypeCode = 0;
+                union.IsEntity = true;
             }
         }
         private static void Visit(in CaseExpression node, in UnionType union)

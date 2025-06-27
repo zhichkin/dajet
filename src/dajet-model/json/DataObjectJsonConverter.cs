@@ -70,16 +70,9 @@ namespace DaJet.Json
                     {
                         value = dateTime;
                     }
-                    else if (input.StartsWith('{'))
+                    else if (input.StartsWith('{') && Entity.TryParse(input, out Entity entity))
                     {
-                        if (Entity.TryParse(input, out Entity entity))
-                        {
-                            value = entity;
-                        }
-                        else
-                        {
-                            throw new FormatException();
-                        }
+                        value = entity;
                     }
                     else if (input.StartsWith("0x"))
                     {

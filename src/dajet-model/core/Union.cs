@@ -47,7 +47,7 @@ namespace DaJet
         public abstract int GetInteger(); // I
         public override string ToString()
         {
-            return IsUndefined ? "Неопределено" : (Value == null ? "NULL" : Value.ToString());
+            return IsUndefined ? "Неопределено" : (Value is null ? "NULL" : Value.ToString());
         }
         public static implicit operator Union(bool value) => new CaseBoolean(value);
         public static implicit operator Union(decimal value) => new CaseNumeric(value);

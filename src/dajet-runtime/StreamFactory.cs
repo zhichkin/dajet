@@ -106,7 +106,7 @@ namespace DaJet.Runtime
             }
         }
 
-        public static bool TryGetFunction(in ScriptScope scope, in FunctionExpression function, out MethodInfo method)
+        private static bool TryGetFunction(in ScriptScope scope, in FunctionExpression function, out MethodInfo method)
         {
             method = null;
 
@@ -160,7 +160,7 @@ namespace DaJet.Runtime
 
             return method is not null;
         }
-        public static object InvokeFunction(in ScriptScope scope, in FunctionExpression function)
+        private static object InvokeFunction(in ScriptScope scope, in FunctionExpression function)
         {
             //TODO: move this code to IScriptRuntime !?
 
@@ -206,6 +206,14 @@ namespace DaJet.Runtime
             else if (expression is MemberAccessExpression member)
             {
                 return InferReturnType(in scope, in member);
+            }
+            else if (expression is FunctionExpression function && function.Name == "CAST")
+            {
+                return InferReturnType(in scope, in function);
+            }
+            else if (expression is TypeIdentifier)
+            {
+                return typeof(TypeIdentifier); // 2. parameter of the CAST function
             }
             else
             {
@@ -296,7 +304,50 @@ namespace DaJet.Runtime
 
             return null; // not found
         }
-        
+        private static Type InferReturnType(in ScriptScope scope, in FunctionExpression expression)
+        {
+            if (expression.Name == "CAST" && expression.Parameters is not null && expression.Parameters.Count > 1)
+            {
+                if (expression.Parameters[1] is TypeIdentifier type)
+                {
+                    if (type.Identifier == "boolean")
+                    {
+                        return typeof(bool);
+                    }
+                    else if (type.Identifier == "integer")
+                    {
+                        return typeof(int);
+                    }
+                    else if (type.Identifier == "decimal" || type.Identifier == "number")
+                    {
+                        return typeof(decimal);
+                    }
+                    else if (type.Identifier == "datetime")
+                    {
+                        return typeof(DateTime);
+                    }
+                    else if (type.Identifier == "string")
+                    {
+                        return typeof(string);
+                    }
+                    else if (type.Identifier == "binary")
+                    {
+                        return typeof(byte[]);
+                    }
+                    else if (type.Identifier == "uuid")
+                    {
+                        return typeof(Guid);
+                    }
+                    else if (type.Identifier == "entity")
+                    {
+                        return typeof(Entity);
+                    }
+                }
+            }
+
+            return null; // error
+        }
+
         #endregion
 
         public static bool TryCreateStream(in string script, in Dictionary<string, object> parameters, out IProcessor stream, out string error)
@@ -1447,7 +1498,10 @@ namespace DaJet.Runtime
                 }
                 else if (value is FunctionExpression function)
                 {
-                    value = InvokeFunction(in scope, in function); return true;
+                    if (TryEvaluate(in scope, in function, out value))
+                    {
+                        return true;
+                    }
                 }
                 else
                 {
@@ -1533,6 +1587,10 @@ namespace DaJet.Runtime
             else if (expression is UnaryOperator unary)
             {
                 return TryEvaluate(in scope, in unary, out value);
+            }
+            else if (expression is TypeIdentifier) // CAST function
+            {
+                value = expression; return true;
             }
             else
             {

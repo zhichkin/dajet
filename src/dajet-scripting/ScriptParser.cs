@@ -2125,7 +2125,7 @@ namespace DaJet.Scripting
         {
             if (!Match(TokenType.OpenRoundBracket))
             {
-                throw new FormatException("Open round bracket expected.");
+                throw new FormatException($"[{identifier}] Open round bracket expected.");
             }
 
             FunctionExpression function = new()
@@ -2133,6 +2133,11 @@ namespace DaJet.Scripting
                 Token = token,
                 Name = identifier
             };
+
+            if (token == TokenType.CAST)
+            {
+                return parse_function_cast(in function);
+            }
 
             if (token == TokenType.COUNT && Match(TokenType.DISTINCT))
             {
@@ -2154,7 +2159,7 @@ namespace DaJet.Scripting
 
                 if (!Match(TokenType.CloseRoundBracket))
                 {
-                    throw new FormatException("Close round bracket expected.");
+                    throw new FormatException($"[{identifier}] Close round bracket expected.");
                 }
             }
 
@@ -2188,6 +2193,36 @@ namespace DaJet.Scripting
                 {
                     throw new FormatException("VECTOR function: parameter value must be non-empty string.");
                 }
+            }
+
+            return function;
+        }
+        private FunctionExpression parse_function_cast(in FunctionExpression function)
+        {
+            if (function.Token != TokenType.CAST)
+            {
+                throw new InvalidOperationException(nameof(parse_function_cast));
+            }
+
+            function.Parameters.Add(expression());
+
+            if (!Match(TokenType.AS))
+            {
+                throw new FormatException("[CAST] AS keyword expected.");
+            }
+
+            if (!Match(TokenType.Identifier))
+            {
+                throw new FormatException("[CAST] Type identifier expected.");
+            }
+            else
+            {
+                function.Parameters.Add(type());
+            }
+
+            if (!Match(TokenType.CloseRoundBracket))
+            {
+                throw new FormatException("[CAST] Close round bracket expected.");
             }
 
             return function;

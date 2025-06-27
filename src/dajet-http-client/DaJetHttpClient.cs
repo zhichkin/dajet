@@ -5,7 +5,6 @@ using DaJet.Model;
 using DaJet.Model.Http;
 using System.Net;
 using System.Net.Http.Json;
-using System.Net.NetworkInformation;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;

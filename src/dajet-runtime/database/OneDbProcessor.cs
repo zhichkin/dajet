@@ -71,8 +71,11 @@ namespace DaJet.Runtime
 
             foreach (FunctionDescriptor function in _statement.Functions)
             {
-                object result = StreamFactory.InvokeFunction(in _scope, function.Node);
-
+                if (!StreamFactory.TryEvaluate(in _scope, function.Node, out object result))
+                {
+                    throw new InvalidOperationException($"[OneDbProcessor] error evaluating parameter value {function.Target}");
+                }
+                
                 if (function.Node.Name == UDF_TYPEOF.Name && result is int typeCode)
                 {
                     //TODO: Надо что-то подумать с этим костылём ...

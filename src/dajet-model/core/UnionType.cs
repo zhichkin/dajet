@@ -55,7 +55,16 @@ namespace DaJet
             else if (type == typeof(Entity)) { IsEntity = true; }
             else if (type == typeof(ulong)) { IsVersion = true; }
             else if (type == typeof(int)) { IsInteger = true; }
-            else if (type == typeof(Union)) { Clear(); } //TODO: ?
+            else if (type == typeof(Union))
+            {
+                Clear();
+                IsBoolean = true;
+                IsNumeric = true;
+                IsDateTime = true;
+                IsString = true;
+                TypeCode = 0;
+                IsEntity = true;
+            }
         }
         public bool ApplySystemType(in string literal, out UnionTag tag)
         {

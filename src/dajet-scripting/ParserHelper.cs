@@ -255,7 +255,8 @@ namespace DaJet.Scripting
             { "LEAD", TokenType.LEAD },
             { "FIRST_VALUE", TokenType.FIRST_VALUE },
             { "LAST_VALUE", TokenType.LAST_VALUE },
-            { "NEWUUID", TokenType.NEWUUID }
+            { "NEWUUID", TokenType.NEWUUID },
+            { "CAST", TokenType.CAST }
         };
         private static Dictionary<string, TokenType> _function_ru = new()
         {
@@ -502,6 +503,11 @@ namespace DaJet.Scripting
                 literal = "{0:00000000-0000-0000-0000-000000000000}";
                 token = TokenType.Entity;
             }
+            else if (type == typeof(Union))
+            {
+                literal = "union";
+                token = TokenType.Union;
+            }
             else if (type == typeof(object))
             {
                 literal = "NULL";
@@ -536,7 +542,7 @@ namespace DaJet.Scripting
                     value = false;
                 }
             }
-            else if (token == TokenType.Number)
+            else if (token == TokenType.Number || token == TokenType.Decimal)
             {
                 value = decimal.Parse(literal, CultureInfo.InvariantCulture);
             }

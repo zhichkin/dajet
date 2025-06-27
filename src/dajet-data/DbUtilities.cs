@@ -31,6 +31,12 @@ namespace DaJet.Data
             if (BitConverter.IsLittleEndian) Array.Reverse(bytes);
             return bytes;
         }
+        public static byte[] GetByteArray(long value)
+        {
+            byte[] bytes = BitConverter.GetBytes(value);
+            if (BitConverter.IsLittleEndian) Array.Reverse(bytes);
+            return bytes;
+        }
         public static string ByteArrayToString(byte[] ba)
         {
             StringBuilder hex = new(ba.Length * 2);
