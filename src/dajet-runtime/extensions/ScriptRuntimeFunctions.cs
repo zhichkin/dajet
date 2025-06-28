@@ -561,7 +561,7 @@ namespace DaJet.Runtime
         #endregion
 
         #region "CAST"
-        private static NumberFormatInfo _numberFormatter = new()
+        private static readonly NumberFormatInfo _numberFormatter = new()
         {
             NumberDecimalSeparator = ".",
             NumberGroupSeparator = string.Empty
@@ -633,17 +633,6 @@ namespace DaJet.Runtime
 
             return union.GetBoolean();
         }
-        private static decimal CastUnionToDecimal(in Union union)
-        {
-            ArgumentNullException.ThrowIfNull(union);
-
-            if (union.Tag != UnionTag.Numeric)
-            {
-                ThrowTypeCastException("union", "decimal");
-            }
-
-            return union.GetNumeric();
-        }
         private static int CastUnionToInteger(in Union union)
         {
             ArgumentNullException.ThrowIfNull(union);
@@ -654,6 +643,17 @@ namespace DaJet.Runtime
             }
 
             return decimal.ToInt32(union.GetNumeric());
+        }
+        private static decimal CastUnionToDecimal(in Union union)
+        {
+            ArgumentNullException.ThrowIfNull(union);
+
+            if (union.Tag != UnionTag.Numeric)
+            {
+                ThrowTypeCastException("union", "decimal");
+            }
+
+            return union.GetNumeric();
         }
         private static DateTime CastUnionToDateTime(in Union union)
         {
@@ -714,6 +714,10 @@ namespace DaJet.Runtime
             {
                 return value != 0;
             }
+            else if (type.Identifier == "decimal")
+            {
+                return new decimal(value);
+            }
             else if (type.Identifier == "datetime")
             {
                 return DateTime.MinValue.AddSeconds(value);
@@ -733,10 +737,6 @@ namespace DaJet.Runtime
                     return DbUtilities.GetByteArray(value);
                 }
             }
-            else if (type.Identifier == "decimal")
-            {
-                return new decimal(value);
-            }
 
             ThrowTypeCastException("integer", type.Identifier);
 
@@ -748,6 +748,10 @@ namespace DaJet.Runtime
             {
                 return value != 0L;
             }
+            else if (type.Identifier == "decimal")
+            {
+                return new decimal(value);
+            }
             else if (type.Identifier == "datetime")
             {
                 return DateTime.MinValue.AddSeconds(value);
@@ -758,7 +762,14 @@ namespace DaJet.Runtime
             }
             else if (type.Identifier == "binary")
             {
-                return DbUtilities.GetByteArray(value);
+                if (type.Qualifier1 == 1) // binary(1)
+                {
+                    return new byte[] { DbUtilities.GetByteArray(value)[3] };
+                }
+                else // binary(4)
+                {
+                    return DbUtilities.GetByteArray(value);
+                }
             }
 
             ThrowTypeCastException("integer", type.Identifier);
@@ -767,21 +778,20 @@ namespace DaJet.Runtime
         }
         [Function("CAST")] public static object CastDecimal(this IScriptRuntime _, in decimal value, in TypeIdentifier type)
         {
-            if (type.Identifier == "boolean")
+            if (type.Identifier == "integer")
             {
-                return value != 0M;
-            }
-            else if (type.Identifier == "datetime")
-            {
-                return DateTime.MinValue.AddSeconds(decimal.ToInt64(value));
+                if (type.Qualifier1 == 8)
+                {
+                    return decimal.ToInt64(value);
+                }
+                else
+                {
+                    return decimal.ToInt32(value);
+                }
             }
             else if (type.Identifier == "string")
             {
                 return value.ToString(_numberFormatter);
-            }
-            else if (type.Identifier == "binary")
-            {
-                return decimal.GetBits(value); //TODO: convert to byte array
             }
 
             ThrowTypeCastException("decimal", type.Identifier);
@@ -798,10 +808,6 @@ namespace DaJet.Runtime
             {
                 return value.ToString("yyyy-MM-dd HH:mm:ss");
             }
-            else if (type.Identifier == "binary")
-            {
-                return value.ToBinary(); //TODO: convert to byte array
-            }
 
             ThrowTypeCastException("datetime", type.Identifier);
 
@@ -815,11 +821,18 @@ namespace DaJet.Runtime
             }
             else if (type.Identifier == "integer")
             {
-                return int.Parse(value); //TODO: parse to long on error
+                if (type.Qualifier1 == 8)
+                {
+                    return long.Parse(value, _numberFormatter);
+                }
+                else
+                {
+                    return int.Parse(value, _numberFormatter);
+                }
             }
             else if (type.Identifier == "decimal" || type.Identifier == "number")
             {
-                return decimal.Parse(value);
+                return decimal.Parse(value, _numberFormatter);
             }
             else if (type.Identifier == "datetime")
             {
@@ -848,13 +861,28 @@ namespace DaJet.Runtime
         }
         [Function("CAST")] public static object CastBinary(this IScriptRuntime _, in byte[] value, in TypeIdentifier type)
         {
-            if (type.Identifier == "integer")
+            if (type.Identifier == "boolean") // binary(1)
             {
-                return DbUtilities.GetInt32(value);
+                return value[0] != 0x00;
+            }
+            else if (type.Identifier == "integer")
+            {
+                if (type.Qualifier1 == 8)
+                {
+                    return DbUtilities.GetInt64(value); // binary(8), например, версия СУБД rowversion
+                }
+                else
+                {
+                    return DbUtilities.GetInt32(value); // binary(4) или иногда binary(1)
+                }
             }
             else if (type.Identifier == "string")
             {
-                return "0x" + DbUtilities.ByteArrayToString(value);
+                return Encoding.UTF8.GetString(value);
+            }
+            else if (type.Identifier == "uuid")
+            {
+                return new Guid(value); // binary(16)
             }
 
             ThrowTypeCastException("binary", type.Identifier);
@@ -865,11 +893,11 @@ namespace DaJet.Runtime
         {
             if (type.Identifier == "string")
             {
-                return value.ToString(); //TODO formatting !?
+                return value.ToString();
             }
             else if (type.Identifier == "binary")
             {
-                return value.ToByteArray();
+                return value.ToByteArray(); // binary(16)
             }
             
             ThrowTypeCastException("uuid", type.Identifier);
@@ -881,14 +909,6 @@ namespace DaJet.Runtime
             if (type.Identifier == "string")
             {
                 return value.ToString();
-            }
-            else if (type.Identifier == "uuid")
-            {
-                return value.Identity;
-            }
-            else if (type.Identifier == "integer")
-            {
-                return value.TypeCode;
             }
 
             ThrowTypeCastException("entity", type.Identifier);

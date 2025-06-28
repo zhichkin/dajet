@@ -255,6 +255,17 @@ namespace DaJet.Runtime
                             throw new InvalidOperationException($"Failed to get variable value {expression.Identifier}");
                         }
                     }
+                    else if (declare.Type.Identifier == "integer")
+                    {
+                        if (declare.Type.Qualifier1 == 8)
+                        {
+                            return typeof(long); //TODO: костыль для работы с датами, представленными в секундах
+                        }
+                        else
+                        {
+                            return typeof(int);
+                        }
+                    }
                     else
                     {
                         return type;

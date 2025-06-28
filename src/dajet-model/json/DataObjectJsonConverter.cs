@@ -49,8 +49,21 @@ namespace DaJet.Json
                 {
                     if (reader.TryGetDecimal(out decimal numeric))
                     {
-                        if (numeric.Scale > 0) { value = numeric; }
-                        else { value = decimal.ToInt32(numeric); }
+                        if (numeric.Scale > 0)
+                        {
+                            value = numeric;
+                        }
+                        else
+                        {
+                            try
+                            {
+                                value = decimal.ToInt32(numeric);
+                            }
+                            catch
+                            {
+                                value = decimal.ToInt64(numeric);
+                            }
+                        }
                     }
                     else
                     {
