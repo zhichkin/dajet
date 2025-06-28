@@ -733,6 +733,10 @@ namespace DaJet.Runtime
                     return DbUtilities.GetByteArray(value);
                 }
             }
+            else if (type.Identifier == "decimal")
+            {
+                return new decimal(value);
+            }
 
             ThrowTypeCastException("integer", type.Identifier);
 
@@ -844,7 +848,11 @@ namespace DaJet.Runtime
         }
         [Function("CAST")] public static object CastBinary(this IScriptRuntime _, in byte[] value, in TypeIdentifier type)
         {
-            if (type.Identifier == "string")
+            if (type.Identifier == "integer")
+            {
+                return DbUtilities.GetInt32(value);
+            }
+            else if (type.Identifier == "string")
             {
                 return "0x" + DbUtilities.ByteArrayToString(value);
             }
