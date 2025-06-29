@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <AssemblyName>DaJet.Scripting</AssemblyName>
-    <Version>3.10.1</Version>
+    <Version>3.11.2</Version>
     <Authors>Zhichkin</Authors>
     <Description>DaJet SQL-like scripting language for back-end and integration</Description>
     <Copyright>Zhichkin © 2022</Copyright>

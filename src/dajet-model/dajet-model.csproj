@@ -7,7 +7,7 @@
     <Nullable>disable</Nullable>
     <AssemblyName>DaJet.Model</AssemblyName>
     <Copyright>Zhichkin © 2022</Copyright>
-    <Version>3.8.3</Version>
+    <Version>3.8.4</Version>
   </PropertyGroup>
 
   <ItemGroup>
