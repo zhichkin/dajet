@@ -62,6 +62,7 @@ namespace DaJet.Scripting
 
             return descriptor;
         }
+        
         private FunctionDescriptor Transpile(in ColumnReference column, in StringBuilder script)
         {
             if (column.Mapping is null || column.Mapping.Count == 0)
@@ -94,44 +95,98 @@ namespace DaJet.Scripting
         }
         private FunctionDescriptor TranspileUnionProperty(in ColumnReference column, in StringBuilder script)
         {
-            ColumnMapper map = null;
+            ColumnMapper _type = null; // _TYPE
+            ColumnMapper _tref = null; // _TRef
 
-            for (int i = 0; i < column.Mapping.Count; i++)
-            {
-                if (column.Mapping[i].Type == UnionTag.TypeCode)
-                {
-                    map = column.Mapping[i]; break; // TRef
-                }
-            }
-
-            if (map is null)
+            if (column.Binding is not MetadataProperty property)
             {
                 throw new FormatException("[TYPEOF] invalid column type");
             }
 
-            column.Mapping.Clear();
-            column.Mapping.Add(map);
+            for (int i = 0; i < column.Mapping.Count; i++)
+            {
+                if (column.Mapping[i].Type == UnionTag.Tag)
+                {
+                    _type = column.Mapping[i]; // _TYPE
+                }
+
+                if (column.Mapping[i].Type == UnionTag.TypeCode)
+                {
+                    _tref = column.Mapping[i]; // _TRef
+                }
+            }
+
+            if (_type is null && _tref is null)
+            {
+                throw new FormatException("[TYPEOF] invalid column type");
+            }
 
             if (_target == DatabaseProvider.SqlServer)
             {
-                script.Append($"CAST({map.Name} AS int)");
+                if (_type is not null)
+                {
+                    if (_tref is null)
+                    {
+                        if (property.PropertyType.CanBeReference)
+                        {
+                            script.Append($"CAST(CASE WHEN {_type.Name} = 0x08 THEN {property.PropertyType.TypeCode} ELSE 0x000000 + {_type.Name} END AS int)");
+                        }
+                        else
+                        {
+                            script.Append($"CAST(0x000000 + {_type.Name} AS int)");
+                        }
+                    }
+                    else
+                    {
+                        script.Append($"CAST(CASE WHEN {_type.Name} = 0x08 THEN {_tref.Name} ELSE 0x000000 + {_type.Name} END AS int)");
+                    }
+                }
+                else
+                {
+                    script.Append($"CAST({_tref.Name} AS int)");
+                }
             }
             else if (_target == DatabaseProvider.PostgreSql)
             {
-                script.Append($"(get_byte({map.Name}, 0) << 24) | (get_byte({map.Name}, 1) << 16) | (get_byte({map.Name}, 2) << 8) | get_byte({map.Name}, 3)");
+                string _type_value = "CAST(E'\\\\x08' AS bytea)";
+                string _tref_value = string.Empty;
+
+                if (_tref is not null)
+                {
+                    _tref_value = $"(get_byte({_tref.Name}, 0) << 24) | (get_byte({_tref.Name}, 1) << 16) | (get_byte({_tref.Name}, 2) << 8) | get_byte({_tref.Name}, 3)";
+                }
+
+                if (_type is not null)
+                {
+                    if (_tref is null)
+                    {
+                        if (property.PropertyType.CanBeReference)
+                        {
+                            script.Append($"(CASE WHEN {_type.Name} = {_type_value} THEN {property.PropertyType.TypeCode} ELSE get_byte({_type.Name}, 0) END)");
+                        }
+                        else
+                        {
+                            script.Append($"get_byte({_type.Name}, 0)");
+                        }
+                    }
+                    else
+                    {
+                        script.Append($"(CASE WHEN {_type.Name} = {_type_value} THEN {_tref_value} ELSE get_byte({_type.Name}, 0) END)");
+                    }
+                }
+                else
+                {
+                    script.Append(_tref_value);
+                }
             }
             else
             {
                 throw new FormatException($"[TYPEOF] unsupported database type {_target}");
             }
-            
-            if (!string.IsNullOrEmpty(map.Alias))
-            {
-                script.Append(" AS ").Append(map.Alias);
-            }
 
             return null;
         }
+        
         private FunctionDescriptor Transpile(in ScalarExpression scalar, in StringBuilder script)
         {
             if (scalar.Token != TokenType.Entity)
