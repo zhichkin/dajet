@@ -6,6 +6,7 @@
         static UDF()
         {
             Register(UDF_JSON.Name, new UDF_JSON());
+            Register(UDF_CAST.Name, new UDF_CAST());
             Register(UDF_TYPEOF.Name, new UDF_TYPEOF());
             Register(UDF_UUIDOF.Name, new UDF_UUIDOF());
             Register(UDF_UUID1C.Name, new UDF_UUID1C());

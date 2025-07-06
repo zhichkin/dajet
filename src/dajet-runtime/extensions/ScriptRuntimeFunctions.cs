@@ -182,29 +182,7 @@ namespace DaJet.Runtime
 
             return Entity.Undefined;
         }
-        [Function("TYPEOF")] public static int GetEntityTypeCode(this IScriptRuntime runtime, in string name)
-        {
-            if (runtime is ScriptScope scope)
-            {
-                if (!scope.TryGetMetadataProvider(out IMetadataProvider provider, out string error))
-                {
-                    throw new InvalidOperationException(error);
-                }
-
-                MetadataObject metadata = provider.GetMetadataObject(name);
-
-                if (metadata is ApplicationObject entity && entity.TypeCode > 0)
-                {
-                    return entity.TypeCode; //TODO: check if reference object
-                }
-            }
-
-            return Entity.Undefined.TypeCode;
-        }
-        [Function("TYPEOF")] public static int GetEntityTypeCode(this IScriptRuntime runtime, in Entity entity)
-        {
-            return entity.TypeCode;
-        }
+        
         [Function("UUIDOF")] public static Guid GetEntityIdentity(this IScriptRuntime runtime, in Entity entity)
         {
             return entity.Identity;
@@ -560,24 +538,75 @@ namespace DaJet.Runtime
         }
         #endregion
 
+        #region "TYPEOF"
+        [Function("TYPEOF")] public static int GetEntityTypeCode(this IScriptRuntime runtime, in Entity entity)
+        {
+            return entity.TypeCode;
+        }
+        [Function("TYPEOF")] public static int GetEntityTypeCode(this IScriptRuntime runtime, in string name)
+        {
+            if (runtime is ScriptScope scope)
+            {
+                if (!scope.TryGetMetadataProvider(out IMetadataProvider provider, out string error))
+                {
+                    throw new InvalidOperationException(error);
+                }
+
+                MetadataObject metadata = provider.GetMetadataObject(name);
+
+                if (metadata is ApplicationObject entity && entity.TypeCode > 0)
+                {
+                    return entity.TypeCode; //TODO: check if reference object
+                }
+            }
+
+            return Entity.Undefined.TypeCode;
+        }
+        [Function("TYPEOF")] public static int GetUnionType(this IScriptRuntime _, in Union union)
+        {
+            ArgumentNullException.ThrowIfNull(union);
+            
+            return (int)union.Tag;
+        }
+        [Function("TYPEOF")] public static int GetTypeCodeByIdentifier(this IScriptRuntime _, in TypeIdentifier type)
+        {
+            ArgumentNullException.ThrowIfNull(type);
+
+            if (type.Identifier == "boolean")
+            {
+                return (int)UnionTag.Boolean;
+            }
+            else if (type.Identifier == "integer")
+            {
+                return (int)UnionTag.Integer; // ?!
+            }
+            else if (type.Identifier == "number" || type.Identifier == "decimal")
+            {
+                return (int)UnionTag.Numeric;
+            }
+            else if (type.Identifier == "datetime")
+            {
+                return (int)UnionTag.DateTime;
+            }
+            else if (type.Identifier == "string")
+            {
+                return (int)UnionTag.String;
+            }
+            else if (type.Identifier == "entity")
+            {
+                return (int)UnionTag.Entity;
+            }
+
+            return (int)UnionTag.Tag; //TODO: resolve user-defined data types
+        }
+        #endregion
+
         #region "CAST"
         private static readonly NumberFormatInfo _numberFormatter = new()
         {
             NumberDecimalSeparator = ".",
             NumberGroupSeparator = string.Empty
         };
-        [Function("TYPEOF")] public static string GetUnionType(this IScriptRuntime _, in Union union)
-        {
-            if (union is null) { return "NULL"; }
-            else if (union.Tag == UnionTag.Undefined) { return "undefined"; }
-            else if (union.Tag == UnionTag.Boolean) { return "boolean"; }
-            else if (union.Tag == UnionTag.Numeric) { return "number"; }
-            else if (union.Tag == UnionTag.DateTime) { return "datetime"; }
-            else if (union.Tag == UnionTag.String) { return "string"; }
-            else if (union.Tag == UnionTag.Entity) { return "entity"; }
-
-            throw new InvalidOperationException("The union value contains an invalid type.");
-        }
         private static void ThrowTypeCastException(in string source, in string target)
         {
             string message = $"Error casting source type [{source}] to target type [{target}]";

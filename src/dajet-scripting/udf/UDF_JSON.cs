@@ -9,7 +9,7 @@ namespace DaJet.Scripting
     {
         public const string Name = "JSON";
         private DatabaseProvider _target;
-        public Type ReturnType { get { return typeof(string); } }
+        public Type GetReturnType(in FunctionExpression node) { return typeof(string); }
         public FunctionDescriptor Transpile(in ISqlTranspiler transpiler, in FunctionExpression node, in StringBuilder script)
         {
             if (node.Name != UDF_JSON.Name)
@@ -75,7 +75,7 @@ namespace DaJet.Scripting
             FunctionDescriptor descriptor = new()
             {
                 Target = parameterName,
-                ReturnType = ReturnType
+                ReturnType = GetReturnType(null)
             };
 
             return descriptor;

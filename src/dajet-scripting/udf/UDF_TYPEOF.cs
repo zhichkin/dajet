@@ -10,7 +10,7 @@ namespace DaJet.Scripting
     {
         public const string Name = "TYPEOF";
         private DatabaseProvider _target;
-        public Type ReturnType { get { return typeof(int); } }
+        public Type GetReturnType(in FunctionExpression node) { return typeof(int); }
         public FunctionDescriptor Transpile(in ISqlTranspiler transpiler, in FunctionExpression node, in StringBuilder script)
         {
             if (node.Name != UDF_TYPEOF.Name)
@@ -49,6 +49,10 @@ namespace DaJet.Scripting
             else if (parameter is MemberAccessExpression accessor)
             {
                 descriptor = Transpile(in accessor, in script);
+            }
+            else if (parameter is TypeIdentifier type)
+            {
+                descriptor = Transpile(in type, in script);
             }
             else
             {
@@ -186,7 +190,40 @@ namespace DaJet.Scripting
 
             return null;
         }
-        
+
+        private FunctionDescriptor Transpile(in TypeIdentifier type, in StringBuilder script)
+        {
+            int typeCode = 0;
+
+            if (type.Identifier == "boolean")
+            {
+                typeCode = (int)UnionTag.Boolean;
+            }
+            else if (type.Identifier == "number" || type.Identifier == "decimal")
+            {
+                typeCode = (int)UnionTag.Numeric;
+            }
+            else if (type.Identifier == "datetime")
+            {
+                typeCode = (int)UnionTag.DateTime;
+            }
+            else if (type.Identifier == "string")
+            {
+                typeCode = (int)UnionTag.String;
+            }
+            else if (type.Identifier == "entity")
+            {
+                typeCode = (int)UnionTag.Entity;
+            }
+            //else if (type.Identifier == "integer")
+            //{
+            //    typeCode = (int)UnionTag.Integer; //THINK: ??!
+            //}
+
+            script.Append(typeCode);
+
+            return null;
+        }
         private FunctionDescriptor Transpile(in ScalarExpression scalar, in StringBuilder script)
         {
             if (scalar.Token != TokenType.Entity)
@@ -214,7 +251,7 @@ namespace DaJet.Scripting
             FunctionDescriptor descriptor = new()
             {
                 Target = parameterName,
-                ReturnType = ReturnType
+                ReturnType = GetReturnType(null)
             };
 
             return descriptor;
@@ -238,7 +275,7 @@ namespace DaJet.Scripting
             FunctionDescriptor descriptor = new()
             {
                 Target = parameterName,
-                ReturnType = ReturnType
+                ReturnType = GetReturnType(null)
             };
 
             return descriptor;

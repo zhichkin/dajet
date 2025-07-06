@@ -241,7 +241,7 @@ namespace DaJet.Scripting
                     throw new InvalidOperationException($"Invalid function name: {function.Name}");
                 }
 
-                Type returnType = udf.ReturnType;
+                Type returnType = udf.GetReturnType(in function);
 
                 if (returnType == typeof(bool)) { union.IsBoolean = true; }
                 else if (returnType == typeof(int)) { union.IsNumeric = true; }
@@ -251,7 +251,12 @@ namespace DaJet.Scripting
                 else if (returnType == typeof(string)) { union.IsString = true; }
                 else if (returnType == typeof(byte[])) { union.IsBinary = true; }
                 else if (returnType == typeof(Guid)) { union.IsUuid = true; }
-                else if (returnType == typeof(Entity)) { union.IsEntity = true; }
+                else if (returnType == typeof(Entity))
+                {
+                    //union.TypeCode = 123;  Невозможно указать корректный код типа. Функция - это одно поле SELECT,
+                    //union.IsEntity = true; а тип entity предполагает два (_TRef + _RRef), если не указан код типа.
+                    union.IsUuid = true;  // Костылим пока что вот так для функции CAST(union AS entity) ¯\_(ツ)_/¯
+                }
                 else if (returnType is null)
                 {
                     throw new InvalidOperationException($"Function return type must not be NULL: {function.Name}");

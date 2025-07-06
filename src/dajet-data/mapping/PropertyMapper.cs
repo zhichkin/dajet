@@ -233,13 +233,6 @@ namespace DaJet.Data
                 return null;
             }
 
-            //TODO: убрать этот костыль в класс DataMapper _KeyField
-            if (column.Name == "_KeyField") // binary(4)
-            {
-                //NOTE: the value is stored as unsigned big-endian !!!
-                return Convert.ToDecimal(DbUtilities.GetInt32((byte[])reader.GetValue(ordinal)));
-            }
-
             Type type = reader.GetFieldType(ordinal);
 
             if (type == typeof(int))

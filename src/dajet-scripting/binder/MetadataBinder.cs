@@ -133,7 +133,7 @@ namespace DaJet.Scripting
 
             if (ParserHelper.IsDataType(node.Identifier, out Type type))
             {
-                //NOTE: bool, decimal, DateTime, string, byte[], Guid, Entity, Union, Array, object
+                //NOTE: bool, decimal, int, DateTime, string, byte[], Guid, Entity, Union, Array, object
 
                 if (type == typeof(Array))
                 {

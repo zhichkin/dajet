@@ -5,9 +5,7 @@ namespace DaJet.Scripting
 {
     public interface IUserDefinedFunction
     {
-        Type ReturnType { get; }
+        Type GetReturnType(in FunctionExpression node);
         FunctionDescriptor Transpile(in ISqlTranspiler transpiler, in FunctionExpression node, in StringBuilder script);
-        
-        //TODO: Execute (runtime) !?
     }
 }

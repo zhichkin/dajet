@@ -255,8 +255,7 @@ namespace DaJet.Scripting
             { "LEAD", TokenType.LEAD },
             { "FIRST_VALUE", TokenType.FIRST_VALUE },
             { "LAST_VALUE", TokenType.LAST_VALUE },
-            { "NEWUUID", TokenType.NEWUUID },
-            { "CAST", TokenType.CAST }
+            { "NEWUUID", TokenType.NEWUUID }
         };
         private static Dictionary<string, TokenType> _function_ru = new()
         {
@@ -277,7 +276,7 @@ namespace DaJet.Scripting
         }
         public static bool IsDataType(string identifier, out Type type)
         {
-            return _datatype.TryGetValue(identifier.ToLowerInvariant(), out type);
+            return _datatype.TryGetValue(identifier, out type);
         }
         public static TokenType GetDataTypeToken(Type type)
         {

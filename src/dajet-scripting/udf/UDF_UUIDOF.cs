@@ -10,7 +10,7 @@ namespace DaJet.Scripting
     {
         public const string Name = "UUIDOF";
         private DatabaseProvider _target;
-        public Type ReturnType { get { return typeof(Guid); } }
+        public Type GetReturnType(in FunctionExpression node) { return typeof(Guid); }
         public FunctionDescriptor Transpile(in ISqlTranspiler transpiler, in FunctionExpression node, in StringBuilder script)
         {
             if (node.Name != UDF_UUIDOF.Name)
@@ -173,7 +173,7 @@ namespace DaJet.Scripting
             FunctionDescriptor descriptor = new()
             {
                 Target = parameterName,
-                ReturnType = ReturnType
+                ReturnType = GetReturnType(null)
             };
 
             return descriptor;
@@ -197,7 +197,7 @@ namespace DaJet.Scripting
             FunctionDescriptor descriptor = new()
             {
                 Target = parameterName,
-                ReturnType = ReturnType
+                ReturnType = GetReturnType(null)
             };
 
             return descriptor;

@@ -10,7 +10,7 @@ namespace DaJet.Scripting
     {
         public const string Name = "UUID1C";
         private DatabaseProvider _target;
-        public Type ReturnType { get { return typeof(Guid); } }
+        public Type GetReturnType(in FunctionExpression node) { return typeof(Guid); }
         public FunctionDescriptor Transpile(in ISqlTranspiler transpiler, in FunctionExpression node, in StringBuilder script)
         {
             if (node.Name != UDF_UUID1C.Name)

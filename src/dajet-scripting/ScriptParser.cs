@@ -496,6 +496,8 @@ namespace DaJet.Scripting
         {
             CaseStatement statement = new();
 
+            Skip(TokenType.Comment);
+
             while (Match(TokenType.WHEN))
             {
                 bool expect_close = Match(TokenType.OpenRoundBracket);
@@ -2010,11 +2012,18 @@ namespace DaJet.Scripting
         {
             string identifier = Previous().Lexeme;
 
-            if (ParserHelper.IsFunction(identifier, out TokenType token))
+            if (ParserHelper.IsDataType(identifier, out _)) // language built-in data type
+            {
+                return type();
+                //TODO: user-defined data type [Справочник.Номенклатура] derived from [entity]
+                //NOTE: Важен контекст! FROM <table> и другие ...
+                //Failed to bind [Column: Справочник.Номенклатура]
+            }
+            else if (ParserHelper.IsFunction(identifier, out TokenType token))
             {
                 return function(token, identifier); // language built-in function
             }
-            else if (Check(TokenType.OpenRoundBracket))
+            else if (Check(TokenType.OpenRoundBracket)) //TODO: check UDF.TryGet !!!
             {
                 return function(TokenType.UDF, identifier); // user-defined function
             }
@@ -2024,6 +2033,8 @@ namespace DaJet.Scripting
         private SyntaxNode case_expression()
         {
             CaseExpression node = new();
+
+            Skip(TokenType.Comment);
 
             while (Match(TokenType.WHEN))
             {
@@ -2134,7 +2145,7 @@ namespace DaJet.Scripting
                 Name = identifier
             };
 
-            if (token == TokenType.CAST)
+            if (identifier == "CAST")
             {
                 return parse_function_cast(in function);
             }
@@ -2199,11 +2210,6 @@ namespace DaJet.Scripting
         }
         private FunctionExpression parse_function_cast(in FunctionExpression function)
         {
-            if (function.Token != TokenType.CAST)
-            {
-                throw new InvalidOperationException(nameof(parse_function_cast));
-            }
-
             function.Parameters.Add(expression());
 
             if (!Match(TokenType.AS))
