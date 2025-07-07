@@ -135,7 +135,7 @@
                 sql.language.keywords.push('TIMEOUT');
                 sql.language.keywords.push('MODIFY');
                 sql.language.keywords.push('DEFINE');
-                
+
                 sql.language.operators.push('APPEND');
                 sql.language.operators.push('ARRAY');
                 sql.language.operators.push('OBJECT');
@@ -167,6 +167,11 @@
                 sql.language.builtinFunctions.push('GET_PROPERTY');
                 sql.language.builtinFunctions.push('PROPERTY_COUNT');
                 sql.language.builtinFunctions.push('PROPERTY_EXISTS');
+
+                sql.language.builtinFunctions.push('SPLIT');
+                let index = sql.language.keywords.indexOf('REGEXP');
+                if (index !== -1) { sql.language.keywords.splice(index, 1); }
+                sql.language.builtinFunctions.push('REGEXP');
 
                 sql.language.typeIdentifiers = ['boolean','number','datetime','string','binary','uuid','entity','object','array','integer','decimal','union'];
 

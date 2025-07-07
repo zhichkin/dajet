@@ -9,6 +9,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Text.Unicode;
 using TokenType = DaJet.Scripting.TokenType;
 
@@ -943,6 +944,101 @@ namespace DaJet.Runtime
             ThrowTypeCastException("entity", type.Identifier);
 
             return null;
+        }
+        #endregion
+
+        #region "STRING FUNCTIONS"
+        [Function("LOWER")] public static string String_Lower(this IScriptRuntime runtime, string source)
+        {
+            return source.ToLower();
+        }
+        [Function("UPPER")] public static string String_Upper(this IScriptRuntime runtime, string source)
+        {
+            return source.ToUpper();
+        }
+        [Function("LTRIM")] public static string String_TrimStart(this IScriptRuntime runtime, string source)
+        {
+            return source.TrimStart();
+        }
+        [Function("RTRIM")] public static string String_TrimEnd(this IScriptRuntime runtime, string source)
+        {
+            return source.TrimEnd();
+        }
+        [Function("CHARLENGTH")] public static int String_Length(this IScriptRuntime runtime, string source)
+        {
+            return source.Length;
+        }
+        [Function("CHARINDEX")] public static int String_IndexOf(this IScriptRuntime runtime, string source, string search)
+        {
+            return source.IndexOf(search);
+        }
+        [Function("SUBSTRING")] public static string String_Substring(this IScriptRuntime runtime, string source, int start)
+        {
+            return source.Substring(start);
+        }
+        [Function("SUBSTRING")] public static string String_Substring(this IScriptRuntime runtime, string source, int start, int length)
+        {
+            return source.Substring(start, length);
+        }
+        [Function("REPLACE")] public static string String_Replace(this IScriptRuntime runtime, string source, string pattern, string replace)
+        {
+            if (string.IsNullOrEmpty(source))
+            {
+                return string.Empty;
+            }
+
+            return Regex.Replace(source, pattern, replace);
+        }
+        [Function("SPLIT")] public static List<DataObject> String_Split(this IScriptRuntime runtime, string source, string separator)
+        {
+            List<DataObject> table = new();
+
+            if (string.IsNullOrEmpty(source))
+            {
+                return table;
+            }
+
+            StringSplitOptions options = StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries;
+
+            string[] split = source.Split(separator, options);
+
+            foreach (string value in split)
+            {
+                DataObject record = new(1);
+                record.SetValue("Value", value);
+                table.Add(record);
+            }
+            
+            return table;
+        }
+        [Function("REGEXP")] public static List<DataObject> String_RegExp(this IScriptRuntime runtime, string source, string pattern, bool ignoreCase)
+        {
+            List<DataObject> table = new();
+
+            if (string.IsNullOrEmpty(source))
+            {
+                return table;
+            }
+
+            RegexOptions options = RegexOptions.CultureInvariant;
+
+            if (ignoreCase)
+            {
+                options |= RegexOptions.IgnoreCase;
+            }
+
+            Match match = Regex.Match(source, pattern, options);
+
+            while (match.Success)
+            {
+                DataObject record = new(1);
+                record.SetValue("Value", match.Value);
+                table.Add(record);
+
+                match = match.NextMatch();
+            }
+
+            return table;
         }
         #endregion
     }
