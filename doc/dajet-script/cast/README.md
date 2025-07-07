@@ -154,7 +154,7 @@ FOR @object IN @array
    SET @type  = TYPEOF(@object.ПолныйСоставнойТип)
 
    MODIFY @object DELETE ПолныйСоставнойТип
-   SELECT ТипДанных = @type, Значение = CASE -- Unsupported comparison operator: int32 Equals System.String
+   SELECT ТипДанных = @type, Значение = CASE
      WHEN @type = TYPEOF(boolean)  THEN CAST(CAST(@union AS boolean)  AS string)
      WHEN @type = TYPEOF(number)   THEN CAST(CAST(@union AS decimal)  AS string) -- CAST(@union AS integer)
      WHEN @type = TYPEOF(datetime) THEN CAST(CAST(@union AS datetime) AS string)
