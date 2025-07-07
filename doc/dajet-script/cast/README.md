@@ -4,12 +4,13 @@
 
 ### Преобразование типов данных
 
-> Доступно, начиная с версии DaJet 3.11.2
+> Доступно, начиная с версии DaJet 3.11.3
 
 - [Простой типовой пример пребобразования типа](#простой-типовой-пример-пребобразования-типа-integer)
+- [Обработка значений составного типа в запросах](#обработка-значений-составного-типа-в-запросах)
+- [Преобразование составного типа данных ```union```](#преобразование-составного-типа-данных-union)
 - [Пример работы с датами](#пример-работы-с-датами)
 - [Изменение и сравнение дат](#изменение-и-сравнение-дат)
-- [Преобразование составного типа данных ```union```](#преобразование-составного-типа-данных-union)
 - [Анализ типа данных регистратора](#анализ-типа-данных-регистратора)
 - [Анализ типа узла таблицы регистрации изменений плана обмена](#анализ-типа-узла-таблицы-регистрации-изменений-плана-обмена)
 - [Пример создания документа с табличной частью](#пример-создания-документа-с-табличной-частью)
@@ -144,25 +145,22 @@ DECLARE @type string
 DECLARE @union union
 
 USE 'mssql://server/database'
-   SELECT Код, ПолныйСоставнойТип INTO @array
-     FROM Справочник.Тестовый ORDER BY Код ASC
+   SELECT Код, ПолныйСоставнойТип INTO @array FROM Справочник.Тестовый ORDER BY Код ASC
 END --USE
 
 FOR @object IN @array
-
+   
    SET @union = @object.ПолныйСоставнойТип
    SET @type  = TYPEOF(@object.ПолныйСоставнойТип)
 
    MODIFY @object DELETE ПолныйСоставнойТип
-   SELECT ТипДанных = @type, Значение = CASE
-     WHEN @type = 'undefined' THEN 'Неопределено'
-     WHEN @type = 'boolean'   THEN CAST(CAST(@union AS boolean)  AS string)
-     WHEN @type = 'number'    THEN CAST(CAST(@union AS decimal)  AS string) -- CAST(@union AS integer)
-     WHEN @type = 'datetime'  THEN CAST(CAST(@union AS datetime) AS string)
-     WHEN @type = 'string'    THEN CAST(CAST(@union AS string)   AS string)
-     WHEN @type = 'entity'    THEN CAST(CAST(@union AS entity)   AS string)
-     ELSE 'Неизвестный тип: [' + @type + ']'
-   END --CASE
+   SELECT ТипДанных = @type, Значение = CASE -- Unsupported comparison operator: int32 Equals System.String
+     WHEN @type = TYPEOF(boolean)  THEN CAST(CAST(@union AS boolean)  AS string)
+     WHEN @type = TYPEOF(number)   THEN CAST(CAST(@union AS decimal)  AS string) -- CAST(@union AS integer)
+     WHEN @type = TYPEOF(datetime) THEN CAST(CAST(@union AS datetime) AS string)
+     WHEN @type = TYPEOF(string)   THEN CAST(CAST(@union AS string)   AS string)
+     WHEN @type = TYPEOF(entity)   THEN CAST(CAST(@union AS entity)   AS string)
+     ELSE 'Неопределено' END --CASE
 
 END --FOR
 
@@ -295,5 +293,48 @@ END
 
 PRINT 'Конец'
 ```
+
+[Наверх](#преобразование-типов-данных)
+
+#### Обработка значений составного типа в запросах
+
+Следующий пример демонстрирует использование функций **TYPEOF** и **CAST** в целях обработки значений составного типа в запросах DaJet. При этом следует иметь в виду, что реализация функции **CAST** в запросах узко специализированна. Она должна использоваться только для извлечения значений соответствующих полей.
+
+```SQL
+DECLARE @table array
+
+USE 'mssql://server/database'
+   SELECT КодТипа = TYPEOF(ПолныйСоставнойТип) -- _Fld_TYPE + _Fld_RTRef
+        , ИмяТипа = CASE
+          WHEN TYPEOF(ПолныйСоставнойТип) = TYPEOF(boolean)  THEN 'boolean'
+          WHEN TYPEOF(ПолныйСоставнойТип) = TYPEOF(number)   THEN 'number'
+          WHEN TYPEOF(ПолныйСоставнойТип) = TYPEOF(datetime) THEN 'datetime'
+          WHEN TYPEOF(ПолныйСоставнойТип) = TYPEOF(string)   THEN 'string'
+          WHEN TYPEOF(ПолныйСоставнойТип) > TYPEOF(entity)   THEN 'entity'
+          ELSE 'Неопределено' END --CASE
+        , Булево    = CAST(ПолныйСоставнойТип AS boolean)  -- _Fld_L
+        , Число     = CAST(ПолныйСоставнойТип AS number)   -- _Fld_N
+        , ДатаВремя = CAST(ПолныйСоставнойТип AS datetime) -- _Fld_T
+        , Строка    = CAST(ПолныйСоставнойТип AS string)   -- _Fld_S
+        , Ссылка    = CAST(ПолныйСоставнойТип AS entity)   -- _Fld_RRRef
+     INTO @table
+     FROM Справочник.Тестовый ORDER BY Код ASC
+END -- USE
+
+RETURN @table
+```
+
+**Результат выполнения запроса**
+
+|**КодТипа**|**ИмяТипа**|**Булево**|**Число**|**ДатаВремя**|**Строка**|**Ссылка**|
+|-----------|-----------|----------|---------|-------------|----------|----------|
+|2|boolean|True|0.00|01/01/0001 00:00:00||00000000-0000-0000-0000-000000000000|
+|3|number|False|123.45|01/01/0001 00:00:00||00000000-0000-0000-0000-000000000000|
+|4|datetime|False|0.00|26/06/2025 00:00:00||00000000-0000-0000-0000-000000000000|
+|5|string|False|0.00|01/01/0001 00:00:00|это строка|00000000-0000-0000-0000-000000000000|
+|137|entity|False|0.00|01/01/0001 00:00:00||643c4d9d-cacf-4048-11f0-485f1e777c9a|
+|138|entity|False|0.00|01/01/0001 00:00:00||643c4e9d-cacf-4048-11f0-5a757b194e12|
+|138|entity|False|0.00|01/01/0001 00:00:00||00000000-0000-0000-0000-000000000000|
+|1|Неопределено|False|0.00|01/01/0001 00:00:00||00000000-0000-0000-0000-000000000000|
 
 [Наверх](#преобразование-типов-данных)
