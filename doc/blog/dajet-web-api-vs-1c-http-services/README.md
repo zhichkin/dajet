@@ -87,3 +87,8 @@ RETURN @object
 #### Тест HTTP-сервиса 1С (100 пользователей, 10 секунд)
 ![test-1c-http-service-100-users-10-seconds](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-blog/test-1c-http-service-100-users-10-seconds.png)
 
+#### Тест DaJet database web api (100 пользователей, 10 секунд)
+![test-dajet-database-web-api-100-users-10-seconds](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-blog/test-dajet-database-web-api-100-users-10-seconds.png)
+
+#### Тест DaJet Script web api (100 пользователей, 10 секунд)
+![test-dajet-script-web-api-100-users-10-seconds](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-blog/test-dajet-script-web-api-100-users-10-seconds.png)
