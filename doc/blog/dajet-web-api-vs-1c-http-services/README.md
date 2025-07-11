@@ -71,5 +71,19 @@ END
 RETURN @object
 ```
 
-#### Тест HTTP-сервиса 1С
+[Расшифровка отчётов NBomber](https://nbomber.com/docs/reporting/reports/)
+
+#### Тест HTTP-сервиса 1С (1 пользователь, 10 секунд)
+![test-1c-http-service-1-user-10-seconds](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-blog/test-1c-http-service-1-user-10-seconds.png)
+
+#### Тест DaJet database web api (1 пользователь, 10 секунд)
+![test-dajet-database-web-api-1-user-10-seconds](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-blog/test-dajet-database-web-api-1-user-10-seconds.png)
+
+#### Тест DaJet Script web api (1 пользователь, 10 секунд)
+![test-dajet-script-web-api-1-user-10-seconds](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-blog/test-dajet-script-web-api-1-user-10-seconds.png)
+
+Как и ожидалось, самый плохой результат показал DaJet Script web api - загрузка и кэширование метаданных выполняется на уровне скрипта. То есть в лучшем случае одиночный запрос выполняется чуть больше 1 секунды! Таким образом использование этого api для таких сценариев в общем-то можно признать непригодным. Изначально предполагалось, что DaJet Script будет выполнять большое количество запросов к базе данных в одном скрипте. Именно это и планируется исправить в будущих версиях платформы DaJet и довести производительность DaJet Script до уровня database web api, который в этом тесте показал себя фаворитом.
+
+#### Тест HTTP-сервиса 1С (100 пользователей, 10 секунд)
+![test-1c-http-service-100-users-10-seconds](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-blog/test-1c-http-service-100-users-10-seconds.png)
 
