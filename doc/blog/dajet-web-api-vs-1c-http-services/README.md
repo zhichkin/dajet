@@ -97,4 +97,17 @@ RETURN @object
 
 Под нагрузкой DaJet Script web api ... совсем не увеличил свою производительность! =) Database web api, несмотря на самые высокие показатели среди свих коллег, не смог обслужить 24 запроса. Штош ... железо не справилось (узким местом оказался процессор).
 
-Из всех возможных выводов один очевиден - нужно улучшать производительность DaJet Script и использовать кэш уровня хоста.
+> Из всех возможных выводов, один очевиден - нужно улучшать производительность DaJet Script и использовать кэш уровня хоста.
+
+**P.S.**
+
+Какими могли бы быть результаты тестов, если бы DaJet Script не обращался к базе данных 1С и не кэшировал её метаданные ?
+```
+RETURN 'Hello from DaJet Script!'
+```
+
+#### Простой тест DaJet Script (1 пользователь, 10 секунд)
+![test-dajet-script-simple-1-user-10-seconds](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-blog/test-dajet-script-simple-1-user-10-seconds.png)
+
+#### Простой тест DaJet Script (100 пользователей, 10 секунд)
+![test-dajet-script-simple-100-users-10-seconds](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-blog/test-dajet-script-simple-100-users-10-seconds.png)
