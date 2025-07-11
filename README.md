@@ -1,12 +1,14 @@
 ## DaJet - язык интеграции
 
+[**DaJet blog**](https://github.com/zhichkin/dajet/blob/main/doc/blog/README.md)
+
 - [Общее описание](#общее-описание)
   - [Транспорт сообщений](#транспорт-сообщений)
   - [Трансформация данных](#трансформация-данных)
   - [Маршрутизация сообщений](#маршрутизация-сообщений)
-- [Утилита выполнения скриптов](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/README.md)
+- [**Документация DaJet Script**](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/README.md)
 - [Http-сервер и редактор кода](https://github.com/zhichkin/dajet/tree/main/doc/dajet-studio/README.md)
-- [Документация DaJet Script](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/README.md)
+- [Утилита выполнения скриптов](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/README.md)
 - **Полезные инструменты:**
   - [Анализ метаданных 1С:Предприятие 8](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/md-streamer/README.md)
   - [Диагностика чтения метаданных 1С:Предприятие 8](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/md-streamer/README.md#%D1%82%D0%B5%D1%81%D1%82-dajet-script-%D0%BD%D0%B0-%D1%87%D1%82%D0%B5%D0%BD%D0%B8%D0%B5-%D0%BC%D0%B5%D1%82%D0%B0%D0%B4%D0%B0%D0%BD%D0%BD%D1%8B%D1%85-1%D1%81%D0%BF%D1%80%D0%B5%D0%B4%D0%BF%D1%80%D0%B8%D1%8F%D1%82%D0%B8%D0%B5-8)
