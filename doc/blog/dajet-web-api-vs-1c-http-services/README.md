@@ -71,5 +71,11 @@ END
 RETURN @object
 ```
 
-#### Тест HTTP-сервиса 1С
+#### Тест HTTP-сервиса 1С (1 пользователь, 10 секунд)
+![test-1c-http-service-1-user-10-seconds](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-blog/test-1c-http-service-1-user-10-seconds.png)
 
+#### Тест DaJet database web api (1 пользователь, 10 секунд)
+![test-dajet-database-web-api-1-user-10-seconds](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-blog/test-dajet-database-web-api-1-user-10-seconds.png)
+
+#### Тест DaJet Script web api (1 пользователь, 10 секунд)
+![test-dajet-script-web-api-1-user-10-seconds](https://github.com/zhichkin/dajet/blob/main/doc/img/dajet-blog/test-dajet-script-web-api-1-user-10-seconds.png)
