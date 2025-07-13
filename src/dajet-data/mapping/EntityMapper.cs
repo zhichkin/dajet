@@ -63,6 +63,8 @@ namespace DaJet.Data
 
             foreach (PropertyMapper property in Properties)
             {
+                //NOTE: умышленно идём на возникновение ошибки на случай,
+                //NOTE: когда, например, в SELECT дублируются синонимы AS
                 record.Add(property.Name, property.GetValue(in reader));
             }
 

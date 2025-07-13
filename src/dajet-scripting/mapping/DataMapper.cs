@@ -29,23 +29,25 @@ namespace DaJet.Scripting
                     
                     break;
                 }
-                //TODO: исключения (смотри описание выше) !!!
+                //THINK: исключения (смотри описание выше)
             }
 
             return union;
         }
-        private static string _name = string.Empty; // TODO: убрать костыль !
-        
+
+        //TODO: decouple inference of property name and type
         public static UnionType Infer(in SyntaxNode node)
         {
             UnionType union = new();
-            Visit(in node, in union);
+            string propertyName = string.Empty;
+            Visit(in node, in union, ref propertyName);
             return union;
         }
         public static bool TryInfer(in SyntaxNode node, out UnionType union)
         {
             union = new();
-            Visit(in node, in union);
+            string propertyName = string.Empty;
+            Visit(in node, in union, ref propertyName);
             return !union.IsUndefined;
         }
 
@@ -53,60 +55,56 @@ namespace DaJet.Scripting
         public static void Map(in ColumnExpression node, in EntityMapper mapper)
         {
             UnionType type = new();
-
-            Visit(in node, in type);
-
-            mapper.AddPropertyMapper(in _name, in type);
-
-            _name = string.Empty;
+            string propertyName = string.Empty;
+            Visit(in node, in type, ref propertyName);
+            mapper.AddPropertyMapper(in propertyName, in type);
         }
         public static bool TryMap(in ColumnExpression node, out string name, out UnionType type)
         {
             type = new UnionType();
-
-            Visit(in node, in type);
-
-            name = _name;
-
-            _name = string.Empty;
+            string propertyName = string.Empty;
+            Visit(in node, in type, ref propertyName);
+            
+            name = propertyName;
 
             return !string.IsNullOrEmpty(name);
         }
-        public static void Visit(in SyntaxNode node, in UnionType union)
+        public static void Visit(in SyntaxNode node, in UnionType union, ref string propertyName)
         {
             //NOTE: see PropertyMapper CreatePropertyMap(in ColumnExpression source)
 
-            if (node is ColumnExpression column) { Visit(in column, in union); }
-            else if (node is ColumnReference identifier) { Visit(in identifier, in union); }
+            if (node is ColumnExpression column) { Visit(in column, in union, ref propertyName); }
+            else if (node is ColumnReference identifier) { Visit(in identifier, in union, ref propertyName); }
             else if (node is ScalarExpression scalar) { Visit(in scalar, in union); }
             else if (node is VariableReference variable) { Visit(in variable, in union); }
-            else if (node is CaseExpression _case) { Visit(in _case, in union); }
-            else if (node is FunctionExpression function) { Visit(in function, in union); }
-            else if (node is TableExpression table) { Visit(in table, in union); }
+            else if (node is CaseExpression _case) { Visit(in _case, in union, ref propertyName); }
+            else if (node is FunctionExpression function) { Visit(in function, in union, ref propertyName); }
+            else if (node is TableExpression table) { Visit(in table, in union, ref propertyName); }
             else if (node is MemberAccessExpression member) { Visit(in member, in union); }
-            else if (node is GroupOperator group) { Visit(in group, in union); }
-            else if (node is UnaryOperator unary) { Visit(in unary, in union); }
-            else if (node is AdditionOperator addition) { Visit(in addition, in union); }
-            else if (node is MultiplyOperator multiply) { Visit(in multiply, in union); }
+            else if (node is GroupOperator group) { Visit(in group, in union, ref propertyName); }
+            else if (node is UnaryOperator unary) { Visit(in unary, in union, ref propertyName); }
+            else if (node is AdditionOperator addition) { Visit(in addition, in union, ref propertyName); }
+            else if (node is MultiplyOperator multiply) { Visit(in multiply, in union, ref propertyName); }
         }
-        private static void Visit(in ColumnExpression column, in UnionType union)
+        private static void Visit(in ColumnExpression column, in UnionType union, ref string propertyName)
         {
-            Visit(column.Expression, in union);
+            // Infer column/property data type and name
+            Visit(column.Expression, in union, ref propertyName);
 
             if (!string.IsNullOrEmpty(column.Alias))
             {
-                _name = column.Alias;
+                propertyName = column.Alias; // column alias overrides property name
             }
         }
-        private static void Visit(in ColumnReference column, in UnionType union)
+        private static void Visit(in ColumnReference column, in UnionType union, ref string propertyName)
         {
             if (column.Binding is MetadataProperty source)
             {
-                Visit(in source, in union);
+                Visit(in source, in union, ref propertyName);
             }
             else if (column.Binding is ColumnExpression parent)
             {
-                Visit(in parent, in union);
+                Visit(in parent, in union, ref propertyName);
             }
             else if (column.Binding is EnumValue)
             {
@@ -220,19 +218,20 @@ namespace DaJet.Scripting
                 union.IsEntity = true;
             }
         }
-        private static void Visit(in CaseExpression node, in UnionType union)
+        private static void Visit(in CaseExpression node, in UnionType union, ref string propertyName)
         {
+            //THINK: use only first WHEN expression to infer expression type !?
             foreach (WhenClause when in node.CASE)
             {
-                Visit(when.THEN, in union); //NOTE: WHEN clause is not used for type inference
+                Visit(when.THEN, in union, ref propertyName); //NOTE: WHEN clause is not used for type inference
             }
 
             if (node.ELSE is not null)
             {
-                Visit(node.ELSE, in union);
+                Visit(node.ELSE, in union, ref propertyName);
             }
         }
-        private static void Visit(in FunctionExpression function, in UnionType union)
+        private static void Visit(in FunctionExpression function, in UnionType union, ref string propertyName)
         {
             if (function.Token == TokenType.UDF)
             {
@@ -310,21 +309,21 @@ namespace DaJet.Scripting
 
             foreach (SyntaxNode parameter in function.Parameters)
             {
-                Visit(in parameter, in union);
+                Visit(in parameter, in union, ref propertyName);
             }
         }
-        private static void Visit(in MetadataProperty property, in UnionType union)
+        private static void Visit(in MetadataProperty property, in UnionType union, ref string propertyName)
         {
-            _name = property.Name;
+            propertyName = property.Name;
             union.Merge(GetUnionType(in property));
         }
-        private static void Visit(in TableExpression table, in UnionType union)
+        private static void Visit(in TableExpression table, in UnionType union, ref string propertyName)
         {
             ColumnExpression column = GetFirstColumnExpression(in table);
 
             if (column is not null)
             {
-                Visit(in column, in union);
+                Visit(in column, in union, ref propertyName);
             }
         }
         private static void Visit(in MemberAccessExpression member, in UnionType union)
@@ -334,26 +333,26 @@ namespace DaJet.Scripting
                 union.Add(in type);
             }
         }
-        private static void Visit(in GroupOperator node, in UnionType union)
+        private static void Visit(in GroupOperator node, in UnionType union, ref string propertyName)
         {
-            Visit(node.Expression, in union);
+            Visit(node.Expression, in union, ref propertyName);
         }
-        private static void Visit(in UnaryOperator node, in UnionType union)
+        private static void Visit(in UnaryOperator node, in UnionType union, ref string propertyName)
         {
             if (node.Token == TokenType.Minus)
             {
-                Visit(node.Expression, in union);
+                Visit(node.Expression, in union, ref propertyName);
             }
         }
-        private static void Visit(in AdditionOperator node, in UnionType union)
+        private static void Visit(in AdditionOperator node, in UnionType union, ref string propertyName)
         {
-            Visit(node.Expression1, in union);
-            Visit(node.Expression2, in union);
+            Visit(node.Expression1, in union, ref propertyName);
+            Visit(node.Expression2, in union, ref propertyName);
         }
-        private static void Visit(in MultiplyOperator node, in UnionType union)
+        private static void Visit(in MultiplyOperator node, in UnionType union, ref string propertyName)
         {
-            Visit(node.Expression1, in union);
-            Visit(node.Expression2, in union);
+            Visit(node.Expression1, in union, ref propertyName);
+            Visit(node.Expression2, in union, ref propertyName);
         }
         private static ColumnExpression GetFirstColumnExpression(in SyntaxNode node)
         {
@@ -547,13 +546,9 @@ namespace DaJet.Scripting
         public static PropertyMapper CreatePropertyMap(in SyntaxNode expression)
         {
             PropertyMapper map = new();
-            
-            Map(in expression, in map);
-            
-            //TODO: set property map name during type inference - убрать костыль !!!
-            map.Name = _name;
-            _name = string.Empty;
 
+            Map(in expression, in map); //NOTE: Infers data type and property name !
+            
             return map;
         }
         public static PropertyMapper CreatePropertyMap(in ColumnExpression source)
@@ -584,10 +579,12 @@ namespace DaJet.Scripting
         private static void Map(in SyntaxNode expression, in PropertyMapper map)
         {
             UnionType type = new();
-            
-            Visit(in expression, in type);
+            string propertyName = string.Empty;
+            Visit(in expression, in type, ref propertyName);
 
             map.DataType.Merge(type);
+
+            map.Name = propertyName;
 
             List<UnionTag> columns = type.ToColumnList();
 

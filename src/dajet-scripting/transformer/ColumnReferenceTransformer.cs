@@ -66,7 +66,8 @@ namespace DaJet.Scripting
         private void TransformDerivedColumnReference(in ColumnExpression parent, in ColumnReference column)
         {
             UnionType type = new();
-            DataMapper.Visit(parent.Expression, in type);
+            string propertyName = string.Empty; //TODO: remove property name inference
+            DataMapper.Visit(parent.Expression, in type, ref propertyName);
             List<UnionTag> columns = type.ToColumnList();
 
             column.Mapping = new List<ColumnMapper>(columns.Count);
@@ -138,7 +139,8 @@ namespace DaJet.Scripting
         private void TransformDerivedColumnReference(in ColumnReference column, in ColumnExpression parent)
         {
             UnionType type = new();
-            DataMapper.Visit(parent.Expression, in type);
+            string propertyName = string.Empty; //TODO: remove property name inference
+            DataMapper.Visit(parent.Expression, in type, ref propertyName);
             List<UnionTag> columns = type.ToColumnList();
 
             column.Mapping = new List<ColumnMapper>(columns.Count);
