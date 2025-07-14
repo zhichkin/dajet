@@ -580,9 +580,23 @@ namespace DaJet.Scripting
         {
             UnionType type = new();
             string propertyName = string.Empty;
-            Visit(in expression, in type, ref propertyName); //TODO: remove property name inference
+            Visit(in expression, in type, ref propertyName);
 
             map.DataType.Merge(type);
+
+            //FIXME: Сюда мы попадаем при трансформации команд INSERT и UPDATE (UPSERT пока что нормально не реализовано вообще)
+            //FIXME: Надо разобраться в алгоритме, который посылает сюда, почему именно так и зачем выводятся имена для map.Name
+            //FIXME: смотри вызов DataMapper.CreateMappingRules из SetClauseTransformer и InsertStatement (SqlTranspiler)
+            // 1. Команда INSERT трансформирует SELECT ColumnReference = @VariableReference:
+            //    - для VariableReference map.Name здесь заполнено, а propertyName - нет
+            //    - ColumnReference сюда вообще не приходит ...
+            // 2. Команда UPDATE трансформирует SET ColumnReference = @VariableReference:
+            //    - для VariableReference map.Name здесь заполнено, а propertyName - нет
+            //    - для ColumnReference map.Name здесь не заполнено, а propertyName - да
+            if (string.IsNullOrEmpty(map.Name))
+            {
+                map.Name = propertyName;
+            }
 
             List<UnionTag> columns = type.ToColumnList();
 
