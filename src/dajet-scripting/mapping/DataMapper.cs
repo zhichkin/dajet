@@ -580,11 +580,9 @@ namespace DaJet.Scripting
         {
             UnionType type = new();
             string propertyName = string.Empty;
-            Visit(in expression, in type, ref propertyName);
+            Visit(in expression, in type, ref propertyName); //TODO: remove property name inference
 
             map.DataType.Merge(type);
-
-            map.Name = propertyName;
 
             List<UnionTag> columns = type.ToColumnList();
 
