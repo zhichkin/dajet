@@ -47,7 +47,7 @@ namespace DaJet.Http.Server
             ConfigureFileProvider(builder.Services);
 
             ConfigureMetadataService(builder.Services);
-            builder.Services.AddDaJet(OptionsFileConnectionString);
+            builder.Services.AddDaJetFlow(OptionsFileConnectionString);
             builder.Services.AddSingleton<RecyclableMemoryStreamManager>();
 
             WebApplication app = builder.Build();
