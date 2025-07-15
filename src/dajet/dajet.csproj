@@ -8,7 +8,7 @@
     <RootNamespace>DaJet</RootNamespace>
     <Authors>Zhichkin</Authors>
     <Copyright>Zhichkin © 2024</Copyright>
-    <Version>3.11.4</Version>
+    <Version>3.11.5</Version>
     <Title>DaJet Script Utility</Title>
     <PackageId>DaJet.Script.Utility</PackageId>
     <Product>DaJet Script Utility</Product>
