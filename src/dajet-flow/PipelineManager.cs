@@ -110,7 +110,9 @@ namespace DaJet.Flow
             }
             catch (Exception error)
             {
-                message = ExceptionHelper.GetErrorMessageAndStackTrace(error);
+                message = $"Failed to create pipeline [{pipeline.Name}] {{{pipeline.Identity}}}"
+                    + Environment.NewLine
+                    + ExceptionHelper.GetErrorMessageAndStackTrace(error);
             }
 
             return string.IsNullOrEmpty(message);

@@ -2,6 +2,7 @@
 using DaJet.Model;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace DaJet.Flow
 {
@@ -149,6 +150,11 @@ namespace DaJet.Flow
             foreach (HandlerRecord handler in handlers)
             {
                 Type handlerType = _assemblyManager.Resolve(handler.Name);
+
+                if (handlerType is null)
+                {
+                    throw new InvalidOperationException($"Failed to resolve handler {handler.Name}.");
+                }
 
                 if (_handlers.TryGetValue(handlerType, out HandlerDescriptor descriptor))
                 {
