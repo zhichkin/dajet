@@ -15,12 +15,6 @@
 
 <img width="724" height="345" alt="big-boss-esb" src="https://github.com/user-attachments/assets/ec7a9b95-602e-48c3-876a-ff0773ee538c" />
 
-Тестирование проводилось по следующему сценарию: 100 одновременно работающих пользователей пытаются за 10 секунд выполнить как можно большее количество запросов к web api сервису. Всего выполнено 5 тестов:
-1. 1С http-сервис возвращает строковое значение "ОК" и не запрашивает данные в СУБД.
-2. Аналогичный 1С код на DaJet Script возвращает значение "ОК" и не запрашивает данные в СУБД.
-3. DaJet database web api запрашивает один документ по его номеру.
-4. 
-
 **Настройки http-сервиса 1С из файла ```vrd```**
 ```
 <service name="test_POST" rootUrl="test_POST" enable="true"
@@ -29,6 +23,10 @@ sessionMaxAge="10"
 poolSize="300"
 poolTimeout="5">
 ```
+
+Тестирование проводилось по следующему сценарию: 100 одновременно работающих пользователей пытаются за 10 секунд выполнить как можно большее количество запросов к web api сервису. Все тесты для DaJet выполняют запрос к базе данных для получения значения одного реквизита конкретного документа по его номеру. Тест для http-сервиса 1С:Предприятие 8 очень простой - возвращается строкове значение "ОК" без выполнения запроса к базе данных. Ниже приводятся код скриптов и результаты их выполнения.
+
+[Расшифровка отчётов NBomber](https://nbomber.com/docs/reporting/reports/)
 
 **Код HTTP-сервиса 1С:Предприятие**
 ```
@@ -41,12 +39,14 @@ poolTimeout="5">
 КонецФункции
 ```
 
-
+<img width="642" height="240" alt="1-http-load-test-1c-simple-return" src="https://github.com/user-attachments/assets/2b29bce6-ea2e-4fc1-8c7d-7b2e34098d82" />
 
 **Скрипт DaJet Script web api, аналогичный коду 1С**
 ```
 RETURN 'OK'
 ```
+
+<img width="1160" height="502" alt="1-http-load-test-dajet-script-simple-return" src="https://github.com/user-attachments/assets/89044f94-7a76-42b0-b18d-f7f6845f792e" />
 
 **Скрипт DaJet database web api**
 ```
@@ -54,6 +54,8 @@ SELECT Номер
   FROM Документ.Расш1_Документ1
  WHERE Номер = '000000002'
 ```
+
+<img width="603" height="245" alt="1-http-load-test-dajet-database-web-api" src="https://github.com/user-attachments/assets/43cfd372-d6c3-4a59-b857-73d625c06cbe" />
 
 **Скрипт DaJet Script web api, используя команду ```REQUEST```**
 ```
@@ -72,6 +74,8 @@ RETURN @result
 SELECT _Number FROM test.dbo._Document53X1 WHERE _Number = '000000002'
 ```
 
+<img width="574" height="243" alt="1-http-load-test-dajet-script-request" src="https://github.com/user-attachments/assets/af2f60b8-ef15-46b6-818d-d677fe4a5214" />
+
 **Скрипт DaJet Script web api, используя команду ```USE```**
 ```
 DECLARE @object object
@@ -84,4 +88,4 @@ END
 RETURN @object
 ```
 
-
+<img width="1283" height="492" alt="1-http-load-test-dajet-script-use" src="https://github.com/user-attachments/assets/a6625758-5bf3-47eb-9925-18d3adfd2c7a" />
