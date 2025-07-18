@@ -58,7 +58,7 @@ SELECT Номер
  WHERE Номер = '000000002'
 ```
 
-<img width="603" height="245" alt="1-http-load-test-dajet-database-web-api" src="https://github.com/user-attachments/assets/43cfd372-d6c3-4a59-b857-73d625c06cbe" />
+<img width="1160" height="502" alt="1-http-load-test-dajet-database-web-api" src="https://github.com/user-attachments/assets/43cfd372-d6c3-4a59-b857-73d625c06cbe" />
 
 ### Скрипт DaJet Script web api, используя команду ```REQUEST```
 ```
@@ -77,18 +77,20 @@ RETURN @result
 SELECT _Number FROM test.dbo._Document53X1 WHERE _Number = '000000002'
 ```
 
-<img width="574" height="243" alt="1-http-load-test-dajet-script-request" src="https://github.com/user-attachments/assets/af2f60b8-ef15-46b6-818d-d677fe4a5214" />
+<img width="1160" height="502" alt="1-http-load-test-dajet-script-request" src="https://github.com/user-attachments/assets/af2f60b8-ef15-46b6-818d-d677fe4a5214" />
 
 ### Скрипт DaJet Script web api, используя команду ```USE```
 ```
-DECLARE @object object
-USE 'mssql://server/database'
-   SELECT Ссылка, Код, Наименование
-     INTO @object
-     FROM Справочник.Номенклатура
-    WHERE Код = 'ФР-00000285'
+DECLARE @result object
+
+USE 'mssql://localhost/test?mdex'
+   SELECT Номер
+     INTO @result
+     FROM Документ.Расш1_Документ1
+    WHERE Номер = '000000002'
 END
-RETURN @object
+
+RETURN @result
 ```
 
-<img width="1283" height="492" alt="1-http-load-test-dajet-script-use" src="https://github.com/user-attachments/assets/a6625758-5bf3-47eb-9925-18d3adfd2c7a" />
+<img width="1160" height="502" alt="1-http-load-test-dajet-script-use" src="https://github.com/user-attachments/assets/a6625758-5bf3-47eb-9925-18d3adfd2c7a" />
