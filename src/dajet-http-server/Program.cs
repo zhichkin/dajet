@@ -112,7 +112,7 @@ namespace DaJet.Http.Server
         {
             services.AddSingleton<IMetadataService>(services =>
             {
-                MetadataService metadataService = new();
+                MetadataService metadataService = MetadataService.Default;
 
                 IDataSource source = services.GetRequiredService<IDataSource>();
 

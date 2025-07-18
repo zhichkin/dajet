@@ -383,9 +383,16 @@ namespace DaJet.Runtime
 
             ScriptScope root = GetRoot(); //NOTE: ScriptModel is the root
 
-            string connectionString = uri.ToString();
+            string connectionString = DbConnectionFactory.GetConnectionString(in uri);
 
-            if (root.MetadataProviders.TryGetValue(connectionString, out provider))
+            //string connectionString = uri.ToString();
+
+            //if (root.MetadataProviders.TryGetValue(connectionString, out provider))
+            //{
+            //    return true;
+            //}
+
+            if (MetadataService.Default.TryGetMetadataProvider(connectionString, out provider, out error))
             {
                 return true;
             }
@@ -394,14 +401,34 @@ namespace DaJet.Runtime
             {
                 lock (_metadata_providers_lock) //TODO: lock by connection string value
                 {
-                    if (root.MetadataProviders.TryGetValue(connectionString, out provider))
+                    if (MetadataService.Default.TryGetMetadataProvider(connectionString, out provider, out error))
                     {
                         return true;
                     }
 
-                    provider = MetadataService.CreateOneDbMetadataProvider(in uri);
+                    MetadataService.Default.Add(new InfoBaseOptions()
+                    {
+                        Key = connectionString,
+                        UseExtensions = false,
+                        ConnectionString = connectionString,
+                        DatabaseProvider = uri.Scheme == "mssql"
+                            ? DatabaseProvider.SqlServer
+                            : DatabaseProvider.PostgreSql
+                    });
 
-                    _ = root.MetadataProviders.TryAdd(connectionString, provider);
+                    if (!MetadataService.Default.TryGetMetadataProvider(connectionString, out provider, out error))
+                    {
+                        throw new Exception(error);
+                    }
+
+                    //if (root.MetadataProviders.TryGetValue(connectionString, out provider))
+                    //{
+                    //    return true;
+                    //}
+
+                    //provider = MetadataService.CreateOneDbMetadataProvider(in uri);
+
+                    //_ = root.MetadataProviders.TryAdd(connectionString, provider);
                 }
             }
             catch (Exception exception)
@@ -409,7 +436,7 @@ namespace DaJet.Runtime
                 error = ExceptionHelper.GetErrorMessage(exception);
             }
 
-            return error is null;
+            return string.IsNullOrEmpty(error);
         }
 
         private static readonly Regex _uri_template = new("{(.*?)}", RegexOptions.CultureInvariant);

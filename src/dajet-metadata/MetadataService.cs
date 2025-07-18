@@ -21,6 +21,9 @@ namespace DaJet.Metadata
 
         private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
 
+        static MetadataService() { Default = new(); }
+        public static MetadataService Default { get; }
+
         public List<InfoBaseOptions> Options
         {
             get

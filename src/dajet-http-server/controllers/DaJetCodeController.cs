@@ -441,6 +441,15 @@ namespace DaJet.Http.Controllers
 
             path = DAJET_SCRIPT_ROOT_FOLDER + "/" + path;
 
+            //if (ScriptHost.Default.TryRun(in path, out string error))
+            //{
+            //    return Ok();
+            //}
+            //else
+            //{
+            //    return BadRequest(error);
+            //}
+
             IFileInfo file = _fileProvider.GetFileInfo(path);
 
             if (!file.Exists)
