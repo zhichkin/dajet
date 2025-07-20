@@ -441,6 +441,7 @@ namespace DaJet.Http.Controllers
 
             path = DAJET_SCRIPT_ROOT_FOLDER + "/" + path;
 
+            //TODO: cache script processors !?
             //if (ScriptHost.Default.TryRun(in path, out string error))
             //{
             //    return Ok();

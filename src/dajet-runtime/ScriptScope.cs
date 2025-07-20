@@ -2,7 +2,6 @@
 using DaJet.Metadata;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
-using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 
 namespace DaJet.Runtime
@@ -159,8 +158,6 @@ namespace DaJet.Runtime
         public Dictionary<string, TypeDefinition> Definitions { get; } = new(); // object and array schema definitions
         public List<DeclareStatement> Declarations { get; } = new(); // order is important for binding
         public Dictionary<string, object> Variables { get; } = new(); // scope variables and their values
-        public Dictionary<SyntaxNode, SqlStatement> Transpilations { get; } = new(); // script transpilations cache
-        public ConcurrentDictionary<string, IMetadataProvider> MetadataProviders { get; } = new(); // metadata providers cache
         public bool TrySetValue(in string name, in object value)
         {
             ScriptScope scope = this;
@@ -357,24 +354,6 @@ namespace DaJet.Runtime
 
             return false;
         }
-        public bool TryGetTranspilation(in SyntaxNode owner, out SqlStatement statement)
-        {
-            statement = null;
-
-            ScriptScope scope = this;
-
-            while (scope is not null)
-            {
-                if (scope.Transpilations.TryGetValue(owner, out statement))
-                {
-                    return true;
-                }
-
-                scope = scope.Parent;
-            }
-
-            return false;
-        }
         public bool TryGetMetadataProvider(out IMetadataProvider provider, out string error)
         {
             error = null;
@@ -385,25 +364,18 @@ namespace DaJet.Runtime
 
             string connectionString = DbConnectionFactory.GetConnectionString(in uri);
 
-            //string connectionString = uri.ToString();
-
-            //if (root.MetadataProviders.TryGetValue(connectionString, out provider))
-            //{
-            //    return true;
-            //}
-
             if (MetadataService.Default.TryGetMetadataProvider(connectionString, out provider, out error))
             {
-                return true;
+                return true; // fast path
             }
 
             try
             {
-                lock (_metadata_providers_lock) //TODO: lock by connection string value
+                lock (_metadata_providers_lock) //TODO: thread safe MetadataCache.TryGetOrAdd method !!!
                 {
                     if (MetadataService.Default.TryGetMetadataProvider(connectionString, out provider, out error))
                     {
-                        return true;
+                        return true; // double checking
                     }
 
                     MetadataService.Default.Add(new InfoBaseOptions()
@@ -420,15 +392,6 @@ namespace DaJet.Runtime
                     {
                         throw new Exception(error);
                     }
-
-                    //if (root.MetadataProviders.TryGetValue(connectionString, out provider))
-                    //{
-                    //    return true;
-                    //}
-
-                    //provider = MetadataService.CreateOneDbMetadataProvider(in uri);
-
-                    //_ = root.MetadataProviders.TryAdd(connectionString, provider);
                 }
             }
             catch (Exception exception)
