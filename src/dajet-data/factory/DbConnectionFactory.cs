@@ -1,5 +1,7 @@
 ﻿using DaJet.Data.PostgreSql;
 using DaJet.Data.SqlServer;
+using Microsoft.Data.SqlClient;
+using System;
 using System.Data.Common;
 
 namespace DaJet.Data
@@ -55,6 +57,33 @@ namespace DaJet.Data
             }
 
             throw new InvalidOperationException($"Unsupported provider: [{provider}]");
+        }
+        public static string GetCacheKey(DatabaseProvider provider, in string connectionString)
+        {
+            if (provider == DatabaseProvider.SqlServer)
+            {
+                SqlConnectionStringBuilder builder = new(connectionString);
+                return builder.DataSource + builder.InitialCatalog;
+            }
+
+            throw new InvalidOperationException($"Unsupported database provider: [{provider}]");
+        }
+        public static DatabaseProvider GetDatabaseProvider(in Uri uri)
+        {
+            if (uri.Scheme == "mssql")
+            {
+                return DatabaseProvider.SqlServer;
+            }
+            else if (uri.Scheme == "pgsql")
+            {
+                return DatabaseProvider.PostgreSql;
+            }
+            else if (uri.Scheme == "sqlite")
+            {
+                return DatabaseProvider.Sqlite;
+            }
+
+            throw new InvalidOperationException($"Unsupported database provider: [{uri.Scheme}]");
         }
     }
 }

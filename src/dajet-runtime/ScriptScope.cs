@@ -364,7 +364,7 @@ namespace DaJet.Runtime
 
             string connectionString = DbConnectionFactory.GetConnectionString(in uri);
 
-            if (MetadataService.Default.TryGetMetadataProvider(connectionString, out provider, out error))
+            if (MetadataService.Cache.TryGetMetadataProvider(connectionString, out provider, out error))
             {
                 return true; // fast path
             }
@@ -373,12 +373,12 @@ namespace DaJet.Runtime
             {
                 lock (_metadata_providers_lock) //TODO: thread safe MetadataCache.TryGetOrAdd method !!!
                 {
-                    if (MetadataService.Default.TryGetMetadataProvider(connectionString, out provider, out error))
+                    if (MetadataService.Cache.TryGetMetadataProvider(connectionString, out provider, out error))
                     {
                         return true; // double checking
                     }
 
-                    MetadataService.Default.Add(new InfoBaseOptions()
+                    MetadataService.Cache.Add(new InfoBaseOptions()
                     {
                         Key = connectionString,
                         UseExtensions = false,
@@ -388,7 +388,7 @@ namespace DaJet.Runtime
                             : DatabaseProvider.PostgreSql
                     });
 
-                    if (!MetadataService.Default.TryGetMetadataProvider(connectionString, out provider, out error))
+                    if (!MetadataService.Cache.TryGetMetadataProvider(connectionString, out provider, out error))
                     {
                         throw new Exception(error);
                     }

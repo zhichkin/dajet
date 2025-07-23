@@ -19,10 +19,11 @@ namespace DaJet.Metadata
         private const string ERROR_UNSUPPORTED_METADATA_PROVIDER = "Unsupported metadata provider: [{0}].";
         private const string ERROR_CASH_ENTRY_IS_NULL_OR_EXPIRED = "Cache entry [{0}] is null or expired.";
 
+        private readonly object _cache_lock = new();
         private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
 
-        static MetadataService() { Default = new(); }
-        public static MetadataService Default { get; }
+        private static readonly MetadataService _service = new();
+        public static MetadataService Cache { get { return _service; } }
 
         public List<InfoBaseOptions> Options
         {
@@ -275,6 +276,93 @@ namespace DaJet.Metadata
         public static IMetadataProvider CreateOneDbMetadataProvider(in InfoBaseRecord options)
         {
             return new OneDbMetadataProvider(options.ConnectionString, options.UseExtensions);
+        }
+
+        public bool TryGetOrCreate(in string key, DatabaseProvider databaseProvider, in string connectionString, out IMetadataProvider metadataProvider, out string error)
+        {
+            error = string.Empty;
+
+            CacheEntry entry = GetOrAdd(in key, databaseProvider, in connectionString); // thread-safe call
+
+            metadataProvider = entry.Value; // pin weak reference to stack before null-check
+
+            if (metadataProvider is not null && !entry.IsExpired)
+            {
+                return true; // fast path
+            }
+
+            using (entry.UpdateLock()) // update existing or create new cache entry
+            {
+                metadataProvider = entry.Value; // pin weak reference to stack before null-check
+
+                if (metadataProvider is not null && !entry.IsExpired)
+                {
+                    return true; // double checking (пока мы ждали, возможно другой поток уже обновил кэш)
+                }
+
+                try
+                {
+                    metadataProvider = CreateMetadataProvider(entry.Options);
+                }
+                catch (Exception exception)
+                {
+                    metadataProvider = null;
+                    error = ExceptionHelper.GetErrorMessage(exception);
+                    return false;
+                }
+
+                entry.Value = metadataProvider; // assignment of the Value property internally refreshes the last update timestamp
+            }
+
+            return (metadataProvider is not null);
+        }
+        private CacheEntry GetOrAdd(in string key, DatabaseProvider databaseProvider, in string connectionString)
+        {
+            if (_cache.TryGetValue(key, out CacheEntry entry))
+            {
+                return entry; // fast path
+            }
+
+            lock (_cache_lock)
+            {
+                if (_cache.TryGetValue(key, out entry))
+                {
+                    return entry; // double-checking (пока мы ждали _cache_lock, возможно другой поток уже обновил кэш)
+                }
+
+                InfoBaseOptions options = CreateCacheValue(databaseProvider, in connectionString); // создаём значение кэша
+
+                entry = new CacheEntry(options); // создаём новый элемент кэша
+
+                _ = _cache.TryAdd(connectionString, entry); // добавляем новый элемент в кэш
+            }
+
+            return entry;
+        }
+        private InfoBaseOptions CreateCacheValue(DatabaseProvider databaseProvider, in string connectionString)
+        {
+            if (Uri.TryCreate(connectionString, UriKind.Absolute, out Uri uri))
+            {
+                //uri.Query TODO: find mdex parameter = UseExtensions
+
+                return new InfoBaseOptions()
+                {
+                    Key = DbConnectionFactory.GetCacheKey(databaseProvider, in connectionString),
+                    UseExtensions = true,
+                    ConnectionString = connectionString,
+                    DatabaseProvider = databaseProvider
+                };
+            }
+            else
+            {
+                return new InfoBaseOptions()
+                {
+                    Key = DbConnectionFactory.GetCacheKey(databaseProvider, in connectionString),
+                    UseExtensions = true,
+                    ConnectionString = connectionString,
+                    DatabaseProvider = databaseProvider
+                };
+            }
         }
     }
 }
