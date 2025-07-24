@@ -22,8 +22,8 @@ namespace DaJet.Metadata
         private readonly object _cache_lock = new();
         private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
 
-        private static readonly MetadataService _service = new();
-        public static MetadataService Cache { get { return _service; } }
+        private static readonly MetadataService _singleton = new();
+        public static MetadataService Cache { get { return _singleton; } }
 
         public List<InfoBaseOptions> Options
         {
@@ -145,51 +145,7 @@ namespace DaJet.Metadata
             }
             _cache.Clear();
         }
-        public bool TryGetMetadataProvider(string key, out IMetadataProvider metadata, out string error)
-        {
-            error = string.Empty;
-
-            if (!_cache.TryGetValue(key, out CacheEntry entry))
-            {
-                metadata = null;
-                error = string.Format(ERROR_CASH_ENTRY_KEY_IS_NOT_FOUND, key);
-                return false;
-            }
-
-            metadata = entry.Value; // pin weak reference to stack
-
-            if (metadata is not null && !entry.IsExpired)
-            {
-                return true;
-            }
-
-            using (entry.UpdateLock())
-            {
-                metadata = entry.Value; // pin weak reference to stack
-
-                if (metadata is not null && !entry.IsExpired)
-                {
-                    return true;
-                }
-
-                try
-                {
-                    metadata = CreateMetadataProvider(entry.Options);
-                }
-                catch (Exception exception)
-                {
-                    metadata = null;
-                    error = ExceptionHelper.GetErrorMessage(exception);
-                    return false;
-                }
-
-                // assignment of the Value property internally refreshes the last update timestamp
-
-                entry.Value = metadata;
-            }
-
-            return (metadata is not null);
-        }
+        
         private IQueryExecutor CreateQueryExecutor(DatabaseProvider provider, string connectionString)
         {
             if (provider == DatabaseProvider.SqlServer)
@@ -248,29 +204,55 @@ namespace DaJet.Metadata
 
             return provider;
         }
+        public bool TryGetMetadataProvider(string key, out IMetadataProvider metadata, out string error)
+        {
+            error = string.Empty;
+
+            if (!_cache.TryGetValue(key, out CacheEntry entry))
+            {
+                metadata = null;
+                error = string.Format(ERROR_CASH_ENTRY_KEY_IS_NOT_FOUND, key);
+                return false;
+            }
+
+            metadata = entry.Value; // pin weak reference to stack
+
+            if (metadata is not null && !entry.IsExpired)
+            {
+                return true;
+            }
+
+            using (entry.UpdateLock())
+            {
+                metadata = entry.Value; // pin weak reference to stack
+
+                if (metadata is not null && !entry.IsExpired)
+                {
+                    return true;
+                }
+
+                try
+                {
+                    metadata = CreateMetadataProvider(entry.Options);
+                }
+                catch (Exception exception)
+                {
+                    metadata = null;
+                    error = ExceptionHelper.GetErrorMessage(exception);
+                    return false;
+                }
+
+                // assignment of the Value property internally refreshes the last update timestamp
+
+                entry.Value = metadata;
+            }
+
+            return (metadata is not null);
+        }
 
         public static IMetadataProvider CreateOneDbMetadataProvider(in Uri uri)
         {
-            bool use_extensions = false;
-
-            if (uri.Query is not null)
-            {
-                string[] parameters = uri.Query.Split('?', '&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                
-                if (parameters is not null && parameters.Length > 0)
-                {
-                    for (int i = 0; i < parameters.Length; i++)
-                    {
-                        string[] parameter = parameters[i].Split('=', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-                        if (parameter.Length == 1 && parameter[0] == "mdex")
-                        {
-                            use_extensions = true; break;
-                        }
-                    }
-                }
-            }
-
+            bool use_extensions = DbUriHelper.UseExtensions(in uri);
             return new OneDbMetadataProvider(in uri, use_extensions);
         }
         public static IMetadataProvider CreateOneDbMetadataProvider(in InfoBaseRecord options)
@@ -278,91 +260,64 @@ namespace DaJet.Metadata
             return new OneDbMetadataProvider(options.ConnectionString, options.UseExtensions);
         }
 
-        public bool TryGetOrCreate(in string key, DatabaseProvider databaseProvider, in string connectionString, out IMetadataProvider metadataProvider, out string error)
+        private CacheEntry GetOrAdd(in InfoBaseOptions options)
         {
-            error = string.Empty;
-
-            CacheEntry entry = GetOrAdd(in key, databaseProvider, in connectionString); // thread-safe call
-
-            metadataProvider = entry.Value; // pin weak reference to stack before null-check
-
-            if (metadataProvider is not null && !entry.IsExpired)
-            {
-                return true; // fast path
-            }
-
-            using (entry.UpdateLock()) // update existing or create new cache entry
-            {
-                metadataProvider = entry.Value; // pin weak reference to stack before null-check
-
-                if (metadataProvider is not null && !entry.IsExpired)
-                {
-                    return true; // double checking (пока мы ждали, возможно другой поток уже обновил кэш)
-                }
-
-                try
-                {
-                    metadataProvider = CreateMetadataProvider(entry.Options);
-                }
-                catch (Exception exception)
-                {
-                    metadataProvider = null;
-                    error = ExceptionHelper.GetErrorMessage(exception);
-                    return false;
-                }
-
-                entry.Value = metadataProvider; // assignment of the Value property internally refreshes the last update timestamp
-            }
-
-            return (metadataProvider is not null);
-        }
-        private CacheEntry GetOrAdd(in string key, DatabaseProvider databaseProvider, in string connectionString)
-        {
-            if (_cache.TryGetValue(key, out CacheEntry entry))
+            if (_cache.TryGetValue(options.Key, out CacheEntry entry))
             {
                 return entry; // fast path
             }
 
             lock (_cache_lock)
             {
-                if (_cache.TryGetValue(key, out entry))
+                if (_cache.TryGetValue(options.Key, out entry))
                 {
                     return entry; // double-checking (пока мы ждали _cache_lock, возможно другой поток уже обновил кэш)
                 }
 
-                InfoBaseOptions options = CreateCacheValue(databaseProvider, in connectionString); // создаём значение кэша
-
                 entry = new CacheEntry(options); // создаём новый элемент кэша
 
-                _ = _cache.TryAdd(connectionString, entry); // добавляем новый элемент в кэш
+                _ = _cache.TryAdd(options.Key, entry); // добавляем новый элемент в кэш
             }
 
             return entry;
         }
-        private InfoBaseOptions CreateCacheValue(DatabaseProvider databaseProvider, in string connectionString)
+        public bool TryGetOrCreate(in InfoBaseOptions options, out IMetadataProvider provider, out string error)
         {
-            if (Uri.TryCreate(connectionString, UriKind.Absolute, out Uri uri))
-            {
-                //uri.Query TODO: find mdex parameter = UseExtensions
+            error = string.Empty;
 
-                return new InfoBaseOptions()
-                {
-                    Key = DbConnectionFactory.GetCacheKey(databaseProvider, in connectionString),
-                    UseExtensions = true,
-                    ConnectionString = connectionString,
-                    DatabaseProvider = databaseProvider
-                };
-            }
-            else
+            CacheEntry entry = GetOrAdd(in options); // thread-safe call
+
+            provider = entry.Value; // pin weak reference to stack before null-check
+
+            if (provider is not null && !entry.IsExpired)
             {
-                return new InfoBaseOptions()
-                {
-                    Key = DbConnectionFactory.GetCacheKey(databaseProvider, in connectionString),
-                    UseExtensions = true,
-                    ConnectionString = connectionString,
-                    DatabaseProvider = databaseProvider
-                };
+                return true; // fast path
             }
+
+            using (entry.UpdateLock()) // update existing or create new cache entry
+            {
+                provider = entry.Value; // pin weak reference to stack before null-check
+
+                if (provider is not null && !entry.IsExpired)
+                {
+                    return true; // double checking (пока мы ждали, возможно другой поток уже обновил кэш)
+                }
+
+                try
+                {
+                    provider = CreateMetadataProvider(entry.Options);
+                }
+                catch (Exception exception)
+                {
+                    provider = null;
+                    error = ExceptionHelper.GetErrorMessage(exception);
+                    return false;
+                }
+
+                entry.Value = provider; // assignment of the Value property internally refreshes the last update timestamp
+            }
+
+            return (provider is not null);
         }
     }
 }

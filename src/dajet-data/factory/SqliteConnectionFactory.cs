@@ -155,5 +155,14 @@ namespace DaJet.Data.SqlServer
                 }
             }
         }
+
+        public string GetCacheKey(in Uri uri)
+        {
+            throw new NotImplementedException();
+        }
+        public string GetCacheKey(in string connectionString)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

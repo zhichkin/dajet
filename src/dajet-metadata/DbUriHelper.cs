@@ -5,7 +5,7 @@ using System.Web;
 
 namespace DaJet
 {
-    public static class UriHelper
+    public static class DbUriHelper
     {
         public static Dictionary<string, string> CreateOptions(in Uri uri)
         {
@@ -59,6 +59,33 @@ namespace DaJet
             }
 
             return options;
+        }
+
+        public static bool UseExtensions(in Uri uri)
+        {
+            if (uri.Query is null)
+            {
+                return false;
+            }
+            
+            string[] parameters = uri.Query.Split('?', '&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            if (parameters is null || parameters.Length == 0)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                string[] parameter = parameters[i].Split('=', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                if (parameter.Length == 1 && parameter[0] == "mdex")
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }
