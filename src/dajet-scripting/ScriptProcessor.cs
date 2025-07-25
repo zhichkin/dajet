@@ -453,9 +453,12 @@ namespace DaJet.Scripting
             InfoBaseRecord database = dajet.Select<InfoBaseRecord>(target) ?? throw new ArgumentException($"Target not found: {target}");
             ScriptRecord record = dajet.Select<ScriptRecord>(scriptPath) ?? throw new ArgumentException($"Script not found: {script}");
 
-            IMetadataProvider importContext = MetadataService.CreateOneDbMetadataProvider(in database);
+            if (!MetadataService.Cache.TryGetOrCreate(in database, out IMetadataProvider importContext, out string error))
+            {
+                throw new Exception(error);
+            }
 
-            if (!TryProcess(in importContext, record.Script, in importParameters, out TranspilerResult result, out string error))
+            if (!TryProcess(in importContext, record.Script, in importParameters, out TranspilerResult result, out error))
             {
                 throw new Exception(error);
             }

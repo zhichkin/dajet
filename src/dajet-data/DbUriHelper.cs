@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Text;
 using System.Web;
 
-namespace DaJet
+namespace DaJet.Data
 {
     public static class DbUriHelper
     {

@@ -41,7 +41,7 @@ namespace DaJet.Metadata
         }
         public void Add(InfoBaseOptions options)
         {
-            _ = _cache.TryAdd(options.Key, new CacheEntry(options));
+            _ = _cache.TryAdd(options.CacheKey, new CacheEntry(options));
         }
         public void Remove(string key)
         {
@@ -50,23 +50,30 @@ namespace DaJet.Metadata
                 entry?.Dispose();
             }
         }
-        
-        public bool TryGetInfoBase(string key, out InfoBase infoBase, out string error)
+        public void Dispose()
         {
-            if (!_cache.TryGetValue(key, out CacheEntry entry))
+            foreach (CacheEntry entry in _cache.Values)
             {
-                infoBase = null;
-                error = string.Format(ERROR_CASH_ENTRY_KEY_IS_NOT_FOUND, key);
+                entry.Dispose();
+            }
+            _cache.Clear();
+        }
+
+        public bool TryGetInfoBase(in InfoBaseRecord record, out InfoBase infoBase, out string error)
+        {
+            infoBase = null;
+            error = string.Empty;
+
+            if (!Enum.TryParse(record.DatabaseProvider, out DatabaseProvider provider))
+            {
+                error = $"Unsupported database provider: {record.DatabaseProvider}";
                 return false;
             }
 
-            Guid root;
-            error = string.Empty;
-
             try
             {
-                string connectionString = entry.Options.ConnectionString;
-                DatabaseProvider provider = entry.Options.DatabaseProvider;
+                Guid root;
+                string connectionString = record.ConnectionString;
 
                 using (ConfigFileReader reader = new(provider, connectionString, ConfigTables.Config, ConfigFiles.Root))
                 {
@@ -80,70 +87,100 @@ namespace DaJet.Metadata
             }
             catch (Exception exception)
             {
-                infoBase = null;
-                error = ExceptionHelper.GetErrorMessage(exception);
+                error = ExceptionHelper.GetErrorMessageAndStackTrace(exception);
+                return false;
             }
 
             return (infoBase is not null);
         }
-        public bool TryGetOneDbMetadataProvider(string key, out OneDbMetadataProvider metadata, out string error)
+
+        private CacheEntry GetOrAdd(in InfoBaseOptions options)
         {
-            if (!_cache.TryGetValue(key, out CacheEntry entry))
+            if (_cache.TryGetValue(options.CacheKey, out CacheEntry entry))
             {
-                metadata = null;
-                error = string.Format(ERROR_CASH_ENTRY_KEY_IS_NOT_FOUND, key);
+                return entry; // fast path
+            }
+
+            lock (_cache_lock)
+            {
+                if (_cache.TryGetValue(options.CacheKey, out entry))
+                {
+                    return entry; // double-checking (пока мы ждали _cache_lock, возможно другой поток уже обновил кэш)
+                }
+
+                entry = new CacheEntry(options); // создаём новый элемент кэша
+
+                _ = _cache.TryAdd(options.CacheKey, entry); // добавляем новый элемент в кэш
+            }
+
+            return entry;
+        }
+        public bool TryGetOrCreate(in InfoBaseRecord record, out IMetadataProvider provider, out string error)
+        {
+            provider = null;
+
+            if (!Enum.TryParse(record.DatabaseProvider, out DatabaseProvider databaseProvider))
+            {
+                error = $"Unsupported database provider: {record.DatabaseProvider}";
                 return false;
             }
 
-            error = string.Empty;
-            metadata = entry.Value as OneDbMetadataProvider;
+            bool useExtensions = record.UseExtensions;
+            string connectionString = record.ConnectionString;
+            string cacheKey = DbConnectionFactory.GetCacheKey(databaseProvider, in connectionString, useExtensions);
 
-            if (metadata is not null && !entry.IsExpired)
+            InfoBaseOptions options = new()
             {
-                return true;
+                CacheKey = cacheKey,
+                UseExtensions = useExtensions,
+                DatabaseProvider = databaseProvider,
+                ConnectionString = connectionString
+            };
+
+            if (!TryGetOrCreate(in options, out provider, out error))
+            {
+                return false;
             }
 
-            using (entry.UpdateLock())
+            return provider is not null;
+        }
+        public bool TryGetOrCreate(in InfoBaseOptions options, out IMetadataProvider provider, out string error)
+        {
+            error = string.Empty;
+
+            CacheEntry entry = GetOrAdd(in options); // thread-safe call
+
+            provider = entry.Value; // pin weak reference to stack before null-check
+
+            if (provider is not null && !entry.IsExpired)
             {
-                metadata = entry.Value as OneDbMetadataProvider;
+                return true; // fast path
+            }
 
-                if (metadata is not null && !entry.IsExpired)
+            using (entry.UpdateLock()) // update existing or create new cache entry
+            {
+                provider = entry.Value; // pin weak reference to stack before null-check
+
+                if (provider is not null && !entry.IsExpired)
                 {
-                    return true;
+                    return true; // double checking (пока мы ждали, возможно другой поток уже обновил кэш)
                 }
-
-                metadata = new OneDbMetadataProvider(new OneDbMetadataProviderOptions()
-                {
-                    UseExtensions = entry.Options.UseExtensions,
-                    DatabaseProvider = entry.Options.DatabaseProvider,
-                    ConnectionString = entry.Options.ConnectionString
-                });
 
                 try
                 {
-                    metadata.Initialize();
+                    provider = CreateMetadataProvider(entry.Options);
                 }
                 catch (Exception exception)
                 {
-                    metadata = null;
+                    provider = null;
                     error = ExceptionHelper.GetErrorMessage(exception);
                     return false;
                 }
 
-                // Assignment of the Value property internally refreshes the last update timestamp
-
-                entry.Value = metadata;
+                entry.Value = provider; // assignment of the Value property internally refreshes the last update timestamp
             }
 
-            return (metadata is not null);
-        }
-        public void Dispose()
-        {
-            foreach (CacheEntry entry in _cache.Values)
-            {
-                entry.Dispose();
-            }
-            _cache.Clear();
+            return (provider is not null);
         }
         
         private IQueryExecutor CreateQueryExecutor(DatabaseProvider provider, string connectionString)
@@ -248,76 +285,6 @@ namespace DaJet.Metadata
             }
 
             return (metadata is not null);
-        }
-
-        public static IMetadataProvider CreateOneDbMetadataProvider(in Uri uri)
-        {
-            bool use_extensions = DbUriHelper.UseExtensions(in uri);
-            return new OneDbMetadataProvider(in uri, use_extensions);
-        }
-        public static IMetadataProvider CreateOneDbMetadataProvider(in InfoBaseRecord options)
-        {
-            return new OneDbMetadataProvider(options.ConnectionString, options.UseExtensions);
-        }
-
-        private CacheEntry GetOrAdd(in InfoBaseOptions options)
-        {
-            if (_cache.TryGetValue(options.Key, out CacheEntry entry))
-            {
-                return entry; // fast path
-            }
-
-            lock (_cache_lock)
-            {
-                if (_cache.TryGetValue(options.Key, out entry))
-                {
-                    return entry; // double-checking (пока мы ждали _cache_lock, возможно другой поток уже обновил кэш)
-                }
-
-                entry = new CacheEntry(options); // создаём новый элемент кэша
-
-                _ = _cache.TryAdd(options.Key, entry); // добавляем новый элемент в кэш
-            }
-
-            return entry;
-        }
-        public bool TryGetOrCreate(in InfoBaseOptions options, out IMetadataProvider provider, out string error)
-        {
-            error = string.Empty;
-
-            CacheEntry entry = GetOrAdd(in options); // thread-safe call
-
-            provider = entry.Value; // pin weak reference to stack before null-check
-
-            if (provider is not null && !entry.IsExpired)
-            {
-                return true; // fast path
-            }
-
-            using (entry.UpdateLock()) // update existing or create new cache entry
-            {
-                provider = entry.Value; // pin weak reference to stack before null-check
-
-                if (provider is not null && !entry.IsExpired)
-                {
-                    return true; // double checking (пока мы ждали, возможно другой поток уже обновил кэш)
-                }
-
-                try
-                {
-                    provider = CreateMetadataProvider(entry.Options);
-                }
-                catch (Exception exception)
-                {
-                    provider = null;
-                    error = ExceptionHelper.GetErrorMessage(exception);
-                    return false;
-                }
-
-                entry.Value = provider; // assignment of the Value property internally refreshes the last update timestamp
-            }
-
-            return (provider is not null);
         }
     }
 }

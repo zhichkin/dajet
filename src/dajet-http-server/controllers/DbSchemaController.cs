@@ -27,14 +27,14 @@ namespace DaJet.Http.Controllers
         {
             InfoBaseRecord record = _source.Select<InfoBaseRecord>(infobase);
 
-            if (record == null)
+            if (record is null)
             {
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetDbViewGenerator(record.Identity.ToString(), out IDbViewGenerator generator, out string error))
+            if (!TryGetDbViewGenerator(in record, out IDbViewGenerator generator, out string error))
             {
-                return BadRequest(error);
+                return StatusCode(StatusCodes.Status500InternalServerError, error);
             }
 
             List<string> schemas = generator.SelectSchemas();
@@ -57,9 +57,9 @@ namespace DaJet.Http.Controllers
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetDbViewGenerator(record.Identity.ToString(), out IDbViewGenerator generator, out string error))
+            if (!TryGetDbViewGenerator(in record, out IDbViewGenerator generator, out string error))
             {
-                return BadRequest(error);
+                return StatusCode(StatusCodes.Status500InternalServerError, error);
             }
 
             try
@@ -84,9 +84,9 @@ namespace DaJet.Http.Controllers
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
 
-            if (!_metadataService.TryGetDbViewGenerator(record.Identity.ToString(), out IDbViewGenerator generator, out string error))
+            if (!TryGetDbViewGenerator(in record, out IDbViewGenerator generator, out string error))
             {
-                return BadRequest(error);
+                return StatusCode(StatusCodes.Status500InternalServerError, error);
             }
 
             try
@@ -101,6 +101,34 @@ namespace DaJet.Http.Controllers
             }
 
             return Ok();
+        }
+
+        private static bool TryGetDbViewGenerator(in InfoBaseRecord infoBase, out IDbViewGenerator generator, out string error)
+        {
+            generator = null;
+            error = string.Empty;
+
+            if (!Enum.TryParse(infoBase.DatabaseProvider, out DatabaseProvider provider))
+            {
+                error = $"Unsupported database provider: {infoBase.DatabaseProvider}";
+                return false;
+            }
+
+            try
+            {
+                generator = Metadata.Services.DbViewGenerator.Create(new DbViewGeneratorOptions()
+                {
+                    DatabaseProvider = provider,
+                    ConnectionString = infoBase.ConnectionString
+                });
+            }
+            catch (Exception exception)
+            {
+                error = ExceptionHelper.GetErrorMessage(exception);
+                return false;
+            }
+
+            return (generator is not null);
         }
     }
 }

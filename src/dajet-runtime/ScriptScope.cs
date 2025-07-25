@@ -360,46 +360,20 @@ namespace DaJet.Runtime
 
             Uri uri = GetDatabaseUri(); //NOTE: constructs uri dynamically
 
-            ScriptScope root = GetRoot(); //NOTE: ScriptModel is the root
-
+            string cacheKey = DbConnectionFactory.GetCacheKey(in uri);
+            bool useExtensions = DbUriHelper.UseExtensions(in uri);
             string connectionString = DbConnectionFactory.GetConnectionString(in uri);
+            DatabaseProvider databaseProvider = DbConnectionFactory.GetDatabaseProvider(in uri);
 
-            if (MetadataService.Cache.TryGetMetadataProvider(connectionString, out provider, out error))
+            InfoBaseOptions options = new()
             {
-                return true; // fast path
-            }
+                CacheKey = cacheKey,
+                UseExtensions = useExtensions,
+                DatabaseProvider = databaseProvider,
+                ConnectionString = connectionString
+            };
 
-            try
-            {
-                lock (_metadata_providers_lock) //TODO: thread safe MetadataCache.TryGetOrAdd method !!!
-                {
-                    if (MetadataService.Cache.TryGetMetadataProvider(connectionString, out provider, out error))
-                    {
-                        return true; // double checking
-                    }
-
-                    MetadataService.Cache.Add(new InfoBaseOptions()
-                    {
-                        Key = connectionString,
-                        UseExtensions = false,
-                        ConnectionString = connectionString,
-                        DatabaseProvider = uri.Scheme == "mssql"
-                            ? DatabaseProvider.SqlServer
-                            : DatabaseProvider.PostgreSql
-                    });
-
-                    if (!MetadataService.Cache.TryGetMetadataProvider(connectionString, out provider, out error))
-                    {
-                        throw new Exception(error);
-                    }
-                }
-            }
-            catch (Exception exception)
-            {
-                error = ExceptionHelper.GetErrorMessage(exception);
-            }
-
-            return string.IsNullOrEmpty(error);
+            return MetadataService.Cache.TryGetOrCreate(in options, out provider, out error);
         }
 
         private static readonly Regex _uri_template = new("{(.*?)}", RegexOptions.CultureInvariant);

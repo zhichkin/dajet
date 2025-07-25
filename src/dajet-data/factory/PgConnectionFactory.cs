@@ -127,11 +127,36 @@ namespace DaJet.Data.PostgreSql
 
         public string GetCacheKey(in Uri uri)
         {
-            throw new NotImplementedException();
+            ArgumentNullException.ThrowIfNull(uri);
+
+            if (uri.Scheme != "pgsql")
+            {
+                throw new ArgumentOutOfRangeException(nameof(uri), $"Invalid schema name [{uri.Scheme}]");
+            }
+
+            string connectioString = GetConnectionString(in uri);
+            bool useExtensions = DbUriHelper.UseExtensions(in uri);
+
+            return GetCacheKey(in connectioString, useExtensions);
         }
-        public string GetCacheKey(in string connectionString)
+        public string GetCacheKey(in string connectionString, bool useExtensions)
         {
-            throw new NotImplementedException();
+            try
+            {
+                NpgsqlConnectionStringBuilder builder = new(connectionString);
+
+                string key = string.Format("{0}:{1}:{2}:{3}",
+                    builder.Host,
+                    builder.Port == 0 ? 5432 : builder.Port,
+                    builder.Database,
+                    useExtensions);
+
+                return key;
+            }
+            catch
+            {
+                throw;
+            }
         }
     }
 }

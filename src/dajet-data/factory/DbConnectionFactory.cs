@@ -11,7 +11,7 @@ namespace DaJet.Data
         DbConnection Create(in string connectionString);
         string GetConnectionString(in Uri uri);
         string GetCacheKey(in Uri uri);
-        string GetCacheKey(in string connectionString);
+        string GetCacheKey(in string connectionString, bool useExtensions);
         void ConfigureParameters(in DbCommand command, in Dictionary<string, object> parameters, int yearOffset);
     }
     public static class DbConnectionFactory
@@ -67,9 +67,9 @@ namespace DaJet.Data
         {
             return GetFactory(in uri).GetCacheKey(in uri);
         }
-        public static string GetCacheKey(DatabaseProvider provider, in string connectionString)
+        public static string GetCacheKey(DatabaseProvider provider, in string connectionString, bool useExtensions = false)
         {
-            return GetFactory(provider).GetCacheKey(in connectionString);
+            return GetFactory(provider).GetCacheKey(in connectionString, useExtensions);
         }
     }
 }

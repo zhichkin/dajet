@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>DaJet.DbViewGenerator</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <Nullable>disable</Nullable>
     <AssemblyName>DaJet.DbViewGenerator</AssemblyName>
     <Version>1.0.2</Version>
     <Authors>Zhichkin</Authors>

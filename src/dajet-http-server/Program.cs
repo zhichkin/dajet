@@ -125,9 +125,22 @@ namespace DaJet.Http.Server
                         provider = DatabaseProvider.SqlServer;
                     }
 
+                    string cacheKey;
+                    try
+                    {
+                        cacheKey = DbConnectionFactory.GetCacheKey(provider, record.ConnectionString, record.UseExtensions);
+                    }
+                    catch (Exception exception)
+                    {
+                        string description = "Ошибка добавления базы данных: неверный формат строки подключения!" + Environment.NewLine;
+                        description += ExceptionHelper.GetErrorMessage(exception);
+                        FileLogger.Default.Write(description);
+                        continue;
+                    }
+
                     metadataService.Add(new InfoBaseOptions()
                     {
-                        Key = record.Identity.ToString(),
+                        CacheKey = cacheKey,
                         UseExtensions = record.UseExtensions,
                         DatabaseProvider = provider,
                         ConnectionString = record.ConnectionString

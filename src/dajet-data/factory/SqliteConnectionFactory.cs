@@ -158,11 +158,33 @@ namespace DaJet.Data.SqlServer
 
         public string GetCacheKey(in Uri uri)
         {
-            throw new NotImplementedException();
+            ArgumentNullException.ThrowIfNull(uri);
+
+            if (uri.Scheme != "sqlite")
+            {
+                throw new ArgumentOutOfRangeException(nameof(uri), $"Invalid schema name [{uri.Scheme}]");
+            }
+
+            string connectioString = GetConnectionString(in uri);
+
+            return GetCacheKey(in connectioString, false);
         }
-        public string GetCacheKey(in string connectionString)
+        public string GetCacheKey(in string connectionString, bool useExtensions)
         {
-            throw new NotImplementedException();
+            try
+            {
+                SqliteConnectionStringBuilder builder = new(connectionString);
+
+                string key = string.Format("{0}:{1}",
+                    builder.DataSource,
+                    useExtensions);
+
+                return key;
+            }
+            catch
+            {
+                throw;
+            }
         }
     }
 }

@@ -28,14 +28,19 @@ namespace DaJet.Http.Controllers
         {
             InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
-            if (database == null)
+            if (database is null)
             {
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetOneDbMetadataProvider(database.Identity.ToString(), out OneDbMetadataProvider cache, out string error))
+            if (!_metadataService.TryGetOrCreate(in database, out IMetadataProvider provider, out string error))
             {
-                return NotFound(error);
+                return StatusCode(StatusCodes.Status500InternalServerError, error);
+            }
+
+            if (provider is not OneDbMetadataProvider cache)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "Error getting OneDbMetadataProvider");
             }
 
             List<ExtensionInfo> extensions;
@@ -45,7 +50,7 @@ namespace DaJet.Http.Controllers
             }
             catch (Exception exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ExceptionHelper.GetErrorMessage(exception));
+                return StatusCode(StatusCodes.Status500InternalServerError, ExceptionHelper.GetErrorMessageAndStackTrace(exception));
             }
 
             JsonSerializerOptions options = new()
@@ -68,14 +73,19 @@ namespace DaJet.Http.Controllers
 
             InfoBaseRecord database = _source.Select<InfoBaseRecord>(infobase);
 
-            if (database == null)
+            if (database is null)
             {
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetOneDbMetadataProvider(database.Identity.ToString(), out OneDbMetadataProvider cache, out string error))
+            if (!_metadataService.TryGetOrCreate(in database, out IMetadataProvider provider, out string error))
             {
                 return NotFound(error);
+            }
+
+            if (provider is not OneDbMetadataProvider cache)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "Error getting OneDbMetadataProvider");
             }
 
             ExtensionInfo info;
@@ -140,9 +150,14 @@ namespace DaJet.Http.Controllers
                 return GetMetadataObjectDetailsFull(in database, in metadataName);
             }
 
-            if (!_metadataService.TryGetOneDbMetadataProvider(database.Identity.ToString(), out OneDbMetadataProvider cache, out string error))
+            if (!_metadataService.TryGetOrCreate(in database, out IMetadataProvider provider, out string error))
             {
                 return NotFound(error);
+            }
+
+            if (provider is not OneDbMetadataProvider cache)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "Error getting OneDbMetadataProvider");
             }
 
             ExtensionInfo info;
@@ -155,7 +170,7 @@ namespace DaJet.Http.Controllers
                 return NotFound($"{extension}: {ExceptionHelper.GetErrorMessage(exception)}");
             }
 
-            if (!cache.TryGetMetadata(in info, out OneDbMetadataProvider provider, out error))
+            if (!cache.TryGetMetadata(in info, out OneDbMetadataProvider extensionProvider, out error))
             {
                 return NotFound($"{extension}: {error}");
             }
@@ -171,7 +186,7 @@ namespace DaJet.Http.Controllers
 
             try
             {
-                metadata = provider.GetMetadataObject(metadataName);
+                metadata = extensionProvider.GetMetadataObject(metadataName);
             }
             catch (Exception exception)
             {
@@ -183,7 +198,7 @@ namespace DaJet.Http.Controllers
                 return NotFound($"{infobase}.{extension}.{type}.{name}");
             }
 
-            MetadataObjectConverter converter = new(provider);
+            MetadataObjectConverter converter = new(extensionProvider);
             DataObject @object = converter.Convert(in metadata);
 
             JsonSerializerOptions options = new()

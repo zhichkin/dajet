@@ -46,7 +46,7 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetInfoBase(record.Identity.ToString(), out InfoBase entity, out string error))
+            if (!_metadataService.TryGetInfoBase(in record, out InfoBase entity, out string error))
             {
                 return BadRequest(error);
             }
@@ -72,16 +72,24 @@ namespace DaJet.Http.Controllers
 
             if (!Enum.TryParse(options.DatabaseProvider, out DatabaseProvider provider))
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, $"Unsupported database privider: {options.DatabaseProvider}");
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Unsupported database provider: {options.DatabaseProvider}");
             }
 
-            string key = options.Identity.ToString();
+            string cacheKey;
+            try
+            {
+                cacheKey = DbConnectionFactory.GetCacheKey(provider, options.ConnectionString, options.UseExtensions);
+            }
+            catch
+            {
+                return BadRequest("Неверный формат строки подключения!");
+            }
 
-            _metadataService.Remove(key);
+            _metadataService.Remove(cacheKey);
 
             _metadataService.Add(new InfoBaseOptions()
             {
-                Key = key,
+                CacheKey = cacheKey,
                 UseExtensions = options.UseExtensions,
                 DatabaseProvider = provider,
                 ConnectionString = options.ConnectionString
@@ -150,18 +158,26 @@ namespace DaJet.Http.Controllers
                 return BadRequest("Неверно указаны параметры!");
             }
 
-            string key = entity.Identity.ToString();
-
             if (_source.Select<InfoBaseRecord>(entity.Identity) is not null)
             {
                 return Conflict();
+            }
+
+            string key_to_insert;
+            try
+            {
+                key_to_insert = DbConnectionFactory.GetCacheKey(provider, entity.ConnectionString, entity.UseExtensions);
+            }
+            catch
+            {
+                return BadRequest("Неверный формат строки подключения!");
             }
 
             _source.Create(entity);
 
             _metadataService.Add(new InfoBaseOptions()
             {
-                Key = key,
+                CacheKey = key_to_insert,
                 UseExtensions = entity.UseExtensions,
                 DatabaseProvider = provider,
                 ConnectionString = entity.ConnectionString
@@ -185,15 +201,33 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
+            string key_to_remove;
+            try
+            {
+                key_to_remove = DbConnectionFactory.GetCacheKey(provider, record.ConnectionString, record.UseExtensions);
+            }
+            catch
+            {
+                return BadRequest("Неверный формат строки подключения!");
+            }
+
+            string key_to_add;
+            try
+            {
+                key_to_add = DbConnectionFactory.GetCacheKey(provider, entity.ConnectionString, entity.UseExtensions);
+            }
+            catch
+            {
+                return BadRequest("Неверный формат строки подключения!");
+            }
+
             _source.Update(entity);
 
-            string key = entity.Identity.ToString();
-
-            _metadataService.Remove(key);
+            _metadataService.Remove(key_to_remove);
 
             _metadataService.Add(new InfoBaseOptions()
             {
-                Key = key,
+                CacheKey = key_to_add,
                 UseExtensions = entity.UseExtensions,
                 DatabaseProvider = provider,
                 ConnectionString = entity.ConnectionString
@@ -215,9 +249,24 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
+            if (!Enum.TryParse(record.DatabaseProvider, out DatabaseProvider provider))
+            {
+                return BadRequest("Неверно указан провайдер данных!");
+            }
+
+            string key_to_remove;
+            try
+            {
+                key_to_remove = DbConnectionFactory.GetCacheKey(provider, record.ConnectionString, record.UseExtensions);
+            }
+            catch
+            {
+                return BadRequest("Неверный формат строки подключения!");
+            }
+
             _source.Delete(record.GetEntity());
 
-            _metadataService.Remove(entity.Identity.ToString());
+            _metadataService.Remove(key_to_remove);
 
             return Ok();
         }

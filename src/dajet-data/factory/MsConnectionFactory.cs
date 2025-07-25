@@ -149,11 +149,35 @@ namespace DaJet.Data.SqlServer
 
         public string GetCacheKey(in Uri uri)
         {
-            throw new NotImplementedException();
+            ArgumentNullException.ThrowIfNull(uri);
+
+            if (uri.Scheme != "mssql")
+            {
+                throw new ArgumentOutOfRangeException(nameof(uri), $"Invalid schema name [{uri.Scheme}]");
+            }
+
+            string connectioString = GetConnectionString(in uri);
+            bool useExtensions = DbUriHelper.UseExtensions(in uri);
+
+            return GetCacheKey(in connectioString, useExtensions);
         }
-        public string GetCacheKey(in string connectionString)
+        public string GetCacheKey(in string connectionString, bool useExtensions)
         {
-            throw new NotImplementedException();
+            try
+            {
+                SqlConnectionStringBuilder builder = new(connectionString);
+
+                string key = string.Format("{0}:{1}:{2}",
+                    builder.DataSource,
+                    builder.InitialCatalog,
+                    useExtensions);
+
+                return key;
+            }
+            catch
+            {
+                throw;
+            }
         }
     }
 }
