@@ -145,11 +145,11 @@ namespace DaJet.Data.PostgreSql
             {
                 NpgsqlConnectionStringBuilder builder = new(connectionString);
 
-                string key = string.Format("{0}:{1}:{2}:{3}",
+                string key = string.Format("pgsql:{0}:{1}:{2}:{3}",
                     builder.Host,
                     builder.Port == 0 ? 5432 : builder.Port,
                     builder.Database,
-                    useExtensions);
+                    useExtensions).ToLowerInvariant();
 
                 return key;
             }

@@ -62,7 +62,7 @@ namespace DaJet.Flow.Tutorial
             _script = script.Script; // Запоминаем текст скрипта для дальнейшего его выполнения
 
             // 4. Получаем ссылку на провайдера метаданных соответствующей конфигурации базы данных из сервиса IMetadataService
-            if (!metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider context, out string error))
+            if (!metadata.TryGetOrCreate(in database, out IMetadataProvider context, out string error))
             {
                 throw new InvalidOperationException(error);
             }

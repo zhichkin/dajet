@@ -8,7 +8,7 @@ using DaJet.Metadata.SqlServer;
 using DaJet.Model;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
+using System.Threading;
 
 namespace DaJet.Metadata
 {
@@ -19,33 +19,21 @@ namespace DaJet.Metadata
         private const string ERROR_UNSUPPORTED_METADATA_PROVIDER = "Unsupported metadata provider: [{0}].";
         private const string ERROR_CASH_ENTRY_IS_NULL_OR_EXPIRED = "Cache entry [{0}] is null or expired.";
 
+        //NOTE: DefaultCapacity = 31
+        //NOTE: DefaultConcurrencyLevel = Environment.ProcessorCount
         private readonly object _cache_lock = new();
         private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
 
         private static readonly MetadataService _singleton = new();
         public static MetadataService Cache { get { return _singleton; } }
 
-        public List<InfoBaseOptions> Options
-        {
-            get
-            {
-                List<InfoBaseOptions> list = new();
-
-                foreach (var item in _cache)
-                {
-                    list.Add(item.Value.Options);
-                }
-
-                return list;
-            }
-        }
         public void Add(InfoBaseOptions options)
         {
             _ = _cache.TryAdd(options.CacheKey, new CacheEntry(options));
         }
-        public void Remove(string key)
+        public void Remove(string cacheKey)
         {
-            if (_cache.TryRemove(key, out CacheEntry entry))
+            if (_cache.TryRemove(cacheKey, out CacheEntry entry))
             {
                 entry?.Dispose();
             }
@@ -101,8 +89,12 @@ namespace DaJet.Metadata
                 return entry; // fast path
             }
 
-            lock (_cache_lock)
+            bool lockTaken = false;
+
+            try
             {
+                Monitor.Enter(_cache_lock, ref lockTaken);
+
                 if (_cache.TryGetValue(options.CacheKey, out entry))
                 {
                     return entry; // double-checking (пока мы ждали _cache_lock, возможно другой поток уже обновил кэш)
@@ -111,6 +103,13 @@ namespace DaJet.Metadata
                 entry = new CacheEntry(options); // создаём новый элемент кэша
 
                 _ = _cache.TryAdd(options.CacheKey, entry); // добавляем новый элемент в кэш
+            }
+            finally
+            {
+                if (lockTaken)
+                {
+                    Monitor.Exit(_cache_lock);
+                }
             }
 
             return entry;
@@ -157,8 +156,12 @@ namespace DaJet.Metadata
                 return true; // fast path
             }
 
-            using (entry.UpdateLock()) // update existing or create new cache entry
+            bool lockTaken = false;
+
+            try // update existing cache entry - GetOrAdd ensures that the entry is already in the cache
             {
+                Monitor.Enter(entry, ref lockTaken);
+
                 provider = entry.Value; // pin weak reference to stack before null-check
 
                 if (provider is not null && !entry.IsExpired)
@@ -179,44 +182,17 @@ namespace DaJet.Metadata
 
                 entry.Value = provider; // assignment of the Value property internally refreshes the last update timestamp
             }
+            finally
+            {
+                if (lockTaken)
+                {
+                    Monitor.Exit(entry);
+                }
+            }
 
             return (provider is not null);
         }
-        
-        private IQueryExecutor CreateQueryExecutor(DatabaseProvider provider, string connectionString)
-        {
-            if (provider == DatabaseProvider.SqlServer)
-            {
-                return new MsQueryExecutor(connectionString);
-            }
-            else if (provider == DatabaseProvider.PostgreSql)
-            {
-                return new PgQueryExecutor(connectionString);
-            }
 
-            throw new InvalidOperationException(string.Format(ERROR_UNSUPPORTED_DATABASE_PROVIDER, provider));
-        }
-        private bool IsRegularDatabase(DatabaseProvider provider, string connectionString)
-        {
-            IQueryExecutor executor = CreateQueryExecutor(provider, connectionString);
-
-            string script = SQLHelper.GetTableExistsScript("_yearoffset");
-            
-            return !(executor.ExecuteScalar<int>(in script, 10) == 1);
-        }
-        private IMetadataProvider CreateOneDbMetadataProvider(in InfoBaseOptions options)
-        {
-            OneDbMetadataProvider metadata = new(new OneDbMetadataProviderOptions()
-            {
-                UseExtensions = options.UseExtensions,
-                DatabaseProvider = options.DatabaseProvider,
-                ConnectionString = options.ConnectionString
-            });
-
-            metadata.Initialize();
-
-            return metadata;
-        }
         private IMetadataProvider CreateMetadataProvider(in InfoBaseOptions options)
         {
             if (!IsRegularDatabase(options.DatabaseProvider, options.ConnectionString))
@@ -241,50 +217,39 @@ namespace DaJet.Metadata
 
             return provider;
         }
-        public bool TryGetMetadataProvider(string key, out IMetadataProvider metadata, out string error)
+        private IMetadataProvider CreateOneDbMetadataProvider(in InfoBaseOptions options)
         {
-            error = string.Empty;
-
-            if (!_cache.TryGetValue(key, out CacheEntry entry))
+            OneDbMetadataProvider metadata = new(new OneDbMetadataProviderOptions()
             {
-                metadata = null;
-                error = string.Format(ERROR_CASH_ENTRY_KEY_IS_NOT_FOUND, key);
-                return false;
+                UseExtensions = options.UseExtensions,
+                DatabaseProvider = options.DatabaseProvider,
+                ConnectionString = options.ConnectionString
+            });
+
+            metadata.Initialize();
+
+            return metadata;
+        }
+        private bool IsRegularDatabase(DatabaseProvider provider, string connectionString)
+        {
+            IQueryExecutor executor = CreateQueryExecutor(provider, connectionString);
+
+            string script = SQLHelper.GetTableExistsScript("_yearoffset");
+
+            return !(executor.ExecuteScalar<int>(in script, 10) == 1);
+        }
+        private IQueryExecutor CreateQueryExecutor(DatabaseProvider provider, string connectionString)
+        {
+            if (provider == DatabaseProvider.SqlServer)
+            {
+                return new MsQueryExecutor(connectionString);
+            }
+            else if (provider == DatabaseProvider.PostgreSql)
+            {
+                return new PgQueryExecutor(connectionString);
             }
 
-            metadata = entry.Value; // pin weak reference to stack
-
-            if (metadata is not null && !entry.IsExpired)
-            {
-                return true;
-            }
-
-            using (entry.UpdateLock())
-            {
-                metadata = entry.Value; // pin weak reference to stack
-
-                if (metadata is not null && !entry.IsExpired)
-                {
-                    return true;
-                }
-
-                try
-                {
-                    metadata = CreateMetadataProvider(entry.Options);
-                }
-                catch (Exception exception)
-                {
-                    metadata = null;
-                    error = ExceptionHelper.GetErrorMessage(exception);
-                    return false;
-                }
-
-                // assignment of the Value property internally refreshes the last update timestamp
-
-                entry.Value = metadata;
-            }
-
-            return (metadata is not null);
+            throw new InvalidOperationException(string.Format(ERROR_UNSUPPORTED_DATABASE_PROVIDER, provider));
         }
     }
 }

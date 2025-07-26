@@ -167,10 +167,10 @@ namespace DaJet.Data.SqlServer
             {
                 SqlConnectionStringBuilder builder = new(connectionString);
 
-                string key = string.Format("{0}:{1}:{2}",
+                string key = string.Format("mssql:{0}:{1}:{2}",
                     builder.DataSource,
                     builder.InitialCatalog,
-                    useExtensions);
+                    useExtensions).ToLowerInvariant();
 
                 return key;
             }

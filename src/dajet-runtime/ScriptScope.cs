@@ -358,12 +358,12 @@ namespace DaJet.Runtime
         {
             error = null;
 
-            Uri uri = GetDatabaseUri(); //NOTE: constructs uri dynamically
+            Uri uri = GetDatabaseUri(); //NOTE: constructs uri dynamically (possibly also from a template)
 
-            string cacheKey = DbConnectionFactory.GetCacheKey(in uri);
             bool useExtensions = DbUriHelper.UseExtensions(in uri);
             string connectionString = DbConnectionFactory.GetConnectionString(in uri);
             DatabaseProvider databaseProvider = DbConnectionFactory.GetDatabaseProvider(in uri);
+            string cacheKey = DbConnectionFactory.GetCacheKey(databaseProvider, in connectionString, useExtensions);
 
             InfoBaseOptions options = new()
             {

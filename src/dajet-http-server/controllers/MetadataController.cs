@@ -119,7 +119,7 @@ namespace DaJet.Http.Controllers
                 Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
             };
 
-            if (!_metadataService.TryGetMetadataProvider(entity.Identity.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadataService.TryGetOrCreate(in entity, out IMetadataProvider provider, out string error))
             {
                 return NotFound(error);
             }
@@ -295,7 +295,7 @@ namespace DaJet.Http.Controllers
             };
             options.Converters.Add(new DataObjectJsonConverter());
 
-            if (!_metadataService.TryGetMetadataProvider(entity.Identity.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadataService.TryGetOrCreate(in entity, out IMetadataProvider provider, out string error))
             {
                 return NotFound(error);
             }
@@ -400,9 +400,7 @@ namespace DaJet.Http.Controllers
 
             if (settings is null) { return Content($"Настройки базы данных [{infobase}] не найдены!"); }
 
-            string key = settings.Identity.ToString();
-
-            if (!_metadataService.TryGetMetadataProvider(key, out IMetadataProvider provider, out string error))
+            if (!_metadataService.TryGetOrCreate(in settings, out IMetadataProvider provider, out string error))
             {
                 return Content($"Провайдер метаданных для [{infobase}] не найден!");
             }

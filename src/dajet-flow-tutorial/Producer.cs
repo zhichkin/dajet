@@ -25,7 +25,7 @@ namespace DaJet.Flow.Tutorial
             InfoBaseRecord database = dajet.Select<InfoBaseRecord>(_options.Target)
                 ?? throw new InvalidOperationException($"Target database not found: {_options.Target}");
 
-            if (!metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider context, out string error))
+            if (!metadata.TryGetOrCreate(in database, out IMetadataProvider context, out string error))
             {
                 throw new InvalidOperationException(error);
             }

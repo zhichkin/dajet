@@ -175,9 +175,9 @@ namespace DaJet.Data.SqlServer
             {
                 SqliteConnectionStringBuilder builder = new(connectionString);
 
-                string key = string.Format("{0}:{1}",
+                string key = string.Format("sqlite:{0}:{1}",
                     builder.DataSource,
-                    useExtensions);
+                    useExtensions).ToLowerInvariant();
 
                 return key;
             }

@@ -37,7 +37,7 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataProvider(record.Identity.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadataService.TryGetOrCreate(in record, out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
@@ -79,7 +79,7 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            if (!_metadataService.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadataService.TryGetOrCreate(in database, out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }

@@ -68,7 +68,7 @@ namespace DaJet.Flow.PostgreSql
             ScriptRecord script = _source.Select<ScriptRecord>(scriptPath)
                 ?? throw new Exception($"Script not found: {scriptPath}");
 
-            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetOrCreate(in database, out IMetadataProvider provider, out string error))
             {
                 throw new Exception(error);
             }

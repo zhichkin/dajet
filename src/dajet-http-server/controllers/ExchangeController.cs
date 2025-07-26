@@ -5,9 +5,7 @@ using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Model;
 using DaJet.RabbitMQ.HttpApi;
-using DaJet.Scripting;
 using Microsoft.AspNetCore.Mvc;
-using System.Diagnostics.Metrics;
 using System.Net;
 using System.Reflection;
 using System.Runtime.Loader;
@@ -91,7 +89,7 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetOrCreate(in database, out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
@@ -116,7 +114,7 @@ namespace DaJet.Http.Controllers
                 return NotFound();
             }
 
-            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetOrCreate(in database, out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
@@ -176,7 +174,7 @@ namespace DaJet.Http.Controllers
 
             if (script is not null) { return BadRequest($"Article {article} exists!"); }
 
-            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetOrCreate(in database, out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
@@ -250,7 +248,7 @@ namespace DaJet.Http.Controllers
 
         private Type GetExchangeTuningServiceType(in InfoBaseRecord database)
         {
-            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetOrCreate(in database, out IMetadataProvider provider, out string error))
             {
                 throw new InvalidOperationException(error);
             }
@@ -403,7 +401,7 @@ namespace DaJet.Http.Controllers
 
             if (exchange is null) { return NotFound("Exchange service not found."); }
 
-            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetOrCreate(in database, out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
@@ -607,7 +605,7 @@ namespace DaJet.Http.Controllers
 
             if (string.IsNullOrWhiteSpace(node)) { return BadRequest("Node code is empty"); }
 
-            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetOrCreate(in database, out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }
@@ -735,7 +733,7 @@ namespace DaJet.Http.Controllers
                 _source.Create(exchange);
             }
 
-            if (!_metadata.TryGetMetadataProvider(database.Identity.ToString(), out IMetadataProvider provider, out string error))
+            if (!_metadata.TryGetOrCreate(in database, out IMetadataProvider provider, out string error))
             {
                 return BadRequest(error);
             }

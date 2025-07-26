@@ -1,20 +1,16 @@
 ﻿using DaJet.Metadata.Model;
 using DaJet.Model;
 using System;
-using System.Collections.Generic;
 
 namespace DaJet.Metadata
 {
     public interface IMetadataService : IDisposable
     {
-        List<InfoBaseOptions> Options { get; }
         void Add(InfoBaseOptions options);
         void Remove(string key);
 
         bool TryGetInfoBase(in InfoBaseRecord record, out InfoBase infoBase, out string error);
         bool TryGetOrCreate(in InfoBaseRecord record, out IMetadataProvider provider, out string error);
         bool TryGetOrCreate(in InfoBaseOptions options, out IMetadataProvider provider, out string error);
-
-        bool TryGetMetadataProvider(string key, out IMetadataProvider metadata, out string error);
     }
 }
