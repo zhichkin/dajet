@@ -29,6 +29,12 @@ namespace DaJet.Http.Controllers
             JsonOptions.Converters.Add(new DataObjectJsonConverter());
             JsonOptions.Converters.Add(new DictionaryJsonConverter());
         }
+        [HttpGet("ping")] public ActionResult Ping()
+        {
+            string content = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss:fff");
+
+            return Content(content, "text/plain", Encoding.UTF8);
+        }
         [HttpGet("log")] public ActionResult GetServerLog()
         {
             IFileInfo file = _fileProvider.GetFileInfo("dajet.log");
@@ -59,6 +65,7 @@ namespace DaJet.Http.Controllers
             return value;
         }
 
+        #region "FILE SYSTEM OPERATIONS"
         [HttpGet("src/{**path}")] public ActionResult GetSourceCode([FromRoute] string path)
         {
             if (string.IsNullOrWhiteSpace(path))
@@ -431,6 +438,7 @@ namespace DaJet.Http.Controllers
 
             return Ok();
         }
+        #endregion
 
         [HttpPost("exe/{**path}")] public async Task<ActionResult> ExecuteScriptAsync([FromRoute] string path)
         {
@@ -448,7 +456,7 @@ namespace DaJet.Http.Controllers
             //}
             //else
             //{
-            //    return BadRequest(error);
+            //    return BadRequest();
             //}
 
             IFileInfo file = _fileProvider.GetFileInfo(path);
