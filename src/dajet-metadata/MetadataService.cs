@@ -42,7 +42,7 @@ namespace DaJet.Metadata
         {
             foreach (CacheEntry entry in _cache.Values)
             {
-                entry.Dispose();
+                entry?.Dispose();
             }
             _cache.Clear();
         }
@@ -147,28 +147,37 @@ namespace DaJet.Metadata
         {
             error = string.Empty;
 
-            CacheEntry entry = GetOrAdd(in options); // thread-safe call
+            //Метод GetOrAdd обеспечивает наличие элемента кэша, здесь он гарантированно не равен null
+            CacheEntry entry = GetOrAdd(in options); // thread-safe
 
-            provider = entry.Value; // pin weak reference to stack before null-check
-
-            if (provider is not null && !entry.IsExpired)
+            //Требуется атомарное чтение значений двух свойств одновременно,
+            //иначе можно получить ссылку provider, а затем
+            //прочитать значение expired для нового объекта provider,
+            //который создаётся или обновляется далее по коду
+            using (entry.ReadLock())
             {
-                return true; // fast path
+                provider = entry.Value; // pin weak reference to stack before null-check
+                bool expired = entry.IsExpired; // здесь уже может быть создан новый объект provider
+
+                if (provider is not null && !expired)
+                {
+                    return true; // fast path
+                }
             }
 
-            bool lockTaken = false;
-
-            try // update existing cache entry - GetOrAdd ensures that the entry is already in the cache
+            //Для обновления значения кэша требуется эксклюзивная блокировка
+            //Предварительно получаем блокировку обновления
+            using (entry.UpdateLock())
             {
-                Monitor.Enter(entry, ref lockTaken);
-
                 provider = entry.Value; // pin weak reference to stack before null-check
+                bool expired = entry.IsExpired;
 
-                if (provider is not null && !entry.IsExpired)
+                if (provider is not null && !expired) // double checking pattern
                 {
-                    return true; // double checking (пока мы ждали, возможно другой поток уже обновил кэш)
+                    return true; //Пока поток ожидал на блокировке, возможно другой поток уже обновил кэш
                 }
 
+                //Создаём новый элемент кэша один раз - только один поток может получить блокировку обновления
                 try
                 {
                     provider = CreateMetadataProvider(entry.Options);
@@ -180,13 +189,10 @@ namespace DaJet.Metadata
                     return false;
                 }
 
-                entry.Value = provider; // assignment of the Value property internally refreshes the last update timestamp
-            }
-            finally
-            {
-                if (lockTaken)
+                //Повышаем блокировку до эксклюзивной: дожидаемся пока все читатели снимут свои блокировки с элемента кэша
+                using (entry.WriteLock())
                 {
-                    Monitor.Exit(entry);
+                    entry.Value = provider; //Присвоение значения свойству Value внутренне обновляет отметку времени последнего обновления
                 }
             }
 
