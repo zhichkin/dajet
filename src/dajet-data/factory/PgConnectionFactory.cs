@@ -7,8 +7,16 @@ namespace DaJet.Data.PostgreSql
 {
     internal sealed class PgConnectionFactory : IDbConnectionFactory
     {
+        //TODO: private static readonly object _cache_lock = new();
+        //TODO: private static readonly Dictionary<string, NpgsqlDataSource> _cache = new();
         public DbConnection Create(in Uri uri)
         {
+            //TODO:
+            //string connectionString = GetConnectionString(in uri);
+            //string cacheKey = GetCacheKey(in connectionString, true);
+            //NpgsqlDataSource source = GetOrCreateDataSource(in uri);
+            //return source.CreateConnection();
+
             return new NpgsqlConnection(GetConnectionString(in uri));
         }
         public DbConnection Create(in string connectionString)
@@ -158,5 +166,41 @@ namespace DaJet.Data.PostgreSql
                 throw;
             }
         }
+
+        //private NpgsqlDataSource GetOrCreateDataSource(in Uri uri)
+        //{
+        //    string connectionString = GetConnectionString(in uri);
+        //    string cacheKey = GetCacheKey(in connectionString, true);
+
+        //    if (_cache.TryGetValue(cacheKey, out NpgsqlDataSource source))
+        //    {
+        //        return source; // fast path
+        //    }
+
+        //    bool locked = false;
+
+        //    try
+        //    {
+        //        Monitor.Enter(_cache_lock, ref locked);
+
+        //        if (_cache.TryGetValue(cacheKey, out source))
+        //        {
+        //            return source; // double-checking
+        //        }
+
+        //        source = new NpgsqlDataSourceBuilder(connectionString).Build();
+
+        //        _cache.Add(cacheKey, source);
+        //    }
+        //    finally
+        //    {
+        //        if (locked)
+        //        {
+        //            Monitor.Exit(_cache_lock);
+        //        }
+        //    }
+
+        //    return source;
+        //}
     }
 }
