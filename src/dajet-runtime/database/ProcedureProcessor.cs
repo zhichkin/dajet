@@ -5,8 +5,6 @@ using Microsoft.Data.Sqlite;
 using Npgsql;
 using System.Data;
 using System.Data.Common;
-using System.Text;
-using System.Web;
 
 namespace DaJet.Runtime
 {
@@ -36,22 +34,11 @@ namespace DaJet.Runtime
 
             _factory = DbConnectionFactory.GetFactory(in _uri);
 
-            _procedureName = GetProcedureName(in _uri);
+            _procedureName = DbUriHelper.GetProcedureName(in _uri);
         }
         public void LinkTo(in IProcessor next) { _next = next; }
         public void Synchronize() { _next?.Synchronize(); }
         public void Dispose() { _next?.Dispose(); }
-        private static string GetProcedureName(in Uri uri)
-        {
-            int count = uri.Segments.Length;
-
-            if (uri.Segments is not null && uri.Segments.Length > 0)
-            {
-                return HttpUtility.UrlDecode(uri.Segments[count - 1].TrimEnd('/'), Encoding.UTF8);
-            }
-
-            throw new ArgumentException("Stored procedure name is not defined");
-        }
         private bool WhenIsTrue()
         {
             if (_statement.When is null) { return true; }

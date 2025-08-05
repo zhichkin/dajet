@@ -85,5 +85,42 @@ namespace DaJet.Data
 
             return false;
         }
+
+        public static bool IsRowSql(in Uri uri)
+        {
+            if (uri.Query is not null)
+            {
+                string[] parameters = uri.Query.Split('?', '&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                if (parameters is not null && parameters.Length > 0)
+                {
+                    for (int i = 0; i < parameters.Length; i++)
+                    {
+                        string[] parameter = parameters[i].Split('=', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                        if (parameter is not null && parameter.Length > 0)
+                        {
+                            if (parameter[0] == "sql")
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+        public static string GetProcedureName(in Uri uri)
+        {
+            int count = uri.Segments.Length;
+
+            if (uri.Segments is not null && uri.Segments.Length > 0)
+            {
+                return HttpUtility.UrlDecode(uri.Segments[count - 1].TrimEnd('/'), Encoding.UTF8);
+            }
+
+            throw new ArgumentException("Stored procedure name is not defined");
+        }
     }
 }
