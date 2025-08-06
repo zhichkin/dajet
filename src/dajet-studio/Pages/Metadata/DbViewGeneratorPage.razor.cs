@@ -121,6 +121,43 @@ namespace DaJet.Studio.Pages.Metadata
 
             FinishTime = DateTime.Now.ToString("HH:mm:ss");
         }
+        public async Task ScriptCommand(MouseEventArgs args)
+        {
+            if (string.IsNullOrWhiteSpace(DatabaseProvider))
+            {
+                LogText = "Не указан провайдер данных!"; return;
+            }
+
+            if (string.IsNullOrWhiteSpace(ConnectionString))
+            {
+                LogText = "Не указана строка подключения!"; return;
+            }
+
+            if (string.IsNullOrWhiteSpace(DatabaseSchema))
+            {
+                LogText = "Не указана схема базы данных!"; return;
+            }
+
+            if (string.IsNullOrWhiteSpace(MetadataObjectName))
+            {
+                LogText = "Не указан объект метаданных!"; return;
+            }
+            
+            LogText = "Выполняется...";
+            StartTime = DateTime.Now.ToString("HH:mm:ss");
+            FinishTime = string.Empty;
+
+            try
+            {
+                LogText = await DaJetClient.ScriptDbView(InfoBase, MetadataObjectName, DatabaseSchema);
+            }
+            catch (Exception error)
+            {
+                LogText = ExceptionHelper.GetErrorMessageAndStackTrace(error);
+            }
+
+            FinishTime = DateTime.Now.ToString("HH:mm:ss");
+        }
         public async Task DeleteViews(MouseEventArgs args)
         {
             if (string.IsNullOrWhiteSpace(DatabaseSchema))

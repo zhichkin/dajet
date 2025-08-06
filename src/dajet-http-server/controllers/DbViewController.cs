@@ -181,7 +181,7 @@ namespace DaJet.Http.Controllers
         [HttpGet("{infobase}/{type}/{name}")]
         public ActionResult ScriptView(
             [FromRoute] string infobase, [FromRoute] string type, [FromRoute] string name,
-            [FromQuery] string schema = null, [FromQuery] bool? codify = null)
+            [FromQuery] string schema = null, [FromQuery] bool? codify = null, [FromQuery] bool? memory = null)
         {
             if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(name))
             {
@@ -260,7 +260,12 @@ namespace DaJet.Http.Controllers
             {
                 generator.Options.Codify = codify.Value;
             }
-            
+
+            if (memory.HasValue && memory.Value)
+            {
+                return ScriptViewInMemory(in record, in @object, in schema);
+            }
+
             try
             {
                 using (StreamWriter writer = new(file.PhysicalPath, false, Encoding.UTF8))
@@ -293,6 +298,46 @@ namespace DaJet.Http.Controllers
             catch
             {
                 // do nothing
+            }
+
+            return Content(content, "text/plain", Encoding.UTF8);
+        }
+
+        private ActionResult ScriptViewInMemory(in InfoBaseRecord infobase, in ApplicationObject metadata, in string schema = null)
+        {
+            if (!TryGetDbViewGenerator(in infobase, out IDbViewGenerator generator, out string error))
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, error);
+            }
+
+            if (!string.IsNullOrWhiteSpace(schema))
+            {
+                generator.Options.Schema = schema;
+            }
+
+            string content;
+
+            try
+            {
+                using (MemoryStream memory = new())
+                {
+                    using (StreamWriter writer = new(memory, Encoding.UTF8))
+                    {
+                        if (!generator.TryScriptView(in metadata, in writer, out error))
+                        {
+                            writer.WriteLine(error);
+                        }
+                        writer.Flush();
+
+                        content = Encoding.UTF8.GetString(memory.ToArray());
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    ExceptionHelper.GetErrorMessageAndStackTrace(exception));
             }
 
             return Content(content, "text/plain", Encoding.UTF8);

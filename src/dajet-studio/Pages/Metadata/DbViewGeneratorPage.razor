@@ -33,8 +33,9 @@
             </tr>
             <tr style="border:none;">
                 <td style="border:none;padding:3px;"><b>Объект метаданных:</b></td>
-                <td style="border:none;padding:3px;">
-                    <input type="text" size="50" @bind-value="@MetadataObjectName" />
+                <td style="border:none; padding:3px;">
+                    <input type="text" size="50" style="border:  1px solid gray" @bind-value="@MetadataObjectName" />
+                    <input type="button" class="script-editor-button" value="SQL" @onclick="ScriptCommand" />
                 </td>
             </tr>
             <tr style="border:none;">

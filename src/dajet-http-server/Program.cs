@@ -32,6 +32,8 @@ namespace DaJet.Http.Server
         }
         public static void Main(string[] args)
         {
+            ShowDaJetVersion();
+
             WebApplicationOptions options = new()
             {
                 Args = args,
@@ -58,6 +60,15 @@ namespace DaJet.Http.Server
             app.MapWhen(IsWebApiRequest, ConfigureWebApiPipeline);
             app.MapWhen(IsBlazorRequest, ConfigureBlazorPipeline);
             app.Run();
+        }
+        private static void ShowDaJetVersion()
+        {
+            Version version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+
+            if (version is not null)
+            {
+                Console.WriteLine($"DaJet {version.Major}.{version.Minor}.{version.Build}");
+            }
         }
         private static void ConfigureCors(CorsOptions options)
         {

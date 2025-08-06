@@ -736,18 +736,18 @@ namespace DaJet.Http.Client
             HttpResponseMessage response = await _client.PostAsJsonAsync(url, options);
             return await response.Content.ReadFromJsonAsync<CreateDbViewsResponse>();
         }
+        public async Task<string> ScriptDbView(string infobase, string metadataName, string schema)
+        {
+            string url = $"/db/view/{infobase}/{metadataName.Replace('.', '/')}?schema={schema}&memory=true";
+            HttpResponseMessage response = await _client.GetAsync(url);
+            return await response.Content.ReadAsStringAsync();
+        }
         public async Task<string> DeleteDbViews(string infobase, string schema)
         {
             string url = $"/db/view/{infobase}?schema={schema}";
             HttpResponseMessage response = await _client.DeleteAsync(url);
             return await response.Content.ReadAsStringAsync();
         }
-        //public async Task<string> ScriptDbViews(string infobase, string schema)
-        //{
-        //    string url = $"/db/view/{infobase}?schema={schema}";
-        //    HttpResponseMessage response = await _client.GetAsync(url);
-        //    return await response.Content.ReadAsStringAsync();
-        //}
         #endregion
 
         public async Task<List<ExtensionModel>> GetExtensions(string url)

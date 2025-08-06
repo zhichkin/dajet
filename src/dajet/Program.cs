@@ -47,8 +47,28 @@ namespace DaJet
                 RunHost(null); // default host settings
             }
         }
+        private static void ShowDaJetVersion(bool console)
+        {
+            Version version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+
+            if (version is not null)
+            {
+                string versionNumber = $"{version.Major}.{version.Minor}.{version.Build}";
+
+                if (console)
+                {
+                    Console.WriteLine($"[DaJet] {versionNumber}");
+                }
+                else
+                {
+                    FileLogger.Default.Write($"[DaJet] {versionNumber}");
+                }   
+            }
+        }
         private static void RunScript(in string filePath)
         {
+            ShowDaJetVersion(true);
+
             Console.WriteLine("[HOST] Running");
             Console.WriteLine($"[SCRIPT] {filePath}");
 
@@ -100,6 +120,8 @@ namespace DaJet
             FileLogger.Default.UseLogFile(Config.LogFile);
             FileLogger.Default.UseLogSize(Config.LogSize);
             FileLogger.Default.UseCatalog(Config.LogPath);
+
+            ShowDaJetVersion(false);
 
             FileLogger.Default.Write("[HOST] Running");
             FileLogger.Default.Write($"[PATH] {AppContext.BaseDirectory}");
