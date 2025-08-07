@@ -1,0 +1,52 @@
+name: Publish DaJet Studio
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Application version'
+        required: true
+
+env:
+  DOTNET_VERSION: '9.0.304'
+
+jobs:
+  build:
+
+    name: build-${{matrix.os}}
+    runs-on: ${{matrix.os}}
+    strategy:
+      matrix:
+        kind: [ 'linux', 'windows' ]
+        include:
+          - kind: linux
+            os: ubuntu-latest
+            target: linux-x64
+          - kind: windows
+            os: windows-latest
+            target: win-x64
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Install WASM Tools Workload
+      run: dotnet workload install wasm-tools
+
+    - name: Install dependencies
+      run: dotnet restore
+      
+    - name: Build
+      working-directory: src/dajet-studio
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Publish
+      working-directory: src/dajet-studio
+      run: dotnet publish --framework net8.0 --runtime "${{matrix.target}}" -c Release -o ./bin/${{matrix.kind}}
+
+    - name: Show result
+      working-directory: src/dajet-studio/bin/linux
+      run: ls
