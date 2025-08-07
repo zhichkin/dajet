@@ -37,6 +37,7 @@ jobs:
       run: dotnet workload install wasm-tools
 
     - name: Install dependencies
+      working-directory: src/dajet-studio
       run: dotnet restore
       
     - name: Build
