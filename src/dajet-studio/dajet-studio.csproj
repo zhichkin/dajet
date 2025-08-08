@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>disable</Nullable>
+    <NullabilityInfoContextSupport>true</NullabilityInfoContextSupport>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>DaJet.Studio</RootNamespace>
     <PackageId>$(AssemblyName)</PackageId>
