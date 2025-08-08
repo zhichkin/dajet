@@ -68,7 +68,7 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: dajet-studio-${{matrix.kind}}-x64
+        name: dajet-studio-${{github.event.inputs.version}}-${{matrix.kind}}-x64
         path: src/dajet-http-server/bin/${{matrix.kind}}
         compression-level: 0
 
