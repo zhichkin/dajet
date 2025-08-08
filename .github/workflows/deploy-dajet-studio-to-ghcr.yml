@@ -58,11 +58,3 @@ jobs:
       - name: Publish and push the container image
         working-directory: src/dajet-http-server
         run: dotnet publish --os linux --arch x64 -c Release -o ${{github.workspace}}/bld /p:PublishProfile=github
-
-      - name: Check /ui folder
-        working-directory: bld/ui
-        run: ls -R
-
-      - name: Check /flow folder
-        working-directory: bld/flow
-        run: ls -R
