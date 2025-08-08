@@ -46,6 +46,7 @@ jobs:
       run: dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
 
     - name: Publish DaJet Studio
+      shell: bash
       working-directory: src/dajet-studio
       run: |
         dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
@@ -56,6 +57,7 @@ jobs:
         fi
 
     - name: Publish DaJet Flow Script
+      shell: bash
       working-directory: src/dajet-flow-script
       run: |
         dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
