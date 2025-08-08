@@ -12,7 +12,6 @@ env:
 
 jobs:
   publish:
-
     name: build-${{matrix.os}}
     runs-on: ${{matrix.os}}
     strategy:
@@ -21,10 +20,8 @@ jobs:
         include:
           - kind: linux
             os: ubuntu-latest
-            target: linux-x64
           - kind: windows
             os: windows-latest
-            target: win-x64
 
     steps:
 
@@ -45,20 +42,28 @@ jobs:
 
     - name: Publish DaJet HTTP Server
       working-directory: src/dajet-http-server
-      run: dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.target}} -a x64 -c Release -o ./bin/${{matrix.kind}}
+      run: dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
 
     - name: Publish DaJet Studio
       working-directory: src/dajet-studio
       run: |
-        dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.target}} -a x64 -c Release -o ./bin/${{matrix.kind}}
+        dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
         cp ./bin/${{matrix.kind}}/wwwroot/* src/dajet-http-server/bin/${{matrix.kind}}/ui
 
     - name: Publish DaJet Flow Script
       working-directory: src/dajet-flow-script
       run: |
-        dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.target}} -a x64 -c Release -o ./bin/${{matrix.kind}}
+        dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
         cp ./bin/${{matrix.kind}}/DaJet.Flow.Script* src/dajet-http-server/bin/${{matrix.kind}}/flow
 
-    - name: Show result
+    - name: Show /bin folder
       working-directory: src/dajet-http-server/bin/${{matrix.kind}}
-      run: ls -R
+      run: ls
+
+    - name: Show /ui folder
+      working-directory: src/dajet-http-server/bin/${{matrix.kind}}/ui
+      run: ls
+
+    - name: Show /flow folder
+      working-directory: src/dajet-http-server/bin/${{matrix.kind}}/flow
+      run: ls
