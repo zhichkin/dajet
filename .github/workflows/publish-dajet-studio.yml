@@ -48,13 +48,13 @@ jobs:
       working-directory: src/dajet-studio
       run: |
         dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
-        cp ./bin/${{matrix.kind}}/wwwroot/* src/dajet-http-server/bin/${{matrix.kind}}/ui
+        cp ./bin/${{matrix.kind}}/wwwroot/* ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/ui
 
     - name: Publish DaJet Flow Script
       working-directory: src/dajet-flow-script
       run: |
         dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
-        cp ./bin/${{matrix.kind}}/DaJet.Flow.Script* src/dajet-http-server/bin/${{matrix.kind}}/flow
+        cp ./bin/${{matrix.kind}}/DaJet.Flow.Script* ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/flow
 
     - name: Show /bin folder
       working-directory: src/dajet-http-server/bin/${{matrix.kind}}
