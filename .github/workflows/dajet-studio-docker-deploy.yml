@@ -2,6 +2,9 @@ name: Deploy DaJet Studio to GitHub Container Registry
 
 on:
   workflow_dispatch:
+
+env:
+  DOTNET_TARGET: 'net8.0'
   
 jobs:
   publish:
@@ -23,6 +26,21 @@ jobs:
         with:
           dotnet-version: '8.0.x'
           dotnet-quality: 'ga'
+
+      - name: Install WASM Tools Workload
+        run: dotnet workload install wasm-tools
+
+      - name: Publish DaJet Studio
+        working-directory: src/dajet-studio
+        run: |
+          dotnet publish -f ${{env.DOTNET_TARGET}} --os linux -a x64 -c Release -o ./bin
+          cp -aT ./bin/wwwroot ${{github.workspace}}/src/dajet-http-server/ui
+
+      - name: Publish DaJet Flow Script
+        working-directory: src/dajet-flow-script
+        run: |
+          dotnet publish -f ${{env.DOTNET_TARGET}} --os linux -a x64 -c Release -o ./bin
+          cp ./bin/DaJet.Flow.Script* ${{github.workspace}}/src/dajet-http-server/flow
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
