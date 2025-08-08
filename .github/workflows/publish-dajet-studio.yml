@@ -1,4 +1,4 @@
-name: Publish DaJet Studio
+name: Build & Publish DaJet Studio
 
 on:
   workflow_dispatch:
@@ -43,10 +43,22 @@ jobs:
     - name: Install WASM Tools Workload
       run: dotnet workload install wasm-tools
 
-    - name: Publish DaJet Studio
-      working-directory: src/dajet-studio
+    - name: Publish DaJet HTTP Server
+      working-directory: src/dajet-http-server
       run: dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.target}} -a x64 -c Release -o ./bin/${{matrix.kind}}
 
+    - name: Publish DaJet Studio
+      working-directory: src/dajet-studio
+      run: |
+        dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.target}} -a x64 -c Release -o ./bin/${{matrix.kind}}
+        cp ./bin/${{matrix.kind}}/wwwroot/* src/dajet-http-server/bin/${{matrix.kind}}/ui
+
+    - name: Publish DaJet Flow Script
+      working-directory: src/dajet-flow-script
+      run: |
+        dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.target}} -a x64 -c Release -o ./bin/${{matrix.kind}}
+        cp ./bin/${{matrix.kind}}/DaJet.Flow.Script* src/dajet-http-server/bin/${{matrix.kind}}/flow
+
     - name: Show result
-      working-directory: src/dajet-studio/bin/${{matrix.kind}}
+      working-directory: src/dajet-http-server/bin/${{matrix.kind}}
       run: ls -R
