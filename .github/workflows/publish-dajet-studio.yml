@@ -1,33 +1,37 @@
-name: Publish DaJet Studio
+name: Build & Publish DaJet Studio
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Application version'
+        description: 'DaJet version'
         required: true
 
 env:
-  DOTNET_VERSION: '9.0.304'
+  DOTNET_TARGET: 'net8.0'
 
 jobs:
-  build:
 
-    name: build-${{matrix.os}}
+  publish:
+    name: publish-${{matrix.os}}
     runs-on: ${{matrix.os}}
     strategy:
       matrix:
-        kind: [ 'linux', 'windows' ]
+        kind: [ 'linux', 'win' ]
         include:
           - kind: linux
             os: ubuntu-latest
-            target: linux-x64
-          - kind: windows
+          - kind: win
             os: windows-latest
-            target: win-x64
 
     steps:
-    - uses: actions/checkout@v4
+
+    - name: Checkout source code
+      uses: actions/checkout@v4
+      with:
+        sparse-checkout: src
+        sparse-checkout-cone-mode: false
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -37,18 +41,46 @@ jobs:
     - name: Install WASM Tools Workload
       run: dotnet workload install wasm-tools
 
-    - name: Install dependencies
-      working-directory: src/dajet-studio
-      run: dotnet restore
-      
-    - name: Build
-      working-directory: src/dajet-studio
-      run: dotnet build --configuration Release --no-restore
+    - name: Publish DaJet HTTP Server
+      working-directory: src/dajet-http-server
+      run: dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
 
-    - name: Publish
+    - name: Publish DaJet Studio
+      shell: bash
       working-directory: src/dajet-studio
-      run: dotnet publish --framework net8.0 --runtime "${{matrix.target}}" -c Release -o ./bin/${{matrix.kind}}
+      run: |
+        dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
+        if [ '${{matrix.kind}}' == 'win' ]; then
+          xcopy //s //e ".\bin\${{matrix.kind}}\wwwroot" "${{github.workspace}}\src\dajet-http-server\bin\${{matrix.kind}}\ui"
+        else
+          cp -aT ./bin/${{matrix.kind}}/wwwroot ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/ui
+        fi
 
-    - name: Show result
-      working-directory: src/dajet-studio/bin/linux
+    - name: Publish DaJet Flow Script
+      shell: bash
+      working-directory: src/dajet-flow-script
+      run: |
+        dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
+        if [ '${{matrix.kind}}' == 'win' ]; then
+          xcopy ".\bin\${{matrix.kind}}\DaJet.Flow.Script*" "${{github.workspace}}\src\dajet-http-server\bin\${{matrix.kind}}\flow"
+        else
+          cp ./bin/${{matrix.kind}}/DaJet.Flow.Script* ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/flow
+        fi
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dajet-studio-${{github.event.inputs.version}}-${{matrix.kind}}-x64
+        path: src/dajet-http-server/bin/${{matrix.kind}}
+
+    - name: Show /bin folder
+      working-directory: src/dajet-http-server/bin/${{matrix.kind}}
+      run: ls
+
+    - name: Show /ui folder
+      working-directory: src/dajet-http-server/bin/${{matrix.kind}}/ui
+      run: ls
+
+    - name: Show /flow folder
+      working-directory: src/dajet-http-server/bin/${{matrix.kind}}/flow
       run: ls
