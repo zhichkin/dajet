@@ -1,4 +1,4 @@
-name: Build & Publish DaJet Studio
+name: Build & Release DaJet Studio
 
 on:
   workflow_dispatch:
@@ -67,20 +67,26 @@ jobs:
           cp ./bin/${{matrix.kind}}/DaJet.Flow.Script* ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/flow
         fi
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
+    - name: Prepare artifacts
+      shell: bash
+      working-directory: src/dajet-http-server
+      run: |
+        artifact_name = 'dajet-studio-${{github.event.inputs.version}}-${{matrix.kind}}-x64'
+        if [ '${{matrix.kind}}' == 'win' ]; then
+          7z a -tzip "${artifact_name}.zip" "./bin/${{matrix.kind}}/*"
+        else
+          tar czvf "${artifact_name}.tar.gz" "./bin/${{matrix.kind}}"
+        fi
+
+    - name: Create release
+      uses: softprops/action-gh-release@v2
       with:
-        name: dajet-studio-${{github.event.inputs.version}}-${{matrix.kind}}-x64
-        path: src/dajet-http-server/bin/${{matrix.kind}}
-
-    - name: Show /bin folder
-      working-directory: src/dajet-http-server/bin/${{matrix.kind}}
-      run: ls
-
-    - name: Show /ui folder
-      working-directory: src/dajet-http-server/bin/${{matrix.kind}}/ui
-      run: ls
-
-    - name: Show /flow folder
-      working-directory: src/dajet-http-server/bin/${{matrix.kind}}/flow
-      run: ls
+        name: 'DaJet Studio ${{github.event.inputs.version}}'
+        tag_name: 'dajet-studio-${{github.event.inputs.version}}'
+        body: 'GitHub Actions release'
+        files: src/dajet-http-server/dajet-studio-*
+        draft: false
+        prerelease: false
+        make_latest: true
+      env:
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
