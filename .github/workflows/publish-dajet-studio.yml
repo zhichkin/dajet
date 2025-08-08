@@ -49,13 +49,21 @@ jobs:
       working-directory: src/dajet-studio
       run: |
         dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
-        cp -a -T ${{github.workspace}}/src/dajet-studio/bin/${{matrix.kind}}/wwwroot ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/ui
+        if [ ${{matrix.kind}}" == 'win' ]; then
+          xcopy \bin\${{matrix.kind}}\wwwroot ${{github.workspace}}\src\dajet-http-server\bin\${{matrix.kind}}\ui /s /e
+        else
+          cp -aT ./bin/${{matrix.kind}}/wwwroot ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/ui
+        fi
 
     - name: Publish DaJet Flow Script
       working-directory: src/dajet-flow-script
       run: |
         dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
-        cp ${{github.workspace}}/src/dajet-flow-script/bin/${{matrix.kind}}/DaJet.Flow.Script* ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/flow
+        if [ ${{matrix.kind}}" == 'win' ]; then
+          xcopy \bin\${{matrix.kind}}\DaJet.Flow.Script* ${{github.workspace}}\src\dajet-http-server\bin\${{matrix.kind}}\flow /s /e
+        else
+          cp ./bin/${{matrix.kind}}/DaJet.Flow.Script* ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/flow
+        fi
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
