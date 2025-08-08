@@ -71,7 +71,7 @@ jobs:
       shell: bash
       working-directory: src/dajet-http-server
       run: |
-        artifact_name = 'dajet-studio-${{github.event.inputs.version}}-${{matrix.kind}}-x64'
+        artifact_name="dajet-studio-${{github.event.inputs.version}}-${{matrix.kind}}-x64"
         if [ '${{matrix.kind}}' == 'win' ]; then
           7z a -tzip "${artifact_name}.zip" "./bin/${{matrix.kind}}/*"
         else
