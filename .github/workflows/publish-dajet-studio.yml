@@ -55,7 +55,7 @@ jobs:
       working-directory: src/dajet-flow-script
       run: |
         dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
-        cp ${{github.workspace}}/src/dajet-studio/bin/${{matrix.kind}}/DaJet.Flow.Script* ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/flow
+        cp ${{github.workspace}}/src/dajet-flow-script/bin/${{matrix.kind}}/DaJet.Flow.Script* ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/flow
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
