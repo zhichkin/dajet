@@ -51,7 +51,7 @@ jobs:
       run: |
         dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
         if [ '${{matrix.kind}}' == 'win' ]; then
-          xcopy /s /e "\bin\${{matrix.kind}}\wwwroot" "${{github.workspace}}\src\dajet-http-server\bin\${{matrix.kind}}\ui"
+          xcopy //s //e "\bin\${{matrix.kind}}\wwwroot" "${{github.workspace}}\src\dajet-http-server\bin\${{matrix.kind}}\ui"
         else
           cp -aT ./bin/${{matrix.kind}}/wwwroot ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/ui
         fi
@@ -62,7 +62,7 @@ jobs:
       run: |
         dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
         if [ '${{matrix.kind}}' == 'win' ]; then
-          xcopy /s /e "\bin\${{matrix.kind}}\DaJet.Flow.Script*" "${{github.workspace}}\src\dajet-http-server\bin\${{matrix.kind}}\flow"
+          xcopy //s //e "\bin\${{matrix.kind}}\DaJet.Flow.Script*" "${{github.workspace}}\src\dajet-http-server\bin\${{matrix.kind}}\flow"
         else
           cp ./bin/${{matrix.kind}}/DaJet.Flow.Script* ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/flow
         fi
