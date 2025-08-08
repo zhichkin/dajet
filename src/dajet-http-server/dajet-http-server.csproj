@@ -13,6 +13,18 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <EnableSdkContainerSupport>true</EnableSdkContainerSupport>
+    <WebPublishMethod>Container</WebPublishMethod>
+    <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:8.0</ContainerBaseImage>
+    <ContainerImageTag>3.12.1</ContainerImageTag>
+    <ContainerRegistry>ghcr.io</ContainerRegistry>
+    <ContainerRepository>zhichkin/dajet-studio</ContainerRepository>
+  </PropertyGroup>
+  <ItemGroup>
+    <ContainerPort Include="5000" Type="tcp" />
+  </ItemGroup>
+  
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.13.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="9.0.0" />
