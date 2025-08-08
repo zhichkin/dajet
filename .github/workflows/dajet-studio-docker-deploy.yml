@@ -34,13 +34,13 @@ jobs:
         working-directory: src/dajet-studio
         run: |
           dotnet publish -f ${{env.DOTNET_TARGET}} --os linux -a x64 -c Release -o ./bin
-          cp -aT ./bin/wwwroot ${{github.workspace}}/src/dajet-http-server/ui
+          cp -aT ./bin/wwwroot ${{github.workspace}}/bld/ui
 
       - name: Publish DaJet Flow Script
         working-directory: src/dajet-flow-script
         run: |
           dotnet publish -f ${{env.DOTNET_TARGET}} --os linux -a x64 -c Release -o ./bin
-          cp ./bin/DaJet.Flow.Script* ${{github.workspace}}/src/dajet-http-server/flow
+          cp ./bin/DaJet.Flow.Script* ${{github.workspace}}/bld/flow
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -51,4 +51,8 @@ jobs:
           
       - name: Publish and push the container image
         working-directory: src/dajet-http-server
-        run: dotnet publish --os linux --arch x64 -c Release /p:PublishProfile=github
+        run: dotnet publish --os linux --arch x64 -c Release -o ${{github.workspace}}/bld /p:PublishProfile=github
+
+      - name: Check result
+        working-directory: ${{github.workspace}}/bld
+        run: ls -R
