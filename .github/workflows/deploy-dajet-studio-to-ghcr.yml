@@ -12,7 +12,7 @@ jobs:
 
     permissions:
       packages: write
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout source code
@@ -32,9 +32,9 @@ jobs:
 
       - name: Create publish directories
         run: |
-          mkdir /bld
-          mkdir /bld/ui
-          mkdir /bld/flow
+          mkdir ${{github.workspace}}/bld
+          mkdir ${{github.workspace}}/bld/ui
+          mkdir ${{github.workspace}}/bld/flow
 
       - name: Publish DaJet Studio
         working-directory: src/dajet-studio
