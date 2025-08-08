@@ -54,5 +54,5 @@ jobs:
         run: dotnet publish --os linux --arch x64 -c Release -o ${{github.workspace}}/bld /p:PublishProfile=github
 
       - name: Check result
-        working-directory: ${{github.workspace}}/bld
+        working-directory: bld
         run: ls -R
