@@ -30,6 +30,12 @@ jobs:
       - name: Install WASM Tools Workload
         run: dotnet workload install wasm-tools
 
+      - name: Create publish directories
+        run: |
+          mkdir /bld
+          mkdir /bld/ui
+          mkdir /bld/flow
+
       - name: Publish DaJet Studio
         working-directory: src/dajet-studio
         run: |
