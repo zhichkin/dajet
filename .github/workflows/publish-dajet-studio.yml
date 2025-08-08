@@ -49,18 +49,18 @@ jobs:
       working-directory: src/dajet-studio
       run: |
         dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
-        cp -a -T ./bin/${{matrix.kind}}/wwwroot ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/ui
+        cp -a -T ${{github.workspace}}/src/dajet-studio/bin/${{matrix.kind}}/wwwroot ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/ui
 
     - name: Publish DaJet Flow Script
       working-directory: src/dajet-flow-script
       run: |
         dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
-        cp ./bin/${{matrix.kind}}/DaJet.Flow.Script* ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/flow
+        cp ${{github.workspace}}/src/dajet-studio/bin/${{matrix.kind}}/DaJet.Flow.Script* ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/flow
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: dajet-studio-${{matrix.kind}}
+        name: dajet-studio-${{matrix.kind}}-x64
         path: src/dajet-http-server/bin/${{matrix.kind}}
         compression-level: 0
 
