@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Application version'
+        description: 'DaJet version'
         required: true
 
 env:
-  DOTNET_VERSION: '9.0.304'
+  DOTNET_TARGET: 'net8.0'
 
 jobs:
-  build:
+  publish:
 
     name: build-${{matrix.os}}
     runs-on: ${{matrix.os}}
@@ -27,7 +27,13 @@ jobs:
             target: win-x64
 
     steps:
-    - uses: actions/checkout@v4
+
+    - name: Checkout source code
+      uses: actions/checkout@v4
+      with:
+        sparse-checkout: src
+        sparse-checkout-cone-mode: false
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -37,18 +43,10 @@ jobs:
     - name: Install WASM Tools Workload
       run: dotnet workload install wasm-tools
 
-    - name: Install dependencies
+    - name: Publish DaJet Studio
       working-directory: src/dajet-studio
-      run: dotnet restore
-      
-    - name: Build
-      working-directory: src/dajet-studio
-      run: dotnet build --configuration Release --no-restore
-
-    - name: Publish
-      working-directory: src/dajet-studio
-      run: dotnet publish --framework net8.0 --runtime "${{matrix.target}}" -c Release -o ./bin/${{matrix.kind}}
+      run: dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.target}} -a x64 -c Release -o ./bin/${{matrix.kind}}
 
     - name: Show result
-      working-directory: src/dajet-studio/bin/linux
-      run: ls
+      working-directory: src/dajet-studio/bin/${{matrix.kind}}
+      run: ls -R
