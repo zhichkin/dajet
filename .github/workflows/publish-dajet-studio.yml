@@ -17,11 +17,11 @@ jobs:
     runs-on: ${{matrix.os}}
     strategy:
       matrix:
-        kind: [ 'linux', 'windows' ]
+        kind: [ 'linux', 'win' ]
         include:
           - kind: linux
             os: ubuntu-latest
-          - kind: windows
+          - kind: win
             os: windows-latest
 
     steps:
