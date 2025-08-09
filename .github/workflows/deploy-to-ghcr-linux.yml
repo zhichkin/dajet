@@ -1,4 +1,4 @@
-name: Deploy DaJet Studio to GitHub Container Registry
+name: Deploy to GitHub Container Registry (Linux)
 
 on:
   workflow_dispatch:
@@ -62,7 +62,7 @@ jobs:
           username: ${{github.actor}}
           password: ${{secrets.GITHUB_TOKEN}}
           
-      - name: Publish and push the container image for Linux
+      - name: Publish and push the container image
         working-directory: src/dajet-http-server
         run: |
           dotnet publish --os linux --arch x64 -c Release -o ${{github.workspace}}/bld \
@@ -71,13 +71,3 @@ jobs:
             -p:ContainerRegistry=ghcr.io \
             -p:ContainerRepository=zhichkin/dajet-studio \
             -p:ContainerImageTag=linux
-
-      - name: Publish and push the container image for Windows
-        working-directory: src/dajet-http-server
-        run: |
-          dotnet publish --os win --arch x64 -c Release -o ${{github.workspace}}/bld \
-            -t:PublishContainer \
-            -p:ContainerBaseImage=mcr.microsoft.com/dotnet/aspnet:8.0-nanoserver-1809 \
-            -p:ContainerRegistry=ghcr.io \
-            -p:ContainerRepository=zhichkin/dajet-studio \
-            -p:ContainerImageTag=windows
