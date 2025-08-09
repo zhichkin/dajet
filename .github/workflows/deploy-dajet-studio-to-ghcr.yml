@@ -65,10 +65,10 @@ jobs:
       - name: Publish and push the container image for Linux
         working-directory: src/dajet-http-server
         run: dotnet publish --os linux --arch x64 -c Release -o ${{github.workspace}}/bld \
-          /p:ContainerBaseImage=mcr.microsoft.com/dotnet/aspnet:8.0 \
-          /p:ContainerRegistry="ghcr.io" \
-          /p:ContainerRepository=zhichkin/dajet-studio \
-          /p:ContainerImageTag=linux
+          //p:ContainerBaseImage=mcr.microsoft.com/dotnet/aspnet:8.0 \
+          //p:ContainerRegistry=ghcr.io \
+          //p:ContainerRepository=zhichkin/dajet-studio \
+          //p:ContainerImageTag=linux
 
       - name: Publish and push the container image for Windows
         working-directory: src/dajet-http-server
