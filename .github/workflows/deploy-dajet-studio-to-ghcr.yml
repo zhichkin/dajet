@@ -77,7 +77,7 @@ jobs:
         run: |
           dotnet publish --os win --arch x64 -c Release -o ${{github.workspace}}/bld \
             -t:PublishContainer \
-            -p:ContainerBaseImage=mcr.microsoft.com/dotnet/aspnet:8.0 \
+            -p:ContainerBaseImage=mcr.microsoft.com/dotnet/aspnet:8.0-nanoserver-ltsc2022 \
             -p:ContainerRegistry=ghcr.io \
             -p:ContainerRepository=zhichkin/dajet-studio \
             -p:ContainerImageTag=windows
