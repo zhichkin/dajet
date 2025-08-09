@@ -1,4 +1,4 @@
-name: Deploy DaJet Studio to GitHub Container Registry
+name: Deploy to GitHub Container Registry (Windows)
 
 on:
   workflow_dispatch:
@@ -46,13 +46,13 @@ jobs:
       - name: Publish DaJet Studio
         working-directory: src/dajet-studio
         run: |
-          dotnet publish -f ${{env.DOTNET_TARGET}} --os linux -a x64 -c Release -o ./bin
+          dotnet publish -f ${{env.DOTNET_TARGET}} --os win -a x64 -c Release -o ./bin
           cp -aT ./bin/wwwroot ${{github.workspace}}/bld/ui
 
       - name: Publish DaJet Flow Script
         working-directory: src/dajet-flow-script
         run: |
-          dotnet publish -f ${{env.DOTNET_TARGET}} --os linux -a x64 -c Release -o ./bin
+          dotnet publish -f ${{env.DOTNET_TARGET}} --os win -a x64 -c Release -o ./bin
           cp ./bin/DaJet.Flow.Script* ${{github.workspace}}/bld/flow
 
       - name: Login to GitHub Container Registry
@@ -62,22 +62,12 @@ jobs:
           username: ${{github.actor}}
           password: ${{secrets.GITHUB_TOKEN}}
           
-      - name: Publish and push the container image for Linux
-        working-directory: src/dajet-http-server
-        run: |
-          dotnet publish --os linux --arch x64 -c Release -o ${{github.workspace}}/bld \
-            -t:PublishContainer \
-            -p:ContainerBaseImage=mcr.microsoft.com/dotnet/aspnet:8.0 \
-            -p:ContainerRegistry=ghcr.io \
-            -p:ContainerRepository=zhichkin/dajet-studio \
-            -p:ContainerImageTag=linux
-
-      - name: Publish and push the container image for Windows
+      - name: Publish and push the container image
         working-directory: src/dajet-http-server
         run: |
           dotnet publish --os win --arch x64 -c Release -o ${{github.workspace}}/bld \
             -t:PublishContainer \
-            -p:ContainerBaseImage=mcr.microsoft.com/dotnet/aspnet:8.0 \
+            -p:ContainerBaseImage=mcr.microsoft.com/dotnet/aspnet:8.0-nanoserver-1809 \
             -p:ContainerRegistry=ghcr.io \
             -p:ContainerRepository=zhichkin/dajet-studio \
             -p:ContainerImageTag=windows
