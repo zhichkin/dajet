@@ -36,6 +36,13 @@ jobs:
           mkdir ${{github.workspace}}/bld/ui
           mkdir ${{github.workspace}}/bld/flow
 
+      - name: Configure appsettings.json
+        uses: microsoft/variable-substitution@v1
+        with:
+          files: 'src/dajet-http-server/appsettings.json'
+        env:
+          urls: 'http://0.0.0.0:5000'
+
       - name: Publish DaJet Studio
         working-directory: src/dajet-studio
         run: |
@@ -55,6 +62,18 @@ jobs:
           username: ${{github.actor}}
           password: ${{secrets.GITHUB_TOKEN}}
           
-      - name: Publish and push the container image
+      - name: Publish and push the container image for Linux
         working-directory: src/dajet-http-server
-        run: dotnet publish --os linux --arch x64 -c Release -o ${{github.workspace}}/bld /p:PublishProfile=github
+        run: dotnet publish --os linux --arch x64 -c Release -o ${{github.workspace}}/bld \
+          -p:ContainerBaseImage=mcr.microsoft.com/dotnet/aspnet:8.0 \
+          -p:ContainerRegistry=ghcr.io \
+          -p:ContainerRepository=zhichkin/dajet-studio \
+          -p:ContainerImageTag=linux
+
+      - name: Publish and push the container image for Windows
+        working-directory: src/dajet-http-server
+        run: dotnet publish --os win --arch x64 -c Release -o ${{github.workspace}}/bld \
+          -p:ContainerBaseImage=mcr.microsoft.com/dotnet/aspnet:8.0 \
+          -p:ContainerRegistry=ghcr.io \
+          -p:ContainerRepository=zhichkin/dajet-studio \
+          -p:ContainerImageTag=windows
