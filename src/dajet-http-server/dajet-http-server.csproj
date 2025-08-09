@@ -16,11 +16,8 @@
   <PropertyGroup>
     <EnableSdkContainerSupport>true</EnableSdkContainerSupport>
     <WebPublishMethod>Container</WebPublishMethod>
-    <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:8.0</ContainerBaseImage>
-    <ContainerImageTag>3.12.1</ContainerImageTag>
-    <ContainerRegistry>ghcr.io</ContainerRegistry>
-    <ContainerRepository>zhichkin/dajet-studio</ContainerRepository>
   </PropertyGroup>
+  
   <ItemGroup>
     <ContainerPort Include="5000" Type="tcp" />
   </ItemGroup>
