@@ -1,0 +1,73 @@
+name: Deploy to GitHub Container Registry (Windows)
+
+on:
+  workflow_dispatch:
+
+env:
+  DOTNET_TARGET: 'net8.0'
+  
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      packages: write
+      contents: write
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: src
+          sparse-checkout-cone-mode: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+          dotnet-quality: 'ga'
+
+      - name: Install WASM Tools Workload
+        run: dotnet workload install wasm-tools
+
+      - name: Create publish directories
+        run: |
+          mkdir ${{github.workspace}}/bld
+          mkdir ${{github.workspace}}/bld/ui
+          mkdir ${{github.workspace}}/bld/flow
+
+      - name: Configure appsettings.json
+        uses: microsoft/variable-substitution@v1
+        with:
+          files: 'src/dajet-http-server/appsettings.json'
+        env:
+          urls: 'http://0.0.0.0:5000'
+
+      - name: Publish DaJet Studio
+        working-directory: src/dajet-studio
+        run: |
+          dotnet publish -f ${{env.DOTNET_TARGET}} --os win -a x64 -c Release -o ./bin
+          cp -aT ./bin/wwwroot ${{github.workspace}}/bld/ui
+
+      - name: Publish DaJet Flow Script
+        working-directory: src/dajet-flow-script
+        run: |
+          dotnet publish -f ${{env.DOTNET_TARGET}} --os win -a x64 -c Release -o ./bin
+          cp ./bin/DaJet.Flow.Script* ${{github.workspace}}/bld/flow
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{github.actor}}
+          password: ${{secrets.GITHUB_TOKEN}}
+          
+      - name: Publish and push the container image
+        working-directory: src/dajet-http-server
+        run: |
+          dotnet publish --os win --arch x64 -c Release -o ${{github.workspace}}/bld \
+            -t:PublishContainer \
+            -p:ContainerBaseImage=mcr.microsoft.com/dotnet/aspnet:8.0-nanoserver-1809 \
+            -p:ContainerRegistry=ghcr.io \
+            -p:ContainerRepository=zhichkin/dajet-studio \
+            -p:ContainerImageTag=windows
