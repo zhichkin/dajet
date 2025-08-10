@@ -2,6 +2,8 @@
 
 Данная статья описывает процесс поэтапной сборки **http-сервера DaJet** из исходников. Второе, упрощённое, название - **DaJet Studio**. Сборка продукта выполняется вручную из Microsoft Visual Studio 2022 Community Edition. Правильнее наверное в данном случае говорить не "сборка", а "публикация".
 
+> Автоматическая сборка GitHub Actions [build-and-release-dajet-studio.yml](https://github.com/zhichkin/dajet/blob/main/.github/workflows/build-and-release-dajet-studio.yml).
+
 #### 1. Сборка проекта ```dajet-http-server```
 
 Собираем проект ```dajet-http-server``` - это будет целевой каталог сборки **DaJet Studio**. В случае успешного выполнения этого шага в целевом каталоге мы должны увидеть следующее:
