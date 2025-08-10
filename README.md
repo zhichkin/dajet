@@ -8,9 +8,9 @@
   - [Маршрутизация сообщений](#маршрутизация-сообщений)
 - [**Документация DaJet Script**](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/README.md)
 - [Http-сервер и редактор кода](https://github.com/zhichkin/dajet/tree/main/doc/dajet-studio/README.md)
-- [DaJet Studio и Docker](https://github.com/zhichkin/dajet/tree/main/doc/docker/README.md)   <img width="24" height="24" alt="Docker logo" src="[https://github.com/zhichkin/dajet/blob/main/doc/img/docker-logo.png](https://hub.docker.com/r/zhichkin/dajet-studio)" />
 - [Утилита выполнения скриптов](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/README.md)
-- [Сборка DaJet Studio из исходников](https://github.com/zhichkin/dajet/tree/main/doc/build/README.md)
+- <a href="https://hub.docker.com/r/zhichkin/dajet-studio"><img width="24" height="24" alt="Docker Hub" src="https://github.com/zhichkin/dajet/blob/main/doc/img/docker-logo.png" /></a>&nbsp;&nbsp;[DaJet Studio и Docker](https://github.com/zhichkin/dajet/tree/main/doc/docker/README.md)
+- <a href="https://github.com/zhichkin/dajet/blob/main/doc/build/README.md"><img width="24" height="24" alt="Docker Hub" src="https://github.com/zhichkin/dajet/blob/main/doc/img/github-logo.png" /></a>&nbsp;&nbsp;[Сборка DaJet Studio из исходников](https://github.com/zhichkin/dajet/tree/main/doc/build/README.md)
 - **Полезные инструменты:**
   - [Анализ метаданных 1С:Предприятие 8](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/md-streamer/README.md)
   - [Диагностика чтения метаданных 1С:Предприятие 8](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/md-streamer/README.md#%D1%82%D0%B5%D1%81%D1%82-dajet-script-%D0%BD%D0%B0-%D1%87%D1%82%D0%B5%D0%BD%D0%B8%D0%B5-%D0%BC%D0%B5%D1%82%D0%B0%D0%B4%D0%B0%D0%BD%D0%BD%D1%8B%D1%85-1%D1%81%D0%BF%D1%80%D0%B5%D0%B4%D0%BF%D1%80%D0%B8%D1%8F%D1%82%D0%B8%D0%B5-8)
