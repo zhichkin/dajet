@@ -8,7 +8,7 @@
   - [Маршрутизация сообщений](#маршрутизация-сообщений)
 - [**Документация DaJet Script**](https://github.com/zhichkin/dajet/blob/main/doc/dajet-script/README.md)
 - [Http-сервер и редактор кода](https://github.com/zhichkin/dajet/tree/main/doc/dajet-studio/README.md)
-- [DaJet Studio и Docker](https://github.com/zhichkin/dajet/tree/main/doc/docker/README.md) <img width="24" height="24" alt="Docker logo" src="https://github.com/zhichkin/dajet/blob/main/doc/img/docker-logo.png" />
+- [DaJet Studio и Docker](https://github.com/zhichkin/dajet/tree/main/doc/docker/README.md)   <img width="24" height="24" alt="Docker logo" src="[https://github.com/zhichkin/dajet/blob/main/doc/img/docker-logo.png](https://hub.docker.com/r/zhichkin/dajet-studio)" />
 - [Утилита выполнения скриптов](https://github.com/zhichkin/dajet/tree/main/doc/dajet-utility/README.md)
 - [Сборка DaJet Studio из исходников](https://github.com/zhichkin/dajet/tree/main/doc/build/README.md)
 - **Полезные инструменты:**
