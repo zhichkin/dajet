@@ -50,5 +50,10 @@ namespace DaJet.Metadata.Core
         public List<Guid> DocumentRegisters { get; set; } = new List<Guid>();
         ///<summary>Описание типов значений характеристик</summary>
         public DataTypeDescriptor DataTypeDescriptor { get; set; }
+        ///<summary>Идентификатор объекта метаданных "Задача"
+        ///<br>Используется объектом метаданных "Бизнес-процесс"</br>
+        ///<br>Смотри также: <see cref="BusinessProcess"/></br>
+        ///</summary>
+        public Guid BusinessTask { get; set; } = Guid.Empty;
     }
 }

@@ -60,6 +60,13 @@ namespace DaJet.Metadata.Core
         ///<summary>Идентификатор коллекции измерений регистра бухгалтерии</summary>
         public static Guid AccountingRegister_Dimension = new("35b63b9d-0adf-4625-a047-10ae874c19a3");
 
+        ///<summary>Идентификатор коллекции реквизитов задачи</summary>
+        public static Guid BusinessTask_Properties = new("8ddfb495-c5fc-46b9-bdc5-bcf58341bff0");
+        ///<summary>Идентификатор коллекции реквизитов адресации задачи</summary>
+        public static Guid BusinessTask_Routing_Property = new("e97c0570-251c-4566-b0f1-10686820f143");
+        ///<summary>Идентификатор коллекции табличных частей задачи</summary>
+        public static Guid BusinessTask_TableParts = new("ee865d4b-a458-48a0-b38f-5a26898feeb0");
+
         ///<summary>Идентификатор коллекции макетов объекта метаданных</summary>
         public static Guid Template_Collection = new Guid("3daea016-69b7-4ed4-9453-127911372fe6");
     }

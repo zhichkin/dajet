@@ -25,7 +25,9 @@ namespace DaJet.Metadata.Parsers
                 { MetadataTypes.InformationRegister, CreateInformationRegisterParser },
                 { MetadataTypes.AccumulationRegister, CreateAccumulationRegisterParser },
                 { MetadataTypes.SharedProperty, CreateSharedPropertyParser }, // since 1C:Enterprise 8.2.14 version
-                { MetadataTypes.NamedDataTypeDescriptor, CreateNamedDataTypeDescriptorParser } // since 1C:Enterprise 8.3.3 version
+                { MetadataTypes.NamedDataTypeDescriptor, CreateNamedDataTypeDescriptorParser }, // since 1C:Enterprise 8.3.3 version
+                { MetadataTypes.BusinessTask, CreateBusinessTaskParser },
+                { MetadataTypes.BusinessProcess, CreateBusinessProcessParser }
             };
             // Включение режима совместимости с версией 8.2.13 и ниже несовместимо с наличием в конфигурации общих реквизитов
             // Использование определяемых типов в режиме совместимости 8.3.2 и ниже недопустимо
@@ -93,6 +95,14 @@ namespace DaJet.Metadata.Parsers
         private IMetadataObjectParser CreateNamedDataTypeDescriptorParser()
         {
             return new NamedDataTypeDescriptorParser(_metadata);
+        }
+        private IMetadataObjectParser CreateBusinessTaskParser()
+        {
+            return new BusinessTaskParser(_metadata);
+        }
+        private IMetadataObjectParser CreateBusinessProcessParser()
+        {
+            return new BusinessProcessParser(_metadata);
         }
 
         #endregion

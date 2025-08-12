@@ -111,6 +111,10 @@ namespace DaJet.Metadata.Parsers
             {
                 _purpose = PropertyPurpose.AccountingDimensionFlag;
             }
+            else if (type == SystemUuid.BusinessTask_Routing_Property)
+            {
+                _purpose = PropertyPurpose.RoutingProperty;
+            }
             else
             {
                 _purpose = PropertyPurpose.Property;
@@ -203,6 +207,14 @@ namespace DaJet.Metadata.Parsers
                             _converter[0][4] += AccountingDimensionFlag; // Признак учёта субконто
                         }
                     }
+                    else if (_owner is BusinessTask)
+                    {
+                        if (_purpose == PropertyPurpose.RoutingProperty)
+                        {
+                            _converter[0][3] += RoutingDimension; // Измерение адресации
+
+                        }
+                    }
                 }
             }
 
@@ -283,6 +295,10 @@ namespace DaJet.Metadata.Parsers
         private void AccountingDimensionFlag(in ConfigFileReader source, in CancelEventArgs args)
         {
             _property.AccountingDimensionFlag = source.GetUuid();
+        }
+        private void RoutingDimension(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _property.RoutingDimension = source.GetUuid();
         }
     }
 }

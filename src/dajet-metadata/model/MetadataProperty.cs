@@ -45,6 +45,12 @@ namespace DaJet.Metadata.Model
         public Guid AccountingDimensionFlag { get; set; } = Guid.Empty; // Признак учёта субконто (только ресурсы)
         #endregion
 
+        #region "Задача"
+        ///<summary>Ссылка на измерение регистра сведений,
+        ///<br>указанного в свойстве "Адресация" задачи</br></summary>
+        public Guid RoutingDimension { get; set; } = Guid.Empty; // Измерение адресации
+        #endregion
+
         public MetadataProperty Copy()
         {
             MetadataProperty copy = new()
@@ -65,7 +71,8 @@ namespace DaJet.Metadata.Model
                 UseForChangeTracking = this.UseForChangeTracking,
                 IsBalance = this.IsBalance,
                 AccountingFlag = this.AccountingFlag,
-                AccountingDimensionFlag = this.AccountingDimensionFlag
+                AccountingDimensionFlag = this.AccountingDimensionFlag,
+                RoutingDimension = this.RoutingDimension
             };
 
             foreach (Guid reference in this.References)

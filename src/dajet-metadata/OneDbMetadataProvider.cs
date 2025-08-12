@@ -1902,6 +1902,8 @@ namespace DaJet.Metadata
             if (type == MetadataTypes.NamedDataTypeDescriptor) { return new NamedDataTypeDescriptorParser(); } // since 1C:Enterprise 8.3.3 version
             if (type == MetadataTypes.InformationRegister) { return new InformationRegisterParser(); }
             if (type == MetadataTypes.AccumulationRegister) { return new AccumulationRegisterParser(); }
+            if (type == MetadataTypes.BusinessTask) { return new BusinessTaskParser(); }
+            if (type == MetadataTypes.BusinessProcess) { return new BusinessProcessParser(); }
 
             return null;
         }

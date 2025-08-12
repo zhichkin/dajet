@@ -29,7 +29,11 @@
         /// <summary>
         /// <b>Признак учёта субконто плана счетов</b>
         /// </summary>
-        AccountingDimensionFlag
+        AccountingDimensionFlag,
+        /// <summary>
+        /// <b>Реквизит адресации задачи</b>
+        /// </summary>
+        RoutingProperty
     }
     public static class PropertyPurposeExtensions
     {
@@ -39,6 +43,7 @@
             else if (purpose == PropertyPurpose.Measure) { return "Ресурс"; }
             else if (purpose == PropertyPurpose.Property) { return "Реквизит"; }
             else if (purpose == PropertyPurpose.Dimension) { return "Измерение"; }
+            else if (purpose == PropertyPurpose.RoutingProperty) { return "РеквизитАдресации"; }
             else if (purpose == PropertyPurpose.AccountingFlag) { return "ПризнакУчёта"; }
             else if (purpose == PropertyPurpose.AccountingDimensionFlag) { return "ПризнакУчётаСубконто"; }
             else

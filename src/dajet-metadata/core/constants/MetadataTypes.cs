@@ -20,6 +20,8 @@ namespace DaJet.Metadata.Core
         public static Guid AccumulationRegister = new Guid("b64d9a40-1642-11d6-a3c7-0050bae0a776"); // Регистры накопления
         public static Guid Account = new Guid("238e7e88-3c5f-48b2-8a3b-81ebbecb20ed"); // Планы счетов 
         public static Guid AccountingRegister = new Guid("2deed9b8-0056-4ffe-a473-c20a6c32a0bc"); // Регистры бухгатерии
+        public static Guid BusinessTask = new("3e63355c-1378-4953-be9b-1deb5fb6bec5"); // Задача бизнес-процесса
+        public static Guid BusinessProcess = new("fcd3404e-1523-48ce-9bc0-ecdb822684a1"); // Бизнес-процесс
 
         public static List<Guid> AllSupportedTypes
         {
@@ -38,7 +40,9 @@ namespace DaJet.Metadata.Core
                     Characteristic,
                     AccountingRegister,
                     InformationRegister,
-                    AccumulationRegister
+                    AccumulationRegister,
+                    BusinessTask,
+                    BusinessProcess
                 };
             }
         }
@@ -57,7 +61,9 @@ namespace DaJet.Metadata.Core
                     Characteristic,
                     AccountingRegister,
                     InformationRegister,
-                    AccumulationRegister
+                    AccumulationRegister,
+                    BusinessTask,
+                    BusinessProcess
                 };
             }
         }
@@ -72,7 +78,9 @@ namespace DaJet.Metadata.Core
                     Document,
                     Enumeration,
                     Publication,
-                    Characteristic
+                    Characteristic,
+                    BusinessTask,
+                    BusinessProcess
                 };
             }
         }
@@ -120,6 +128,8 @@ namespace DaJet.Metadata.Core
         private const string RU_ACCUMULATION_REGISTER = "РегистрНакопления";
         private const string RU_SHARED_PROPERTY = "ОбщийРеквизит";
         private const string RU_NAMED_DATA_TYPE = "ОпределяемыйТип";
+        private const string RU_BUSINESS_TASK = "Задача";
+        private const string RU_BUSINESS_PROCESS = "БизнесПроцесс";
 
         #endregion
 
@@ -138,6 +148,8 @@ namespace DaJet.Metadata.Core
         private const string EN_ACCUMULATION_REGISTER = "AccumulationRegister";
         private const string EN_SHARED_PROPERTY = "CommonAttribute";
         private const string EN_NAMED_DATA_TYPE = "DefinedType";
+        private const string EN_BUSINESS_TASK = "Task";
+        private const string EN_BUSINESS_PROCESS = "BusinessProcess";
 
         #endregion
 
@@ -171,6 +183,9 @@ namespace DaJet.Metadata.Core
             if (name == RU_SHARED_PROPERTY) return SharedProperty;
             if (name == RU_NAMED_DATA_TYPE) return NamedDataTypeDescriptor;
 
+            if (name == RU_BUSINESS_TASK) return BusinessTask;
+            if (name == RU_BUSINESS_PROCESS) return BusinessProcess;
+
             return Guid.Empty;
         }
         public static Guid ResolveNameEn(in string name)
@@ -191,6 +206,9 @@ namespace DaJet.Metadata.Core
 
             if (name == EN_SHARED_PROPERTY) return SharedProperty;
             if (name == EN_NAMED_DATA_TYPE) return NamedDataTypeDescriptor;
+
+            if (name == EN_BUSINESS_TASK) return BusinessTask;
+            if (name == EN_BUSINESS_PROCESS) return BusinessProcess;
 
             return Guid.Empty;
         }
@@ -225,6 +243,9 @@ namespace DaJet.Metadata.Core
             if (uuid == SharedProperty) return RU_SHARED_PROPERTY;
             if (uuid == NamedDataTypeDescriptor) return RU_NAMED_DATA_TYPE;
 
+            if (uuid == BusinessTask) return RU_BUSINESS_TASK;
+            if (uuid == BusinessProcess) return RU_BUSINESS_PROCESS;
+
             return string.Empty;
         }
         public static string ResolveNameEn(Guid uuid)
@@ -246,6 +267,9 @@ namespace DaJet.Metadata.Core
             if (uuid == SharedProperty) return EN_SHARED_PROPERTY;
             if (uuid == NamedDataTypeDescriptor) return EN_NAMED_DATA_TYPE;
 
+            if (uuid == BusinessTask) return EN_BUSINESS_TASK;
+            if (uuid == BusinessProcess) return EN_BUSINESS_PROCESS;
+
             return string.Empty;
         }
 
@@ -263,6 +287,8 @@ namespace DaJet.Metadata.Core
             else if (type == typeof(AccumulationRegister)) { return RU_ACCUMULATION_REGISTER; }
             else if (type == typeof(SharedProperty)) { return RU_SHARED_PROPERTY; }
             else if (type == typeof(NamedDataTypeDescriptor)) { return RU_NAMED_DATA_TYPE; }
+            else if (type == typeof(BusinessTask)) { return RU_BUSINESS_TASK; }
+            else if (type == typeof(BusinessProcess)) { return RU_BUSINESS_PROCESS; }
             return "UNKNOWN";
         }
 

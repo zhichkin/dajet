@@ -237,6 +237,10 @@ namespace DaJet.Metadata.Parsers
             {
                 _converter[node][1][2] += ConfigureMetadata; // начало коллекции объектов метаданных компоненты
             }
+            else if (uuid == Components.BusinessProcess) // 7.0 - Компонента платформы "Бизнес-процессы"
+            {
+                _converter[node][1][2] += ConfigureMetadata; // начало коллекции объектов метаданных компоненты
+            }
         }
         private void ConfigureMetadata(in ConfigFileReader source, in CancelEventArgs args)
         {

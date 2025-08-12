@@ -97,9 +97,28 @@ namespace DaJet.Metadata.Test
 
             Console.WriteLine("Done: DBNames-Ext-Uuid");
         }
+        [TestMethod] public void DumpBusinessProcessRoutingMap()
+        {
+            string fileName = "35608879-5406-4b60-9386-cd0a6ad2446e.7";
+            DatabaseProvider provider = DatabaseProvider.SqlServer;
+
+            ConfigFileParser parser = new();
+            ConfigFileWriter writer = new();
+
+            using (ConfigFileReader reader = new(provider, in MS_CONNECTION, ConfigTables.Config, fileName))
+            {
+                ConfigObject config = parser.Parse(in reader);
+                writer.Write(config, @"C:\temp\1c-dump\business-process-routing-map.txt");
+            }
+
+            Console.WriteLine("Done: business-process-routing-map");
+        }
         [TestMethod] public void DumpConfigFileByUuid()
         {
-            Guid file_uuid = new("f70823fb-0cc1-4b00-8b03-fdbf44e9127a");
+            // Задача 268725a6-36ee-442e-8ae2-dc029a26cd12
+            // Процесс 35608879-5406-4b60-9386-cd0a6ad2446e
+            // Карта маршрута 35608879-5406-4b60-9386-cd0a6ad2446e.7
+            Guid file_uuid = new("35608879-5406-4b60-9386-cd0a6ad2446e");
             DatabaseProvider provider = DatabaseProvider.SqlServer;
 
             ConfigFileParser parser = new();
@@ -108,7 +127,7 @@ namespace DaJet.Metadata.Test
             using (ConfigFileReader reader = new(provider, in MS_CONNECTION, ConfigTables.Config, file_uuid))
             {
                 ConfigObject config = parser.Parse(in reader);
-                writer.Write(config, @"C:\temp\1c-dump\constant_file_dump.txt");
+                writer.Write(config, @"C:\temp\1c-dump\business_process_file_dump.txt");
             }
 
             Console.WriteLine("Done");
