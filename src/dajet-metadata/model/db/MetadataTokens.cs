@@ -81,6 +81,10 @@
         public const string ChngR = "ChngR";
         ///<summary>Хранилище метаданных конфигурации 1С</summary>
         public const string Config = "Config";
+        ///<summary>Бизнес-процесс</summary>
+        public const string BPr = "BPr";
+        ///<summary>Точки маршрута бизнес-процесса</summary>
+        public const string BPrPoints = "BPrPoints";
         ///<summary>Задача бизнес-процесса</summary>
         public const string Task = "Task";
 

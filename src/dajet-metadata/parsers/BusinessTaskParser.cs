@@ -32,7 +32,7 @@ namespace DaJet.Metadata.Parsers
             // 1.1.1.2 - uuid объекта метаданных (FileName)
 
             _converter[1][1][2] += Name; // Имя объекта метаданных конфигурации
-            _converter[1][3] += Reference; // Идентификатор ссылочного типа данных, например, "ЗадачаСсылка.Задача"
+            _converter[1][5] += Reference; // Идентификатор ссылочного типа данных, например, "ЗадачаСсылка.Задача"
             
             if (options.IsExtension)
             {
@@ -64,7 +64,7 @@ namespace DaJet.Metadata.Parsers
             // 1.1.1.2 - uuid объекта метаданных (FileName)
 
             _converter[1][1][2] += Name; // Имя объекта метаданных конфигурации
-            _converter[1][3] += Reference; // Идентификатор ссылочного типа данных, например, "ЗадачаСсылка.Задача"
+            _converter[1][5] += Reference; // Идентификатор ссылочного типа данных, например, "ЗадачаСсылка.Задача"
             
             _parser.Parse(in source, in _converter);
 
@@ -107,8 +107,8 @@ namespace DaJet.Metadata.Parsers
 
             _converter[1][1][2] += Name;
             _converter[1][1][3][2] += Alias;
-            _converter[1][18] += CodeType;
-            _converter[1][19] += CodeLength;
+            _converter[1][18] += NumberType;
+            _converter[1][19] += NumberLength;
             _converter[1][22] += DescriptionLength;
             _converter[1][25] += RoutingTable; // Идентификатор регистра сведений, используемого для адресации задачи
             _converter[1][26] += MainRoutingProperty; // Основной реквизит адресации задачи
@@ -140,13 +140,13 @@ namespace DaJet.Metadata.Parsers
         {
             _target.Alias = source.Value;
         }
-        private void CodeType(in ConfigFileReader source, in CancelEventArgs args)
+        private void NumberType(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _target.CodeType = (CodeType)source.GetInt32();
+            _target.NumberType = (NumberType)source.GetInt32();
         }
-        private void CodeLength(in ConfigFileReader source, in CancelEventArgs args)
+        private void NumberLength(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _target.CodeLength = source.GetInt32();
+            _target.NumberLength = source.GetInt32();
         }
         private void DescriptionLength(in ConfigFileReader source, in CancelEventArgs args)
         {

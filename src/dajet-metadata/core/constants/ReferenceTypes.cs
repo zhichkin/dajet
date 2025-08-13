@@ -18,5 +18,9 @@ namespace DaJet.Metadata.Core
         public static readonly Guid Publication = new("0a52f9de-73ea-4507-81e8-66217bead73a");
         ///<summary>ПланВидовХарактеристикСсылка</summary>
         public static readonly Guid Characteristic = new("99892482-ed55-4fb5-a7f7-20888820a758");
+        ///<summary>ЗадачаСсылка</summary>
+        public static readonly Guid BusinessTask = new("6291e9b3-8df5-44e1-b6b2-d9fe008016c0");
+        ///<summary>БизнесПроцессСсылка</summary>
+        public static readonly Guid BusinessProcess = new("214fa4d8-6ba4-4748-a5e1-6332b5887780");
     }
 }

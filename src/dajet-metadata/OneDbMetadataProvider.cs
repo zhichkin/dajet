@@ -783,6 +783,11 @@ namespace DaJet.Metadata
                             AddDocumentRegister(metadata.MetadataUuid, register);
                         }
                     }
+
+                    if (metadata.BusinessTask != Guid.Empty)
+                    {
+                        //TODO:
+                    }
                 }
             }
         }
@@ -1365,6 +1370,14 @@ namespace DaJet.Metadata
             else if (reference == ReferenceTypes.Characteristic)
             {
                 uuid = MetadataTypes.Characteristic;
+            }
+            else if (reference == ReferenceTypes.BusinessTask)
+            {
+                uuid = MetadataTypes.BusinessTask;
+            }
+            else if (reference == ReferenceTypes.BusinessProcess)
+            {
+                uuid = MetadataTypes.BusinessProcess;
             }
             else if (reference == ReferenceTypes.AnyReference)
             {

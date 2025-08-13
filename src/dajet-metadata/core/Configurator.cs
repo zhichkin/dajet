@@ -2,6 +2,7 @@
 using DaJet.Metadata.Model;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace DaJet.Metadata.Core
@@ -53,6 +54,14 @@ namespace DaJet.Metadata.Core
             else if (metadata is AccountingRegister register3)
             {
                 ConfigureAccountingRegister(in cache, in register3);
+            }
+            else if (metadata is BusinessTask task)
+            {
+                ConfigureBusinessTask(in cache, in task);
+            }
+            else if (metadata is BusinessProcess process)
+            {
+                ConfigureBusinessProcess(in cache, in process);
             }
         }
         internal static void ConfigureSharedProperties(in OneDbMetadataProvider cache, in MetadataObject metadata)
@@ -351,6 +360,14 @@ namespace DaJet.Metadata.Core
             {
                 count = cache.CountMetadataObjects(MetadataTypes.Characteristic);
             }
+            else if (reference == ReferenceTypes.BusinessTask)
+            {
+                count = cache.CountMetadataObjects(MetadataTypes.BusinessTask);
+            }
+            else if (reference == ReferenceTypes.BusinessProcess)
+            {
+                count = cache.CountMetadataObjects(MetadataTypes.BusinessProcess);
+            }
             else if (reference == ReferenceTypes.AnyReference)
             {
                 count += cache.CountMetadataObjects(MetadataTypes.Account);
@@ -365,11 +382,14 @@ namespace DaJet.Metadata.Core
                 if (count > 1) { return count; }
                 count += cache.CountMetadataObjects(MetadataTypes.Characteristic);
                 if (count > 1) { return count; }
+                count += cache.CountMetadataObjects(MetadataTypes.BusinessTask);
+                if (count > 1) { return count; }
+                count += cache.CountMetadataObjects(MetadataTypes.BusinessProcess);
+                if (count > 1) { return count; }
             }
-            else
+            else // Неподдерживаемый общий ссылочный тип
             {
-                // Неподдерживаемый общий ссылочный тип
-                return 1; // single reference type 
+                return 1; // single reference type
             }
 
             return count;
@@ -1492,7 +1512,7 @@ namespace DaJet.Metadata.Core
 
             ConfigurePropertyПроведён(document);
         }
-        private static void ConfigurePropertyДата(in Document document)
+        private static void ConfigurePropertyДата(in ApplicationObject metadata)
         {
             MetadataProperty property = new MetadataProperty()
             {
@@ -1511,9 +1531,9 @@ namespace DaJet.Metadata.Core
                 Precision = 19,
                 TypeName = "datetime2"
             });
-            document.Properties.Add(property);
+            metadata.Properties.Add(property);
         }
-        private static void ConfigurePropertyПериодНомера(in Document document)
+        private static void ConfigurePropertyПериодНомера(in ApplicationObject metadata)
         {
             MetadataProperty property = new MetadataProperty()
             {
@@ -1533,7 +1553,7 @@ namespace DaJet.Metadata.Core
                 Precision = 19,
                 TypeName = "datetime2"
             });
-            document.Properties.Add(property);
+            metadata.Properties.Add(property);
         }
         private static void ConfigurePropertyНомер(in Document document)
         {
@@ -1592,6 +1612,143 @@ namespace DaJet.Metadata.Core
             document.Properties.Add(property);
         }
 
+        #endregion
+
+        #region "BUSINESS TASK"
+        private static void ConfigureBusinessTask(in OneDbMetadataProvider cache, in BusinessTask task)
+        {
+            ConfigurePropertyСсылка(task);
+            ConfigurePropertyВерсияДанных(task);
+            ConfigurePropertyПометкаУдаления(task);
+
+            //List<Guid> owners = cache.GetCatalogOwners(catalog.Uuid);
+
+            //if (owners != null && owners.Count > 0)
+            //{
+            //    ConfigurePropertyВладелец(in cache, in catalog, in owners);
+            //
+            // БизнесПроцесс
+            // [_BusinessProcessRRef]
+            // [_BusinessProcess_TYPE] [_BusinessProcess_RTRef] [_BusinessProcess_RRRef]
+            //}
+
+            //ТочкаМаршрута
+            // [_PointRRef]
+            // [_Point_TYPE] [_Point_RTRef] [_Point_RRRef]
+
+            ConfigurePropertyДата(task);
+
+            if (task.NumberLength > 0)
+            {
+                ConfigurePropertyНомер(in task);
+            }
+
+            if (task.DescriptionLength > 0)
+            {
+                ConfigurePropertyНаименование(task); // _Name
+            }
+
+            // Выполнена [_Executed] binary(1) not null
+        }
+        private static void ConfigurePropertyНомер(in BusinessTask task)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "Номер",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Number"
+            };
+
+            if (task.NumberType == NumberType.Number)
+            {
+                property.PropertyType.CanBeNumeric = true;
+                property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+                property.PropertyType.NumericPrecision = task.NumberLength;
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = property.DbName,
+                    Precision = task.NumberLength,
+                    TypeName = "numeric"
+                });
+            }
+            else
+            {
+                property.PropertyType.CanBeString = true;
+                property.PropertyType.StringKind = StringKind.Variable;
+                property.PropertyType.StringLength = task.NumberLength;
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = property.DbName,
+                    Length = task.NumberLength,
+                    TypeName = "nvarchar"
+                });
+            }
+            task.Properties.Add(property);
+        }
+        #endregion
+
+        #region "BUSINESS PROCESS"
+        private static void ConfigureBusinessProcess(in OneDbMetadataProvider cache, in BusinessProcess process)
+        {
+            ConfigurePropertyСсылка(process);
+            ConfigurePropertyВерсияДанных(process);
+            ConfigurePropertyПометкаУдаления(process);
+
+            ConfigurePropertyДата(process);
+
+            //  Завершён [_Completed] binary(1) not null
+
+            if (process.NumberLength > 0)
+            {
+                if (process.Periodicity != Periodicity.None)
+                {
+                    ConfigurePropertyПериодНомера(process);
+                }
+
+                ConfigurePropertyНомер(in process);
+            }
+
+            // ВедущаяЗадача [_HeadTask_TYPE] [_HeadTask_RTRef] [_HeadTask_RRRef] 
+
+            // Стартован [_Started] binary(1) not null
+        }
+        private static void ConfigurePropertyНомер(in BusinessProcess process)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "Номер",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Number"
+            };
+
+            if (process.NumberType == NumberType.Number)
+            {
+                property.PropertyType.CanBeNumeric = true;
+                property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+                property.PropertyType.NumericPrecision = process.NumberLength;
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = property.DbName,
+                    Precision = process.NumberLength,
+                    TypeName = "numeric"
+                });
+            }
+            else
+            {
+                property.PropertyType.CanBeString = true;
+                property.PropertyType.StringKind = StringKind.Variable;
+                property.PropertyType.StringLength = process.NumberLength;
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = property.DbName,
+                    Length = process.NumberLength,
+                    TypeName = "nvarchar"
+                });
+            }
+            process.Properties.Add(property);
+        }
         #endregion
 
         #region "INFORMATION REGISTER"
@@ -3219,7 +3376,7 @@ namespace DaJet.Metadata.Core
             {
                 ConfigurePropertyConstID(in table);
             }
-            else if (entity is Catalog || entity is Document || entity is Account)
+            else if (entity is Catalog || entity is Document || entity is Account || entity is BusinessTask || entity is BusinessProcess)
             {
                 MetadataProperty reference = entity.Properties.Where(p => p.Name == "Ссылка").FirstOrDefault();
 

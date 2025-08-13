@@ -136,10 +136,10 @@ namespace DaJet.Metadata.Test
         {
             IMetadataProvider metadata = new OneDbMetadataProvider(MS_CONNECTION);
 
-            string metadataName = "Константа.Булево";
-            string dumpFilePath = "C:\\temp\\1c-dump\\Константа.Булево.dump.txt";
-            //string metadataName = "Справочник.Номенклатура";
-            //string dumpFilePath = "C:\\temp\\1c-dump\\Справочник.Номенклатура.dump.txt";
+            //string metadataName = "Константа.Булево";
+            //string dumpFilePath = "C:\\temp\\1c-dump\\Константа.Булево.dump.txt";
+            string metadataName = "Справочник.Номенклатура";
+            string dumpFilePath = "C:\\temp\\1c-dump\\Справочник.Номенклатура.dump.txt";
             //string metadataName = "ПланСчетов.ПланСчетов1";
             //string dumpFilePath = "C:\\temp\\1c-dump\\ПланСчетов.ПланСчетов1.dump.txt";
             //string metadataName = "РегистрБухгалтерии.РегистрБухгалтерии1";
