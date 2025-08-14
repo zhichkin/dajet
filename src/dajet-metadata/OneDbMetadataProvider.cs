@@ -149,6 +149,13 @@ namespace DaJet.Metadata
         private readonly ConcurrentDictionary<Guid, List<Guid>> _owners = new();
 
         ///<summary>
+        ///<b>Коллекция ведущих для бизнес-процессов задач:</b>
+        ///<br><b>Ключ:</b> UUID объекта метаданных <see cref="BusinessTask"/></br>
+        ///<br><b>Значение:</b> список UUID объектов метаданных <see cref="BusinessProcess"/></br>
+        ///</summary>
+        private readonly ConcurrentDictionary<Guid, List<Guid>> _tasks = new();
+
+        ///<summary>
         ///<b>Коллекция документов и их регистров движений:</b>
         ///<br><b>Ключ:</b> регистр движений <see cref="InformationRegister"/> или <see cref="AccumulationRegister"/></br>
         ///<br><b>Значение:</b> список регистраторов движений <see cref="Document"/></br>
@@ -414,6 +421,17 @@ namespace DaJet.Metadata
                 _owners.TryAdd(catalog, new List<Guid>() { owner });
             }
         }
+        private void AddBusinessTask(Guid task, Guid process)
+        {
+            if (_tasks.TryGetValue(task, out List<Guid> processes))
+            {
+                processes.Add(process);
+            }
+            else
+            {
+                _tasks.TryAdd(task, new List<Guid>() { process });
+            }
+        }
         private void AddDocumentRegister(Guid document, Guid register)
         {
             if (_registers.TryGetValue(register, out List<Guid> documents))
@@ -431,6 +449,15 @@ namespace DaJet.Metadata
             if (_owners.TryGetValue(catalog, out List<Guid> owners))
             {
                 return owners;
+            }
+
+            return null;
+        }
+        internal List<Guid> GetBusinessProcesses(Guid task)
+        {
+            if (_tasks.TryGetValue(task, out List<Guid> processes))
+            {
+                return processes;
             }
 
             return null;
@@ -618,6 +645,8 @@ namespace DaJet.Metadata
                 { MetadataTypes.Enumeration,          new List<Guid>() }, // Перечисления
                 { MetadataTypes.Publication,          new List<Guid>() }, // Планы обмена
                 { MetadataTypes.Characteristic,       new List<Guid>() }, // Планы видов характеристик
+                { MetadataTypes.BusinessTask,         new List<Guid>() }, // Задача
+                { MetadataTypes.BusinessProcess,      new List<Guid>() }, // Бизнес-процесс
                 { MetadataTypes.AccountingRegister,   new List<Guid>() }, // Регистры бухгалтерии
                 { MetadataTypes.InformationRegister,  new List<Guid>() }, // Регистры сведений
                 { MetadataTypes.AccumulationRegister, new List<Guid>() }  // Регистры накопления
@@ -677,6 +706,8 @@ namespace DaJet.Metadata
             _references.TryAdd(ReferenceTypes.Enumeration, new MetadataItem(MetadataTypes.Enumeration, Guid.Empty, "ПеречислениеСсылка"));
             _references.TryAdd(ReferenceTypes.Publication, new MetadataItem(MetadataTypes.Publication, Guid.Empty, "ПланОбменаСсылка"));
             _references.TryAdd(ReferenceTypes.Characteristic, new MetadataItem(MetadataTypes.Characteristic, Guid.Empty, "ПланВидовХарактеристикСсылка"));
+            _references.TryAdd(ReferenceTypes.BusinessTask, new MetadataItem(MetadataTypes.BusinessTask, Guid.Empty, "ЗадачаСсылка"));
+            _references.TryAdd(ReferenceTypes.BusinessProcess, new MetadataItem(MetadataTypes.BusinessProcess, Guid.Empty, "БизнесПроцессСсылка"));
 
             Dictionary<Guid, List<Guid>> metadata = CreateSupportedMetadataDictionary();
 
@@ -786,7 +817,7 @@ namespace DaJet.Metadata
 
                     if (metadata.BusinessTask != Guid.Empty)
                     {
-                        //TODO:
+                        AddBusinessTask(metadata.BusinessTask, metadata.MetadataUuid);
                     }
                 }
             }
@@ -1534,6 +1565,14 @@ namespace DaJet.Metadata
             else if (dbn.Name == MetadataTokens.Node)
             {
                 type = MetadataTypes.Publication;
+            }
+            else if (dbn.Name == MetadataTokens.BPr)
+            {
+                type = MetadataTypes.BusinessProcess;
+            }
+            else if (dbn.Name == MetadataTokens.Task)
+            {
+                type = MetadataTypes.BusinessTask;
             }
             else
             {

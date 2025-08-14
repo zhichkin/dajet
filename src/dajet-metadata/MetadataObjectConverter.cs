@@ -22,6 +22,8 @@ namespace DaJet.Metadata
             else if (metadata is Enumeration enumeration) { return Convert(in enumeration); }
             else if (metadata is Publication publication) { return Convert(in publication); }
             else if (metadata is Characteristic characteristic) { return Convert(in characteristic); }
+            else if (metadata is BusinessTask task) { return Convert(in task); }
+            else if (metadata is BusinessProcess process) { return Convert(in process); }
             else if (metadata is SharedProperty property) { return Convert(in property); }
             else if (metadata is AccountingRegister register1) { return Convert(in register1); }
             else if (metadata is InformationRegister register2) { return Convert(in register2); }
@@ -153,6 +155,14 @@ namespace DaJet.Metadata
             return @object;
         }
         private DataObject Convert(in Characteristic metadata)
+        {
+            return Convert(metadata as ApplicationObject);
+        }
+        private DataObject Convert(in BusinessTask metadata)
+        {
+            return Convert(metadata as ApplicationObject);
+        }
+        private DataObject Convert(in BusinessProcess metadata)
         {
             return Convert(metadata as ApplicationObject);
         }

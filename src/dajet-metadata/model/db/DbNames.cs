@@ -53,6 +53,7 @@ namespace DaJet.Metadata.Model
             MetadataTokens.Enum,
             MetadataTokens.Chrc,
             MetadataTokens.Node,
+            MetadataTokens.BPr,
             MetadataTokens.Task,
             MetadataTokens.Const,
             MetadataTokens.Document,
@@ -67,7 +68,9 @@ namespace DaJet.Metadata.Model
             MetadataTokens.Enum,
             MetadataTokens.Chrc,
             MetadataTokens.Node,
+            MetadataTokens.BPr,
             MetadataTokens.Task,
+            MetadataTokens.BPrPoints,
             MetadataTokens.Document,
             MetadataTokens.Reference
         };

@@ -20,7 +20,9 @@ namespace DaJet.Metadata.Services
             "РегистрНакопления",
             "ПланВидовХарактеристик",
             "ПланСчетов",
-            "РегистрБухгалтерии"
+            "РегистрБухгалтерии",
+            "Задача",
+            "БизнесПроцесс"
         };
         public static void Configure(in DbViewGeneratorOptions options, Dictionary<string, string> values)
         {

@@ -6,46 +6,18 @@ namespace DaJet.DbViewGenerator
     {
         internal static string GetMetadataTypeName(in ApplicationObject metadata)
         {
-            if (metadata is Constant)
-            {
-                return $"Константа";
-            }
-            else if (metadata is Catalog)
-            {
-                return $"Справочник";
-            }
-            else if (metadata is Document)
-            {
-                return $"Документ";
-            }
-            else if (metadata is InformationRegister)
-            {
-                return $"РегистрСведений";
-            }
-            else if (metadata is AccumulationRegister)
-            {
-                return $"РегистрНакопления";
-            }
-            else if (metadata is Enumeration)
-            {
-                return $"Перечисление";
-            }
-            else if (metadata is Characteristic)
-            {
-                return $"ПланВидовХарактеристик";
-            }
-            else if (metadata is Publication)
-            {
-                return $"ПланОбмена";
-            }
-            else if (metadata is Account)
-            {
-                return $"ПланСчетов";
-            }
-            else if (metadata is AccountingRegister)
-            {
-                return $"РегистрБухгалтерии";
-            }
+            if (metadata is Constant) { return "Константа"; }
+            else if (metadata is Catalog) { return "Справочник"; }
+            else if (metadata is Document) { return "Документ"; }
+            else if (metadata is InformationRegister) { return "РегистрСведений"; }
+            else if (metadata is AccumulationRegister) { return "РегистрНакопления"; }
+            else if (metadata is Enumeration) { return "Перечисление"; }
+            else if (metadata is Characteristic) { return "ПланВидовХарактеристик"; }
+            else if (metadata is Publication) { return "ПланОбмена"; }
+            else if (metadata is Account) { return "ПланСчетов"; }
+            else if (metadata is AccountingRegister) { return "РегистрБухгалтерии"; }
+            else if (metadata is BusinessTask) { return "Задача"; }
+            else if (metadata is BusinessProcess) { return "БизнесПроцесс"; }
 
             return "Unsupported";
         }

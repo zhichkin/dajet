@@ -100,7 +100,7 @@ namespace DaJet.Metadata.Parsers
             _converter = new ConfigFileConverter();
 
 
-            if (_cache != null && _cache.Extension != null) // 1.1.8 = 0 если заимствование отстутствует
+            if (_cache is not null && _cache.Extension is not null) // 1.1.8 = 0 если заимствование отстутствует
             {
                 _converter[1][1][9] += Parent; // uuid расширяемого объекта метаданных
             }
@@ -109,7 +109,7 @@ namespace DaJet.Metadata.Parsers
             _converter[1][1][3][2] += Alias;
             _converter[1][18] += NumberType;
             _converter[1][19] += NumberLength;
-            _converter[1][22] += DescriptionLength;
+            _converter[1][22] += NameLength;
             _converter[1][25] += RoutingTable; // Идентификатор регистра сведений, используемого для адресации задачи
             _converter[1][26] += MainRoutingProperty; // Основной реквизит адресации задачи
 
@@ -120,18 +120,18 @@ namespace DaJet.Metadata.Parsers
         }
         private void Reference(in ConfigFileReader source, in CancelEventArgs args)
         {
-            if (_entry != null)
+            if (_entry is not null)
             {
                 _entry.ReferenceUuid = source.GetUuid();
             }
         }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
         {
-            if (_entry != null)
+            if (_entry is not null)
             {
                 _entry.Name = source.Value;
             }
-            else if (_target != null)
+            else if (_target is not null)
             {
                 _target.Name = source.Value;
             }
@@ -148,9 +148,9 @@ namespace DaJet.Metadata.Parsers
         {
             _target.NumberLength = source.GetInt32();
         }
-        private void DescriptionLength(in ConfigFileReader source, in CancelEventArgs args)
+        private void NameLength(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _target.DescriptionLength = source.GetInt32();
+            _target.NameLength = source.GetInt32();
         }
         private void RoutingTable(in ConfigFileReader source, in CancelEventArgs args)
         {
@@ -166,9 +166,9 @@ namespace DaJet.Metadata.Parsers
             {
                 _propertyParser.Parse(in source, out List<MetadataProperty> properties);
 
-                if (properties != null && properties.Count > 0)
+                if (properties is not null && properties.Count > 0)
                 {
-                    _target.Properties = properties;
+                    _target.Properties.AddRange(properties);
                 }
             }
         }
@@ -178,7 +178,7 @@ namespace DaJet.Metadata.Parsers
             {
                 _tableParser.Parse(in source, out List<TablePart> tables);
 
-                if (tables != null && tables.Count > 0)
+                if (tables is not null && tables.Count > 0)
                 {
                     _target.TableParts = tables;
                 }
@@ -186,11 +186,11 @@ namespace DaJet.Metadata.Parsers
         }
         private void Parent(in ConfigFileReader source, in CancelEventArgs args)
         {
-            if (_entry != null)
+            if (_entry is not null)
             {
                 _entry.MetadataParent = source.GetUuid();
             }
-            else if (_target != null)
+            else if (_target is not null)
             {
                 _target.Parent = source.GetUuid();
             }

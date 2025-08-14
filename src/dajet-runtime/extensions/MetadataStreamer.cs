@@ -179,6 +179,8 @@ namespace DaJet.Runtime
             else if (metadata is Enumeration enumeration) { return ConvertToDataObject(in enumeration); }
             else if (metadata is Publication publication) { return ConvertToDataObject(in publication); }
             else if (metadata is Characteristic characteristic) { return ConvertToDataObject(in characteristic); }
+            else if (metadata is BusinessTask task) { return ConvertToDataObject(in task); }
+            else if (metadata is BusinessProcess process) { return ConvertToDataObject(in process); }
             else if (metadata is SharedProperty property) { return ConvertToDataObject(in property); }
             else if (metadata is AccountingRegister register1) { return ConvertToDataObject(in register1); }
             else if (metadata is InformationRegister register2) { return ConvertToDataObject(in register2); }
@@ -256,6 +258,14 @@ namespace DaJet.Runtime
             return ConvertToDataObject(metadata as ApplicationObject);
         }
         private DataObject ConvertToDataObject(in Document metadata)
+        {
+            return ConvertToDataObject(metadata as ApplicationObject);
+        }
+        private DataObject ConvertToDataObject(in BusinessTask metadata)
+        {
+            return ConvertToDataObject(metadata as ApplicationObject);
+        }
+        private DataObject ConvertToDataObject(in BusinessProcess metadata)
         {
             return ConvertToDataObject(metadata as ApplicationObject);
         }

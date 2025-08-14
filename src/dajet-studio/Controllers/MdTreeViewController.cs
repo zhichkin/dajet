@@ -26,7 +26,9 @@ namespace DaJet.Studio.Controllers
             new Guid("238e7e88-3c5f-48b2-8a3b-81ebbecb20ed"), // Планы счетов
             new Guid("13134201-f60b-11d5-a3c7-0050bae0a776"), // Регистры сведений
             new Guid("b64d9a40-1642-11d6-a3c7-0050bae0a776"), // Регистры накопления
-            new Guid("2deed9b8-0056-4ffe-a473-c20a6c32a0bc")  // Регистры бухгатерии
+            new Guid("2deed9b8-0056-4ffe-a473-c20a6c32a0bc"), // Регистры бухгатерии
+            new Guid("3e63355c-1378-4953-be9b-1deb5fb6bec5"), // Задачи
+            new Guid("fcd3404e-1523-48ce-9bc0-ecdb822684a1")  // Бизнес-процессы
         ];
         private const string NODE_TYPE_SERVICE = "Служебные";
         private const string NODE_TYPE_SHARED_PROPERTY = "ОбщийРеквизит";
@@ -43,6 +45,8 @@ namespace DaJet.Studio.Controllers
         private const string NODE_TYPE_ACCUMREGISTER = "РегистрНакопления";
         private const string NODE_TYPE_CHART_OF_ACCOUNTS = "ПланСчетов";
         private const string NODE_TYPE_ACCOUNTING_REGISTER = "РегистрБухгалтерии";
+        private const string NODE_TYPE_BUSINESS_TASK = "Задача";
+        private const string NODE_TYPE_BUSINESS_PROCESS = "БизнесПроцесс";
         #endregion
 
         private readonly ISnackbar SnackbarService;
@@ -282,8 +286,6 @@ namespace DaJet.Studio.Controllers
 
             ConfigureApiTreeViewNode(in node, in model);
 
-            //ConfigureExchangeTreeViewNode(in node, in model);
-
             ConfigureDbViewNode(in node, in model);
 
             node.Nodes.Add(new TreeNodeModel()
@@ -438,6 +440,22 @@ namespace DaJet.Studio.Controllers
                 Tag = parent.Tag,
                 Title = NODE_TYPE_ACCOUNTING_REGISTER,
                 Url = $"{parent.Url}/{NODE_TYPE_ACCOUNTING_REGISTER}",
+                OpenNodeHandler = OpenMetadataNodeHandler
+            });
+            parent.Nodes.Add(new TreeNodeModel()
+            {
+                Parent = parent,
+                Tag = parent.Tag,
+                Title = NODE_TYPE_BUSINESS_TASK,
+                Url = $"{parent.Url}/{NODE_TYPE_BUSINESS_TASK}",
+                OpenNodeHandler = OpenMetadataNodeHandler
+            });
+            parent.Nodes.Add(new TreeNodeModel()
+            {
+                Parent = parent,
+                Tag = parent.Tag,
+                Title = NODE_TYPE_BUSINESS_PROCESS,
+                Url = $"{parent.Url}/{NODE_TYPE_BUSINESS_PROCESS}",
                 OpenNodeHandler = OpenMetadataNodeHandler
             });
         }

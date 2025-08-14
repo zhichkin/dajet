@@ -2,7 +2,6 @@
 using DaJet.Metadata.Model;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 
 namespace DaJet.Metadata.Core
@@ -1621,20 +1620,13 @@ namespace DaJet.Metadata.Core
             ConfigurePropertyВерсияДанных(task);
             ConfigurePropertyПометкаУдаления(task);
 
-            //List<Guid> owners = cache.GetCatalogOwners(catalog.Uuid);
+            List<Guid> processes = cache.GetBusinessProcesses(task.Uuid);
 
-            //if (owners != null && owners.Count > 0)
-            //{
-            //    ConfigurePropertyВладелец(in cache, in catalog, in owners);
-            //
-            // БизнесПроцесс
-            // [_BusinessProcessRRef]
-            // [_BusinessProcess_TYPE] [_BusinessProcess_RTRef] [_BusinessProcess_RRRef]
-            //}
-
-            //ТочкаМаршрута
-            // [_PointRRef]
-            // [_Point_TYPE] [_Point_RTRef] [_Point_RRRef]
+            if (processes is not null && processes.Count > 0)
+            {
+                ConfigurePropertyБизнесПроцесс(in cache, in task, in processes);
+                ConfigurePropertyТочкаМаршрута(in cache, in task, in processes);
+            }
 
             ConfigurePropertyДата(task);
 
@@ -1643,12 +1635,134 @@ namespace DaJet.Metadata.Core
                 ConfigurePropertyНомер(in task);
             }
 
-            if (task.DescriptionLength > 0)
+            if (task.NameLength > 0)
             {
-                ConfigurePropertyНаименование(task); // _Name
+                ConfigurePropertyИмя(in task);
             }
 
-            // Выполнена [_Executed] binary(1) not null
+            ConfigurePropertyВыполнена(in task);
+        }
+        private static void ConfigurePropertyБизнесПроцесс(in OneDbMetadataProvider cache, in BusinessTask task, in List<Guid> processes)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "БизнесПроцесс",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_BusinessProcess"
+            };
+            property.PropertyType.CanBeReference = true;
+
+            if (cache.ResolveReferences && processes is not null && processes.Count > 0)
+            {
+                property.References.AddRange(processes);
+            }
+
+            if (processes.Count == 1) // Single type value
+            {
+                property.PropertyType.Reference = processes[0];
+
+                if (cache.TryGetDbName(processes[0], out DbName dbn))
+                {
+                    property.PropertyType.TypeCode = dbn.Code;
+                }
+
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = "_BusinessProcessRRef",
+                    Length = 16,
+                    TypeName = "binary"
+                });
+            }
+            else // Multiple type value
+            {
+                property.PropertyType.Reference = Guid.Empty;
+
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = "_BusinessProcess_TYPE",
+                    Length = 1,
+                    TypeName = "binary",
+                    Purpose = ColumnPurpose.Tag
+                });
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = "_BusinessProcess_RTRef",
+                    Length = 4,
+                    TypeName = "binary",
+                    Purpose = ColumnPurpose.TypeCode
+                });
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = "_BusinessProcess_RRRef",
+                    Length = 16,
+                    TypeName = "binary",
+                    Purpose = ColumnPurpose.Identity
+                });
+            }
+
+            task.Properties.Add(property);
+        }
+        private static void ConfigurePropertyТочкаМаршрута(in OneDbMetadataProvider cache, in BusinessTask task, in List<Guid> processes)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "ТочкаМаршрута",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Point"
+            };
+            property.PropertyType.CanBeReference = true;
+
+            if (cache.ResolveReferences && processes is not null && processes.Count > 0)
+            {
+                property.References.AddRange(processes);
+            }
+
+            if (processes.Count == 1) // Single type value
+            {
+                property.PropertyType.Reference = processes[0];
+
+                if (cache.TryGetDbName(processes[0], out DbName dbn))
+                {
+                    property.PropertyType.TypeCode = dbn.Code;
+                }
+
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = "_PointRRef",
+                    Length = 16,
+                    TypeName = "binary"
+                });
+            }
+            else // Multiple type value
+            {
+                property.PropertyType.Reference = Guid.Empty;
+
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = "_Point_TYPE",
+                    Length = 1,
+                    TypeName = "binary",
+                    Purpose = ColumnPurpose.Tag
+                });
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = "_Point_RTRef",
+                    Length = 4,
+                    TypeName = "binary",
+                    Purpose = ColumnPurpose.TypeCode
+                });
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = "_Point_RRRef",
+                    Length = 16,
+                    TypeName = "binary",
+                    Purpose = ColumnPurpose.Identity
+                });
+            }
+
+            task.Properties.Add(property);
         }
         private static void ConfigurePropertyНомер(in BusinessTask task)
         {
@@ -1686,6 +1800,48 @@ namespace DaJet.Metadata.Core
             }
             task.Properties.Add(property);
         }
+        private static void ConfigurePropertyИмя(in BusinessTask task)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "Наименование",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Name"
+            };
+            property.PropertyType.CanBeString = true;
+            property.PropertyType.StringLength = task.NameLength;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = task.NameLength,
+                TypeName = "nvarchar"
+            });
+
+            task.Properties.Add(property);
+        }
+        private static void ConfigurePropertyВыполнена(in BusinessTask task)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "Выполнена",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Executed"
+            };
+
+            property.PropertyType.CanBeBoolean = true;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 1,
+                TypeName = "binary"
+            });
+
+            task.Properties.Add(property);
+        }
         #endregion
 
         #region "BUSINESS PROCESS"
@@ -1694,10 +1850,8 @@ namespace DaJet.Metadata.Core
             ConfigurePropertyСсылка(process);
             ConfigurePropertyВерсияДанных(process);
             ConfigurePropertyПометкаУдаления(process);
-
             ConfigurePropertyДата(process);
-
-            //  Завершён [_Completed] binary(1) not null
+            ConfigurePropertyЗавершён(in process);
 
             if (process.NumberLength > 0)
             {
@@ -1709,9 +1863,29 @@ namespace DaJet.Metadata.Core
                 ConfigurePropertyНомер(in process);
             }
 
-            // ВедущаяЗадача [_HeadTask_TYPE] [_HeadTask_RTRef] [_HeadTask_RRRef] 
+            ConfigurePropertyВедущаяЗадача(in cache, in process);
+            ConfigurePropertyСтартован(in process);
+        }
+        private static void ConfigurePropertyЗавершён(in BusinessProcess process)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "Завершён",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Completed"
+            };
 
-            // Стартован [_Started] binary(1) not null
+            property.PropertyType.CanBeBoolean = true;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 1,
+                TypeName = "binary"
+            });
+
+            process.Properties.Add(property);
         }
         private static void ConfigurePropertyНомер(in BusinessProcess process)
         {
@@ -1747,6 +1921,98 @@ namespace DaJet.Metadata.Core
                     TypeName = "nvarchar"
                 });
             }
+            process.Properties.Add(property);
+        }
+        private static void ConfigurePropertyВедущаяЗадача(in OneDbMetadataProvider cache, in BusinessProcess process)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "ВедущаяЗадача",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_HeadTask"
+            };
+            property.PropertyType.CanBeReference = true;
+
+            int tasks = cache.CountMetadataObjects(MetadataTypes.BusinessTask);
+
+            if (cache.ResolveReferences)
+            {
+                if (tasks == 1)
+                {
+                    property.References.Add(process.BusinessTask); //NOTE: Единственная задача конфигурации
+                }
+                else
+                {
+                    property.References.Add(ReferenceTypes.BusinessTask); //NOTE: Любые задачи, которые есть в конфигурации
+                }
+            }
+
+            if (tasks == 1) // Single type value
+            {
+                property.PropertyType.Reference = process.BusinessTask;
+
+                if (cache.TryGetDbName(process.BusinessTask, out DbName dbn))
+                {
+                    property.PropertyType.TypeCode = dbn.Code;
+                }
+
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = "_HeadTaskRRef",
+                    Length = 16,
+                    TypeName = "binary"
+                });
+            }
+            else // Multiple type value
+            {
+                property.PropertyType.TypeCode = 0;
+                property.PropertyType.Reference = Guid.Empty;
+
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = "_HeadTask_TYPE",
+                    Length = 1,
+                    TypeName = "binary",
+                    Purpose = ColumnPurpose.Tag
+                });
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = "_HeadTask_RTRef",
+                    Length = 4,
+                    TypeName = "binary",
+                    Purpose = ColumnPurpose.TypeCode
+                });
+                property.Columns.Add(new MetadataColumn()
+                {
+                    Name = "_HeadTask_RRRef",
+                    Length = 16,
+                    TypeName = "binary",
+                    Purpose = ColumnPurpose.Identity
+                });
+            }
+
+            process.Properties.Add(property);
+        }
+        private static void ConfigurePropertyСтартован(in BusinessProcess process)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "Стартован",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Started"
+            };
+
+            property.PropertyType.CanBeBoolean = true;
+
+            property.Columns.Add(new MetadataColumn()
+            {
+                Name = property.DbName,
+                Length = 1,
+                TypeName = "binary"
+            });
+
             process.Properties.Add(property);
         }
         #endregion
