@@ -69,18 +69,18 @@ jobs:
     - name: Publish DaJet Studio
       working-directory: src/dajet-studio
       run: |
-        dotnet publish -f ${{env.DOTNET_TARGET}} --os linux -a x64 -c Release -o ./bin
+        dotnet publish -f ${{env.DOTNET_TARGET}} --os win -a x64 -c Release -o ./bin
         cp -aT ./bin/wwwroot ${{github.workspace}}/dajet-studio/ui
 
     - name: Publish DaJet Flow Script
       working-directory: src/dajet-flow-script
       run: |
-        dotnet publish -f ${{env.DOTNET_TARGET}} --os linux -a x64 -c Release -o ./bin
+        dotnet publish -f ${{env.DOTNET_TARGET}} --os win -a x64 -c Release -o ./bin
         cp ./bin/DaJet.Flow.Script* ${{github.workspace}}/dajet-studio/flow
 
     - name: Publish DaJet HTTP Server
       working-directory: src/dajet-http-server
-      run: dotnet publish -f ${{env.DOTNET_TARGET}} --os linux -a x64 -c Release -o ${{github.workspace}}/dajet-studio
+      run: dotnet publish -f ${{env.DOTNET_TARGET}} --os win -a x64 -c Release -o ${{github.workspace}}/dajet-studio
 
     - name: Prepare artifacts
       working-directory: dajet-studio
