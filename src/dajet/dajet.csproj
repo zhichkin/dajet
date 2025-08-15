@@ -8,7 +8,7 @@
     <RootNamespace>DaJet</RootNamespace>
     <Authors>Zhichkin</Authors>
     <Copyright>Zhichkin © 2024</Copyright>
-    <Version>3.12.1</Version>
+    <Version>3.13.0</Version>
     <Title>DaJet Script Utility</Title>
     <PackageId>DaJet.Script.Utility</PackageId>
     <Product>DaJet Script Utility</Product>
@@ -34,6 +34,12 @@
 
   <ItemGroup>
     <None Update="config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="log\dajet.log">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="scripts\test.djs">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
