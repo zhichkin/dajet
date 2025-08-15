@@ -56,7 +56,7 @@ jobs:
       with:
         name: 'DaJet ${{github.event.inputs.version}}'
         tag_name: 'dajet-${{github.event.inputs.version}}'
-        body: ${{github.event.inputs.description}}'
+        body: ${{github.event.inputs.description}}
         files: ${{github.workspace}}/dajet-host-${{github.event.inputs.version}}-linux.tar.gz
         draft: false
         prerelease: false
