@@ -1620,6 +1620,10 @@ namespace DaJet.Metadata.Core
             ConfigurePropertyВерсияДанных(task);
             ConfigurePropertyПометкаУдаления(task);
 
+            //TODO: Поиск бизнес-процессов в расширении не реализован
+            ///<see cref="OneDbMetadataProvider.ApplyMetadataObjectExtension"/>
+            //NOTE: необходимо заполнить коллекцию _tasks провайдера метаданных расширения
+
             List<Guid> processes = cache.GetBusinessProcesses(task.Uuid);
 
             if (processes is not null && processes.Count > 0)
@@ -1845,6 +1849,9 @@ namespace DaJet.Metadata.Core
         #endregion
 
         #region "BUSINESS PROCESS"
+        //NOTE: Карта маршрута бизнес-процесса хранится в файле {metadata-object-uuid}.7
+        //NOTE: Идентификаторы точек маршрута в этом файле соответствуют идентификаторам в таблице BPrPoints
+        //NOTE: Также в этом файле содержатся уникальные имена точек и прочая информация для отрисовки
         private static void ConfigureBusinessProcess(in OneDbMetadataProvider cache, in BusinessProcess process)
         {
             ConfigurePropertyСсылка(process);

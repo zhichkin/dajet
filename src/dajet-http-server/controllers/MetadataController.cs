@@ -415,13 +415,15 @@ namespace DaJet.Http.Controllers
         {
             foreach (Guid type in MetadataTypes.ApplicationObjectTypes)
             {
+                string entityType = MetadataTypes.ResolveNameRu(type);
+
                 foreach (MetadataItem item in provider.GetMetadataItems(type))
                 {
                     MetadataObject metadata = provider.GetMetadataObject(item.Type, item.Uuid);
 
                     if (metadata is ApplicationObject entity)
                     {
-                        string entityName = entity.Name;
+                        string entityName = $"{entityType}.{entity.Name}";
                         PerformDatabaseSchemaCheck(in provider, in entityName, entity.TableName, entity.Properties, in logger);
 
                         if (entity is ITablePartOwner owner)

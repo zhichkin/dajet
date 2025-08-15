@@ -4,7 +4,7 @@ namespace DaJet.Metadata.Core
 {
     [Flags] public enum ExtensionType
     {
-        None = 0,
+        Self = 0,
         DataSchema = 1,
         ChangeTracking = 2
     }

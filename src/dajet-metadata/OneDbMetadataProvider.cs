@@ -2055,7 +2055,7 @@ namespace DaJet.Metadata
 
                     ExtensionType extentionType = GetExtensionType(in dbextensions, in articles, in options, in parser);
 
-                    if (extentionType == ExtensionType.None) { continue; }
+                    if (extentionType == ExtensionType.Self) { continue; }
 
                     parser.Parse(in options, out MetadataInfo info);
 
@@ -2092,7 +2092,7 @@ namespace DaJet.Metadata
         }
         private ExtensionType GetExtensionType(in DbNameCache dbextensions, in HashSet<Guid> articles, in ConfigFileOptions options, in IMetadataObjectParser parser)
         {
-            ExtensionType extentionType = ExtensionType.None;
+            ExtensionType extentionType = ExtensionType.Self;
 
             if (dbextensions.TryGet(options.MetadataUuid, out _))
             {
@@ -2117,8 +2117,11 @@ namespace DaJet.Metadata
 
             if (metadata is not ApplicationObject entity)
             {
-                return ExtensionType.None; // Utility metadata objects do not change the database schema
+                return ExtensionType.Self; // Utility metadata objects do not change the database schema
             }
+
+            //TODO: Реквизит собственного объекта расширения, имеющий тип "ЛюбаяСсылка" или аналогичный,
+            //TODO: расширяет схему базы данных, так как общий тип включает в себя и типы основной конфигурации
 
             if (IsDataSchemaExtensionType(in entity, in dbextensions))
             {
@@ -2169,7 +2172,7 @@ namespace DaJet.Metadata
         }
         private void ApplyMetadataObjectExtension(in MetadataItemEx item)
         {
-            //TODO: (!) заполнить коллекции _references, _characteristics, _owners и _registers.
+            //TODO: (!) заполнить коллекции _references, _characteristics, _owners, _registers и _tasks.
 
             if (!TryApplyExtensionByUuid(in item)) { ApplyExtensionByName(in item); }
         }

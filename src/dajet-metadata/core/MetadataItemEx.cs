@@ -45,6 +45,8 @@ namespace DaJet.Metadata.Core
             if (Type == ReferenceTypes.Document) { return "ДокументСсылка"; }
             if (Type == ReferenceTypes.Enumeration) { return "ПеречислениеСсылка"; }
             if (Type == ReferenceTypes.Publication) { return "ПланОбменаСсылка"; }
+            if (Type == ReferenceTypes.BusinessTask) { return "ЗадачаСсылка"; }
+            if (Type == ReferenceTypes.BusinessProcess) { return "БизнесПроцессСсылка"; }
             if (Type == ReferenceTypes.Characteristic)
             {
                 ///NOTE: Небольшой хак ¯\_(ツ)_/¯ <see cref="OneDbMetadataProvider.ResolveReferenceType"/>
