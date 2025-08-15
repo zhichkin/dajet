@@ -1,4 +1,4 @@
-name: Build & Release DaJet for Linux
+name: Build & Release DaJet for Windows
 
 on:
   workflow_dispatch:
@@ -45,11 +45,11 @@ jobs:
 
     - name: Publish DaJet Script Host
       working-directory: src/dajet
-      run: dotnet publish -f ${{env.DOTNET_TARGET}} --os linux -a x64 -c Release -o ${{github.workspace}}/dajet-host
+      run: dotnet publish -f ${{env.DOTNET_TARGET}} --os win -a x64 -c Release -o ${{github.workspace}}/dajet-host
 
     - name: Prepare artifacts
       working-directory: dajet-host
-      run: tar czvf "${{github.workspace}}/dajet-host-${{github.event.inputs.version}}-linux.tar.gz" "."
+      run: zip -r "${{github.workspace}}/dajet-host-${{github.event.inputs.version}}-windows.zip" "."
 
     - name: Create and upload release
       uses: softprops/action-gh-release@v2
@@ -57,7 +57,7 @@ jobs:
         name: 'DaJet ${{github.event.inputs.version}}'
         tag_name: 'dajet-${{github.event.inputs.version}}'
         body: ${{github.event.inputs.description}}
-        files: ${{github.workspace}}/dajet-host-${{github.event.inputs.version}}-linux.tar.gz
+        files: ${{github.workspace}}/dajet-host-${{github.event.inputs.version}}-windows.zip
         draft: false
         prerelease: false
         make_latest: true
@@ -84,12 +84,12 @@ jobs:
 
     - name: Prepare artifacts
       working-directory: dajet-studio
-      run: tar czvf "${{github.workspace}}/dajet-studio-${{github.event.inputs.version}}-linux.tar.gz" "."
+      run: zip -r "${{github.workspace}}/dajet-studio-${{github.event.inputs.version}}-windows.zip" "."
 
     - name: Upload artifacts
       uses: softprops/action-gh-release@v2
       with:
         tag_name: 'dajet-${{github.event.inputs.version}}'
-        files: ${{github.workspace}}/dajet-studio-${{github.event.inputs.version}}-linux.tar.gz
+        files: ${{github.workspace}}/dajet-studio-${{github.event.inputs.version}}-windows.zip
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
