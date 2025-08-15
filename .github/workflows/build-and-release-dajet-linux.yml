@@ -84,12 +84,12 @@ jobs:
 
     - name: Prepare artifacts
       working-directory: dajet-studio
-      run: tar czvf "dajet-studio-${{github.event.inputs.version}}-linux.tar.gz" "."
+      run: tar czvf "${{github.workspace}}/dajet-studio-${{github.event.inputs.version}}-linux.tar.gz" "."
 
     - name: Upload artifacts
       uses: softprops/action-gh-release@v2
       with:
         tag_name: 'dajet-${{github.event.inputs.version}}'
-        files: ${{github.workspace}}/dajet-studio/dajet-studio-${{github.event.inputs.version}}-linux.tar.gz
+        files: ${{github.workspace}}/dajet-studio-${{github.event.inputs.version}}-linux.tar.gz
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
