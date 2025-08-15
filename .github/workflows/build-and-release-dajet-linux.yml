@@ -1,4 +1,4 @@
-name: Build & Release DaJet Studio
+name: Build & Release DaJet for Linux
 
 on:
   workflow_dispatch:
@@ -6,26 +6,19 @@ on:
       version:
         description: 'DaJet version'
         required: true
-
+      description:
+        description: 'Release description'
+        required: true
 env:
   DOTNET_TARGET: 'net8.0'
 
 jobs:
-
   publish:
-    name: publish-${{matrix.os}}
-    runs-on: ${{matrix.os}}
-    strategy:
-      matrix:
-        kind: [ 'linux', 'win' ]
-        include:
-          - kind: linux
-            os: ubuntu-latest
-          - kind: win
-            os: windows-latest
-
+    name: build-and-publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-
     - name: Checkout source code
       uses: actions/checkout@v4
       with:
@@ -41,52 +34,62 @@ jobs:
     - name: Install WASM Tools Workload
       run: dotnet workload install wasm-tools
 
-    - name: Publish DaJet HTTP Server
-      working-directory: src/dajet-http-server
-      run: dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
-
-    - name: Publish DaJet Studio
-      shell: bash
-      working-directory: src/dajet-studio
+    - name: Create output directories
       run: |
-        dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
-        if [ '${{matrix.kind}}' == 'win' ]; then
-          xcopy //s //e ".\bin\${{matrix.kind}}\wwwroot" "${{github.workspace}}\src\dajet-http-server\bin\${{matrix.kind}}\ui"
-        else
-          cp -aT ./bin/${{matrix.kind}}/wwwroot ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/ui
-        fi
+        mkdir ${{github.workspace}}/dajet-host
+        mkdir ${{github.workspace}}/dajet-studio
+        mkdir ${{github.workspace}}/dajet-studio/ui
+        mkdir ${{github.workspace}}/dajet-studio/flow
 
-    - name: Publish DaJet Flow Script
-      shell: bash
-      working-directory: src/dajet-flow-script
-      run: |
-        dotnet publish -f ${{env.DOTNET_TARGET}} --os ${{matrix.kind}} -a x64 -c Release -o ./bin/${{matrix.kind}}
-        if [ '${{matrix.kind}}' == 'win' ]; then
-          xcopy ".\bin\${{matrix.kind}}\DaJet.Flow.Script*" "${{github.workspace}}\src\dajet-http-server\bin\${{matrix.kind}}\flow"
-        else
-          cp ./bin/${{matrix.kind}}/DaJet.Flow.Script* ${{github.workspace}}/src/dajet-http-server/bin/${{matrix.kind}}/flow
-        fi
+# DaJet Script Host
+
+    - name: Publish DaJet Script Host
+      working-directory: src/dajet
+      run: dotnet publish -f ${{env.DOTNET_TARGET}} --os linux -a x64 -c Release -o ${{github.workspace}}/dajet-host
 
     - name: Prepare artifacts
-      shell: bash
-      working-directory: src/dajet-http-server
-      run: |
-        artifact_name="dajet-studio-${{github.event.inputs.version}}-${{matrix.kind}}-x64"
-        if [ '${{matrix.kind}}' == 'win' ]; then
-          7z a -tzip "${artifact_name}.zip" "./bin/${{matrix.kind}}/*"
-        else
-          tar czvf "${artifact_name}.tar.gz" "./bin/${{matrix.kind}}"
-        fi
+      working-directory: dajet-host
+      run: tar czvf "dajet-host-${{github.event.inputs.version}}-linux.tar.gz" "."
 
-    - name: Create release
+    - name: Create and upload release
       uses: softprops/action-gh-release@v2
       with:
-        name: 'DaJet Studio ${{github.event.inputs.version}}'
-        tag_name: 'dajet-studio-${{github.event.inputs.version}}'
-        body: 'GitHub Actions release'
-        files: src/dajet-http-server/dajet-studio-*
+        name: 'DaJet ${{github.event.inputs.version}}'
+        tag_name: 'dajet-${{github.event.inputs.version}}'
+        body: ${{github.event.inputs.description}}'
+        files: ${{github.workspace}}/dajet-host/dajet-host-${{github.event.inputs.version}}-linux.tar.gz
         draft: false
         prerelease: false
         make_latest: true
+      env:
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+# DaJet Studio
+
+    - name: Publish DaJet Studio
+      working-directory: src/dajet-studio
+      run: |
+        dotnet publish -f ${{env.DOTNET_TARGET}} --os linux -a x64 -c Release -o ./bin
+        cp -aT ./bin/wwwroot ${{github.workspace}}/dajet-studio/ui
+
+    - name: Publish DaJet Flow Script
+      working-directory: src/dajet-flow-script
+      run: |
+        dotnet publish -f ${{env.DOTNET_TARGET}} --os linux -a x64 -c Release -o ./bin
+        cp ./bin/DaJet.Flow.Script* ${{github.workspace}}/dajet-studio/flow
+
+    - name: Publish DaJet HTTP Server
+      working-directory: src/dajet-http-server
+      run: dotnet publish -f ${{env.DOTNET_TARGET}} --os linux -a x64 -c Release -o ${{github.workspace}}/dajet-studio
+
+    - name: Prepare artifacts
+      working-directory: dajet-studio
+      run: tar czvf "dajet-studio-${{github.event.inputs.version}}-linux.tar.gz" "."
+
+    - name: Upload artifacts
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: 'dajet-${{github.event.inputs.version}}'
+        files: ${{github.workspace}}/dajet-studio/dajet-studio-${{github.event.inputs.version}}-linux.tar.gz
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
