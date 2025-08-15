@@ -49,7 +49,7 @@ jobs:
 
     - name: Prepare artifacts
       working-directory: dajet-host
-      run: tar czvf "dajet-host-${{github.event.inputs.version}}-linux.tar.gz" "."
+      run: tar czvf "${{github.workspace}}/dajet-host-${{github.event.inputs.version}}-linux.tar.gz" "."
 
     - name: Create and upload release
       uses: softprops/action-gh-release@v2
@@ -57,7 +57,7 @@ jobs:
         name: 'DaJet ${{github.event.inputs.version}}'
         tag_name: 'dajet-${{github.event.inputs.version}}'
         body: ${{github.event.inputs.description}}'
-        files: ${{github.workspace}}/dajet-host/dajet-host-${{github.event.inputs.version}}-linux.tar.gz
+        files: ${{github.workspace}}/dajet-host-${{github.event.inputs.version}}-linux.tar.gz
         draft: false
         prerelease: false
         make_latest: true
