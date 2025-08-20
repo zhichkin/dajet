@@ -1,7 +1,0 @@
-https://github.com/microsoft/referencesource/tree/master/System.Data
-
-https://github.com/npgsql/npgsql/tree/main/src/Npgsql
-
-https://learn.microsoft.com/en-us/archive/msdn-magazine/2001/december/ado-net-building-a-custom-data-provider-for-use-with-the-net-data-access-framework
-
-https://learn.microsoft.com/en-us/ef/core/providers/writing-a-provider

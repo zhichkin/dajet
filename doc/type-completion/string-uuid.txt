@@ -1,6 +1,0 @@
-exec sp_executesql N'SELECT
-CASE WHEN (T1._Description = @P1) THEN 0x05 ELSE 0x06 END,
-CASE WHEN (T1._Description = @P2) THEN T1._Fld1073 ELSE @P3 END,
-CASE WHEN (T1._Description = @P4) THEN @P5 ELSE T1._Fld1204 END,
-CASE WHEN (T1._Description = @P6) THEN -@P7 ELSE @P8 END
-FROM dbo._Reference1072 T1',N'@P1 nvarchar(4000),@P2 nvarchar(4000),@P3 nvarchar(4000),@P4 nvarchar(4000),@P5 varbinary(8000),@P6 nvarchar(4000),@P7 numeric(10),@P8 numeric(10)',N'РеквизитСтрока',N'РеквизитСтрока',N'',N'РеквизитСтрока',0x,N'РеквизитСтрока',1,0
