@@ -399,7 +399,7 @@ namespace DaJet.Metadata.Core
 
                     ConfigureFileNameParameter(command, fileName);
 
-                    using (DbDataReader reader = command.ExecuteReader(CommandBehavior.SequentialAccess))
+                    using (DbDataReader reader = command.ExecuteReader()) // CommandBehavior.SequentialAccess
                     {
                         while (reader.Read())
                         {

@@ -49,6 +49,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-tutorial", "dajet-tut
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-flow-script", "dajet-flow-script\dajet-flow-script.csproj", "{2C25B496-ABA7-43EF-91DF-F47CB830F1F9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "benchmark", "benchmark\benchmark.csproj", "{2ABB3E4A-A8F4-4DA1-9C84-3CF27811E38C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -147,6 +149,10 @@ Global
 		{2C25B496-ABA7-43EF-91DF-F47CB830F1F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2C25B496-ABA7-43EF-91DF-F47CB830F1F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2C25B496-ABA7-43EF-91DF-F47CB830F1F9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2ABB3E4A-A8F4-4DA1-9C84-3CF27811E38C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2ABB3E4A-A8F4-4DA1-9C84-3CF27811E38C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2ABB3E4A-A8F4-4DA1-9C84-3CF27811E38C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2ABB3E4A-A8F4-4DA1-9C84-3CF27811E38C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
