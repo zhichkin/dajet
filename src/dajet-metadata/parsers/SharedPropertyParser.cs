@@ -23,20 +23,20 @@ namespace DaJet.Metadata.Parsers
             _entry = new MetadataInfo()
             {
                 MetadataUuid = options.MetadataUuid,
-                MetadataType = MetadataTypes.Enumeration
+                MetadataType = MetadataTypes.SharedProperty
             };
 
             _parser = new ConfigFileParser();
             _converter = new ConfigFileConverter();
 
+            // 1.1.1.1.1.2 - uuid объекта метаданных (FileName)
+
             _converter[1][1][1][1][2] += Name; // Имя объекта конфигурации
 
-            //if (options.IsExtension)
-            //{
-            //    _converter[1][1][1][1][13] += Parent;
-            //}
-
-            //_converter[1][1][1][1] += Cancel;
+            if (options.IsExtension) // 1.1.1.1.14 = 0 если заимствование отстутствует
+            {
+                _converter[1][1][1][1][15] += Parent; // uuid расширяемого объекта метаданных
+            }
 
             using (ConfigFileReader reader = new(options.DatabaseProvider, options.ConnectionString, options.TableName, options.FileName))
             {
@@ -108,6 +108,11 @@ namespace DaJet.Metadata.Parsers
             // [1][1][1][1][17][2] = {объект описания типов данных - Pattern} аналогично [1][1][1][2] += PropertyType
 
             // Настройки использования общего реквизита расширения хранятся так же, как у заимствованного объекта - [1][2][1] += UsageSettings
+
+            if (_cache is not null && _cache.Extension is not null) // 1.1.1.1.14 = 0 если заимствование отстутствует
+            {
+                _converter[1][1][1][1][15] += Parent; // uuid расширяемого объекта метаданных
+            }
 
             _converter[1][1][1][1][2] += Name;
             _converter[1][1][1][1][3][2] += Alias;
@@ -187,6 +192,17 @@ namespace DaJet.Metadata.Parsers
             if (_cache is not null && _cache.ResolveReferences && type.CanBeReference)
             {
                 _target.References.AddRange(references);
+            }
+        }
+        private void Parent(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            if (_entry is not null)
+            {
+                _entry.MetadataParent = source.GetUuid();
+            }
+            else if (_target is not null)
+            {
+                _target.Parent = source.GetUuid();
             }
         }
     }

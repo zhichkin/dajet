@@ -169,7 +169,7 @@ namespace DaJet.Metadata.Test
         {
             //Расш1_Задача1 2477f9f916f47c28ff787a41d074ecd27dd8d920
             //Расш1_БизнесПроцесс1 61c92c249fb851c3aa7a5a3cfde3676ce289ec08
-            string file_name = "61c92c249fb851c3aa7a5a3cfde3676ce289ec08";
+            string file_name = "02b3e4edfedf45bacffd42a09251611fbb614d11";
             DatabaseProvider provider = DatabaseProvider.SqlServer;
 
             ConfigFileParser parser = new();
@@ -178,7 +178,7 @@ namespace DaJet.Metadata.Test
             using (ConfigFileReader reader = new(provider, in MS_CONNECTION, ConfigTables.ConfigCAS, file_name))
             {
                 ConfigObject config = parser.Parse(in reader);
-                writer.Write(config, @"C:\temp\1c-dump\Расширение1.БизнесПроцесс.Расш1_БизнесПроцесс1.dump.txt");
+                writer.Write(config, @"C:\temp\1c-dump\Расширение1.ОбщийРеквизит.ОбластьДанныхОсновныеДанные.dump.txt");
             }
 
             Console.WriteLine("Done");

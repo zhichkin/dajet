@@ -75,24 +75,88 @@ namespace DaJet.Metadata.Core
                 return;
             }
 
-            foreach (SharedProperty property in cache.GetMetadataObjects(MetadataTypes.SharedProperty))
+            // Актуально для версии 8.3.27 и ниже:
+            // 1. Общие реквизиты могут быть добавлены только в основной конфигурации.
+            // 2. Расширения могут ТОЛЬКО заимствовать общие реквизиты из основной конфигурации.
+            // 3. Использование общих реквизитов для собственных объектов расширений должно быть указано ЯВНО, так как
+            //    собственные объекты расширения не имеют настройки "Авто", ТОЛЬКО "Использовать" или "Не использовать".
+
+            OneDbMetadataProvider provider = cache;
+
+            if (provider.Extension is null) // Основная конфигурация
+            {
+                if (provider.TryGetExtendedInfo(target.Uuid, out MetadataItemEx extent))
+                {
+                    if (extent.IsExtensionOwnObject) // Cобственный объект расширения
+                    {
+                        // Необходимо использовать провайдера метаданных соответствующего расширения
+                        if (provider.Extensions.TryGetValue(extent.Extension, out OneDbMetadataProvider extension))
+                        {
+                            provider = extension;
+                        }
+                        else
+                        {
+                            return; // Расширение основной конфигурации не загружено
+                        }
+                    }
+                }
+            }
+            else // Раширение конфигурации
+            {
+                // Конфигурируемый ApplicationObject должен быть из этого же расширения.
+            }
+
+            bool is_main_config = (provider.Extension is null); // Это основная конфигурация ?
+
+            foreach (SharedProperty property in provider.GetMetadataObjects(MetadataTypes.SharedProperty))
             {
                 if (property.UsageSettings.TryGetValue(target.Uuid, out SharedPropertyUsage usage))
                 {
                     if (usage == SharedPropertyUsage.Use)
                     {
-                        target.Properties.Add(property);
+                        if (is_main_config) // Основная конфигурация
+                        {
+                            target.Properties.Add(property);
+                            ConfigureSharedPropertiesForTableParts(target, property);
+                        }
+                        else // Расширение конфигурации
+                        {
+                            OneDbMetadataProvider main = provider.Extension.Host;
 
-                        ConfigureSharedPropertiesForTableParts(target, property);
+                            MetadataObject parent = null;
+
+                            if (property.Parent != Guid.Empty) // Найти общий реквизит основной конфигурации по uuid
+                            {
+                                parent = main.GetMetadataObject(MetadataTypes.SharedProperty, property.Parent);
+                            }
+
+                            if (parent is null) // Найти общий реквизит основной конфигурации по имени
+                            {
+                                string metadataType = MetadataTypes.ResolveNameRu(MetadataTypes.SharedProperty);
+                                parent = main.GetMetadataObject($"{metadataType}.{property.Name}");
+                            }
+
+                            if (parent is SharedProperty shared)
+                            {
+                                target.Properties.Add(shared);
+                                ConfigureSharedPropertiesForTableParts(target, shared);
+                            }
+                        }
                     }
                 }
-                else // Auto
+                else // SharedPropertyUsage.Auto
                 {
-                    if (property.AutomaticUsage == AutomaticUsage.Use)
+                    if (is_main_config) // Основная конфигурация
                     {
-                        target.Properties.Add(property);
-
-                        ConfigureSharedPropertiesForTableParts(target, property);
+                        if (property.AutomaticUsage == AutomaticUsage.Use)
+                        {
+                            target.Properties.Add(property);
+                            ConfigureSharedPropertiesForTableParts(target, property);
+                        }
+                    }
+                    else // Расширение конфигурации
+                    {
+                        // Ничего не делаем: смотри пункт 3 примечаний выше.
                     }
                 }
             }
