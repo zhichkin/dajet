@@ -54,7 +54,8 @@ namespace DaJet.Runtime
                 }
                 finally
                 {
-                    _next.Dispose(); //NOTE: continuation processor must be reusable !!!
+                    try { _next.Dispose(); } //NOTE: continuation processor must be reusable !!!
+                    catch { /* do nothing */ }
                 }
 
                 if (IsActive && _sleep is not null)
