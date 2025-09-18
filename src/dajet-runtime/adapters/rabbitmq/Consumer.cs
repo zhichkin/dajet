@@ -338,6 +338,9 @@ namespace DaJet.Runtime.RabbitMQ
                 }
             }
 
+            //NOTE: Все, возникающие в процессе обработки события Received, ошибки
+            //NOTE: EventingBasicConsumer перехватывает, "проглатывает" и не падает.
+
             try
             {
                 _next?.Process();
