@@ -355,7 +355,7 @@ namespace DaJet.Runtime.RabbitMQ
             {
                 FileLogger.Default.Write(ExceptionHelper.GetErrorMessage(error));
 
-                NackMessage(in consumer, in args, in error);
+                NackMessage(in consumer, in args);
             }
         }
         private void ProcessHeaders(in DataObject message, in BasicDeliverEventArgs args)
@@ -408,14 +408,15 @@ namespace DaJet.Runtime.RabbitMQ
                 message.SetValue(nameof(IBasicProperties.Headers), headers);
             }
         }
-        private void NackMessage(in EventingBasicConsumer consumer, in BasicDeliverEventArgs args, in Exception error)
+        private void NackMessage(in EventingBasicConsumer consumer, in BasicDeliverEventArgs args)
         {
-            FileLogger.Default.Write(ExceptionHelper.GetErrorMessage(error));
-
             if (_cancellation is null)
             {
                 return; // Consumer is most likely already disposed
             }
+
+            //NOTE: Требуется задержка, иначе может возникать зацикливание одного и того же сообщения:
+            //NOTE: сервер Send > консюмер Nack > сервер Send > консюмер Nack ... и так далее.
 
             bool signaled = _cancellation.WaitOne(TimeSpan.FromSeconds(Heartbeat));
 
