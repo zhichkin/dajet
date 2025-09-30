@@ -7,7 +7,8 @@ namespace benchmark
     {
         public static void Main(string[] args)
         {
-            Summary summary = BenchmarkRunner.Run<MetadataProviderBenchmarks>();
+            Summary summary = BenchmarkRunner.Run<ConfigFileParserBenchmarks>();
+            //Summary summary = BenchmarkRunner.Run<MetadataProviderBenchmarks>();
         }
     }
 }
