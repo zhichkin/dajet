@@ -13,7 +13,7 @@ namespace DaJet.Runtime
     public static class StreamFactory
     {
         #region "UDF - USER DEFINED FUNCTIONS"
-        private static AssemblyManager AssemblyManager { get; set; }
+        internal static AssemblyManager AssemblyManager { get; set; }
         static StreamFactory()
         {
             AssemblyManager = new();

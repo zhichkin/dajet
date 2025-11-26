@@ -14,7 +14,7 @@ namespace DaJet
         private static HostConfig Config { get; set; } = new();
         public static void Main(string[] args)
         {
-            //args = new string[] { "./config.json" };
+            args = new string[] { "./config.json" };
             //args = new string[] { "./code/while-sleep-loop.djs" };
 
             if (args is not null && args.Length > 0)

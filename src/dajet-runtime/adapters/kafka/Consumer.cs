@@ -24,6 +24,8 @@ namespace DaJet.Runtime.Kafka
 
         private int _consumed = 0;
         private readonly string _topic;
+        private readonly string _proto_key;
+        private readonly string _proto_value;
         private ConsumerConfig _config;
         private IConsumer<byte[], byte[]> _consumer;
         private ConsumeResult<byte[], byte[]> _result;
@@ -84,6 +86,8 @@ namespace DaJet.Runtime.Kafka
             StreamFactory.MapOptions(in _scope);
 
             _topic = GetTopic();
+            _proto_key = GetProtoKey();
+            _proto_value = GetProtoValue();
             _logHandler = LogHandler;
             _errorHandler = ErrorHandler;
         }
@@ -91,6 +95,24 @@ namespace DaJet.Runtime.Kafka
         private string GetTopic()
         {
             if (StreamFactory.TryGetOption(in _scope, "Topic", out object value))
+            {
+                return value.ToString();
+            }
+
+            return string.Empty;
+        }
+        private string GetProtoKey()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "ProtoKey", out object value))
+            {
+                return value.ToString();
+            }
+
+            return string.Empty;
+        }
+        private string GetProtoValue()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "ProtoValue", out object value))
             {
                 return value.ToString();
             }
@@ -178,7 +200,7 @@ namespace DaJet.Runtime.Kafka
             {
                 string key = GetOptionKey(option.Key);
 
-                if (key == "topic" || key == _target) { continue; }
+                if (key == "topic" || key == "proto.key" || key == "proto.value" || key == _target) { continue; }
 
                 if (StreamFactory.TryGetOption(in _scope, option.Key, out object value))
                 {
@@ -207,7 +229,7 @@ namespace DaJet.Runtime.Kafka
 
             do
             {
-                _result = _consumer.Consume(10); //TODO: ConsumeTimeout setting
+                _result = _consumer.Consume(TimeSpan.FromSeconds(60)); //TODO: ConsumeTimeout setting
 
                 if (_result is not null && _result.Message is not null)
                 {
@@ -250,17 +272,37 @@ namespace DaJet.Runtime.Kafka
         }
         private void ProcessMessage(in ConsumeResult<byte[], byte[]> result)
         {
-            if (_scope.TryGetValue(_target, out object value))
+            if (_scope.TryGetValue(_target, out object target))
             {
-                if (value is DataObject message)
+                if (target is DataObject message)
                 {
+                    if (string.IsNullOrEmpty(result.Topic))
+                    {
+                        message.SetValue("Topic", _topic);
+                    }
+                    else
+                    {
+                        message.SetValue("Topic", result.Topic);
+                    }
+
                     if (result.Message.Key is null)
                     {
                         message.SetValue("Key", string.Empty);
                     }
                     else
                     {
-                        message.SetValue("Key", Encoding.UTF8.GetString(result.Message.Key));
+                        string key = string.Empty;
+
+                        if (string.IsNullOrEmpty(_proto_key))
+                        {
+                            key = Encoding.UTF8.GetString(result.Message.Key);
+                        }
+                        else
+                        {
+                            key = ProtobufConverter.ConvertProtobufToJson(in _proto_key, result.Message.Key);
+                        }
+
+                        message.SetValue("Key", key);
                     }
 
                     if (result.Message.Value is null)
@@ -269,16 +311,18 @@ namespace DaJet.Runtime.Kafka
                     }
                     else
                     {
-                        message.SetValue("Value", Encoding.UTF8.GetString(result.Message.Value));
-                    }
+                        string value = string.Empty;
 
-                    if (string.IsNullOrEmpty(result.Topic))
-                    {
-                        message.SetValue("Topic", _topic);
-                    }
-                    else
-                    {
-                        message.SetValue("Topic", result.Topic);
+                        if (string.IsNullOrEmpty(_proto_value))
+                        {
+                            value = Encoding.UTF8.GetString(result.Message.Value);
+                        }
+                        else
+                        {
+                            value = ProtobufConverter.ConvertProtobufToJson(in _proto_value, result.Message.Value);
+                        }
+
+                        message.SetValue("Value", value);
                     }
                 }
             }

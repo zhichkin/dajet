@@ -92,7 +92,7 @@ namespace DaJet.Runtime.Kafka
             {
                 string key = GetOptionKey(option.Key);
 
-                if (key == "key" || key == "value" || key == "topic")
+                if (key == "key" || key == "value" || key == "topic" || key == "proto.key" || key == "proto.value")
                 {
                     continue; // message values
                 }
@@ -115,7 +115,15 @@ namespace DaJet.Runtime.Kafka
                 }
                 else if (value is string text && !string.IsNullOrEmpty(text))
                 {
-                    return Encoding.UTF8.GetBytes(text);
+                    if (StreamFactory.TryGetOption(in _scope, "ProtoKey", out object proto)
+                        && proto is string proto_key && !string.IsNullOrEmpty(proto_key))
+                    {
+                        return ProtobufConverter.ConvertJsonToProtobuf(in proto_key, in text);
+                    }
+                    else
+                    {
+                        return Encoding.UTF8.GetBytes(text); // default path
+                    }
                 }
             }
 
@@ -131,7 +139,15 @@ namespace DaJet.Runtime.Kafka
                 }
                 else if (value is string text && !string.IsNullOrEmpty(text))
                 {
-                    return Encoding.UTF8.GetBytes(text);
+                    if (StreamFactory.TryGetOption(in _scope, "ProtoValue", out object proto)
+                        && proto is string proto_value && !string.IsNullOrEmpty(proto_value))
+                    {
+                        return ProtobufConverter.ConvertJsonToProtobuf(in proto_value, in text);
+                    }
+                    else
+                    {
+                        return Encoding.UTF8.GetBytes(text); // default path
+                    }
                 }
             }
 
