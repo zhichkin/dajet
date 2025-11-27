@@ -229,7 +229,7 @@ namespace DaJet.Runtime.Kafka
 
             do
             {
-                _result = _consumer.Consume(TimeSpan.FromSeconds(60)); //TODO: ConsumeTimeout setting
+                _result = _consumer.Consume(TimeSpan.FromSeconds(10)); //TODO: ConsumeTimeout setting
 
                 if (_result is not null && _result.Message is not null)
                 {
