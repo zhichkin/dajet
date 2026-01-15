@@ -31,6 +31,8 @@ namespace DaJet.Runtime.Kafka
         private ConsumeResult<byte[], byte[]> _result;
         private readonly Action<IConsumer<byte[], byte[]>, Error> _errorHandler;
         private readonly Action<IConsumer<byte[], byte[]>, LogMessage> _logHandler;
+        private readonly Action<IConsumer<byte[], byte[]>, List<TopicPartition>> _partitionsAssignedHandler;
+        private readonly Action<IConsumer<byte[], byte[]>, List<TopicPartitionOffset>> _partitionsRevokedHandler;
         private static string GetOptionKey(in string name)
         {
             StringBuilder key = new();
@@ -90,6 +92,8 @@ namespace DaJet.Runtime.Kafka
             _proto_value = GetProtoValue();
             _logHandler = LogHandler;
             _errorHandler = ErrorHandler;
+            _partitionsRevokedHandler = PartitionsRevokedHandler;
+            _partitionsAssignedHandler = PartitionsAssignedHandler;
         }
         public void LinkTo(in IProcessor next) { _next = next; }
         private string GetTopic()
@@ -140,7 +144,7 @@ namespace DaJet.Runtime.Kafka
                 }
             };
         }
-        
+
         private void LogHandler(IConsumer<byte[], byte[]> _, LogMessage log)
         {
             FileLogger.Default.Write($"[{_topic}] [{log.Name}]: {log.Message}");
@@ -149,7 +153,44 @@ namespace DaJet.Runtime.Kafka
         {
             FileLogger.Default.Write($"[{_topic}] [{consumer.Name}] [{string.Concat(consumer.Subscription)}]: {error.Reason}");
         }
-        
+        private void PartitionsAssignedHandler(IConsumer<byte[], byte[]> consumer, List<TopicPartition> partitions)
+        {
+            StringBuilder text = new();
+
+            if (partitions is null || partitions.Count == 0)
+            {
+                text.Append(" none");
+            }
+            else
+            {
+                foreach (TopicPartition partition in partitions)
+                {
+                    text.Append(' ').Append(partition.Partition.Value);
+                }
+            }
+            
+            FileLogger.Default.Write($"[{_topic}] [{consumer.Name}] partitions assigned:{text}");
+        }
+        private void PartitionsRevokedHandler(IConsumer<byte[], byte[]> consumer, List<TopicPartitionOffset> partitions)
+        {
+            StringBuilder text = new();
+
+            if (partitions is null || partitions.Count == 0)
+            {
+                text.Append(" none");
+            }
+            else
+            {
+                foreach (TopicPartitionOffset partition in partitions)
+                {
+                    text.Append(' ').Append(partition.Partition.Value)
+                        .Append('(').Append(partition.Offset.Value).Append(')');
+                }
+            }
+
+            FileLogger.Default.Write($"[{_topic}] [{consumer.Name}] partitions revoked:{text}");
+        }
+
         public void Process()
         {
             if (CanExecute) // STATE_IDLE -> STATE_ACTIVE
@@ -176,18 +217,18 @@ namespace DaJet.Runtime.Kafka
                 }
                 catch (Exception error)
                 {
-                    FileLogger.Default.Write($"[Kafka consumer] {ExceptionHelper.GetErrorMessage(error)}");
+                    FileLogger.Default.Write($"[Kafka consumer][{_topic}] {ExceptionHelper.GetErrorMessage(error)}");
                 }
 
                 if (IsActive && _sleep is not null)
                 {
-                    FileLogger.Default.Write("[Kafka consumer] Sleep 10 seconds ...");
+                    FileLogger.Default.Write($"[Kafka consumer][{_topic}] Sleep 10 seconds ...");
 
                     bool signaled = _sleep.WaitOne(TimeSpan.FromSeconds(10)); // suspend thread
 
                     if (signaled) // the Dispose method is called -> STATE_IDLE
                     {
-                        FileLogger.Default.Write("[Kafka consumer] Shutdown requested");
+                        FileLogger.Default.Write($"[Kafka consumer][{_topic}] Shutdown requested");
                     }
                 }
             }
@@ -217,9 +258,16 @@ namespace DaJet.Runtime.Kafka
             _consumer ??= new ConsumerBuilder<byte[], byte[]>(_config)
                 .SetLogHandler(_logHandler)
                 .SetErrorHandler(_errorHandler)
+                .SetPartitionsRevokedHandler(_partitionsRevokedHandler)
+                .SetPartitionsAssignedHandler(_partitionsAssignedHandler)
                 .Build();
 
-            _consumer.Subscribe(_topic);
+            List<TopicPartition> assignment = _consumer.Assignment;
+
+            if (assignment is null || assignment.Count == 0)
+            {
+                _consumer.Subscribe(_topic); // Subscribe once to avoid repeated rebalancing
+            }
         }
         private void ConsumeMessages()
         {
@@ -354,7 +402,17 @@ namespace DaJet.Runtime.Kafka
                     FileLogger.Default.Write(error);
                 }
 
-                _ = Interlocked.Exchange(ref _state, STATE_IDLE);
+                try
+                {
+                    _ = _sleep.Set(); // release thread if suspended
+                    _sleep.Dispose();
+                }
+                finally
+                {
+                    _sleep = null;
+                }
+
+                _ = Interlocked.Exchange(ref _state, STATE_IDLE); // STATE_DISPOSING -> STATE_IDLE
             }
         }
     }
