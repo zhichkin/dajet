@@ -175,6 +175,11 @@ namespace DaJet
         }
         private static void ConfigureServices(IServiceCollection services)
         {
+            //services.Configure<HostOptions>(options =>
+            //{
+            //    options.ShutdownTimeout = TimeSpan.FromSeconds(10);
+            //});
+
             services.AddOptions().AddSingleton(Options.Create(Config));
 
             services.AddHostedService<DaJetScriptService>();

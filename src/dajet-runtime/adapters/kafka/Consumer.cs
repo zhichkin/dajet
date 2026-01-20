@@ -3,6 +3,7 @@ using DaJet.Data;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
 using System.Text;
+using System.Timers;
 
 namespace DaJet.Runtime.Kafka
 {
@@ -13,26 +14,27 @@ namespace DaJet.Runtime.Kafka
         private readonly ConsumeStatement _options;
         private readonly string _target;
 
+        private int _consumed = 0;
+        private System.Timers.Timer _heartbeat;
+
         private int _state;
         private const int STATE_IDLE = 0;
         private const int STATE_ACTIVE = 1;
         private const int STATE_DISPOSING = 2;
-        private AutoResetEvent _sleep;
+        private CancellationTokenSource _consumeLoop;
         private bool CanExecute { get { return Interlocked.CompareExchange(ref _state, STATE_ACTIVE, STATE_IDLE) == STATE_IDLE; } }
         private bool IsActive { get { return Interlocked.CompareExchange(ref _state, STATE_ACTIVE, STATE_ACTIVE) == STATE_ACTIVE; } }
         private bool CanDispose { get { return Interlocked.CompareExchange(ref _state, STATE_DISPOSING, STATE_ACTIVE) == STATE_ACTIVE; } }
 
-        private int _consumed = 0;
         private readonly string _topic;
         private readonly string _proto_key;
         private readonly string _proto_value;
         private ConsumerConfig _config;
-        private IConsumer<byte[], byte[]> _consumer;
-        private ConsumeResult<byte[], byte[]> _result;
         private readonly Action<IConsumer<byte[], byte[]>, Error> _errorHandler;
         private readonly Action<IConsumer<byte[], byte[]>, LogMessage> _logHandler;
         private readonly Action<IConsumer<byte[], byte[]>, List<TopicPartition>> _partitionsAssignedHandler;
         private readonly Action<IConsumer<byte[], byte[]>, List<TopicPartitionOffset>> _partitionsRevokedHandler;
+        
         private static string GetOptionKey(in string name)
         {
             StringBuilder key = new();
@@ -55,6 +57,28 @@ namespace DaJet.Runtime.Kafka
 
             return key.ToString();
         }
+        private static List<ColumnExpression> CreateMessageSchema()
+        {
+            return new List<ColumnExpression>()
+            {
+                new()
+                {
+                    Alias = "Key",
+                    Expression = new ScalarExpression() { Token = TokenType.String }
+                },
+                new()
+                {
+                    Alias = "Value",
+                    Expression = new ScalarExpression() { Token = TokenType.String }
+                },
+                new()
+                {
+                    Alias = "Topic",
+                    Expression = new ScalarExpression() { Token = TokenType.String }
+                }
+            };
+        }
+        
         public Consumer(in ScriptScope scope)
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
@@ -94,8 +118,12 @@ namespace DaJet.Runtime.Kafka
             _errorHandler = ErrorHandler;
             _partitionsRevokedHandler = PartitionsRevokedHandler;
             _partitionsAssignedHandler = PartitionsAssignedHandler;
+
+            _config = CreateConsumerConfig();
         }
+        public void Synchronize() { /* IGNORE */ }
         public void LinkTo(in IProcessor next) { _next = next; }
+
         private string GetTopic()
         {
             if (StreamFactory.TryGetOption(in _scope, "Topic", out object value))
@@ -123,116 +151,6 @@ namespace DaJet.Runtime.Kafka
 
             return string.Empty;
         }
-        private List<ColumnExpression> CreateMessageSchema()
-        {
-            return new List<ColumnExpression>()
-            {
-                new()
-                {
-                    Alias = "Key",
-                    Expression = new ScalarExpression() { Token = TokenType.String }
-                },
-                new()
-                {
-                    Alias = "Value",
-                    Expression = new ScalarExpression() { Token = TokenType.String }
-                },
-                new()
-                {
-                    Alias = "Topic",
-                    Expression = new ScalarExpression() { Token = TokenType.String }
-                }
-            };
-        }
-
-        private void LogHandler(IConsumer<byte[], byte[]> _, LogMessage log)
-        {
-            FileLogger.Default.Write($"[{_topic}] [{log.Name}]: {log.Message}");
-        }
-        private void ErrorHandler(IConsumer<byte[], byte[]> consumer, Error error)
-        {
-            FileLogger.Default.Write($"[{_topic}] [{consumer.Name}] [{string.Concat(consumer.Subscription)}]: {error.Reason}");
-        }
-        private void PartitionsAssignedHandler(IConsumer<byte[], byte[]> consumer, List<TopicPartition> partitions)
-        {
-            StringBuilder text = new();
-
-            if (partitions is null || partitions.Count == 0)
-            {
-                text.Append(" none");
-            }
-            else
-            {
-                foreach (TopicPartition partition in partitions)
-                {
-                    text.Append(' ').Append(partition.Partition.Value);
-                }
-            }
-            
-            FileLogger.Default.Write($"[{_topic}] [{consumer.Name}] partitions assigned:{text}");
-        }
-        private void PartitionsRevokedHandler(IConsumer<byte[], byte[]> consumer, List<TopicPartitionOffset> partitions)
-        {
-            StringBuilder text = new();
-
-            if (partitions is null || partitions.Count == 0)
-            {
-                text.Append(" none");
-            }
-            else
-            {
-                foreach (TopicPartitionOffset partition in partitions)
-                {
-                    text.Append(' ').Append(partition.Partition.Value)
-                        .Append('(').Append(partition.Offset.Value).Append(')');
-                }
-            }
-
-            FileLogger.Default.Write($"[{_topic}] [{consumer.Name}] partitions revoked:{text}");
-        }
-
-        public void Process()
-        {
-            if (CanExecute) // STATE_IDLE -> STATE_ACTIVE
-            {
-                AutoResetEvent sleep = new(false);
-
-                if (Interlocked.CompareExchange(ref _sleep, sleep, null) is not null)
-                {
-                    sleep.Dispose();
-                }
-
-                WhileActiveDoWork(); // STATE_ACTIVE -> STATE_IDLE
-            }
-        }
-        private void WhileActiveDoWork()
-        {
-            while (IsActive) // STATE_ACTIVE
-            {
-                try
-                {
-                    SubscribeConsumer(); // configure consumer and subscribe to topic
-
-                    ConsumeMessages(); // consume messages in "push from broker" mode
-                }
-                catch (Exception error)
-                {
-                    FileLogger.Default.Write($"[Kafka consumer][{_topic}] {ExceptionHelper.GetErrorMessage(error)}");
-                }
-
-                if (IsActive && _sleep is not null)
-                {
-                    FileLogger.Default.Write($"[Kafka consumer][{_topic}] Sleep 10 seconds ...");
-
-                    bool signaled = _sleep.WaitOne(TimeSpan.FromSeconds(10)); // suspend thread
-
-                    if (signaled) // the Dispose method is called -> STATE_IDLE
-                    {
-                        FileLogger.Default.Write($"[Kafka consumer][{_topic}] Shutdown requested");
-                    }
-                }
-            }
-        }
         private ConsumerConfig CreateConsumerConfig()
         {
             Dictionary<string, string> config = new();
@@ -251,72 +169,266 @@ namespace DaJet.Runtime.Kafka
 
             return new ConsumerConfig(config);
         }
-        private void SubscribeConsumer()
-        {
-            _config ??= CreateConsumerConfig();
 
-            _consumer ??= new ConsumerBuilder<byte[], byte[]>(_config)
+        private void LogHandler(IConsumer<byte[], byte[]> _, LogMessage log)
+        {
+            FileLogger.Default.Write($"[{_topic}][{log.Name}]: {log.Message}");
+        }
+        private void ErrorHandler(IConsumer<byte[], byte[]> consumer, Error error)
+        {
+            if (error.IsFatal)
+            {
+                //TODO: !?
+            }
+
+            FileLogger.Default.Write($"[{_topic}][{consumer.Name}][{string.Concat(consumer.Subscription)}]: {error.Reason}");
+        }
+        private void PartitionsAssignedHandler(IConsumer<byte[], byte[]> consumer, List<TopicPartition> partitions)
+        {
+            StringBuilder text = new();
+
+            if (partitions is null || partitions.Count == 0)
+            {
+                text.Append("none");
+            }
+            else
+            {
+                foreach (TopicPartition partition in partitions)
+                {
+                    text.Append('[').Append(partition.Partition.Value).Append(']');
+                }
+            }
+            
+            FileLogger.Default.Write($"[{_topic}][{consumer.Name}] partitions assigned: {text}");
+        }
+        private void PartitionsRevokedHandler(IConsumer<byte[], byte[]> consumer, List<TopicPartitionOffset> partitions)
+        {
+            StringBuilder text = new();
+
+            if (partitions is null || partitions.Count == 0)
+            {
+                text.Append("none");
+            }
+            else
+            {
+                foreach (TopicPartitionOffset partition in partitions)
+                {
+                    string offset = partition.Offset.Value < 0 ? "-" : partition.Offset.Value.ToString();
+
+                    text.Append($"[{partition.Partition.Value}:{offset}]");
+                }
+            }
+
+            FileLogger.Default.Write($"[{_topic}][{consumer.Name}] partitions revoked: {text}");
+        }
+
+        private void StartHeartbeat()
+        {
+            _heartbeat = new System.Timers.Timer();
+            _heartbeat.AutoReset = true;
+            _heartbeat.Elapsed += ReportConsumerStatus;
+            _heartbeat.Interval = TimeSpan.FromSeconds(60).TotalMilliseconds;
+            _heartbeat.Start();
+        }
+        private void ReportConsumerStatus(object sender, ElapsedEventArgs args)
+        {
+            int consumed = Interlocked.Exchange(ref _consumed, 0);
+
+            FileLogger.Default.Write($"[{_topic}] Consumed {consumed} messages");
+        }
+        private void DisposeHeartbeat()
+        {
+            try
+            {
+                _heartbeat?.Stop();
+                _heartbeat?.Dispose();
+            }
+            finally
+            {
+                _heartbeat = null;
+            }
+        }
+
+        public void Process()
+        {
+            if (CanExecute) // STATE_IDLE -> STATE_ACTIVE
+            {
+                StartHeartbeat();
+
+                while (IsActive) // STATE_ACTIVE
+                {
+                    _consumeLoop = new CancellationTokenSource();
+
+                    CancellationToken cancellationToken = _consumeLoop.Token;
+
+                    RunConsumeLoop(cancellationToken); // Kafka consumer infinite poll loop
+
+                    if (cancellationToken.IsCancellationRequested) // Dispose is called during poll loop
+                    {
+                        break; // exit processor working loop
+                    }
+
+                    try
+                    {
+                        FileLogger.Default.Write($"[{_topic}] Sleep 60 seconds ...");
+
+                        Task.Delay(TimeSpan.FromSeconds(60)).Wait(cancellationToken);
+                    }
+                    catch // (OperationCanceledException)
+                    {
+                        // do nothing - cancellation requested
+                    }
+
+                    if (cancellationToken.IsCancellationRequested) // Dispose is called during sleep
+                    {
+                        break; // exit processor working loop
+                    }
+
+                    try { _consumeLoop.Dispose(); }
+                    finally { _consumeLoop = null; }
+                }
+
+                // STATE_DISPOSING
+
+                DisposeHeartbeat();
+
+                try { _consumeLoop?.Dispose(); }
+                finally { _consumeLoop = null; }
+
+                try
+                {
+                    _next?.Dispose();
+                }
+                catch (Exception error)
+                {
+                    FileLogger.Default.Write(error);
+                }
+
+                _ = Interlocked.Exchange(ref _state, STATE_IDLE); // STATE_DISPOSING -> STATE_IDLE
+            }
+        }
+        private void RunConsumeLoop(CancellationToken cancellationToken)
+        {
+            ConsumeResult<byte[], byte[]> result;
+
+            using (IConsumer<byte[], byte[]> consumer = new ConsumerBuilder<byte[], byte[]>(_config)
                 .SetLogHandler(_logHandler)
                 .SetErrorHandler(_errorHandler)
                 .SetPartitionsRevokedHandler(_partitionsRevokedHandler)
                 .SetPartitionsAssignedHandler(_partitionsAssignedHandler)
-                .Build();
-
-            List<TopicPartition> assignment = _consumer.Assignment;
-
-            if (assignment is null || assignment.Count == 0)
+                .Build())
             {
-                _consumer.Subscribe(_topic); // Subscribe once to avoid repeated rebalancing
-            }
-        }
-        private void ConsumeMessages()
-        {
-            _consumed = 0;
-            int batch = 0;
-            int print = 0;
-
-            do
-            {
-                _result = _consumer.Consume(TimeSpan.FromSeconds(10)); //TODO: ConsumeTimeout setting
-
-                if (_result is not null && _result.Message is not null)
+                try
                 {
-                    ProcessMessage(in _result);
+                    consumer.Subscribe(_topic);
+                }
+                catch (Exception error)
+                {
+                    FileLogger.Default.Write($"[{_topic}] Failed to subscribe: {ExceptionHelper.GetErrorMessage(error)}");
 
-                    _next?.Process();
-                    
-                    _consumed++;
+                    return; // exit consume loop
+                }
 
-                    batch++;
-                    print++;
+                string offsetInfo = "-";
 
-                    if (batch == 1000) //TODO: BatchSize setting
+                while (!cancellationToken.IsCancellationRequested) // Kafka consumer infinite poll loop
+                {
+                    try
                     {
+                        result = consumer.Consume(cancellationToken);
+
+                        if (result is null || result.Message is null)
+                        {
+                            break; // no more messages to process - exit consume loop
+                        }
+                        else
+                        {
+                            offsetInfo = $"{result.Partition.Value}:{result.Offset.Value}";
+                        }
+                    }
+                    catch (ConsumeException error)
+                    {
+                        ConsumeResult<byte[], byte[]> record = error.ConsumerRecord;
+
+                        if (record is not null)
+                        {
+                            if (record.Offset.Value < 0)
+                            {
+                                offsetInfo = $"{record.Partition.Value}:-";
+                            }
+                            else
+                            {
+                                offsetInfo = $"{record.Partition.Value}:{record.Offset.Value}";
+                            }
+                        }
+
+                        FileLogger.Default.Write($"[{_topic}][{offsetInfo}] Consume error: [{error.Error.Code}] {error.Error.Reason}");
+
+                        break; // exit consume loop
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        FileLogger.Default.Write($"[{_topic}] Consumer shutdown requested");
+
+                        break; // exit consume loop
+                    }
+                    catch (Exception exception)
+                    {
+                        FileLogger.Default.Write($"[{_topic}] Unexpected consume error: {ExceptionHelper.GetErrorMessage(exception)}");
+
+                        break; // exit consume loop
+                    }
+
+                    try
+                    {
+                        ProcessMessage(in result);
+                    }
+                    catch (Exception error)
+                    {
+                        FileLogger.Default.Write($"[{_topic}][{offsetInfo}] Process message error: {ExceptionHelper.GetErrorMessage(error)}");
+
+                        //_consumer.Seek(_result.TopicPartitionOffset);
+
+                        break; // exit consume loop
+                    }
+
+                    try
+                    {
+                        _next?.Process();
                         _next?.Synchronize();
-
-                        _ = _consumer.Commit(); // commit consumer offsets
-
-                        batch = 0;
                     }
-
-                    if (print == 10000) //TODO: monitor consumed messages by timer !?
+                    catch (Exception error)
                     {
-                        FileLogger.Default.Write($"[Kafka consumer][{_topic}] Consumed {print} messages");
+                        FileLogger.Default.Write($"[{_topic}][{offsetInfo}] Failed to process message: {ExceptionHelper.GetErrorMessage(error)}");
 
-                        print = 0;
+                        break; // exit consume loop
                     }
+
+                    try
+                    {
+                        consumer.Commit(result); //THINK: Use EnableAutoOffsetStore = false !?
+                    }
+                    catch (Exception error)
+                    {
+                        //THINK: _consumer.Seek(_result.TopicPartitionOffset);
+
+                        FileLogger.Default.Write($"[{_topic}][{offsetInfo}] Commit message error: {ExceptionHelper.GetErrorMessage(error)}");
+
+                        break; // exit consume loop
+                    }
+
+                    _ = Interlocked.Increment(ref _consumed);
+                }
+
+                try
+                {
+                    consumer.Close(); // leave consumer group
+                }
+                catch (KafkaException error)
+                {
+                    FileLogger.Default.Write($"[{_topic}] Close consumer error: [{error.Error.Code}] {error.Error.Reason}");
                 }
             }
-            while (_result is not null && _result.Message is not null && IsActive);
-
-            if (batch > 0)
-            {
-                _next?.Synchronize();
-
-                _ = _consumer.Commit(); // commit consumer offsets
-            }
-
-            FileLogger.Default.Write($"[KafkaMessageConsumer][{_topic}] Consumed {_consumed} messages.");
         }
         private void ProcessMessage(in ConsumeResult<byte[], byte[]> result)
         {
@@ -375,44 +487,27 @@ namespace DaJet.Runtime.Kafka
                 }
             }
         }
-        
-        public void Synchronize() { /* IGNORE */ }
         public void Dispose()
         {
             if (CanDispose) // STATE_ACTIVE -> STATE_DISPOSING
             {
-                _result = null;
-
                 try
                 {
-                    _consumer?.Close();
-                    _consumer?.Dispose();
+                    _consumeLoop?.Cancel(); // request consume loop cancellation
                 }
-                finally
+                catch // (ObjectDisposedException)
                 {
-                    _consumer = null;
+                    // do nothing
                 }
 
-                try
+                try // wait to exit consume loop and dispose resources
                 {
-                    _next?.Dispose();
+                    Task.Delay(TimeSpan.FromSeconds(3)).Wait();
                 }
-                catch (Exception error)
+                finally //TODO: use ManualResetEvent ???
                 {
-                    FileLogger.Default.Write(error);
+                    // do nothing
                 }
-
-                try
-                {
-                    _ = _sleep.Set(); // release thread if suspended
-                    _sleep.Dispose();
-                }
-                finally
-                {
-                    _sleep = null;
-                }
-
-                _ = Interlocked.Exchange(ref _state, STATE_IDLE); // STATE_DISPOSING -> STATE_IDLE
             }
         }
     }
