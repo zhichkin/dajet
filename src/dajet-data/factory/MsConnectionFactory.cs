@@ -1,5 +1,6 @@
 ﻿using Microsoft.Data.SqlClient;
 using System.Data.Common;
+using System.Security.Cryptography;
 using System.Text;
 using System.Web;
 
@@ -52,9 +53,9 @@ namespace DaJet.Data.SqlServer
 
             return builder.ToString();
         }
-        public int GetYearOffset(in Uri uri)
+        public int GetYearOffset(in string connectionString)
         {
-            using (SqlConnection connection = new(GetConnectionString(in uri)))
+            using (SqlConnection connection = new(connectionString))
             {
                 connection.Open();
 
@@ -165,14 +166,20 @@ namespace DaJet.Data.SqlServer
         {
             try
             {
-                SqlConnectionStringBuilder builder = new(connectionString);
+                string key = useExtensions
+                    ? connectionString.ToLowerInvariant()
+                    : string.Concat(connectionString, "false").ToLowerInvariant();
+                
+                return Convert.ToHexString(SHA1.HashData(Encoding.UTF8.GetBytes(key)));
 
-                string key = string.Format("mssql:{0}:{1}:{2}",
-                    builder.DataSource,
-                    builder.InitialCatalog,
-                    useExtensions).ToLowerInvariant();
+                //SqlConnectionStringBuilder builder = new(connectionString);
 
-                return key;
+                //string key = string.Format("mssql:{0}:{1}:{2}",
+                //    builder.DataSource,
+                //    builder.InitialCatalog,
+                //    useExtensions).ToLowerInvariant();
+
+                //return key;
             }
             catch
             {

@@ -1,5 +1,7 @@
 ﻿using Microsoft.Data.Sqlite;
 using System.Data.Common;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace DaJet.Data.SqlServer
 {
@@ -86,9 +88,9 @@ namespace DaJet.Data.SqlServer
 
             return builder.ToString();
         }
-        public int GetYearOffset(in Uri uri)
+        public int GetYearOffset(in string connectionString)
         {
-            using (SqliteConnection connection = new(GetConnectionString(in uri)))
+            using (SqliteConnection connection = new(connectionString))
             {
                 connection.Open();
 
@@ -173,13 +175,17 @@ namespace DaJet.Data.SqlServer
         {
             try
             {
-                SqliteConnectionStringBuilder builder = new(connectionString);
+                string key = connectionString.ToLowerInvariant();
 
-                string key = string.Format("sqlite:{0}:{1}",
-                    builder.DataSource,
-                    useExtensions).ToLowerInvariant();
+                return Convert.ToHexString(SHA1.HashData(Encoding.UTF8.GetBytes(key)));
 
-                return key;
+                //SqliteConnectionStringBuilder builder = new(connectionString);
+
+                //string key = string.Format("sqlite:{0}:{1}",
+                //    builder.DataSource,
+                //    useExtensions).ToLowerInvariant();
+
+                //return key;
             }
             catch
             {

@@ -2,13 +2,13 @@
 using DaJet.Metadata;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
+using System;
 using System.Text.RegularExpressions;
 
 namespace DaJet.Runtime
 {
     public sealed class ScriptScope : IScriptRuntime
     {
-        private static readonly object _metadata_providers_lock = new();
         public ScriptScope(SyntaxNode owner)
         {
             Owner = owner ?? throw new ArgumentNullException(nameof(owner));
@@ -358,11 +358,32 @@ namespace DaJet.Runtime
         {
             error = null;
 
-            Uri uri = GetDatabaseUri(); //NOTE: constructs uri dynamically (possibly also from a template)
+            string target = GetUseStatementUri();
 
-            bool useExtensions = DbUriHelper.UseExtensions(in uri);
-            string connectionString = DbConnectionFactory.GetConnectionString(in uri);
-            DatabaseProvider databaseProvider = DbConnectionFactory.GetDatabaseProvider(in uri);
+            bool useExtensions = false;
+            string connectionString = string.Empty;
+            DatabaseProvider databaseProvider = DatabaseProvider.SqlServer;
+
+            if (target.StartsWith("[mssql]"))
+            {
+                useExtensions = true;
+                connectionString = target[7..];
+                databaseProvider = DatabaseProvider.SqlServer;
+            }
+            else if (target.StartsWith("[pgsql]"))
+            {
+                useExtensions = true;
+                connectionString = target[7..];
+                databaseProvider = DatabaseProvider.PostgreSql;
+            }
+            else
+            {
+                Uri uri = GetDatabaseUri(); //NOTE: constructs uri dynamically (possibly also from a template)
+                useExtensions = DbUriHelper.UseExtensions(in uri);
+                connectionString = DbConnectionFactory.GetConnectionString(in uri);
+                databaseProvider = DbConnectionFactory.GetDatabaseProvider(in uri);
+            }
+
             string cacheKey = DbConnectionFactory.GetCacheKey(databaseProvider, in connectionString, useExtensions);
 
             InfoBaseOptions options = new()
@@ -435,6 +456,26 @@ namespace DaJet.Runtime
             if (parent.Owner is UseStatement use)
             {
                 return parent.GetUri(use.Uri);
+            }
+
+            throw new InvalidOperationException("Owner UseStatement is not found");
+        }
+        public string GetUseStatementUri()
+        {
+            ScriptScope parent = GetParent<UseStatement>() ?? throw new InvalidOperationException("Parent UseStatement is not found");
+
+            if (parent.Owner is UseStatement use)
+            {
+                string uri = use.Uri;
+
+                string[] templates = GetUriTemplates(in uri);
+
+                if (templates.Length == 0)
+                {
+                    return uri;
+                }
+
+                return ReplaceUriTemplates(in uri, in templates);
             }
 
             throw new InvalidOperationException("Owner UseStatement is not found");

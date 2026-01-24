@@ -8,7 +8,7 @@ namespace DaJet.Runtime
     {
         protected IProcessor _next;
         protected readonly ScriptScope _scope;
-        protected Uri _uri;
+        protected string _uri;
         protected VariableReference _into;
         protected SqlStatement _statement;
         protected readonly int _yearOffset;
@@ -20,9 +20,24 @@ namespace DaJet.Runtime
         {
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
 
-            _uri = _scope.GetDatabaseUri();
+            _uri = _scope.GetUseStatementUri(); //_scope.GetDatabaseUri();
 
-            _factory = DbConnectionFactory.GetFactory(in _uri);
+            if (_uri.StartsWith("[mssql]"))
+            {
+                _uri = _uri[7..];
+                _factory = DbConnectionFactory.GetFactory(DatabaseProvider.SqlServer);
+            }
+            else if (_uri.StartsWith("[pgsql]"))
+            {
+                _uri = _uri[7..];
+                _factory = DbConnectionFactory.GetFactory(DatabaseProvider.PostgreSql);
+            }
+            else
+            {
+                Uri uri = new(_uri);
+                _factory = DbConnectionFactory.GetFactory(in uri);
+                _uri = _factory.GetConnectionString(in uri);
+            }
 
             _yearOffset = _factory.GetYearOffset(in _uri);
 

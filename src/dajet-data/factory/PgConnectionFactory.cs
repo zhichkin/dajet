@@ -1,5 +1,6 @@
 ﻿using Npgsql;
 using System.Data.Common;
+using System.Security.Cryptography;
 using System.Text;
 using System.Web;
 
@@ -42,9 +43,9 @@ namespace DaJet.Data.PostgreSql
 
             return builder.ToString();
         }
-        public int GetYearOffset(in Uri uri)
+        public int GetYearOffset(in string connectionString)
         {
-            using (NpgsqlConnection connection = new(GetConnectionString(in uri)))
+            using (NpgsqlConnection connection = new(connectionString))
             {
                 connection.Open();
 
@@ -151,15 +152,21 @@ namespace DaJet.Data.PostgreSql
         {
             try
             {
-                NpgsqlConnectionStringBuilder builder = new(connectionString);
+                string key = useExtensions
+                    ? connectionString.ToLowerInvariant()
+                    : string.Concat(connectionString, "false").ToLowerInvariant();
 
-                string key = string.Format("pgsql:{0}:{1}:{2}:{3}",
-                    builder.Host,
-                    builder.Port == 0 ? 5432 : builder.Port,
-                    builder.Database,
-                    useExtensions).ToLowerInvariant();
+                return Convert.ToHexString(SHA1.HashData(Encoding.UTF8.GetBytes(key)));
 
-                return key;
+                //NpgsqlConnectionStringBuilder builder = new(connectionString);
+
+                //string key = string.Format("pgsql:{0}:{1}:{2}:{3}",
+                //    builder.Host,
+                //    builder.Port == 0 ? 5432 : builder.Port,
+                //    builder.Database,
+                //    useExtensions).ToLowerInvariant();
+
+                //return key;
             }
             catch
             {

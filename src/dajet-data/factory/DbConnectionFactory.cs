@@ -6,7 +6,7 @@ namespace DaJet.Data
 {
     public interface IDbConnectionFactory
     {
-        int GetYearOffset(in Uri uri);
+        int GetYearOffset(in string connectionString);
         DbConnection Create(in Uri uri);
         DbConnection Create(in string connectionString);
         string GetConnectionString(in Uri uri);
