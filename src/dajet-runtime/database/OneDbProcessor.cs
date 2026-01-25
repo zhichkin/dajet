@@ -27,9 +27,19 @@ namespace DaJet.Runtime
                 _uri = _uri[7..];
                 _factory = DbConnectionFactory.GetFactory(DatabaseProvider.SqlServer);
             }
+            else if (_uri.StartsWith("[mssqlx]"))
+            {
+                _uri = _uri[8..];
+                _factory = DbConnectionFactory.GetFactory(DatabaseProvider.SqlServer);
+            }
             else if (_uri.StartsWith("[pgsql]"))
             {
                 _uri = _uri[7..];
+                _factory = DbConnectionFactory.GetFactory(DatabaseProvider.PostgreSql);
+            }
+            else if (_uri.StartsWith("[pgsqlx]"))
+            {
+                _uri = _uri[8..];
                 _factory = DbConnectionFactory.GetFactory(DatabaseProvider.PostgreSql);
             }
             else

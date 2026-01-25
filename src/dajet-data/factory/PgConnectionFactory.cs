@@ -152,9 +152,9 @@ namespace DaJet.Data.PostgreSql
         {
             try
             {
-                string key = useExtensions
+                string key = !useExtensions
                     ? connectionString.ToLowerInvariant()
-                    : string.Concat(connectionString, "false").ToLowerInvariant();
+                    : string.Concat(connectionString, ";mdex").ToLowerInvariant();
 
                 return Convert.ToHexString(SHA1.HashData(Encoding.UTF8.GetBytes(key)));
 

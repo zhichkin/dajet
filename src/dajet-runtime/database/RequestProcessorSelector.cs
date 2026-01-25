@@ -7,7 +7,22 @@ namespace DaJet.Runtime
     {
         internal static IProcessor GetProcessor(in RequestStatement request, in ScriptScope scope)
         {
-            Uri uri = scope.GetUri(request.Target);
+            string connectionString = scope.TransformStringTemplate(request.Target);
+
+            if (connectionString.StartsWith("[mssql]"))
+            {
+                return new MsRequestProcessor(in scope);
+            }
+            else if (connectionString.StartsWith("[pgsql]"))
+            {
+                return new PgRequestProcessor(in scope);
+            }
+            else if (connectionString.StartsWith("[sqlite]"))
+            {
+                return new PgRequestProcessor(in scope);
+            }
+
+            Uri uri = new(connectionString);
 
             if (DbUriHelper.IsRowSql(in uri))
             {

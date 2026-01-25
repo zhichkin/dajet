@@ -15,7 +15,7 @@ namespace DaJet.Runtime
     public abstract class DbRequestProcessor : IProcessor
     {
         private IProcessor _next;
-        private readonly Uri _uri;
+        private readonly string _connectionString;
         private readonly IDbConnectionFactory _factory;
         private int _timeout = 30; // seconds
         private bool _stream = false;
@@ -37,9 +37,30 @@ namespace DaJet.Runtime
             Statement = statement;
 
             ConfigureOutput(); // configure _schema by _output variable
-            
-            _uri = Scope.GetUri(Statement.Target);
-            _factory = DbConnectionFactory.GetFactory(in _uri);
+
+            string connectionString = scope.TransformStringTemplate(Statement.Target);
+
+            if (connectionString.StartsWith("[mssql]"))
+            {
+                _connectionString = connectionString[7..];
+                _factory = DbConnectionFactory.GetFactory(DatabaseProvider.SqlServer);
+            }
+            else if (connectionString.StartsWith("[pgsql]"))
+            {
+                _connectionString = connectionString[7..];
+                _factory = DbConnectionFactory.GetFactory(DatabaseProvider.PostgreSql);
+            }
+            else if (connectionString.StartsWith("[sqlite]"))
+            {
+                _connectionString = connectionString[8..];
+                _factory = DbConnectionFactory.GetFactory(DatabaseProvider.Sqlite);
+            }
+            else
+            {
+                Uri uri = new(connectionString);
+                _factory = DbConnectionFactory.GetFactory(in uri);
+                _connectionString = _factory.GetConnectionString(in uri);
+            }
 
             ConfigureDataMapper(); // overridable
             ConfigureProcessor();  // overridable
@@ -266,7 +287,7 @@ namespace DaJet.Runtime
         {
             DbTransaction transaction = null;
 
-            using (DbConnection connection = _factory.Create(in _uri))
+            using (DbConnection connection = _factory.Create(in _connectionString))
             {
                 connection.Open();
 

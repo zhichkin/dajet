@@ -210,7 +210,7 @@ namespace DaJet.Runtime
 
         private string GetExecuteScriptPath()
         {
-            string[] templates = _scope.GetUriTemplates(_statement.Uri);
+            string[] templates = ScriptScope.GetUriTemplates(_statement.Uri);
 
             Uri uri = templates.Length == 0
                 ? new(_statement.Uri)
@@ -220,7 +220,7 @@ namespace DaJet.Runtime
         }
         private string GetDefaultScriptPath()
         {
-            string[] templates = _scope.GetUriTemplates(_statement.Default);
+            string[] templates = ScriptScope.GetUriTemplates(_statement.Default);
 
             Uri uri = templates.Length == 0
                 ? new(_statement.Default)

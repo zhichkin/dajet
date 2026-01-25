@@ -2,7 +2,6 @@
 using DaJet.Metadata;
 using DaJet.Scripting;
 using DaJet.Scripting.Model;
-using System;
 using System.Text.RegularExpressions;
 
 namespace DaJet.Runtime
@@ -366,14 +365,26 @@ namespace DaJet.Runtime
 
             if (target.StartsWith("[mssql]"))
             {
-                useExtensions = true;
+                useExtensions = false;
                 connectionString = target[7..];
+                databaseProvider = DatabaseProvider.SqlServer;
+            }
+            else if (target.StartsWith("[mssqlx]"))
+            {
+                useExtensions = true;
+                connectionString = target[8..];
                 databaseProvider = DatabaseProvider.SqlServer;
             }
             else if (target.StartsWith("[pgsql]"))
             {
-                useExtensions = true;
+                useExtensions = false;
                 connectionString = target[7..];
+                databaseProvider = DatabaseProvider.PostgreSql;
+            }
+            else if (target.StartsWith("[pgsqlx]"))
+            {
+                useExtensions = true;
+                connectionString = target[8..];
                 databaseProvider = DatabaseProvider.PostgreSql;
             }
             else
@@ -398,7 +409,7 @@ namespace DaJet.Runtime
         }
 
         private static readonly Regex _uri_template = new("{(.*?)}", RegexOptions.CultureInvariant);
-        public string[] GetUriTemplates(in string uri)
+        public static string[] GetUriTemplates(in string uri)
         {
             MatchCollection matches = _uri_template.Matches(uri);
 
@@ -479,6 +490,17 @@ namespace DaJet.Runtime
             }
 
             throw new InvalidOperationException("Owner UseStatement is not found");
+        }
+        public string TransformStringTemplate(in string template)
+        {
+            string[] variables = GetUriTemplates(in template);
+
+            if (variables.Length == 0)
+            {
+                return template;
+            }
+
+            return ReplaceUriTemplates(in template, in variables);
         }
 
         private static void ImportTypeDefinitions(in ScriptScope scope, in ImportStatement import)
