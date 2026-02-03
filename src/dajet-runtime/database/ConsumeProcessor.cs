@@ -46,6 +46,10 @@ namespace DaJet.Runtime
                         FileLogger.Default.Write($"Processed {processed} messages");
                     }
                 }
+                catch (BreakException)
+                {
+                    Dispose(); // STATE_ACTIVE -> STATE_DISPOSING -> STATE_IDLE
+                }
                 catch (Exception error)
                 {
                     delay = 60;

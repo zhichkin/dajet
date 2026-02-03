@@ -1,5 +1,6 @@
 ﻿using DaJet.Data;
 using DaJet.Scripting.Model;
+using Npgsql.Replication;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Buffers;
@@ -61,6 +62,66 @@ namespace DaJet.Runtime.RabbitMQ
         private string VirtualHost { get; set; } = "/";
         private string UserName { get; set; } = "guest";
         private string Password { get; set; } = "guest";
+        private TimeSpan GetRequestedHeartbeat()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "RequestedHeartbeat", out object value))
+            {
+                if (value is int seconds)
+                {
+                    return TimeSpan.FromSeconds(seconds);
+                }
+            }
+
+            return TimeSpan.FromSeconds(60);
+        }
+        private bool GetAutomaticRecoveryEnabled()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "AutomaticRecoveryEnabled", out object value))
+            {
+                if (value is bool boolean)
+                {
+                    return boolean;
+                }
+            }
+
+            return true;
+        }
+        private TimeSpan GetNetworkRecoveryInterval()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "NetworkRecoveryInterval", out object value))
+            {
+                if (value is int seconds)
+                {
+                    return TimeSpan.FromSeconds(seconds);
+                }
+            }
+
+            return TimeSpan.FromSeconds(5);
+        }
+        private TimeSpan GetContinuationTimeout()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "ContinuationTimeout", out object value))
+            {
+                if (value is int seconds)
+                {
+                    return TimeSpan.FromSeconds(seconds);
+                }
+            }
+
+            return TimeSpan.FromSeconds(30);
+        }
+        private TimeSpan GetRequestedConnectionTimeout()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "RequestedConnectionTimeout", out object value))
+            {
+                if (value is int seconds)
+                {
+                    return TimeSpan.FromSeconds(seconds);
+                }
+            }
+
+            return TimeSpan.FromSeconds(30);
+        }
         #endregion
 
         #region "MESSAGE OPTIONS AND VALUES"
@@ -291,7 +352,12 @@ namespace DaJet.Runtime.RabbitMQ
                 Port = HostPort,
                 VirtualHost = VirtualHost,
                 UserName = UserName,
-                Password = Password
+                Password = Password,
+                RequestedHeartbeat = GetRequestedHeartbeat(),
+                ContinuationTimeout = GetContinuationTimeout(),
+                RequestedConnectionTimeout = GetRequestedConnectionTimeout(),
+                AutomaticRecoveryEnabled = GetAutomaticRecoveryEnabled(),
+                NetworkRecoveryInterval = GetNetworkRecoveryInterval()
             };
 
             _connection = factory.CreateConnection();
