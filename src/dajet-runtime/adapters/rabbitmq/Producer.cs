@@ -1,6 +1,5 @@
 ﻿using DaJet.Data;
 using DaJet.Scripting.Model;
-using Npgsql.Replication;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Buffers;
@@ -25,7 +24,7 @@ namespace DaJet.Runtime.RabbitMQ
         private const string ERROR_CHANNEL_SHUTDOWN = "Channel shutdown: [{0}] {1}";
         private const string ERROR_CONNECTION_SHUTDOWN = "Connection shutdown: [{0}] {1}";
         private const string ERROR_CONNECTION_IS_BLOCKED = "Connection blocked: {0}";
-        private const string ERROR_WAIT_FOR_CONFIRMS = "Wait for confirms interrupted";
+        private const string ERROR_WAIT_FOR_CONFIRMS = "Wait for confirms timed out";
         private const string ERROR_PUBLISHER_CONFIRMS = "Publisher confirms nacked";
 
         private const string HEADER_CC = "CC";
@@ -62,6 +61,19 @@ namespace DaJet.Runtime.RabbitMQ
         private string VirtualHost { get; set; } = "/";
         private string UserName { get; set; } = "guest";
         private string Password { get; set; } = "guest";
+        private TimeSpan PublisherConfirmsTimeout { get; set; } = TimeSpan.FromSeconds(60);
+        private TimeSpan GetPublisherConfirmsTimeout()
+        {
+            if (StreamFactory.TryGetOption(in _scope, "PublisherConfirmsTimeout", out object value))
+            {
+                if (value is int seconds)
+                {
+                    return TimeSpan.FromSeconds(seconds);
+                }
+            }
+
+            return TimeSpan.FromSeconds(60);
+        }
         private TimeSpan GetRequestedHeartbeat()
         {
             if (StreamFactory.TryGetOption(in _scope, "RequestedHeartbeat", out object value))
@@ -343,7 +355,6 @@ namespace DaJet.Runtime.RabbitMQ
                 VirtualHost = HttpUtility.UrlDecode(uri.Segments[1].TrimEnd('/'), Encoding.UTF8);
             }
         }
-
         private void InitializeConnection()
         {
             IConnectionFactory factory = new ConnectionFactory()
@@ -420,6 +431,8 @@ namespace DaJet.Runtime.RabbitMQ
                 try
                 {
                     InitializeUri();
+
+                    PublisherConfirmsTimeout = GetPublisherConfirmsTimeout();
 
                     InitializeConnection();
 
@@ -590,9 +603,13 @@ namespace DaJet.Runtime.RabbitMQ
         {
             try
             {
+                FileLogger.Default.Write("RabbitMQ Publisher synchronizing ...");
+
                 ThrowIfSessionIsBroken(); // STATE_BROKEN
 
                 ConfirmSessionOrThrow(); // STATE_ACTIVE
+
+                FileLogger.Default.Write("RabbitMQ Publisher synchronized.");
             }
             catch (NullReferenceException)
             {
@@ -611,9 +628,13 @@ namespace DaJet.Runtime.RabbitMQ
         {
             if (Interlocked.CompareExchange(ref _state, STATE_ACTIVE, STATE_ACTIVE) == STATE_ACTIVE)
             {
-                if (_channel.WaitForConfirms())
+                if (_channel.WaitForConfirms(PublisherConfirmsTimeout, out bool timedout))
                 {
                     ThrowIfSessionIsBroken(); // STATE_BROKEN
+                }
+                else if (timedout)
+                {
+                    throw new OperationCanceledException(ERROR_WAIT_FOR_CONFIRMS);
                 }
                 else
                 {
@@ -625,7 +646,7 @@ namespace DaJet.Runtime.RabbitMQ
                 // STATE_IDLE | STATE_DISPOSING
             }
         }
-        
+
         public void Dispose()
         {
             if (Interlocked.CompareExchange(ref _state, STATE_DISPOSING, STATE_DISPOSING) == STATE_DISPOSING)
