@@ -70,29 +70,49 @@ namespace DaJet.Runtime
         {
             if (_provider is not null) { return; }
 
-            Uri uri = _scope.GetDatabaseUri(); //_scope.GetUri(source);
+            string connectionString = _scope.GetUseStatementUri();
+            DatabaseProvider databaseProvider = DatabaseProvider.SqlServer;
 
-            _factory = DbConnectionFactory.GetFactory(in uri);
+            if (connectionString.StartsWith("[mssql]"))
+            {
+                connectionString = connectionString[7..];
+                databaseProvider = DatabaseProvider.SqlServer;
+                _factory = DbConnectionFactory.GetFactory(DatabaseProvider.SqlServer);
+            }
+            else if (connectionString.StartsWith("[pgsql]"))
+            {
+                connectionString = connectionString[7..];
+                databaseProvider = DatabaseProvider.PostgreSql;
+                _factory = DbConnectionFactory.GetFactory(DatabaseProvider.PostgreSql);
+            }
+            else
+            {
+                Uri uri = _scope.GetDatabaseUri();
 
+                if (uri.Scheme == "mssql")
+                {
+                    databaseProvider = DatabaseProvider.SqlServer;
+                }
+                else if (uri.Scheme == "pgsql")
+                {
+                    databaseProvider = DatabaseProvider.PostgreSql;
+                }
+                else
+                {
+                    throw new NotSupportedException($"[{nameof(MetadataStreamer)}] database {uri.Scheme} is not supported");
+                }
+
+                _factory = DbConnectionFactory.GetFactory(in uri);
+                connectionString = _factory.GetConnectionString(in uri);
+            }
+            
             OneDbMetadataProviderOptions options = new()
             {
                 UseExtensions = false,
                 ResolveReferences = true, //FIXME: Из-за этой опции создаём собственного провайдера !
-                ConnectionString = DbConnectionFactory.GetConnectionString(in uri)
+                ConnectionString = connectionString,
+                DatabaseProvider = databaseProvider
             };
-
-            if (uri.Scheme == "mssql")
-            {
-                options.DatabaseProvider = DatabaseProvider.SqlServer;
-            }
-            else if (uri.Scheme == "pgsql")
-            {
-                options.DatabaseProvider = DatabaseProvider.PostgreSql;
-            }
-            else
-            {
-                throw new NotSupportedException($"[{nameof(MetadataStreamer)}] database {uri.Scheme} is not supported");
-            }
 
             if (!OneDbMetadataProvider.TryCreateMetadataProvider(in options, out _provider, out string error))
             {
