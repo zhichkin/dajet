@@ -628,18 +628,20 @@ namespace DaJet.Runtime.RabbitMQ
         {
             if (Interlocked.CompareExchange(ref _state, STATE_ACTIVE, STATE_ACTIVE) == STATE_ACTIVE)
             {
-                if (_channel.WaitForConfirms(PublisherConfirmsTimeout, out bool timedout))
-                {
-                    ThrowIfSessionIsBroken(); // STATE_BROKEN
-                }
-                else if (timedout)
+                bool acked = _channel.WaitForConfirms(PublisherConfirmsTimeout, out bool timedout);
+
+                ThrowIfSessionIsBroken(); // STATE_BROKEN
+
+                if (timedout)
                 {
                     throw new OperationCanceledException(ERROR_WAIT_FOR_CONFIRMS);
                 }
-                else
+
+                if (!acked)
                 {
                     throw new OperationCanceledException(ERROR_PUBLISHER_CONFIRMS);
                 }
+
             }
             else
             {
