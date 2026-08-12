@@ -10,7 +10,7 @@ namespace benchmark
     [MemoryDiagnoser]
     [MinColumn, MaxColumn]
     //[WarmupCount(1)]
-    //[IterationCount(1)]
+    [IterationCount(10)]
     //[MinIterationCount(5)]
     //[MaxIterationCount(20)]
     public class DaJetScriptBenchmarks
@@ -33,7 +33,9 @@ namespace benchmark
         [GlobalSetup]
         public void GlobalSetup()
         {
-            string filePath = Path.Combine(AppContext.BaseDirectory, "scripts", "select-complex-object.djs");
+            //string filePath = Path.Combine(AppContext.BaseDirectory, "scripts", "select-complex-object.djs");
+
+            string filePath = Path.Combine(AppContext.BaseDirectory, "scripts", "stream-pg-ms.djs");
 
             string script;
 
@@ -50,8 +52,8 @@ namespace benchmark
             _processor = processor;
         }
 
-        [Benchmark(Description = "SELECT complex object")]
-        public bool SelectComplexObject()
+        [Benchmark(Description = "STREAM PG > MS")]
+        public bool STREAM_PG_MS()
         {
             _processor.Process();
 
