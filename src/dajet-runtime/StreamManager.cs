@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Text;
 
 namespace DaJet.Runtime
@@ -6,11 +6,30 @@ namespace DaJet.Runtime
     public static class StreamManager
     {
         private const string DAJET_SCRIPT_FILE_EXTENSION = "*.djs";
+        private static readonly object _syncRoot = new();
         private static readonly Dictionary<string, IProcessor> _streams = new();
 
+        //NOTE: учёт отказов потоков для нарастающей паузы между пересборками (см. _fault_delays)
+        private static readonly Dictionary<string, FaultInfo> _faults = new();
+        private static readonly int[] _fault_delays = { 0, 10, 30, 60, 120, 300, 600 }; // seconds
+        private sealed class FaultInfo
+        {
+            public int Count { get; set; }
+            public DateTime NextAttemptUtc { get; set; }
+        }
+
         public static int LOG_MODE = 0; // 0 - file (default), 1 - console
-        public static void LogToFile() { LOG_MODE = 0; }
-        public static void LogToConsole() { LOG_MODE = 1; }
+        public static int StopTimeoutSeconds { get; set; } = 30; // wait for a stream to stop
+        public static void LogToFile()
+        {
+            LOG_MODE = 0;
+            FileLogger.Default.UseLogTarget(LogTarget.File);
+        }
+        public static void LogToConsole()
+        {
+            LOG_MODE = 1;
+            FileLogger.Default.UseLogTarget(LogTarget.Console);
+        }
         public static void Serve(in string path)
         {
             if (Directory.Exists(path))
@@ -38,7 +57,19 @@ namespace DaJet.Runtime
         }
         private static void ActivateStream(in string file)
         {
-            if (_streams.ContainsKey(file)) { return; }
+            string path = file;
+
+            FileLogger.UseSource(file);
+
+            lock (_syncRoot)
+            {
+                if (_streams.ContainsKey(file)) { return; }
+
+                if (_faults.TryGetValue(file, out FaultInfo fault) && fault.NextAttemptUtc > DateTime.UtcNow)
+                {
+                    return; //NOTE: нарастающая пауза перед повторной сборкой упавшего потока
+                }
+            }
 
             if (!File.Exists(file)) { return; }
 
@@ -57,9 +88,13 @@ namespace DaJet.Runtime
 
             if (StreamFactory.TryCreateStream(in script, in parameters, out IProcessor stream, out string error))
             {
-                _ = Task.Factory.StartNew(stream.Process, TaskCreationOptions.LongRunning);
+                lock (_syncRoot)
+                {
+                    _streams[file] = stream;
+                    _faults.Remove(file); // success - reset the fault counter
+                }
 
-                _ = _streams.TryAdd(file, stream);
+                _ = Task.Factory.StartNew(() => ProcessStream(in path, in stream), TaskCreationOptions.LongRunning);
 
                 watch.Stop();
 
@@ -71,10 +106,62 @@ namespace DaJet.Runtime
                 FileLogger.Default.Write(error);
             }
         }
+        private static void ProcessStream(in string file, in IProcessor stream)
+        {
+            FileLogger.UseSource(file);
+
+            try
+            {
+                stream.Process();
+
+                //NOTE: нормально завершившийся поток (например, DDL без CONSUME) остаётся
+                //NOTE: в реестре, иначе он выполнялся бы заново на каждом Refresh.
+            }
+            catch (Exception error)
+            {
+                //NOTE: упавший поток убираем из реестра, чтобы следующий Refresh собрал его заново
+                lock (_syncRoot)
+                {
+                    _streams.Remove(file);
+
+                    if (!_faults.TryGetValue(file, out FaultInfo fault))
+                    {
+                        fault = new FaultInfo();
+                        _faults[file] = fault;
+                    }
+
+                    fault.Count++;
+
+                    int index = fault.Count < _fault_delays.Length ? fault.Count : _fault_delays.Length - 1;
+
+                    fault.NextAttemptUtc = DateTime.UtcNow.AddSeconds(_fault_delays[index]);
+                }
+
+                FileLogger.Default.Write(LogLevel.ERROR,
+                    $"[STREAM][FAULTED] {file}: {ExceptionHelper.GetErrorMessage(error)}");
+            }
+        }
         public static void Dispose()
         {
-            foreach (var stream in _streams)
+            KeyValuePair<string, IProcessor>[] streams;
+
+            lock (_syncRoot)
             {
+                streams = new KeyValuePair<string, IProcessor>[_streams.Count];
+
+                int index = 0;
+
+                foreach (var stream in _streams) { streams[index++] = stream; }
+
+                _streams.Clear();
+                _faults.Clear();
+            }
+
+            //NOTE: гасим потоки параллельно и ждём завершения всех (см. ConsumeProcessor.Dispose)
+            _ = Parallel.ForEach(streams, stream =>
+            {
+                FileLogger.UseSource(stream.Key);
+
                 try
                 {
                     stream.Value.Dispose();
@@ -85,26 +172,36 @@ namespace DaJet.Runtime
                 {
                     FileLogger.Default.Write(error);
                 }
-            }
-
-            _streams.Clear();
+            });
         }
         private static void DisposeStreams()
         {
             List<string> keys = new();
 
-            foreach (var stream in _streams)
+            lock (_syncRoot)
             {
-                if (!File.Exists(stream.Key))
+                foreach (var stream in _streams)
                 {
-                    keys.Add(stream.Key);
+                    if (!File.Exists(stream.Key))
+                    {
+                        keys.Add(stream.Key);
+                    }
                 }
             }
 
             foreach (string file in keys)
             {
-                if (_streams.Remove(file, out IProcessor stream) && stream is not null)
+                IProcessor stream = null;
+
+                lock (_syncRoot)
                 {
+                    if (_streams.Remove(file, out IProcessor value)) { stream = value; }
+                }
+
+                if (stream is not null)
+                {
+                    FileLogger.UseSource(file);
+
                     try
                     {
                         stream.Dispose();
@@ -123,6 +220,8 @@ namespace DaJet.Runtime
         public static void Execute(in string filePath, in Dictionary<string, object> parameters, out object result)
         {
             result = null;
+
+            FileLogger.UseSource(filePath);
 
             string script;
 

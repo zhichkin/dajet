@@ -1,4 +1,4 @@
-﻿using DaJet.Data;
+using DaJet.Data;
 using System.Data;
 using System.Data.Common;
 
@@ -15,6 +15,9 @@ namespace DaJet.Runtime
         private bool CanDispose { get { return Interlocked.CompareExchange(ref _state, STATE_DISPOSING, STATE_ACTIVE) == STATE_ACTIVE; } }
 
         private AutoResetEvent _sleep;
+        //NOTE: сигнал о выходе из цикла обработки - используется Dispose для ожидания
+        //NOTE: завершения текущей пачки сообщений (см. п.3 "Остановка с ожиданием потоков").
+        private readonly ManualResetEventSlim _stopped = new(false);
         public ConsumeProcessor(in ScriptScope scope) : base(in scope) { }
         public override void Synchronize() { /* IGNORE */ }
         public override void Process()
@@ -28,7 +31,14 @@ namespace DaJet.Runtime
                     sleep.Dispose();
                 }
 
-                WhileActiveDoWork(); // STATE_ACTIVE -> STATE_IDLE
+                try
+                {
+                    WhileActiveDoWork(); // STATE_ACTIVE -> STATE_IDLE
+                }
+                finally
+                {
+                    _stopped.Set();
+                }
             }
         }
         private void WhileActiveDoWork()
@@ -48,7 +58,8 @@ namespace DaJet.Runtime
                 }
                 catch (BreakException)
                 {
-                    Dispose(); // STATE_ACTIVE -> STATE_DISPOSING -> STATE_IDLE
+                    //NOTE: выходим из цикла - Dispose не ждёт сам себя (вызов из потока обработки)
+                    _ = Interlocked.CompareExchange(ref _state, STATE_IDLE, STATE_ACTIVE);
                 }
                 catch (Exception error)
                 {
@@ -166,8 +177,25 @@ namespace DaJet.Runtime
 
                 try
                 {
-                    _ = _sleep.Set(); // release thread if suspended
-                    _sleep.Dispose();
+                    _ = _sleep?.Set(); // release thread if suspended
+                }
+                catch (Exception error)
+                {
+                    FileLogger.Default.Write(error);
+                }
+
+                //NOTE: ждём выхода из цикла обработки, чтобы завершить текущую пачку
+                //NOTE: и не породить дубли при перезапуске узла (см. п.3).
+                int timeout = StreamManager.StopTimeoutSeconds > 0 ? StreamManager.StopTimeoutSeconds : 30;
+
+                if (!_stopped.Wait(TimeSpan.FromSeconds(timeout)))
+                {
+                    FileLogger.Default.Write($"[WARNING] CONSUME shutdown timeout ({timeout} s)");
+                }
+
+                try
+                {
+                    _sleep?.Dispose();
                 }
                 finally
                 {

@@ -46,6 +46,9 @@ namespace DaJet.Runtime
 
             if (!_scope.TryGetMetadataProvider(out IMetadataProvider database, out string error))
             {
+                //NOTE: ошибка подключения к базе данных - в журнал с именем скрипта (см. п.1 и п.5)
+                FileLogger.Default.Write(LogLevel.ERROR, error);
+
                 throw new InvalidOperationException(error);
             }
 

@@ -1,4 +1,4 @@
-﻿using DaJet.Runtime;
+using DaJet.Runtime;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -11,8 +11,14 @@ namespace DaJet
     {
         private const string DEFAULT_ROOT_PATH = "scripts";
         private const string DAJET_SCRIPT_FILE_EXTENSION = ".djs";
+
+        //NOTE: коды возврата процесса (см. п.2 "Код возврата процесса")
+        private const int EXIT_SUCCESS = 0; // [200]
+        private const int EXIT_FAILURE = 1; // [500]
+        private const int EXIT_BAD_REQUEST = 2; // [400] [404] [422]
+
         private static HostConfig Config { get; set; } = new();
-        public static void Main(string[] args)
+        public static int Main(string[] args)
         {
             //args = new string[] { "./config.json" };
             //args = new string[] { "./code/while-sleep-loop.djs" };
@@ -24,27 +30,30 @@ namespace DaJet
                 if (string.IsNullOrEmpty(extension))
                 {
                     Console.WriteLine($"[400][BAD REQUEST] {args[0]}");
+                    return EXIT_BAD_REQUEST;
                 }
                 else if (!File.Exists(args[0]))
                 {
                     Console.WriteLine($"[404][NOT FOUND] {args[0]}");
+                    return EXIT_BAD_REQUEST;
                 }
                 else if (extension == ".json") // configuration file
                 {
-                    RunHost(args[0]);
+                    return RunHost(args[0]);
                 }
                 else if (extension == DAJET_SCRIPT_FILE_EXTENSION)
                 {
-                    RunScript(args[0]);
+                    return RunScript(args[0]);
                 }
                 else
                 {
                     Console.WriteLine($"[422][UNPROCESSABLE ENTITY] {args[0]}");
+                    return EXIT_BAD_REQUEST;
                 }
             }
             else
             {
-                RunHost(null); // default host settings
+                return RunHost(null); // default host settings
             }
         }
         private static void ShowDaJetVersion(bool console)
@@ -65,7 +74,7 @@ namespace DaJet
                 }   
             }
         }
-        private static void RunScript(in string filePath)
+        private static int RunScript(in string filePath)
         {
             ShowDaJetVersion(true);
 
@@ -112,14 +121,19 @@ namespace DaJet
             }
 
             Console.WriteLine("[HOST] Stopped");
+
+            return success ? EXIT_SUCCESS : EXIT_FAILURE;
         }
-        private static void RunHost(in string configFilePath)
+        private static int RunHost(in string configFilePath)
         {
             InitializeHostConfig(in configFilePath);
 
+            FileLogger.Default.UseLogTarget(IsConsoleLogTarget(Config.LogTarget) ? LogTarget.Console : LogTarget.File);
             FileLogger.Default.UseLogFile(Config.LogFile);
             FileLogger.Default.UseLogSize(Config.LogSize);
             FileLogger.Default.UseCatalog(Config.LogPath);
+
+            StreamManager.StopTimeoutSeconds = Config.ShutdownTimeout;
 
             ShowDaJetVersion(false);
 
@@ -129,12 +143,34 @@ namespace DaJet
             FileLogger.Default.Write($"[LOG PATH] {Config.LogPath}");
             FileLogger.Default.Write($"[LOG FILE] {Config.LogFile}");
             FileLogger.Default.Write($"[LOG SIZE] {Config.LogSize} bytes");
+            FileLogger.Default.Write($"[LOG TARGET] {Config.LogTarget}");
             FileLogger.Default.Write($"[ROOT] {Config.RootPath}");
             FileLogger.Default.Write($"[REFRESH] {Config.Refresh} seconds");
+            FileLogger.Default.Write($"[SHUTDOWN TIMEOUT] {Config.ShutdownTimeout} seconds");
 
-            CreateHostBuilder().Build().Run();
-            
-            FileLogger.Default.Write("[HOST] Stopped");
+            int exitCode = EXIT_SUCCESS;
+
+            try
+            {
+                CreateHostBuilder().Build().Run();
+            }
+            catch (Exception error)
+            {
+                //NOTE: хост упал, а не был остановлен сигналом - ненулевой код возврата
+                exitCode = EXIT_FAILURE;
+
+                FileLogger.Default.Write(error);
+            }
+            finally
+            {
+                FileLogger.Default.Write("[HOST] Stopped");
+            }
+
+            return exitCode;
+        }
+        private static bool IsConsoleLogTarget(in string logTarget)
+        {
+            return string.Equals(logTarget, "console", StringComparison.OrdinalIgnoreCase);
         }
         private static void InitializeHostConfig(in string configFilePath)
         {
@@ -175,10 +211,12 @@ namespace DaJet
         }
         private static void ConfigureServices(IServiceCollection services)
         {
-            //services.Configure<HostOptions>(options =>
-            //{
-            //    options.ShutdownTimeout = TimeSpan.FromSeconds(10);
-            //});
+            int shutdownTimeout = Config.ShutdownTimeout > 0 ? Config.ShutdownTimeout : 30;
+
+            services.Configure<HostOptions>(options =>
+            {
+                options.ShutdownTimeout = TimeSpan.FromSeconds(shutdownTimeout);
+            });
 
             services.AddOptions().AddSingleton(Options.Create(Config));
 
